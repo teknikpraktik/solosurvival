@@ -1,15 +1,21 @@
 import Link from "next/link";
+import ResumeBanner from "./_client/ResumeBanner";
 
 export default function Home() {
   return (
     <main className="center">
       <h1 className="title">OUTBREAK</h1>
       <p className="sub">SOLO SURVIVAL</p>
-      <Link className="btn primary" href="/dev">DEV: SIMULERAD MATCH</Link>
-      <span className="btn" aria-disabled="true">NEW GAME</span>
-      <span className="btn" aria-disabled="true">PREVIOUS GAMES</span>
-      <span className="btn" aria-disabled="true">HOW TO PLAY</span>
-      <p className="hint">Etapp 0–2: spelmotorn är körbar och simulerbar. Spelflödet byggs i etapp 3–4.</p>
+      <ResumeBanner />
+      <Link className="btn primary" href="/new">NEW GAME</Link>
+      <Link className="btn" href="/history">PREVIOUS GAMES</Link>
+      <Link className="btn" href="/how-to-play">HOW TO PLAY</Link>
+      <p className="hint" style={{ maxWidth: 320 }}>
+        Spelet är vägledande. Följ trafikregler och markägares anvisningar, korsa aldrig väg eller järnväg på rutten, och titta inte på skärmen när du cyklar.
+      </p>
+      <p className="hint">
+        <Link href="/field">Testläge</Link> · <Link href="/dev">Simulator</Link>
+      </p>
     </main>
   );
 }

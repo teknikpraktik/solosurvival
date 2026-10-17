@@ -12,7 +12,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "sim": "tsx scripts/simulate.ts",
-    "postinstall": "node scripts/copy-maplibre-worker.mjs"
+    "postinstall": "node scripts/copy-maplibre-worker.mjs",
+    "predev": "node scripts/stamp-build.mjs",
+    "prebuild": "node scripts/stamp-build.mjs",
+    "tiles": "python3 -I experiments/data/build_tiles.py",
+    "e2e": "node e2e/play.e2e.mjs"
   },
   "dependencies": {
     "maplibre-gl": "^6.14.0",
@@ -24,9 +28,13 @@
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "fake-indexeddb": "^6.2.6",
     "playwright-core": "^1.64.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

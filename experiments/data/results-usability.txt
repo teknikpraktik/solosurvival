@@ -1,0 +1,8 @@
+
+Användbarhet för säker ruttgenerering (största komponenten, % av längd):
+  Skutberget  run  i största komp. 87.3 % av filtrerad längd; med uttryckligt positivt tillträdesstöd (foot=yes/designated) 17.7 %; enkelriktat 5.1 %; farliga korsningar med större väg: 24 noder
+  Skutberget  mtb  i största komp. 86.2 % av filtrerad längd; med uttryckligt positivt tillträdesstöd (bicycle=yes/designated eller mtb:scale) 66.3 %; enkelriktat 4.1 %; farliga korsningar med större väg: 20 noder
+  I2-skogen   run  i största komp. 95.2 % av filtrerad längd; med uttryckligt positivt tillträdesstöd (foot=yes/designated) 6.3 %; enkelriktat 0.3 %; farliga korsningar med större väg: 11 noder
+  I2-skogen   mtb  i största komp. 95.1 % av filtrerad längd; med uttryckligt positivt tillträdesstöd (bicycle=yes/designated eller mtb:scale) 63.6 %; enkelriktat 0.4 %; farliga korsningar med större väg: 11 noder
+  Sörmon      run  i största komp. 98.9 % av filtrerad längd; med uttryckligt positivt tillträdesstöd (foot=yes/designated) 6.0 %; enkelriktat 3.9 %; farliga korsningar med större väg: 3 noder
+  Sörmon      mtb  i största komp. 98.9 % av filtrerad längd; med uttryckligt positivt tillträdesstöd (bicycle=yes/designated eller mtb:scale) 77.9 %; enkelriktat 4.1 %; farliga korsningar med större väg: 3 noder

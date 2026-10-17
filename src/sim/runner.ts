@@ -1,11 +1,13 @@
 import { ACTIVITIES, type Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
-import { resolveRules, RULES_VERSION, STEP_S, type Rules } from "@/config/game-rules";
+import { RULES_VERSION, STEP_S, type Rules } from "@/config/game-rules";
+import { resolveModeRules } from "@/config/modes";
+import type { GameMode, ObjectiveSet } from "@/engine/objectives/objectives";
 import { createGame, stepGame, type StepInput } from "@/engine/core/engine";
 import { zombieLatLon } from "@/engine/core/movement";
 import { rand, type RngHolder } from "@/engine/core/rng";
 import type { GameEvent, GameResult, GameState } from "@/engine/core/types";
-import { planRoute } from "@/engine/pathfinding/astar";
+import { networkDistances, planRoute } from "@/engine/pathfinding/astar";
 import { summarize, type MatchSummary } from "@/engine/scoring/summary";
 import { haversineM, type LatLon } from "@/geo/geometry";
 import { edgeLatLon, nodeLatLon, posAtNode, snapToGraph } from "@/geo/graph/graph";
@@ -13,7 +15,7 @@ import type { Dir, EdgePos, TrailGraph } from "@/geo/graph/types";
 
 export type StrategyName = "random" | "avoid" | "maximize" | "extraction";
 
-interface PlayerCtx {
+export interface PlayerCtx {
   g: TrailGraph;
   state: GameState;
   rules: Rules;
@@ -77,6 +79,15 @@ export interface SimOptions {
   /** Intervall (spelklocka, s) då GPS är borta, t.ex. för test av bortfall. */
   gpsOutages?: [number, number][];
   spawnCapacity?: number;
+  /** Spelläge (default survival). Escape/Mission kräver `objectives`. */
+  mode?: GameMode;
+  objectives?: ObjectiveSet;
+  /** Egen vägvalsstrategi (ersätter `strategy`). Returnerar index i `ctx.options`. */
+  strategyFn?: (ctx: PlayerCtx) => number;
+  /** Startriktning på startkanten (annars slumpad eller mot första målet). */
+  initialDir?: Dir;
+  /** Justerar reglerna (t.ex. zombietäthet) för experiment. */
+  rulesPatch?: Partial<Rules>;
 }
 
 export interface SimResult {
@@ -111,7 +122,7 @@ export class SimSession {
     this.simRng = { rngState: (o.seed * 2654435761) >>> 0 };
     this.noiseRng = { rngState: (o.seed ^ 0x9e3779b9) >>> 0 };
     const startLL = o.start ?? randomStart(o.g, this.simRng);
-    this.rules = resolveRules(o.activity, o.difficulty, o.durationS, o.spawnCapacity);
+    this.rules = { ...resolveModeRules(o.mode ?? "survival", o.activity, o.difficulty, o.durationS, o.spawnCapacity), ...o.rulesPatch };
     const { state, events } = createGame({
       g: o.g,
       config: {
@@ -121,9 +132,11 @@ export class SimSession {
         areaId: "sim",
         seed: o.seed,
         rulesVersion: RULES_VERSION,
+        mode: o.mode ?? "survival",
       },
       rules: this.rules,
       start: startLL,
+      objectives: o.objectives,
     });
     this.state = state;
     this.events = [...events];
@@ -131,6 +144,20 @@ export class SimSession {
     const snap = snapToGraph(o.g, startLL)!;
     this.pos = { edgeId: snap.edgeId, distM: snap.distM };
     this.dir = rand(this.simRng) < 0.5 ? 1 : -1;
+    // Med mål (Escape/Mission) börjar spelaren gå åt det håll som leder närmast första målet.
+    const first = o.objectives?.targets[0];
+    if (first) {
+      const tp = snapToGraph(o.g, first, this.state.component);
+      if (tp) {
+        const d = networkDistances(o.g, tp);
+        const e = o.g.edges.get(this.pos.edgeId)!;
+        const fwd = (e.lengthM - this.pos.distM) + (d.get(e.to) ?? Infinity);
+        const back = e.oneway ? Infinity : this.pos.distM + (d.get(e.from) ?? Infinity);
+        if (tp.edgeId === this.pos.edgeId) this.dir = tp.distM >= this.pos.distM ? 1 : -1;
+        else if (Number.isFinite(Math.min(fwd, back))) this.dir = fwd <= back ? 1 : -1;
+      }
+    }
+    if (o.initialDir) this.dir = o.initialDir;
   }
 
   private gauss() {
@@ -159,7 +186,12 @@ export class SimSession {
       // Vänd bara i återvändsgränder.
       const forward = options.filter((a) => !(a.edgeId === e.id && a.dir === -this.dir));
       const pool = forward.length ? forward : options;
-      const pick = pool[strategies[o.strategy]({ g, state, rules: this.rules, options: pool, rng: this.simRng })];
+      if (!pool.length) {
+        // Enkelriktad stig utan utgång (finns i verklig OSM-data): spelaren vänder.
+        this.dir = (-this.dir) as Dir;
+        continue;
+      }
+      const pick = pool[(o.strategyFn ?? strategies[o.strategy])({ g, state, rules: this.rules, options: pool, rng: this.simRng })];
       pos.edgeId = pick.edgeId;
       this.dir = pick.dir;
       pos.distM = this.dir === 1 ? 0 : g.edges.get(pick.edgeId)!.lengthM;

@@ -32,7 +32,7 @@ function pathType(h: string): PathType {
   return "other";
 }
 
-const NO = new Set(["no", "private", "dismount", "use_sidepath"]);
+const NO = new Set(["no", "private", "dismount", "use_sidepath", "customers", "delivery", "permit", "military", "forestry", "agricultural"]);
 const YES = new Set(["yes", "designated", "permissive", "official"]);
 
 export type FilterDecision = { ok: true; oneway?: boolean; reverse?: boolean } | { ok: false; reason: string };
@@ -42,18 +42,27 @@ export type FilterDecision = { ok: true; oneway?: boolean; reverse?: boolean } |
  * - Allt över "unclassified" (motorväg…tertiary), järnväg, byggen och trappor utesluts redan i query/här.
  * - Promenad/löpning: foot=no eller access=private/no utesluts (om inte foot uttryckligen tillåts).
  * - MTB: kräver att cykling är tillåten. footway/pedestrian kräver bicycle=yes/designated.
- *   mtb:scale ≥ 4 utesluts av säkerhetsskäl; bicycle=no/dismount utesluts.
+ *   mtb:scale ≥ 3 utesluts av säkerhetsskäl; bicycle=no/dismount utesluts.
+ * - Saknade attribut tolkas aldrig som "säkert": cykelbana utan foot=yes/designated är inte en gångväg,
+ *   vad, dålig/obefintlig stigsynlighet (trail_visibility) och krävande vandringsstigar (sac_scale ≥ mountain_hiking) utesluts,
+ *   och vadställen (ford) utesluts eftersom passerbarhet inte är känd.
  */
 export function decideWay(tags: Record<string, string> | undefined, activity: Activity): FilterDecision {
   const t = tags ?? {};
   const h = t.highway;
   if (!h || !WALK_TYPES.has(h)) return { ok: false, reason: "highway" };
   if (t.railway || t.indoor || t.area === "yes") return { ok: false, reason: "not-a-path" };
+  if (t.ford && t.ford !== "no") return { ok: false, reason: "ford" };
+  if (t.highway === "construction" || t.access === "unknown") return { ok: false, reason: "unknown-access" };
+  if (["bad", "horrible", "no"].includes(t.trail_visibility ?? "")) return { ok: false, reason: "visibility" };
+  if (["mountain_hiking", "demanding_mountain_hiking", "alpine_hiking", "demanding_alpine_hiking", "difficult_alpine_hiking"].includes(t.sac_scale ?? "")) {
+    return { ok: false, reason: "sac-scale" };
+  }
   if (t.access && NO.has(t.access) && !(activity === "mtb" ? YES.has(t.bicycle ?? "") : YES.has(t.foot ?? ""))) {
     return { ok: false, reason: "access" };
   }
   if (h === "bridleway" && !YES.has(t.foot ?? "") && !YES.has(t.bicycle ?? "")) return { ok: false, reason: "bridleway" };
-  if (h === "service" && (t.service === "parking_aisle" || t.service === "driveway") && !YES.has(t.foot ?? "")) {
+  if (h === "service" && ["parking_aisle", "driveway", "drive-through", "emergency_access"].includes(t.service ?? "") && !YES.has(t.foot ?? "")) {
     return { ok: false, reason: "service" };
   }
 
@@ -61,13 +70,14 @@ export function decideWay(tags: Record<string, string> | undefined, activity: Ac
     if (t.bicycle && NO.has(t.bicycle)) return { ok: false, reason: "bicycle" };
     if ((h === "footway" || h === "pedestrian") && !YES.has(t.bicycle ?? "")) return { ok: false, reason: "foot-only" };
     const scale = Number.parseInt(t["mtb:scale"] ?? "", 10);
-    if (Number.isFinite(scale) && scale >= 4) return { ok: false, reason: "mtb-scale" };
+    if (Number.isFinite(scale) && scale >= 3) return { ok: false, reason: "mtb-scale" };
     const ow = t["oneway:bicycle"] ?? t.oneway;
     if (ow === "yes" || ow === "1" || ow === "true") return { ok: true, oneway: true };
     if (ow === "-1") return { ok: true, oneway: true, reverse: true };
     return { ok: true };
   }
   if (t.foot && NO.has(t.foot)) return { ok: false, reason: "foot" };
+  if (h === "cycleway" && !YES.has(t.foot ?? "")) return { ok: false, reason: "cycleway-no-foot" };
   return { ok: true };
 }
 
