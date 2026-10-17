@@ -1,0 +1,97 @@
+import type { Activity } from "@/config/activities";
+import type { Difficulty } from "@/config/difficulty";
+import type { LatLon } from "@/geo/geometry";
+import type { Dir } from "@/geo/graph/types";
+import type { RouteStep } from "../pathfinding/astar";
+
+export type GamePhase = "preparing" | "head_start" | "survival" | "extraction" | "finished";
+export type GameResult = "survived" | "infected" | "failed" | "aborted" | "incomplete";
+export type ZombieState = "patrol" | "investigate" | "chase" | "intercept";
+
+export interface GameConfig {
+  activity: Activity;
+  difficulty: Difficulty;
+  durationSeconds: number;
+  areaId: string;
+  seed: number;
+  rulesVersion: string;
+}
+
+export interface Observation {
+  lat: number;
+  lon: number;
+  /** Spelklocka (s) då observationen gjordes. */
+  observedAtS: number;
+  edgeId: string;
+  edgeDistM: number;
+}
+
+export interface Zombie {
+  id: string;
+  edgeId: string;
+  distanceAlongEdgeM: number;
+  speedMps: number;
+  state: ZombieState;
+  targetNodeId?: string;
+  lastKnownPlayerPosition?: { lat: number; lon: number; observedAtMs: number };
+
+  // --- intern AI/rörelse (serialiserbart) ---
+  dir: Dir;
+  route: RouteStep[];
+  stopAtM?: number;
+  /** Snappad position för senaste observation. */
+  lastKnownEdge?: { edgeId: string; distM: number };
+  /** Föregående observation, för riktningsuppskattning vid genskjutning. */
+  prevKnownEdge?: { edgeId: string; distM: number; atS: number };
+  stateSinceS: number;
+  replanAtS: number;
+  tacticalAtS: number;
+  contactLostS: number;
+  canIntercept: boolean;
+}
+
+export interface PlayerState {
+  position: LatLon;
+  distanceM: number;
+  /** Senast validerade position som AI:n har rätt att veta om. */
+  lastObservation?: Observation;
+}
+
+export interface GameState {
+  id: string;
+  config: GameConfig;
+  phase: GamePhase;
+  elapsedSeconds: number;
+  zombies: Zombie[];
+  infectionProgressSeconds: number;
+  extractionNodeId?: string;
+  result?: GameResult;
+
+  // --- tillägg för motorn ---
+  rngState: number;
+  player: PlayerState;
+  paused: boolean;
+  /** Spelklocka (s) tills infektion åter är möjlig efter paus. */
+  neutralUntilS: number;
+  extractionHoldS: number;
+  gpsLostS: number;
+  gpsLostLong: boolean;
+  nextRevealAtS: number;
+  nextSpawnTryAtS: number;
+  zombieCounter: number;
+  peakZombies: number;
+  /** Spelarens komponent i grafen – zombier hålls i samma komponent. */
+  component: number;
+}
+
+export type GameEvent =
+  | { type: "phase"; phase: GamePhase }
+  | { type: "reveal" }
+  | { type: "zombie_spawned"; zombieId: string }
+  | { type: "spawn_skipped" }
+  | { type: "zombie_detected"; zombieId: string }
+  | { type: "infection_contact" }
+  | { type: "extraction_opened"; nodeId: string }
+  | { type: "extraction_unavailable" }
+  | { type: "gps_lost_long" }
+  | { type: "finished"; result: GameResult };
