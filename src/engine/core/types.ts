@@ -3,6 +3,7 @@ import type { Difficulty } from "@/config/difficulty";
 import type { LatLon } from "@/geo/geometry";
 import type { Dir } from "@/geo/graph/types";
 import type { RouteStep } from "../pathfinding/astar";
+import type { GameMode, ObjectiveSet } from "../objectives/objectives";
 
 export type GamePhase = "preparing" | "head_start" | "survival" | "extraction" | "finished";
 export type GameResult = "survived" | "infected" | "failed" | "aborted" | "incomplete";
@@ -15,6 +16,8 @@ export interface GameConfig {
   areaId: string;
   seed: number;
   rulesVersion: string;
+  /** Spelläge; utelämnat = survival. */
+  mode?: GameMode;
 }
 
 export interface Observation {
@@ -82,6 +85,8 @@ export interface GameState {
   peakZombies: number;
   /** Spelarens komponent i grafen – zombier hålls i samma komponent. */
   component: number;
+  /** Mål för Escape/Mission. Saknas i Survival (där extraction gäller). */
+  objectives?: ObjectiveSet;
 }
 
 export type GameEvent =
@@ -93,5 +98,6 @@ export type GameEvent =
   | { type: "infection_contact" }
   | { type: "extraction_opened"; nodeId: string }
   | { type: "extraction_unavailable" }
+  | { type: "objective_reached"; targetId: string; index: number }
   | { type: "gps_lost_long" }
   | { type: "finished"; result: GameResult };

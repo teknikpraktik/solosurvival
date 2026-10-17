@@ -1,0 +1,23 @@
+{
+  "area": "skutberget",
+  "bbox": [
+    59.3588,
+    13.368,
+    59.3858,
+    13.42
+  ],
+  "bboxOrder": "south,west,north,east",
+  "ways": 316,
+  "extract": "varmland.osm.pbf",
+  "extractUrl": "https://download.openstreetmap.fr/extracts/europe/sweden/varmland.osm.pbf",
+  "extractMd5": "4419a79e9224df583bf986c3bad51524",
+  "extractedAt": "2026-10-17T11:09:08Z",
+  "wallSeconds": 25.6,
+  "keptTags": [
+    "highway",
+    "railway",
+    "waterway",
+    "barrier"
+  ],
+  "license": "ODbL 1.0 – © OpenStreetMap contributors"
+}

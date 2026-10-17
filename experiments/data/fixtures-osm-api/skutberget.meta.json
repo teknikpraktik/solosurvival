@@ -1,0 +1,30 @@
+{
+  "area": "skutberget",
+  "bbox": [
+    59.3588,
+    13.368,
+    59.3858,
+    13.42
+  ],
+  "bboxOrder": "south,west,north,east",
+  "endpoint": "https://api.openstreetmap.org/api/0.6/map.json",
+  "fetchedAt": "2026-10-17T06:44:11.571Z",
+  "tilesRequested": 4,
+  "rawNodes": 6089,
+  "rawWays": 624,
+  "rawRelations": 39,
+  "keptElements": {
+    "way": 594,
+    "relation": 7
+  },
+  "keptBytes": 687493,
+  "license": "ODbL 1.0 – © OpenStreetMap contributors (https://www.openstreetmap.org/copyright)",
+  "limitations": [
+    "/map returnerar ways med minst en nod i rutan; deras noder utanför rutan ingår, så ways kan sticka ut över kanten.",
+    "Multipolygon-relationer kan sakna medlemsways som ligger helt utanför rutan (relation.complete=false).",
+    "Rutan klipps inte exakt; objekt strax utanför kan ingå.",
+    "Datat är en ögonblicksbild från hämtningsdatumet; OSM-täckning av stigar, tillträde och marktäcke varierar."
+  ],
+  "relationsCompletedViaFull": 4,
+  "relationsStillIncomplete": 1
+}

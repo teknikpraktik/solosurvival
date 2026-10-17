@@ -13,6 +13,8 @@ export interface SpawnContext {
   /** Minsta avstånd till andra zombier, så att nya inte hamnar i en klunga. */
   minSpacingM?: number;
   tries?: number;
+  /** Zoner där zombier inte får spawna (t.ex. runt checkpoints och destination). */
+  avoid?: { p: LatLon; r: number }[];
 }
 
 /**
@@ -43,6 +45,7 @@ export function findSpawn(g: TrailGraph, ctx: SpawnContext, rng: RngHolder): Edg
     // Oriktade nät: avståndet från spelaren till spawn räknas längs nätet.
     if (distanceToPos(g, ctx.playerPos, dists, pos) < ctx.minDistanceM) continue;
     if (ctx.zombiePositions.some((z) => haversineM(z, ll) < spacing)) continue;
+    if (ctx.avoid?.some((a) => haversineM(a.p, ll) < a.r)) continue;
     return pos;
   }
   return null;

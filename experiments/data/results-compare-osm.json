@@ -1,0 +1,254 @@
+[
+ {
+  "area": "skutberget",
+  "act": "run",
+  "api": {
+   "lengthKm": 40.604084986373515,
+   "edges": 346,
+   "nodes": 288,
+   "junctions": 168,
+   "components": 10,
+   "largestComponentShare": 0.8727813435032608,
+   "deadEndShare": 0.2860717868648248,
+   "deadEndEdges": 111
+  },
+  "pbf": {
+   "lengthKm": 40.6040849863735,
+   "edges": 346,
+   "nodes": 288,
+   "junctions": 168,
+   "components": 10,
+   "largestComponentShare": 0.8727813435032605,
+   "deadEndShare": 0.2860717868648249,
+   "deadEndEdges": 111
+  },
+  "apiInPbf": {
+   "toleranceM": 10,
+   "aMatchedKm": 40.61203291701765,
+   "aOnlyKm": 0,
+   "aCoverage": 1,
+   "junctionsMatched": 168,
+   "junctionsA": 168,
+   "aOnlySegments": 0
+  },
+  "pbfInApi": {
+   "toleranceM": 10,
+   "aMatchedKm": 40.60338194900469,
+   "aOnlyKm": 0,
+   "aCoverage": 1,
+   "junctionsMatched": 168,
+   "junctionsA": 168,
+   "aOnlySegments": 0
+  }
+ },
+ {
+  "area": "skutberget",
+  "act": "mtb",
+  "api": {
+   "lengthKm": 37.93391013259077,
+   "edges": 304,
+   "nodes": 258,
+   "junctions": 142,
+   "components": 11,
+   "largestComponentShare": 0.8620758645455032,
+   "deadEndShare": 0.3305773353932253,
+   "deadEndEdges": 110
+  },
+  "pbf": {
+   "lengthKm": 37.933910132590775,
+   "edges": 304,
+   "nodes": 258,
+   "junctions": 142,
+   "components": 11,
+   "largestComponentShare": 0.8620758645455023,
+   "deadEndShare": 0.33057733539322537,
+   "deadEndEdges": 110
+  },
+  "apiInPbf": {
+   "toleranceM": 10,
+   "aMatchedKm": 37.941105912919944,
+   "aOnlyKm": 0,
+   "aCoverage": 1,
+   "junctionsMatched": 133,
+   "junctionsA": 133,
+   "aOnlySegments": 0
+  },
+  "pbfInApi": {
+   "toleranceM": 10,
+   "aMatchedKm": 37.933181182234094,
+   "aOnlyKm": 0,
+   "aCoverage": 1,
+   "junctionsMatched": 133,
+   "junctionsA": 133,
+   "aOnlySegments": 0
+  }
+ },
+ {
+  "area": "i2-skogen",
+  "act": "run",
+  "api": {
+   "lengthKm": 91.9514239190555,
+   "edges": 1014,
+   "nodes": 788,
+   "junctions": 538,
+   "components": 6,
+   "largestComponentShare": 0.9516172269658166,
+   "deadEndShare": 0.17676350653561596,
+   "deadEndEdges": 200
+  },
+  "pbf": {
+   "lengthKm": 91.9514239190556,
+   "edges": 1014,
+   "nodes": 788,
+   "junctions": 538,
+   "components": 6,
+   "largestComponentShare": 0.9516172269658167,
+   "deadEndShare": 0.17676350653561582,
+   "deadEndEdges": 200
+  },
+  "apiInPbf": {
+   "toleranceM": 10,
+   "aMatchedKm": 91.96000426265705,
+   "aOnlyKm": 0,
+   "aCoverage": 1,
+   "junctionsMatched": 538,
+   "junctionsA": 538,
+   "aOnlySegments": 0
+  },
+  "pbfInApi": {
+   "toleranceM": 10,
+   "aMatchedKm": 91.9622916774062,
+   "aOnlyKm": 0,
+   "aCoverage": 1,
+   "junctionsMatched": 538,
+   "junctionsA": 538,
+   "aOnlySegments": 0
+  }
+ },
+ {
+  "area": "i2-skogen",
+  "act": "mtb",
+  "api": {
+   "lengthKm": 89.12505047990682,
+   "edges": 936,
+   "nodes": 729,
+   "junctions": 496,
+   "components": 6,
+   "largestComponentShare": 0.9507231673949083,
+   "deadEndShare": 0.1958825166730921,
+   "deadEndEdges": 198
+  },
+  "pbf": {
+   "lengthKm": 89.12505047990692,
+   "edges": 936,
+   "nodes": 729,
+   "junctions": 496,
+   "components": 6,
+   "largestComponentShare": 0.950723167394908,
+   "deadEndShare": 0.1958825166730919,
+   "deadEndEdges": 198
+  },
+  "apiInPbf": {
+   "toleranceM": 10,
+   "aMatchedKm": 89.13300407522644,
+   "aOnlyKm": 0,
+   "aCoverage": 1,
+   "junctionsMatched": 492,
+   "junctionsA": 492,
+   "aOnlySegments": 0
+  },
+  "pbfInApi": {
+   "toleranceM": 10,
+   "aMatchedKm": 89.1352107248056,
+   "aOnlyKm": 0,
+   "aCoverage": 1,
+   "junctionsMatched": 492,
+   "junctionsA": 492,
+   "aOnlySegments": 0
+  }
+ },
+ {
+  "area": "sormon",
+  "act": "run",
+  "api": {
+   "lengthKm": 65.06252451141397,
+   "edges": 486,
+   "nodes": 330,
+   "junctions": 257,
+   "components": 3,
+   "largestComponentShare": 0.9891172962768014,
+   "deadEndShare": 0.125976186128485,
+   "deadEndEdges": 42
+  },
+  "pbf": {
+   "lengthKm": 65.06252451141395,
+   "edges": 486,
+   "nodes": 330,
+   "junctions": 257,
+   "components": 3,
+   "largestComponentShare": 0.9891172962768013,
+   "deadEndShare": 0.12597618612848496,
+   "deadEndEdges": 42
+  },
+  "apiInPbf": {
+   "toleranceM": 10,
+   "aMatchedKm": 65.06772603175075,
+   "aOnlyKm": 0,
+   "aCoverage": 1,
+   "junctionsMatched": 257,
+   "junctionsA": 257,
+   "aOnlySegments": 0
+  },
+  "pbfInApi": {
+   "toleranceM": 10,
+   "aMatchedKm": 65.06466548536604,
+   "aOnlyKm": 0,
+   "aCoverage": 1,
+   "junctionsMatched": 257,
+   "junctionsA": 257,
+   "aOnlySegments": 0
+  }
+ },
+ {
+  "area": "sormon",
+  "act": "mtb",
+  "api": {
+   "lengthKm": 62.17393719396361,
+   "edges": 446,
+   "nodes": 319,
+   "junctions": 227,
+   "components": 3,
+   "largestComponentShare": 0.988611688278126,
+   "deadEndShare": 0.14971090874689053,
+   "deadEndEdges": 55
+  },
+  "pbf": {
+   "lengthKm": 62.173937193963596,
+   "edges": 446,
+   "nodes": 319,
+   "junctions": 227,
+   "components": 3,
+   "largestComponentShare": 0.9886116882781261,
+   "deadEndShare": 0.14971090874689047,
+   "deadEndEdges": 55
+  },
+  "apiInPbf": {
+   "toleranceM": 10,
+   "aMatchedKm": 62.178876224145,
+   "aOnlyKm": 0,
+   "aCoverage": 1,
+   "junctionsMatched": 227,
+   "junctionsA": 227,
+   "aOnlySegments": 0
+  },
+  "pbfInApi": {
+   "toleranceM": 10,
+   "aMatchedKm": 62.17591133965554,
+   "aOnlyKm": 0,
+   "aCoverage": 1,
+   "junctionsMatched": 227,
+   "junctionsA": 227,
+   "aOnlySegments": 0
+  }
+ }
+]

@@ -1,0 +1,46 @@
+
+Skutberget / run
+  API : 40.6 km, 346 kanter, 168 korsn., 10 komp., största 87.3 %, återvändsgrenar 28.6 %
+  PBF : 40.6 km, 346 kanter, 168 korsn., 10 komp., största 87.3 %, återvändsgrenar 28.6 %
+  API i PBF (10 m): 100.00 % (0.000 km saknas), korsningar 168/168 · PBF i API: 100.00 % (0.000 km saknas), korsningar 168/168
+
+Skutberget / mtb
+  API : 37.9 km, 304 kanter, 142 korsn., 11 komp., största 86.2 %, återvändsgrenar 33.1 %
+  PBF : 37.9 km, 304 kanter, 142 korsn., 11 komp., största 86.2 %, återvändsgrenar 33.1 %
+  API i PBF (10 m): 100.00 % (0.000 km saknas), korsningar 133/133 · PBF i API: 100.00 % (0.000 km saknas), korsningar 133/133
+
+I2-skogen / run
+  API : 92.0 km, 1014 kanter, 538 korsn., 6 komp., största 95.2 %, återvändsgrenar 17.7 %
+  PBF : 92.0 km, 1014 kanter, 538 korsn., 6 komp., största 95.2 %, återvändsgrenar 17.7 %
+  API i PBF (10 m): 100.00 % (0.000 km saknas), korsningar 538/538 · PBF i API: 100.00 % (0.000 km saknas), korsningar 538/538
+
+I2-skogen / mtb
+  API : 89.1 km, 936 kanter, 496 korsn., 6 komp., största 95.1 %, återvändsgrenar 19.6 %
+  PBF : 89.1 km, 936 kanter, 496 korsn., 6 komp., största 95.1 %, återvändsgrenar 19.6 %
+  API i PBF (10 m): 100.00 % (0.000 km saknas), korsningar 492/492 · PBF i API: 100.00 % (0.000 km saknas), korsningar 492/492
+
+Sörmon / run
+  API : 65.1 km, 486 kanter, 257 korsn., 3 komp., största 98.9 %, återvändsgrenar 12.6 %
+  PBF : 65.1 km, 486 kanter, 257 korsn., 3 komp., största 98.9 %, återvändsgrenar 12.6 %
+  API i PBF (10 m): 100.00 % (0.000 km saknas), korsningar 257/257 · PBF i API: 100.00 % (0.000 km saknas), korsningar 257/257
+
+Sörmon / mtb
+  API : 62.2 km, 446 kanter, 227 korsn., 3 komp., största 98.9 %, återvändsgrenar 15.0 %
+  PBF : 62.2 km, 446 kanter, 227 korsn., 3 komp., största 98.9 %, återvändsgrenar 15.0 %
+  API i PBF (10 m): 100.00 % (0.000 km saknas), korsningar 227/227 · PBF i API: 100.00 % (0.000 km saknas), korsningar 227/227
+
+Attributtäckning (andel av ways | andel av längd), alla highway-ways i rutan:
+  Skutberget  api (304 ways): access 1|0  foot 10|14  bicycle 18|28  mtb:scale 25|37  surface 51|61  oneway 15|16  bridge 2|0  tunnel 0|0  tracktype 11|16  trail_visibility 4|4  sac_scale 0|0  name 11|14
+  Skutberget  pbf (304 ways): access 1|0  foot 10|14  bicycle 18|28  mtb:scale 25|37  surface 51|61  oneway 15|16  bridge 2|0  tunnel 0|0  tracktype 11|16  trail_visibility 4|4  sac_scale 0|0  name 11|14
+  I2-skogen   api (673 ways): access 0|0  foot 5|10  bicycle 4|9  mtb:scale 46|49  surface 32|51  oneway 1|1  bridge 0|0  tunnel 0|0  tracktype 5|13  trail_visibility 32|33  sac_scale 0|0  name 19|30
+  I2-skogen   pbf (673 ways): access 0|0  foot 5|10  bicycle 4|9  mtb:scale 46|49  surface 32|51  oneway 1|1  bridge 0|0  tunnel 0|0  tracktype 5|13  trail_visibility 32|33  sac_scale 0|0  name 19|30
+  Sörmon      api (279 ways): access 1|0  foot 6|6  bicycle 13|16  mtb:scale 60|65  surface 43|52  oneway 10|12  bridge 1|0  tunnel 0|0  tracktype 13|16  trail_visibility 7|5  sac_scale 0|0  name 6|10
+  Sörmon      pbf (279 ways): access 1|0  foot 6|6  bicycle 13|16  mtb:scale 60|65  surface 43|52  oneway 10|12  bridge 1|0  tunnel 0|0  tracktype 13|16  trail_visibility 7|5  sac_scale 0|0  name 6|10
+
+Användbarhet för säker ruttgenerering (största komponenten, % av längd):
+  Skutberget  run  i största komp. 87.3 % av filtrerad längd; med uttryckligt positivt tillträdesstöd (foot=yes/designated) 17.7 %; enkelriktat 5.1 %; farliga korsningar med större väg: 24 noder
+  Skutberget  mtb  i största komp. 86.2 % av filtrerad längd; med uttryckligt positivt tillträdesstöd (bicycle=yes/designated eller mtb:scale) 66.3 %; enkelriktat 4.1 %; farliga korsningar med större väg: 20 noder
+  I2-skogen   run  i största komp. 95.2 % av filtrerad längd; med uttryckligt positivt tillträdesstöd (foot=yes/designated) 6.3 %; enkelriktat 0.3 %; farliga korsningar med större väg: 11 noder
+  I2-skogen   mtb  i största komp. 95.1 % av filtrerad längd; med uttryckligt positivt tillträdesstöd (bicycle=yes/designated eller mtb:scale) 63.6 %; enkelriktat 0.4 %; farliga korsningar med större väg: 11 noder
+  Sörmon      run  i största komp. 98.9 % av filtrerad längd; med uttryckligt positivt tillträdesstöd (foot=yes/designated) 6.0 %; enkelriktat 3.9 %; farliga korsningar med större väg: 3 noder
+  Sörmon      mtb  i största komp. 98.9 % av filtrerad längd; med uttryckligt positivt tillträdesstöd (bicycle=yes/designated eller mtb:scale) 77.9 %; enkelriktat 4.1 %; farliga korsningar med större väg: 3 noder

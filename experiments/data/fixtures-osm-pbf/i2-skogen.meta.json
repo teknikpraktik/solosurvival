@@ -1,0 +1,23 @@
+{
+  "area": "i2-skogen",
+  "bbox": [
+    59.3965,
+    13.44,
+    59.4235,
+    13.492
+  ],
+  "bboxOrder": "south,west,north,east",
+  "ways": 688,
+  "extract": "varmland.osm.pbf",
+  "extractUrl": "https://download.openstreetmap.fr/extracts/europe/sweden/varmland.osm.pbf",
+  "extractMd5": "4419a79e9224df583bf986c3bad51524",
+  "extractedAt": "2026-10-17T11:09:09Z",
+  "wallSeconds": 25.6,
+  "keptTags": [
+    "highway",
+    "railway",
+    "waterway",
+    "barrier"
+  ],
+  "license": "ODbL 1.0 – © OpenStreetMap contributors"
+}
