@@ -8,13 +8,16 @@ import type { GameEvent, GameResult, GameState } from "@/engine/core/types";
 import { planRoute } from "@/engine/pathfinding/astar";
 import { summarize, type MatchSummary } from "@/engine/scoring/summary";
 import { haversineM, type LatLon } from "@/geo/geometry";
-import { edgeLatLon, nodeLatLon, posAtNode, snapToGraph } from "@/geo/graph/graph";
+import { edgeLatLon, nodeLatLon, posAtNode, snapToGraph, trailOf } from "@/geo/graph/graph";
 import type { Dir, EdgePos, TrailGraph } from "@/geo/graph/types";
 
 export type StrategyName = "random" | "avoid" | "maximize" | "extraction";
 
-interface PlayerCtx {
+export interface PlayerCtx {
+  /** Spelarens graf (stigar). */
   g: TrailGraph;
+  /** Motorns graf: kan innehålla off-road-förbindelser och delade kanter. */
+  eg: TrailGraph;
   state: GameState;
   rules: Rules;
   /** Valmöjligheter vid noden: [edgeId, dir, nodeAtEnd]. */
@@ -46,7 +49,7 @@ const strategies: Record<StrategyName, (c: PlayerCtx) => number> = {
 
 /** Väljer väg vars slutnod ligger längst från närmaste zombie (eller summan, för `maximize`). */
 function scoreOptions(c: PlayerCtx, useSum: boolean): number {
-  const zs = c.state.zombies.map((z) => zombieLatLon(c.g, z));
+  const zs = c.state.zombies.map((z) => zombieLatLon(c.eg, z));
   if (!zs.length) return Math.floor(rand(c.rng) * c.options.length);
   let best = 0;
   let bestScore = -Infinity;
@@ -77,6 +80,14 @@ export interface SimOptions {
   /** Intervall (spelklocka, s) då GPS är borta, t.ex. för test av bortfall. */
   gpsOutages?: [number, number][];
   spawnCapacity?: number;
+  /** Graf som spelaren rör sig på (default: stigvyn av `g`). Låter modeller med olika motorgrafer jämföras med samma spelare. */
+  playerGraph?: TrailGraph;
+  /** Egen vägvalsstrategi (ersätter `strategy`). Returnerar index i `ctx.options`. */
+  strategyFn?: (ctx: PlayerCtx) => number;
+  /** Justerar reglerna (t.ex. zombietäthet) för experiment. */
+  rulesPatch?: Partial<Rules>;
+  /** Anropas direkt efter att matchen skapats, innan första steget (t.ex. för att flytta över startzombier). */
+  prepare?: (state: GameState) => void;
 }
 
 export interface SimResult {
@@ -105,13 +116,15 @@ export class SimSession {
   private readonly speed: number;
   private readonly simRng: RngHolder;
   private readonly noiseRng: RngHolder;
+  readonly pg: TrailGraph;
 
   constructor(private readonly o: SimOptions) {
     this.g = o.g;
+    this.pg = o.playerGraph ?? trailOf(o.g);
     this.simRng = { rngState: (o.seed * 2654435761) >>> 0 };
     this.noiseRng = { rngState: (o.seed ^ 0x9e3779b9) >>> 0 };
-    const startLL = o.start ?? randomStart(o.g, this.simRng);
-    this.rules = resolveRules(o.activity, o.difficulty, o.durationS, o.spawnCapacity);
+    const startLL = o.start ?? randomStart(this.pg, this.simRng);
+    this.rules = { ...resolveRules(o.activity, o.difficulty, o.durationS, o.spawnCapacity), ...o.rulesPatch };
     const { state, events } = createGame({
       g: o.g,
       config: {
@@ -127,8 +140,9 @@ export class SimSession {
     });
     this.state = state;
     this.events = [...events];
+    o.prepare?.(state);
     this.speed = ACTIVITIES[o.activity].playerPaceMps * (o.paceFactor ?? 1);
-    const snap = snapToGraph(o.g, startLL)!;
+    const snap = snapToGraph(this.pg, startLL)!;
     this.pos = { edgeId: snap.edgeId, distM: snap.distM };
     this.dir = rand(this.simRng) < 0.5 ? 1 : -1;
   }
@@ -145,9 +159,10 @@ export class SimSession {
   /** Ett motorsteg (STEP_S). Returnerar de händelser som uppstod. */
   step(): GameEvent[] {
     const { g, o, state, pos } = this;
+    const pg = this.pg;
     let remaining = this.speed * STEP_S;
     while (remaining > 0) {
-      const e = g.edges.get(pos.edgeId)!;
+      const e = pg.edges.get(pos.edgeId)!;
       const toEnd = this.dir === 1 ? e.lengthM - pos.distM : pos.distM;
       if (remaining < toEnd) {
         pos.distM += this.dir * remaining;
@@ -155,19 +170,24 @@ export class SimSession {
       }
       remaining -= toEnd;
       const node = this.dir === 1 ? e.to : e.from;
-      const options = (g.adj.get(node) ?? []).map((a) => ({ edgeId: a.edgeId, dir: a.dir, to: a.to }));
+      const options = (pg.adj.get(node) ?? []).map((a) => ({ edgeId: a.edgeId, dir: a.dir, to: a.to }));
       // Vänd bara i återvändsgränder.
       const forward = options.filter((a) => !(a.edgeId === e.id && a.dir === -this.dir));
       const pool = forward.length ? forward : options;
-      const pick = pool[strategies[o.strategy]({ g, state, rules: this.rules, options: pool, rng: this.simRng })];
+      if (!pool.length) {
+        // Enkelriktad stig utan utgång (finns i verklig OSM-data): spelaren vänder.
+        this.dir = (-this.dir) as Dir;
+        continue;
+      }
+      const pick = pool[(o.strategyFn ?? strategies[o.strategy])({ g: pg, eg: g, state, rules: this.rules, options: pool, rng: this.simRng })];
       pos.edgeId = pick.edgeId;
       this.dir = pick.dir;
-      pos.distM = this.dir === 1 ? 0 : g.edges.get(pick.edgeId)!.lengthM;
+      pos.distM = this.dir === 1 ? 0 : pg.edges.get(pick.edgeId)!.lengthM;
     }
 
     const t = state.elapsedSeconds;
     const out = o.gpsOutages?.some(([a, b]) => t >= a && t < b) ?? false;
-    const real = edgeLatLon(g, pos);
+    const real = edgeLatLon(pg, pos);
     const noise = o.gpsNoiseM ?? 0;
     const input: StepInput = out
       ? { position: null, quality: "unavailable", accuracyM: Infinity }

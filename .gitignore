@@ -3,3 +3,5 @@ node_modules
 *.tsbuildinfo
 next-env.d.ts
 public/maplibre
+public/dev-hybrid
+experiments/hybrid/results/*.jsonl

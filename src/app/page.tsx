@@ -6,6 +6,7 @@ export default function Home() {
       <h1 className="title">OUTBREAK</h1>
       <p className="sub">SOLO SURVIVAL</p>
       <Link className="btn primary" href="/dev">DEV: SIMULERAD MATCH</Link>
+      <Link className="btn" href="/dev/hybrid">DEV: HYBRID-AI (EXPERIMENT)</Link>
       <span className="btn" aria-disabled="true">NEW GAME</span>
       <span className="btn" aria-disabled="true">PREVIOUS GAMES</span>
       <span className="btn" aria-disabled="true">HOW TO PLAY</span>

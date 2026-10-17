@@ -1,5 +1,5 @@
 import { haversineM, type LatLon } from "@/geo/geometry";
-import { posAtNode, snapToGraph } from "@/geo/graph/graph";
+import { posAtNode, snapToGraph, trailOf } from "@/geo/graph/graph";
 import type { Dir, EdgePos, TrailGraph } from "@/geo/graph/types";
 import { planRoute, type Route } from "../pathfinding/astar";
 import { rand, type RngHolder } from "../core/rng";
@@ -78,7 +78,7 @@ function estimateHeading(g: TrailGraph, z: Zombie, speedMps: number): { edge: Ed
     if (Math.abs(last.distM - prev.distM) < 8) return null;
     return { edge: last, dir: last.distM > prev.distM ? 1 : -1 };
   }
-  const r = planRoute(g, { edgeId: prev.edgeId, distM: prev.distM }, last, speedMps);
+  const r = planRoute(trailOf(g), { edgeId: prev.edgeId, distM: prev.distM }, last, speedMps);
   const lastStep = r?.steps.at(-1);
   if (!r || !lastStep || lastStep.edgeId !== last.edgeId) return null;
   return { edge: last, dir: lastStep.dir };
@@ -96,7 +96,7 @@ function findIntercept(
   const heading = estimateHeading(g, z, rules.playerPaceMps);
   if (!heading || !z.lastKnownPlayerPosition) return null;
   const ageS = Math.max(0, ctx.timeS - z.lastKnownPlayerPosition.observedAtMs / 1000);
-  const e0 = g.edges.get(heading.edge.edgeId)!;
+  const e0 = trailOf(g).edges.get(heading.edge.edgeId)!;
   const startNode = heading.dir === 1 ? e0.to : e0.from;
   const firstLen = heading.dir === 1 ? e0.lengthM - heading.edge.distM : heading.edge.distM;
 
@@ -110,7 +110,7 @@ function findIntercept(
     const n = queue.shift()!;
     const d = dist.get(n)!;
     if (d > INTERCEPT_HORIZON_M) break;
-    const adj = g.adj.get(n) ?? [];
+    const adj = trailOf(g).adj.get(n) ?? [];
     if (adj.length >= 3) candidates.push({ id: n, d });
     for (const a of adj) {
       if (a.edgeId === cameFrom.get(n) && n !== startNode) continue;

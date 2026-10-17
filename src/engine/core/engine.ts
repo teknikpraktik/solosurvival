@@ -7,7 +7,7 @@ import {
   type Rules,
 } from "@/config/game-rules";
 import { haversineM, type LatLon } from "@/geo/geometry";
-import { nodeLatLon, snapToGraph } from "@/geo/graph/graph";
+import { nodeLatLon, snapToGraph, trailOf } from "@/geo/graph/graph";
 import type { EdgePos, TrailGraph } from "@/geo/graph/types";
 import type { GpsQuality } from "@/gps/types";
 import { makeObservation, updateZombieAI } from "../ai/zombie-ai";
@@ -42,7 +42,7 @@ export interface CreateGameOptions {
 export function createGame({ g, config, rules, start, id }: CreateGameOptions): { state: GameState; events: GameEvent[] } {
   const snap = snapToGraph(g, start);
   if (!snap || snap.offNetworkM > 150) throw new GameSetupError("Startpositionen ligger för långt från stignätet.");
-  const component = g.edges.get(snap.edgeId)!.component;
+  const component = trailOf(g).edges.get(snap.edgeId)!.component;
 
   const state: GameState = {
     id: id ?? `game-${config.seed}`,
@@ -196,7 +196,7 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   if (hunting) {
     const aiEvents: { type: "zombie_detected"; zombieId: string }[] = [];
     for (const z of s.zombies) {
-      const arrived = advanceZombie(g, z, z.speedMps * STEP_S, s);
+      const arrived = advanceZombie(g, z, z.speedMps * (g.edges.get(z.edgeId)?.speedFactor ?? 1) * STEP_S, s);
       updateZombieAI(
         {
           g,

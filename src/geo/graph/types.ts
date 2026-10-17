@@ -4,6 +4,8 @@ export type PathType = "path" | "footway" | "track" | "cycleway" | "service" | "
 
 export interface GraphNode extends LatLon {
   id: string;
+  /** Hjälpnod mitt på en stig (t.ex. där en off-road-förbindelse ansluter). Aldrig mål för extraction. */
+  virtual?: boolean;
 }
 
 /** Kompakt, serialiserbar kant (så som den levereras av servern). */
@@ -15,6 +17,10 @@ export interface RawEdge {
   type: PathType;
   /** Sant om kanten bara får färdas från `from` till `to`. */
   oneway?: boolean;
+  /** Experimentellt (hybrid-AI): förbindelse genom terräng. Endast zombier använder sådana kanter. */
+  offroad?: boolean;
+  /** Hastighet som andel av zombiens stighastighet (default 1). */
+  speedFactor?: number;
 }
 
 export interface SerializedGraph {
@@ -52,6 +58,11 @@ export interface TrailGraph {
   edges: Map<string, GraphEdge>;
   adj: Map<string, Adjacent[]>;
   components: ComponentInfo[];
+  /**
+   * Vy utan off-road-kanter, satt bara när grafen har sådana. Allt spelarvänt (snappning, extraction,
+   * korsningar) använder den, eftersom spelaren aldrig lämnar stigarna.
+   */
+  trail?: TrailGraph;
 }
 
 export interface EdgePos {

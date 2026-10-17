@@ -12,7 +12,9 @@ export function zombieLatLon(g: TrailGraph, z: Pick<Zombie, "edgeId" | "distance
 
 /** Slumpar ett vägval vid en nod; vänder bara i återvändsgränder. */
 function choosePatrolStep(g: TrailGraph, node: string, arrivedEdge: string, arrivedDir: Dir, rng: RngHolder) {
-  const options = g.adj.get(node) ?? [];
+  const all = g.adj.get(node) ?? [];
+  // Patrullerande zombier håller sig på stigarna (off-road används bara för att jaga/utreda).
+  const options = all.some((a) => !g.edges.get(a.edgeId)!.offroad) ? all.filter((a) => !g.edges.get(a.edgeId)!.offroad) : all;
   const forward = options.filter((a) => !(a.edgeId === arrivedEdge && a.dir === -arrivedDir));
   const pool = forward.length ? forward : options;
   if (!pool.length) return null;

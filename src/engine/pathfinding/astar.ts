@@ -25,6 +25,8 @@ export type SpeedFn = (e: GraphEdge) => number;
 interface Source {
   node: string;
   g0: number;
+  /** Källan nås via en off-road-kant (zombien befinner sig på en förbindelse). */
+  offroad?: boolean;
 }
 
 interface AStarResult {
@@ -33,7 +35,11 @@ interface AStarResult {
   source: number;
 }
 
-/** Multi-käll A* med kostnad C(e) = L(e)/v(e). Kantriktningar (oneway) respekteras. */
+/**
+ * Multi-käll A* med kostnad C(e) = L(e)/v(e). Kantriktningar (oneway) respekteras.
+ * Off-road-kanter får inte följa direkt på varandra: efter en off-road-kant måste en stig följa, så att
+ * sammanhängande rörelse utanför stig aldrig blir längre än en enskild förbindelse. Tillståndet är (nod, kom via off-road).
+ */
 export function astar(
   g: TrailGraph,
   sources: Source[],
@@ -44,39 +50,45 @@ export function astar(
   const goalNode = g.nodes.get(goal);
   if (!goalNode) return null;
   const h = (n: string) => haversineM(g.nodes.get(n)!, goalNode) / vMax;
+  const k = (n: string, f: boolean) => (f ? `${n}#` : n);
   const best = new Map<string, number>();
-  const prev = new Map<string, { node: string; step: RouteStep } | { source: number }>();
-  const open = new MinHeap<string>();
+  type Prev = { key: string; step: RouteStep } | { source: number };
+  const prev = new Map<string, Prev>();
+  const open = new MinHeap<{ node: string; off: boolean }>();
   sources.forEach((s, i) => {
-    if (s.g0 < (best.get(s.node) ?? Infinity)) {
-      best.set(s.node, s.g0);
-      prev.set(s.node, { source: i });
-      open.push(s.g0 + h(s.node), s.node);
+    const key = k(s.node, !!s.offroad);
+    if (s.g0 < (best.get(key) ?? Infinity)) {
+      best.set(key, s.g0);
+      prev.set(key, { source: i });
+      open.push(s.g0 + h(s.node), { node: s.node, off: !!s.offroad });
     }
   });
   const closed = new Set<string>();
   while (open.size) {
-    const { v: n } = open.pop()!;
-    if (closed.has(n)) continue;
-    closed.add(n);
-    if (n === goal) {
+    const { v } = open.pop()!;
+    const key = k(v.node, v.off);
+    if (closed.has(key)) continue;
+    closed.add(key);
+    if (v.node === goal) {
       const steps: RouteStep[] = [];
-      let cur = n;
+      let cur = key;
       for (;;) {
         const p = prev.get(cur)!;
-        if ("source" in p) return { cost: best.get(goal)!, steps: steps.reverse(), source: p.source };
+        if ("source" in p) return { cost: best.get(key)!, steps: steps.reverse(), source: p.source };
         steps.push(p.step);
-        cur = p.node;
+        cur = p.key;
       }
     }
-    const gn = best.get(n)!;
-    for (const a of g.adj.get(n) ?? []) {
+    const gn = best.get(key)!;
+    for (const a of g.adj.get(v.node) ?? []) {
       const e = g.edges.get(a.edgeId)!;
+      if (v.off && e.offroad) continue;
       const c = gn + a.lengthM / speed(e);
-      if (c < (best.get(a.to) ?? Infinity)) {
-        best.set(a.to, c);
-        prev.set(a.to, { node: n, step: { edgeId: a.edgeId, dir: a.dir } });
-        open.push(c + h(a.to), a.to);
+      const nk = k(a.to, !!e.offroad);
+      if (c < (best.get(nk) ?? Infinity)) {
+        best.set(nk, c);
+        prev.set(nk, { key, step: { edgeId: a.edgeId, dir: a.dir } });
+        open.push(c + h(a.to), { node: a.to, off: !!e.offroad });
       }
     }
   }
@@ -91,7 +103,7 @@ export interface PlanOptions {
 
 /** Planerar kortaste färdväg (i tid) mellan två positioner på nätet. */
 export function planRoute(g: TrailGraph, from: EdgePos, to: EdgePos, speedMps: number, opts: PlanOptions = {}): Route | null {
-  const speed = opts.speed ?? (() => speedMps);
+  const speed = opts.speed ?? ((e: GraphEdge) => speedMps * (e.speedFactor ?? 1));
   const e0 = g.edges.get(from.edgeId);
   const e1 = g.edges.get(to.edgeId);
   if (!e0 || !e1) return null;
@@ -127,7 +139,7 @@ export function planRoute(g: TrailGraph, from: EdgePos, to: EdgePos, speedMps: n
   for (const e of g.edges.values()) vMax = Math.max(vMax, speed(e));
 
   for (const go of goalOpts) {
-    const res = astar(g, srcOpts.map((s) => ({ node: s.node, g0: s.g0 })), go.node, speed, vMax);
+    const res = astar(g, srcOpts.map((s) => ({ node: s.node, g0: s.g0, offroad: !!e0.offroad })), go.node, speed, vMax);
     if (!res) continue;
     const src = srcOpts[res.source];
     const pathLen = res.steps.reduce((s, st) => s + g.edges.get(st.edgeId)!.lengthM, 0);

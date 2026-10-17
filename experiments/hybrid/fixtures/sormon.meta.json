@@ -1,0 +1,30 @@
+{
+  "area": "sormon",
+  "bbox": [
+    59.365,
+    13.328,
+    59.392,
+    13.38
+  ],
+  "bboxOrder": "south,west,north,east",
+  "endpoint": "https://api.openstreetmap.org/api/0.6/map.json",
+  "fetchedAt": "2026-10-17T06:44:39.091Z",
+  "tilesRequested": 4,
+  "rawNodes": 5002,
+  "rawWays": 372,
+  "rawRelations": 30,
+  "keptElements": {
+    "way": 358,
+    "relation": 4
+  },
+  "keptBytes": 576954,
+  "license": "ODbL 1.0 – © OpenStreetMap contributors (https://www.openstreetmap.org/copyright)",
+  "limitations": [
+    "/map returnerar ways med minst en nod i rutan; deras noder utanför rutan ingår, så ways kan sticka ut över kanten.",
+    "Multipolygon-relationer kan sakna medlemsways som ligger helt utanför rutan (relation.complete=false).",
+    "Rutan klipps inte exakt; objekt strax utanför kan ingå.",
+    "Datat är en ögonblicksbild från hämtningsdatumet; OSM-täckning av stigar, tillträde och marktäcke varierar."
+  ],
+  "relationsCompletedViaFull": 3,
+  "relationsStillIncomplete": 1
+}

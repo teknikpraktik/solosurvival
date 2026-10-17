@@ -1,5 +1,5 @@
 import { haversineM, type LatLon } from "@/geo/geometry";
-import { edgeLatLon } from "@/geo/graph/graph";
+import { edgeLatLon, trailOf } from "@/geo/graph/graph";
 import type { EdgePos, TrailGraph } from "@/geo/graph/types";
 import { distanceToPos, networkDistances } from "../pathfinding/astar";
 import { rand, type RngHolder } from "../core/rng";
@@ -20,7 +20,7 @@ export interface SpawnContext {
  * bort både fågelvägen och längs nätet, och inte ovanpå en annan zombie.
  */
 export function findSpawn(g: TrailGraph, ctx: SpawnContext, rng: RngHolder): EdgePos | null {
-  const edges = [...g.edges.values()].filter((e) => e.component === ctx.component);
+  const edges = [...trailOf(g).edges.values()].filter((e) => e.component === ctx.component);
   if (!edges.length) return null;
   const total = edges.reduce((s, e) => s + e.lengthM, 0);
   const dists = networkDistances(g, ctx.playerPos);

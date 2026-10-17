@@ -74,7 +74,14 @@ export function indexGraph(g: SerializedGraph): TrailGraph {
     c.nodeIds.push(id);
     if ((degree.get(id) ?? 0) >= 3) c.junctionCount++;
   }
-  return { nodes, edges, adj, components };
+  const graph: TrailGraph = { nodes, edges, adj, components };
+  if (g.edges.some((e) => e.offroad)) graph.trail = indexGraph({ ...g, edges: g.edges.filter((e) => !e.offroad) });
+  return graph;
+}
+
+/** Spelarens vy av nätet: stigar och vägar, utan zombiernas off-road-förbindelser. */
+export function trailOf(g: TrailGraph): TrailGraph {
+  return g.trail ?? g;
 }
 
 export function serializeGraph(g: TrailGraph, source = "synthetic"): SerializedGraph {
@@ -82,13 +89,14 @@ export function serializeGraph(g: TrailGraph, source = "synthetic"): SerializedG
     graphVersion: GRAPH_VERSION,
     source,
     nodes: [...g.nodes.values()],
-    edges: [...g.edges.values()].map(({ id, from, to, geometry, type, oneway }) => ({
+    edges: [...g.edges.values()].map(({ id, from, to, geometry, type, oneway, offroad, speedFactor }) => ({
       id,
       from,
       to,
       geometry,
       type,
       oneway,
+      ...(offroad ? { offroad, speedFactor } : {}),
     })),
   };
 }
@@ -113,7 +121,7 @@ export interface Snap extends EdgePos {
 /** Närmaste punkt på nätet. Linjär svepning räcker för spelområden av v1-storlek. */
 export function snapToGraph(g: TrailGraph, p: LatLon, component?: number): Snap | null {
   let best: Snap | null = null;
-  for (const e of g.edges.values()) {
+  for (const e of trailOf(g).edges.values()) {
     if (component !== undefined && e.component !== component) continue;
     const pr = projectToPolyline(e.geometry, e.cumM, p);
     if (!best || pr.distanceM < best.offNetworkM) {
@@ -126,7 +134,7 @@ export function snapToGraph(g: TrailGraph, p: LatLon, component?: number): Snap 
 /** Alla kantpositioner inom `toleranceM` av bästa träffen – används för att upptäcka tvetydiga parallella stigar. */
 export function nearbyEdges(g: TrailGraph, p: LatLon, radiusM: number): Snap[] {
   const out: Snap[] = [];
-  for (const e of g.edges.values()) {
+  for (const e of trailOf(g).edges.values()) {
     const pr = projectToPolyline(e.geometry, e.cumM, p);
     if (pr.distanceM <= radiusM) out.push({ edgeId: e.id, distM: pr.distAlongM, offNetworkM: pr.distanceM });
   }
@@ -134,14 +142,15 @@ export function nearbyEdges(g: TrailGraph, p: LatLon, radiusM: number): Snap[] {
 }
 
 export function degreeOf(g: TrailGraph, nodeId: string): number {
-  return g.adj.get(nodeId)?.length ?? 0;
+  return trailOf(g).adj.get(nodeId)?.length ?? 0;
 }
 
 /** Position på en kant vid en nod (för att kunna använda noder som mål). */
 export function posAtNode(g: TrailGraph, nodeId: string): EdgePos | null {
-  const a = g.adj.get(nodeId)?.[0];
+  const pg = trailOf(g);
+  const a = pg.adj.get(nodeId)?.[0];
   if (!a) return null;
-  return { edgeId: a.edgeId, distM: a.dir === 1 ? 0 : g.edges.get(a.edgeId)!.lengthM };
+  return { edgeId: a.edgeId, distM: a.dir === 1 ? 0 : pg.edges.get(a.edgeId)!.lengthM };
 }
 
 export function straightDistanceM(g: TrailGraph, a: string, b: string): number {

@@ -1,5 +1,5 @@
 import { haversineM, type LatLon } from "@/geo/geometry";
-import { degreeOf } from "@/geo/graph/graph";
+import { degreeOf, trailOf } from "@/geo/graph/graph";
 import type { EdgePos, TrailGraph } from "@/geo/graph/types";
 import { networkDistances } from "../pathfinding/astar";
 import { rand, type RngHolder } from "../core/rng";
@@ -21,7 +21,9 @@ const REACH_SAFETY = 0.6;
  * Väljer en extraction-nod på nätet: i spelarens komponent, nåbar inom rimlig tid, ingen återvändsgränd,
  * inte nära zombier. Reservförfarande: släpper zombiekravet innan punkten underkänns helt.
  */
-export function chooseExtraction(g: TrailGraph, ctx: ExtractionContext, rng: RngHolder): string | null {
+export function chooseExtraction(graph: TrailGraph, ctx: ExtractionContext, rng: RngHolder): string | null {
+  // Spelaren når extraction bara via stigar.
+  const g = trailOf(graph);
   const reachM = ctx.playerPaceMps * ctx.remainingS * REACH_SAFETY;
   const dists = networkDistances(g, ctx.playerPos, reachM);
   const exclusion = ctx.zombieExclusionM ?? 80;
@@ -30,7 +32,7 @@ export function chooseExtraction(g: TrailGraph, ctx: ExtractionContext, rng: Rng
     const d = dists.get(id);
     if (d === undefined || d > reachM || d < 60) return null;
     const node = g.nodes.get(id)!;
-    if (degreeOf(g, id) < 2) return null;
+    if (degreeOf(g, id) < 2 || g.nodes.get(id)!.virtual) return null;
     const nearestZ = ctx.zombiePositions.reduce((m, z) => Math.min(m, haversineM(z, node)), Infinity);
     if (strict && nearestZ < exclusion) return null;
     // Föredra mellanstora avstånd (spelaren måste röra sig men inte maxa) och långt från zombier.
