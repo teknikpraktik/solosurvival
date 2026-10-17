@@ -264,3 +264,24 @@ describe("testlogg (lokal)", () => {
     expect(JSON.stringify(parsed)).not.toMatch(/token|authorization/i);
   });
 });
+
+describe("prestanda", () => {
+  it("ett motorsteg med många zombier på ett regionalt nät tar bråkdelar av en millisekund", () => {
+    const { live } = mk("survival", "mtb", "hard");
+    live.state.phase = "survival";
+    live.state.paused = false;
+    // Fyll upp till max zombier.
+    Object.assign(live.rules, { initialZombies: 15, maxZombies: 15 });
+    const pos = live.state.player.position;
+    const N = 3000;
+    const t0 = performance.now();
+    for (let i = 0; i < N; i++) {
+      stepGame(live.g, live.state, live.rules, { position: pos, quality: "ok", accuracyM: 5, fixSeq: i });
+      if (live.finished) break;
+    }
+    const perStepMs = (performance.now() - t0) / Math.max(1, N);
+    console.log("ms/steg", perStepMs.toFixed(3), "zombier", live.state.zombies.length, "kanter", live.g.edges.size);
+    // 5 steg/s → med 5 ms/steg används 2,5 % av en CPU-kärna. Generös gräns för långsamma telefoner (~10× långsammare).
+    expect(perStepMs).toBeLessThan(5);
+  });
+});

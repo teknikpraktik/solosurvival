@@ -106,3 +106,38 @@ describe("spelmotor med mål", () => {
     }
   });
 });
+
+describe("mål med riktiga GPS-fixar (Etapp 3)", () => {
+  const T = { id: "C1", kind: "checkpoint" as const, lat: 59.4, lon: 13.5 };
+  const near = (d: number) => ({ lat: T.lat + d / 111_320, lon: T.lon });
+  const run = (o: ReturnType<typeof createObjectives>, pos: { lat: number; lon: number }, quality: "ok" | "verify", acc: number, seqs: number[]) => {
+    let reached;
+    for (const [i, seq] of seqs.entries()) reached ??= updateObjectives(o, pos, quality, 1, i + 1, { accuracyM: acc, fixSeq: seq }).reached;
+    return { reached };
+  };
+  it("kräver minst 3 olika fixar även om 5 s hunnit gå", () => {
+    const o = createObjectives([T]);
+    expect(run(o, near(5), "ok", 5, [1, 1, 1, 1, 1, 1]).reached).toBeUndefined();
+    expect(o.index).toBe(0);
+    const o2 = createObjectives([T]);
+    expect(run(o2, near(5), "ok", 5, [1, 1, 2, 2, 3, 3]).reached?.id).toBe("C1");
+  });
+  it("verify: radien krymper med osäkerheten över 10 m", () => {
+    const o = createObjectives([T]);
+    expect(run(o, near(25), "verify", 20, [1, 2, 3, 4, 5, 6]).reached).toBeUndefined(); // 30 − 10 = 20 m
+    expect(run(o, near(15), "verify", 20, [7, 8, 9, 10, 11, 12]).reached?.id).toBe("C1");
+  });
+  it("tappar spelaren radien nollställs bekräftelsen", () => {
+    const o = createObjectives([T]);
+    run(o, near(5), "ok", 5, [1, 2, 3]);
+    run(o, near(60), "ok", 5, [4]);
+    expect(o.holdS).toBe(0);
+    expect(o.holdFixes).toBe(0);
+  });
+  it("utan fixSeq (simulering) gäller bara tiden", () => {
+    const o = createObjectives([T]);
+    let r;
+    for (let i = 0; i < 5; i++) r = updateObjectives(o, near(5), "ok", 1, i + 1);
+    expect(r!.reached?.id).toBe("C1");
+  });
+});

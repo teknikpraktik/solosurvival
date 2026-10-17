@@ -91,3 +91,38 @@ describe("områdesvalidering", () => {
     expect(c.nodes).toHaveLength(2);
   });
 });
+
+describe("OSM-filtrering: saknade och osäkra attribut (Etapp 3)", () => {
+  it("vadställe, dålig stigsynlighet och alpina stigar utesluts för alla aktiviteter", () => {
+    for (const a of ["walk", "run", "mtb"] as const) {
+      expect(decideWay({ highway: "path", ford: "yes" }, a)).toEqual({ ok: false, reason: "ford" });
+      expect(decideWay({ highway: "path", trail_visibility: "bad" }, a).ok).toBe(false);
+      expect(decideWay({ highway: "path", sac_scale: "mountain_hiking" }, a).ok).toBe(false);
+    }
+    expect(decideWay({ highway: "path", ford: "no" }, "walk").ok).toBe(true);
+  });
+  it("cykelbana utan foot=yes är inte en gångväg, men fungerar för MTB", () => {
+    expect(decideWay({ highway: "cycleway" }, "walk").ok).toBe(false);
+    expect(decideWay({ highway: "cycleway" }, "run").ok).toBe(false);
+    expect(decideWay({ highway: "cycleway", foot: "designated" }, "walk").ok).toBe(true);
+    expect(decideWay({ highway: "cycleway" }, "mtb").ok).toBe(true);
+  });
+  it("begränsad åtkomst (kunder, tillstånd, skogsbruk …) tolkas som förbud om inte foot/bicycle uttryckligen tillåts", () => {
+    for (const access of ["customers", "permit", "delivery", "military", "forestry", "agricultural", "private", "no"]) {
+      expect(decideWay({ highway: "track", access }, "walk").ok, access).toBe(false);
+      expect(decideWay({ highway: "track", access, foot: "yes" }, "walk").ok, access).toBe(true);
+      expect(decideWay({ highway: "track", access }, "mtb").ok, access).toBe(false);
+    }
+  });
+  it("tekniska MTB-leder (mtb:scale ≥ 3) utesluts, enkelriktade MTB-stigar behåller riktningen", () => {
+    expect(decideWay({ highway: "path", "mtb:scale": "2" }, "mtb").ok).toBe(true);
+    expect(decideWay({ highway: "path", "mtb:scale": "3" }, "mtb").ok).toBe(false);
+    expect(decideWay({ highway: "path", "oneway:bicycle": "yes" }, "mtb")).toEqual({ ok: true, oneway: true });
+    expect(decideWay({ highway: "path", oneway: "yes" }, "walk")).toEqual({ ok: true });
+  });
+  it("trappor, byggen och p-gångar finns inte i nätet; ofullständig åtkomst (unknown) utesluts", () => {
+    expect(decideWay({ highway: "steps" }, "walk").ok).toBe(false);
+    expect(decideWay({ highway: "service", service: "parking_aisle" }, "walk").ok).toBe(false);
+    expect(decideWay({ highway: "path", access: "unknown" }, "walk").ok).toBe(false);
+  });
+});

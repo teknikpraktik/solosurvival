@@ -27,11 +27,10 @@ npm run sim -- 20 24 # balanseringssimulering: matcher per cell, rutnätsstorlek
 - `src/geo` – geometri, stiggraf, OSM-normalisering/filtrering, områdesvalidering.
 - `src/gps` – GPS-filter och map matching.
 - `src/sim` – syntetiska nät, simulerad spelare och strategier (används av tester, CLI och `/dev`).
-- `src/app` – Next.js (startsida, `/dev`, `/api/terrain`, `/api/validate-area`).
+- `src/app` – Next.js (startsida, `/new`, `/play`, `/history`, `/how-to-play`, `/field`, `/dev`). Inga API-routes. Se `docs/ETAPP-3.md`.
 
 ## Beslut och avvikelser från PRD
 
-- Matchtiden inkluderar försprånget; zombier står stilla under det.
 - `/api/validate-area` tar en valfri `start`-position (PRD 5.3 kräver att startpunkten ligger i området).
 - Infektion vid GPS-noggrannhet 10–20 m kräver 5 s i stället för 3 s (PRD 6.3: "ytterligare verifiering"). Detta är ett förslag att fälttesta.
 - "Oundviklig infektion" vid spawn (PRD 3.4) är approximerad med nätavstånd ≥ minimiavstånd, inte en fullständig analys av återvändsgränder.

@@ -57,3 +57,15 @@ export function dataRadiusM(p: MatchParams): number {
   if (p.mode === "escape") return p.targetLengthM * 0.75 + 300;
   return p.targetLengthM * 0.5 + 500;
 }
+
+/**
+ * Hur nära en zombie måste vara för att synas på kartan (m). Preliminärt UI-värde (påverkar inte motorn);
+ * justeras efter fälttest. Längre för snabbare aktiviteter eftersom reaktionssträckan är längre.
+ */
+export const AWARENESS_M: Record<Activity, number> = { walk: 150, run: 250, mtb: 400 };
+
+/** Före matchstart: bästa acceptabla noggrannhet (m) för att få starta, och när varning visas. */
+export const START_MAX_ACCURACY_M = 25;
+export const START_WARN_ACCURACY_M = 15;
+/** Hur långt spelaren får ha rört sig från förhandsvisningens startpunkt innan förslaget måste uppdateras. */
+export const START_MOVED_LIMIT_M = 60;

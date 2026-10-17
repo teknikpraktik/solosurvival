@@ -5,3 +5,6 @@ next-env.d.ts
 public/maplibre
 public/dev-routes
 experiments/routes/results/*.jsonl
+public/version.json
+e2e/out
+e2e/out-small
