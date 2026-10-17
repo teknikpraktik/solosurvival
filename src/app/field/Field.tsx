@@ -38,7 +38,7 @@ export default function Field() {
   return (
     <main className="page">
       <div className="topbar"><Link className="back" href="/" aria-label="Tillbaka">←</Link><h1>TESTLÄGE</h1></div>
-      <div className="card">Allt här är lokalt. Ingen telemetri skickas och inga GPS-spår laddas upp. Export sker bara när du trycker på knappen.</div>
+      <div className="card">Loggar, matcher och GPS-spår är lokala: ingen telemetri skickas och inget laddas upp. Export sker bara när du trycker på knappen. Enda externa anropet är kartrutor från OpenFreeMap (se HOW TO PLAY).</div>
 
       <h2>GPS-test (utan match)</h2>
       <div className="card">

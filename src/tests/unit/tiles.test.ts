@@ -103,3 +103,17 @@ describe("tiles och regionala grafer (riktig Värmlandsdata)", () => {
     expect(rg.stats.edges).toBeGreaterThan(20);
   });
 });
+
+import { MAP_STYLE } from "@/app/_client/mapStyle";
+describe("bakgrundskarta", () => {
+  it("stilen är lätt: bara fyllnads-/linjelager mot en källa, inga etiketter eller sprites", () => {
+    const srcs = Object.keys(MAP_STYLE.sources);
+    expect(srcs).toEqual(["omt"]);
+    for (const l of MAP_STYLE.layers) {
+      expect(["background", "fill", "line"]).toContain(l.type);
+      if ("source" in l) expect(srcs).toContain(l.source);
+    }
+    expect(MAP_STYLE.sprite).toBeUndefined();
+    expect(MAP_STYLE.glyphs).toBeUndefined();
+  });
+});

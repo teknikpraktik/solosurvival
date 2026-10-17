@@ -31,6 +31,9 @@ IndexedDB `outbreak` v1: `tiles`, `matches` (tillstånd + graf), `history`, `log
 ## Testinstrument (3C) – `/field`
 Logg per match (lokal, IndexedDB): GPS-fixar/avvisade (ogiltig/gammal/hopp), medel/max-noggrannhet, bortfall och längsta bortfall, app-frysningar, ruttens längd, uppmätt sträcka, rutt-genereringstid, tile-statistik, mål, smittkontakter, matchtid, resultat, aktivitet/svårighet, kartfel. GPS-spår sparas bara om det slås på (av som standard). Export till fil på knapptryck, ingen telemetri. Batteri: Battery API där det finns, annars manuell avläsning före/efter.
 
+## Bakgrundskarta
+OpenFreeMap (vektortiles, OpenMapTiles-schema, data från OSM), egen mörk stil i `src/app/_client/mapStyle.ts`: skog, gräs, våtmark, vatten, vattendrag, stigar/spår (streckade), mindre vägar, järnväg och större vägar (varmt färgade). Bara fyllnads-/linjelager, inga etiketter/typsnitt/sprites; zoom 10–18, tile-cache 40. Spelets nät, rutt, mål, zombier och spelare ritas ovanpå. Villkor (https://openfreemap.org/tos/, kontrollerat 2026-10-17): gratis, ingen nyckel, vanlig webbläsaranvändning tillåten, automatisk massnedladdning inte (offline-nedladdning max 3 000 tiles/50 MB, 4 parallella, eget User-Agent), så appen och service workern förhandshämtar/cachar **aldrig** kartrutor utöver webbläsarens vanliga HTTP-cache. Attribution visas alltid i kartvyn (© OpenStreetMap · OpenFreeMap © OpenMapTiles). Ingen egen kartserver. Risk: tjänsten kan ändras eller läggas ner utan förvarning (villkoren) – spelet fungerar då på bara stignätet; byt till självhostad PMTiles vid behov. Se `docs/RULE-IMPACT.md` för regelpåverkan på ruttäckning.
+
 ## PWA och Vercel
 - `manifest.webmanifest` ("OUTBREAK – Solo Survival", ikoner 192/512/maskable, standalone, portrait), `sw.js` (statiska filer + nätverk-först för sidor; **ingen offline-garanti**; kartdata cachas av appen i IndexedDB). Ny version väntar tills spelaren trycker Uppdatera (aldrig under match); `/version.json` (commit-SHA) jämförs med inbyggt bygg-id.
 - `vercel.json` (framework nextjs, `npm ci`, `npm run build`), cache-headers i `next.config.mjs`, Permissions-Policy `geolocation=(self)`. HTTPS krävs för GPS (Vercel ger det). Direktlänkar/omladdning fungerar (statiska routes).
@@ -40,7 +43,7 @@ Logg per match (lokal, IndexedDB): GPS-fixar/avvisade (ogiltig/gammal/hopp), med
 - Ingen fältverifiering (GPS-brus under skog, verify-gränsen, 30 m/5 s, bakgrundsbeteende, batteri, genereringstid på telefon).
 - OSM-data är ofullständig; attribut kan saknas eller vara fel. En genererad rutt är aldrig en säkerhetsgaranti. Vägar utan delad nod (broar, tunnlar) antas korrekt hanterade; sjöar/ytvatten utan ledning ses bara som återvändsgränder. Militära områden/naturreservat utan tagg på själva stigen fångas inte.
 - Tidsgränsen (befintlig definition från 2.5) blir generös: 3 km promenad ≈ 1 h 27 min.
-- Kartan visar bara stignät (ingen bakgrundskarta).
+- Bakgrundskartan kräver nät (annars bara stignät).
 - Inga tester på riktig iPhone/Android har gjorts; WebKit finns inte i utvecklingsmiljön.
 
 ## Fältprotokoll (minimum)

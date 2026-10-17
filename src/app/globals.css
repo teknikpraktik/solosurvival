@@ -81,3 +81,6 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .update { position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 20; }
 .page .btn, .sheet .btn { width: 100%; }
 .row > .btn { width: auto; }
+.attrib { position: absolute; left: 8px; bottom: 3px; z-index: 6; font-size: 10px; color: #9fb0c0; text-decoration: none; background: #0b0f14aa; padding: 1px 5px; border-radius: 4px; }
+.controls { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 14px); }
+.sheet { padding-bottom: calc(max(14px, env(safe-area-inset-bottom)) + 12px); }

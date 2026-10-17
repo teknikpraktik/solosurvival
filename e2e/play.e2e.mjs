@@ -49,6 +49,7 @@ try {
   await page.getByText(/Sträcka/).first().waitFor({ timeout: 60000 });
   check("nytt förslag", true);
 
+  for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
   await page.getByRole("button", { name: "START", exact: true }).click();
   await page.waitForURL("**/play");
   await page.waitForSelector('[data-testid="map"][data-loaded="true"]', { timeout: 20000 });

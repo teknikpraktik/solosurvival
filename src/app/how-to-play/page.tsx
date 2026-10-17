@@ -40,7 +40,8 @@ export default function HowToPlay() {
       <p>Stigar och vägar kommer från OpenStreetMap (© OpenStreetMap-bidragsgivare, ODbL). Kartdata kan vara ofullständig eller felaktig. Spelet utesluter stigar som är markerade som privata eller förbjudna och försöker undvika vägar, järnvägar och vatten – men att en sträcka syns i spelet betyder inte att den är säker eller tillåten.</p>
 
       <h2>Din data</h2>
-      <p>Allt sparas lokalt på din enhet. Ingen inloggning, ingen uppladdning. Du kan radera matcher under PREVIOUS GAMES.</p>
+      <p>Matcher, GPS-uppgifter och testloggar sparas bara lokalt på din enhet. Ingen inloggning, ingen uppladdning. Du kan radera matcher under PREVIOUS GAMES.</p>
+      <p>Bakgrundskartan (skog, vatten, vägar) hämtas som kartrutor från OpenFreeMap (data © OpenStreetMap-bidragsgivare, © OpenMapTiles). Då ser kartleverantören din IP-adress och vilket kartområde som visas, men inte dina GPS-positioner som sådana eller dina matcher. Utan nät fungerar spelet med bara stignätet.</p>
     </main>
   );
 }

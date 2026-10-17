@@ -25,6 +25,7 @@ export interface RegionGraph {
     networkKm: number;
     componentKm: number;
     hazardStubs: number;
+    components: number;
   };
 }
 
@@ -111,7 +112,7 @@ export function buildRegionGraph(ways: TileWay[], activity: Activity, center: La
     hazardNodes: new Set([...hazardNodes].filter((id) => gnodes.has(id))),
     startSnapM: best ? best.distM : null,
     nearestAccess: near,
-    stats: { waysIn: ways.length, waysUsed: used, excluded, edges: graph.edges.length, networkKm, componentKm, hazardStubs: hazardNodes.size },
+    stats: { waysIn: ways.length, waysUsed: used, excluded, edges: graph.edges.length, networkKm, componentKm, hazardStubs: hazardNodes.size, components: idx.components.length },
   };
 }
 

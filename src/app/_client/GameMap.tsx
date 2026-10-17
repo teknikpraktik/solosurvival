@@ -1,12 +1,12 @@
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Map as MapLibreMap, Marker, setWorkerUrl, type GeoJSONSource, type StyleSpecification } from "maplibre-gl";
+import { Map as MapLibreMap, Marker, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import type { LatLon } from "@/geo/geometry";
 import type { TrailGraph } from "@/geo/graph/types";
+import { MAP_ATTRIBUTION, MAP_STYLE } from "./mapStyle";
 
-const STYLE: StyleSpecification = { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#0b0f14" } }] };
 const fc = (features: GeoJSON.Feature[] = []): GeoJSON.FeatureCollection => ({ type: "FeatureCollection", features });
 const pt = (p: LatLon, props: Record<string, unknown> = {}): GeoJSON.Feature => ({ type: "Feature", properties: props, geometry: { type: "Point", coordinates: [p.lon, p.lat] } });
 const line = (pts: LatLon[], props: Record<string, unknown> = {}): GeoJSON.Feature => ({ type: "Feature", properties: props, geometry: { type: "LineString", coordinates: pts.map((p) => [p.lon, p.lat]) } });
@@ -61,14 +61,18 @@ export default function GameMap(props: GameMapProps) {
     if (!el.current) return;
     setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
     const c = propsRef.current.player ?? propsRef.current.start ?? { lat: 59.38, lon: 13.5 };
-    const map = new MapLibreMap({ container: el.current, style: STYLE, center: [c.lon, c.lat], zoom: 15, attributionControl: false, dragRotate: false, pitchWithRotate: false });
+    const map = new MapLibreMap({ container: el.current, style: MAP_STYLE, center: [c.lon, c.lat], zoom: 15, minZoom: 10, maxZoom: 18, attributionControl: false, dragRotate: false, pitchWithRotate: false, fadeDuration: 0, maxTileCacheSize: 40, pixelRatio: Math.min(window.devicePixelRatio || 1, 2) });
     mapRef.current = map;
     map.touchZoomRotate.disableRotation();
     map.on("dragstart", () => propsRef.current.onUserMove?.());
-    map.on("error", (e) => propsRef.current.onError?.(String((e as unknown as { error?: { message?: string } }).error?.message ?? "map error")));
+    let tileErrors = 0;
+    map.on("error", (e) => {
+      // Kartbilden är en bonus: tappas tiles (offline/begränsning) fortsätter spelet på det egna nätet. Logga bara de första felen.
+      if (tileErrors++ < 3) propsRef.current.onError?.(String((e as unknown as { error?: { message?: string } }).error?.message ?? "map error"));
+    });
     map.on("load", () => {
       map.addSource("net", { type: "geojson", data: fc() });
-      map.addLayer({ id: "net", type: "line", source: "net", paint: { "line-color": "#334155", "line-width": 1.4 } });
+      map.addLayer({ id: "net", type: "line", source: "net", paint: { "line-color": "#64748b", "line-width": 1.8, "line-opacity": 0.85 } });
       map.addSource("routes", { type: "geojson", data: fc() });
       map.addLayer({ id: "routes", type: "line", source: "routes", paint: { "line-color": ["case", ["get", "sel"], "#22d3ee", "#64748b"], "line-width": ["case", ["get", "sel"], 5, 2.5], "line-opacity": ["case", ["get", "sel"], 0.95, 0.5] } });
       map.addSource("acc", { type: "geojson", data: fc() });
@@ -116,5 +120,10 @@ export default function GameMap(props: GameMapProps) {
     map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: { top: 70, bottom: 260, left: 40, right: 40 }, duration: 0, maxZoom: 17 });
   }, [loaded, fit]);
 
-  return <div ref={el} className="map-canvas" data-testid="map" data-loaded={loaded} />;
+  return (
+    <>
+      <div ref={el} className="map-canvas" data-testid="map" data-loaded={loaded} />
+      <a className="attrib" href={MAP_ATTRIBUTION.href} target="_blank" rel="noreferrer">{MAP_ATTRIBUTION.text}</a>
+    </>
+  );
 }
