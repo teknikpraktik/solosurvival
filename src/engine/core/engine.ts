@@ -16,7 +16,7 @@ import { updateInfection } from "../infection/infection";
 import { findSpawn } from "../spawning/spawn";
 import { advanceZombie, zombieLatLon } from "./movement";
 import { rand } from "./rng";
-import { OBJECTIVE_SPAWN_EXCLUSION_M, updateObjectives, type ObjectiveSet } from "../objectives/objectives";
+import { OBJECTIVE_MIN_FIXES, OBJECTIVE_SPAWN_EXCLUSION_M, VERIFY_OK_ACCURACY_M, updateObjectives, type ObjectiveSet } from "../objectives/objectives";
 import type { GameConfig, GameEvent, GamePhase, GameResult, GameState, Zombie } from "./types";
 
 export interface StepInput {
@@ -24,6 +24,8 @@ export interface StepInput {
   position: LatLon | null;
   quality: GpsQuality;
   accuracyM: number;
+  /** Löpnummer för senaste godkända GPS-fix (live-spel). Används för att kräva flera olika fixar vid målbekräftelse. */
+  fixSeq?: number;
 }
 
 export class GameSetupError extends Error {}
@@ -242,7 +244,7 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
 
   // Mål (Escape/Mission).
   if (s.objectives) {
-    const u = updateObjectives(s.objectives, input.position, input.quality, STEP_S, t);
+    const u = updateObjectives(s.objectives, input.position, input.quality, STEP_S, t, { accuracyM: input.accuracyM, fixSeq: input.fixSeq });
     if (u.reached) events.push({ type: "objective_reached", targetId: u.reached.id, index: s.objectives.index - 1 });
     if (u.completed) {
       finish(s, "survived", events);
@@ -253,16 +255,22 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   // Extraction.
   if (s.phase === "extraction" && s.extractionNodeId) {
     const ex = nodeLatLon(g, s.extractionNodeId);
-    const near = haversineM(ex, input.position) <= EXTRACTION_RADIUS_M;
+    const shrink = input.quality === "verify" ? Math.max(0, input.accuracyM - VERIFY_OK_ACCURACY_M) : 0;
+    const near = haversineM(ex, input.position) <= EXTRACTION_RADIUS_M - shrink;
     const reliable = input.quality === "ok" || input.quality === "verify";
     if (near && reliable) {
       s.extractionHoldS += STEP_S;
-      if (s.extractionHoldS >= EXTRACTION_HOLD_S - 1e-9) {
+      if (input.fixSeq !== undefined && input.fixSeq !== s.extractionLastFix) {
+        s.extractionLastFix = input.fixSeq;
+        s.extractionFixes = (s.extractionFixes ?? 0) + 1;
+      }
+      if (s.extractionHoldS >= EXTRACTION_HOLD_S - 1e-9 && (input.fixSeq === undefined || (s.extractionFixes ?? 0) >= OBJECTIVE_MIN_FIXES)) {
         finish(s, "survived", events);
         return events;
       }
     } else if (!near) {
       s.extractionHoldS = 0;
+      s.extractionFixes = 0;
     }
   }
 

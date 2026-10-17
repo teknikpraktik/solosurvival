@@ -77,6 +77,8 @@ export interface GameState {
   /** Spelklocka (s) tills infektion åter är möjlig efter paus. */
   neutralUntilS: number;
   extractionHoldS: number;
+  extractionFixes?: number;
+  extractionLastFix?: number;
   gpsLostS: number;
   gpsLostLong: boolean;
   nextRevealAtS: number;

@@ -152,7 +152,7 @@ function generateEscape(c: Ctx, notes: string[]): { pool: RouteProposal[]; candi
   }
   if (!cands.length) { notes.push("Inga användbara destinationer hittades."); return { pool: [], candidates: 0 }; }
   const pool: RouteProposal[] = [];
-  const sorted = cands.sort((a, b) => Math.abs(a.dev) - Math.abs(b.dev)).slice(0, 250);
+  const sorted = cands.sort((a, b) => Math.abs(a.dev) - Math.abs(b.dev)).slice(0, c.req.maxCandidates ?? 250);
   sorted.forEach((x, i) => {
     const leg = legBetween(c.g, c.start, nodePos(c.g, x.n));
     if (!leg) return;

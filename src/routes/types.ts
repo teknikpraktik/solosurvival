@@ -67,6 +67,8 @@ export interface RouteRequest {
   deadEndPolicy?: "avoid" | "allow";
   /** Antal slumpade kandidater per variant (default 300). */
   samples?: number;
+  /** Escape: högsta antal destinationer som utvärderas fullt (default 250). Lägre värde ger snabbare generering på mobil. */
+  maxCandidates?: number;
 }
 
 export interface RouteResult {

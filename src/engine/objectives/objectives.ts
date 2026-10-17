@@ -29,7 +29,15 @@ export interface ObjectiveSet {
   radiusM: number;
   /** Spelklocka (s) då respektive mål bekräftades. */
   reachedAtS: number[];
+  /** Antal olika GPS-fixar som hittills räknats under pågående bekräftelse (bara när fixSeq anges). */
+  holdFixes?: number;
+  lastFixSeq?: number;
 }
+
+/** Minsta antal olika GPS-fixar under bekräftelsen, så att en enstaka (dålig) fix aldrig kan registrera ett mål. */
+export const OBJECTIVE_MIN_FIXES = 3;
+/** Om fixens osäkerhet överlappar gränsen (verify: 10–20 m) krymps radien med osäkerheten över okM. Preliminärt; kräver fälttest. */
+export const VERIFY_OK_ACCURACY_M = 10;
 
 export function createObjectives(targets: ObjectiveTarget[], radiusM = OBJECTIVE_RADIUS_M): ObjectiveSet {
   return { targets, index: 0, holdS: 0, radiusM, reachedAtS: [] };
@@ -46,17 +54,32 @@ export interface ObjectiveUpdate {
  * Bekräftelse bygger på position med godkänd noggrannhet (ok/verify). Utanför radien nollställs bekräftelsen;
  * vid otillförlitlig GPS hålls den kvar utan att räknas (samma princip som infektion).
  */
-export function updateObjectives(o: ObjectiveSet, pos: LatLon, quality: GpsQuality, dtS: number, nowS: number): ObjectiveUpdate {
+export interface ObjectiveFixInfo {
+  accuracyM?: number;
+  /** Löpnummer för senaste mottagna GPS-fix. Utelämnas i simuleringar utan riktiga fixar. */
+  fixSeq?: number;
+}
+
+export function updateObjectives(o: ObjectiveSet, pos: LatLon, quality: GpsQuality, dtS: number, nowS: number, fix: ObjectiveFixInfo = {}): ObjectiveUpdate {
   const t = activeTarget(o);
   if (!t) return { completed: true };
   if (quality !== "ok" && quality !== "verify") return { completed: false };
-  if (haversineM(pos, t) > o.radiusM) {
+  // Vid "verify" kan sanna positionen ligga upp till accuracyM från den rapporterade: kräv marginal.
+  const shrink = quality === "verify" && fix.accuracyM !== undefined ? Math.max(0, fix.accuracyM - VERIFY_OK_ACCURACY_M) : 0;
+  if (haversineM(pos, t) > o.radiusM - shrink) {
     o.holdS = 0;
+    o.holdFixes = 0;
     return { completed: false };
+  }
+  if (fix.fixSeq !== undefined && fix.fixSeq !== o.lastFixSeq) {
+    o.lastFixSeq = fix.fixSeq;
+    o.holdFixes = (o.holdFixes ?? 0) + 1;
   }
   o.holdS += dtS;
   if (o.holdS < OBJECTIVE_HOLD_S - 1e-9) return { completed: false };
+  if (fix.fixSeq !== undefined && (o.holdFixes ?? 0) < OBJECTIVE_MIN_FIXES) return { completed: false };
   o.holdS = 0;
+  o.holdFixes = 0;
   o.index++;
   o.reachedAtS.push(nowS);
   return { reached: t, completed: o.index >= o.targets.length };
