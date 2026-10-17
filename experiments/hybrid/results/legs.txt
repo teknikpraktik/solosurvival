@@ -1,0 +1,18 @@
+
+B2-25: 36 matcher, 44 off-road-ben (0.51 per zombietimme)
+  benlängd m: median 52, p90 133, max 141
+  varaktighet s: median 79, p90 187
+  tillstånd när benet börjar: investigate 41, chase 3; när det slutar: investigate 29, patrol 12, chase 3
+  andel ben som vänder (förskjutning < hälften av tillryggalagd sträcka): 0 %
+
+B2-50: 36 matcher, 135 off-road-ben (2.03 per zombietimme)
+  benlängd m: median 55, p90 140, max 149
+  varaktighet s: median 50, p90 129
+  tillstånd när benet börjar: investigate 131, chase 4; när det slutar: investigate 106, patrol 27, chase 2
+  andel ben som vänder (förskjutning < hälften av tillryggalagd sträcka): 0 %
+
+B3-50-perm: 36 matcher, 205 off-road-ben (2.71 per zombietimme)
+  benlängd m: median 116, p90 326, max 398
+  varaktighet s: median 86, p90 293
+  tillstånd när benet börjar: investigate 192, chase 12, patrol 1; när det slutar: investigate 151, patrol 46, chase 8
+  andel ben som vänder (förskjutning < hälften av tillryggalagd sträcka): 2 %

@@ -23,6 +23,8 @@ export interface TerrainRaster {
   h: number;
   cell: number;
   data: Uint8Array;
+  /** Kända hinder som vektorgeometri (meter), för exakta kontroller som inte begränsas av rasterupplösningen. */
+  vector: { polys: { rings: Ring[]; cls: number }[]; lines: { line: XY[]; width: number }[] };
   /** Antal polygoner/linjer per källa, för rapportering. */
   stats: {
     incompleteWaterSplit: number;
@@ -57,6 +59,9 @@ function classOf(t: Record<string, string>): TerrainClass | null {
 }
 
 /** Målarordning: lägre rang målas först och kan skrivas över av högre. */
+/** Klasser som aldrig får passeras av zombier. */
+export const HARD = new Set<number>([C.WATER, C.WETLAND, C.BUILDING, C.ROUGH, C.BARRIER]);
+
 const RANK: Record<number, number> = { [C.FOREST]: 1, [C.OPEN]: 1, [C.URBAN]: 2, [C.ROUGH]: 3, [C.WETLAND]: 4, [C.WATER]: 5, [C.BUILDING]: 6, [C.BARRIER]: 7 };
 
 function fillPolygon(r: TerrainRaster, rings: Ring[], cls: TerrainClass) {
@@ -125,6 +130,7 @@ export function buildRaster(fx: Fixture, opts: RasterOptions = {}): TerrainRaste
     h: Math.ceil(fx.heightM / cell),
     cell,
     data: new Uint8Array(0),
+    vector: { polys: [], lines: [] },
     stats: { incompleteWaterSplit: 0, incompleteWaterAmbiguous: 0, incompleteOther: 0, polygons: 0 },
   };
   r.data = new Uint8Array(r.w * r.h);
@@ -197,6 +203,8 @@ export function buildRaster(fx: Fixture, opts: RasterOptions = {}): TerrainRaste
   for (const j of jobs) fillPolygon(r, j.rings, j.cls);
   r.stats.polygons = jobs.length;
   for (const l of lines) drawLine(r, l.line, l.width, C.BARRIER);
+  for (const j of jobs) if (HARD.has(j.cls)) r.vector.polys.push({ rings: j.rings, cls: j.cls });
+  r.vector.lines = lines;
   return r;
 }
 

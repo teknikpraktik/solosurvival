@@ -1,0 +1,6 @@
+Skutberget  run  återvändsgrenar: 20.9 % av stiglängden (7.4 av 35.4 km), 83/317 kanter, enkelriktade kanter: 0
+Skutberget  mtb  återvändsgrenar: 25.3 % av stiglängden (8.3 av 32.7 km), 80/273 kanter, enkelriktade kanter: 15
+I2-skogen   run  återvändsgrenar: 16.3 % av stiglängden (14.3 av 87.5 km), 173/948 kanter, enkelriktade kanter: 0
+I2-skogen   mtb  återvändsgrenar: 18.2 % av stiglängden (15.4 av 84.7 km), 172/877 kanter, enkelriktade kanter: 9
+Sörmon      run  återvändsgrenar: 11.6 % av stiglängden (7.5 av 64.4 km), 39/483 kanter, enkelriktade kanter: 0
+Sörmon      mtb  återvändsgrenar: 14.0 % av stiglängden (8.6 av 61.5 km), 52/443 kanter, enkelriktade kanter: 0

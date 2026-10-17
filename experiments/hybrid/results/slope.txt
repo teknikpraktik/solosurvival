@@ -1,0 +1,3 @@
+Skutberget  höjd 42–93 m, brant (102×104 m-skala) median 0.9°, p90 4.5°, p99 7.7°, max 10.7° | >15°: 0.0 %  >25°: 0.0 %  >35°: 0.0 %
+I2-skogen   höjd 43–98 m, brant (102×104 m-skala) median 2.4°, p90 5.8°, p99 10.2°, max 23.6° | >15°: 0.2 %  >25°: 0.0 %  >35°: 0.0 %
+Sörmon      höjd 42–111 m, brant (102×104 m-skala) median 1.7°, p90 3.8°, p99 6.4°, max 9.4° | >15°: 0.0 %  >25°: 0.0 %  >35°: 0.0 %

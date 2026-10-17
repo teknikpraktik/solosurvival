@@ -1,0 +1,11 @@
+Skutberget  B2-25 (verifierad terräng)                   134 förbindelser, 0 korsar exakt hinder   (kontrollerat mot 215 polygoner, 0 linjer)
+Skutberget  B3-25 (400 m)                                139 förbindelser, 0 korsar exakt hinder   (kontrollerat mot 215 polygoner, 0 linjer)
+Skutberget  B3-50-perm (stress, okänd mark tillåten)     556 förbindelser, 0 korsar exakt hinder   (kontrollerat mot 215 polygoner, 0 linjer)
+I2-skogen   B2-25 (verifierad terräng)                   291 förbindelser, 0 korsar exakt hinder   (kontrollerat mot 1477 polygoner, 6 linjer)
+I2-skogen   B3-25 (400 m)                                355 förbindelser, 0 korsar exakt hinder   (kontrollerat mot 1477 polygoner, 6 linjer)
+I2-skogen   B3-50-perm (stress, okänd mark tillåten)    1137 förbindelser, 0 korsar exakt hinder   (kontrollerat mot 1477 polygoner, 6 linjer)
+Sörmon      B2-25 (verifierad terräng)                   406 förbindelser, 0 korsar exakt hinder   (kontrollerat mot 54 polygoner, 0 linjer)
+Sörmon      B3-25 (400 m)                                484 förbindelser, 0 korsar exakt hinder   (kontrollerat mot 54 polygoner, 0 linjer)
+Sörmon      B3-50-perm (stress, okänd mark tillåten)    1007 förbindelser, 0 korsar exakt hinder   (kontrollerat mot 54 polygoner, 0 linjer)
+
+Sammanlagt 0 av 4509 förbindelser korsar ett hinder enligt exakt geometri.

@@ -19,7 +19,8 @@ let totalLinks = 0, totalBad = 0;
 for (const a of AREAS) {
   const c = areaCtx(a.id, "mtb");
   const fx = c.ag.fx;
-  const polys: { ring: Ring; kind: string }[] = [];
+  const polys: { ring: Ring; kind: string; bb: [number, number, number, number] }[] = [];
+  const addPoly = (ring: Ring, kind: string) => { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const [x, y] of ring) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); } polys.push({ ring, kind, bb: [x0, y0, x1, y1] }); };
   const lines: { line: Ring; kind: string }[] = [];
   const kindOf = (t: Record<string, string>) => (t.building ? "byggnad" : t.natural === "water" || t.waterway === "riverbank" || t.landuse === "reservoir" ? "vatten" : t.natural === "wetland" ? "våtmark" : null);
   for (const w of fx.ways) {
@@ -27,7 +28,7 @@ for (const a of AREAS) {
     if (w.geometry.some((p) => !p)) continue;
     const loc = toLocalRing(fx, w.geometry as never);
     const k = !t.highway ? kindOf(t) : null;
-    if (k && w.nodes.length > 3 && w.nodes[0] === w.nodes[w.nodes.length - 1]) polys.push({ ring: loc, kind: k });
+    if (k && w.nodes.length > 3 && w.nodes[0] === w.nodes[w.nodes.length - 1]) addPoly(loc, k);
     if (["fence", "wall", "hedge", "retaining_wall"].includes(t.barrier)) lines.push({ line: loc, kind: "barriär" });
     if (t.natural === "cliff") lines.push({ line: loc, kind: "klippa" });
     if (t.waterway === "river" || t.waterway === "canal") lines.push({ line: loc, kind: "å/kanal" });
@@ -36,7 +37,7 @@ for (const a of AREAS) {
   for (const r of fx.relations) {
     const k = kindOf(r.tags);
     if (!k || !r.complete) continue;
-    for (const ring of assembleRings(r.members, "outer").closed) polys.push({ ring: toLocalRing(fx, ring), kind: k });
+    for (const ring of assembleRings(r.members, "outer").closed) addPoly(toLocalRing(fx, ring), k);
   }
   for (const [name, cfg] of CONFIGS) {
     const h = hybridFor(c, cfg);
@@ -46,9 +47,9 @@ for (const a of AREAS) {
       const P: XY = [A.x, A.y], Q: XY = [B.x, B.y];
       const d = Math.hypot(Q[0] - P[0], Q[1] - P[1]);
       let hit: string | null = null;
-      for (let s = 8; s <= d - 8 && !hit; s += 0.5) {
+      for (let s = 0; s <= d && !hit; s += 0.25) {
         const pt: XY = [P[0] + ((Q[0] - P[0]) * s) / d, P[1] + ((Q[1] - P[1]) * s) / d];
-        for (const poly of polys) if (pointInPolygonXY(pt, poly.ring)) { hit = poly.kind; break; }
+        for (const poly of polys) if (pt[0] >= poly.bb[0] && pt[0] <= poly.bb[2] && pt[1] >= poly.bb[1] && pt[1] <= poly.bb[3] && pointInPolygonXY(pt, poly.ring)) { hit = poly.kind; break; }
       }
       if (!hit) for (const ln of lines) { for (let i = 0; i + 1 < ln.line.length && !hit; i++) if (segCross(P, Q, ln.line[i], ln.line[i + 1])) hit = ln.kind; if (hit) break; }
       if (hit) bad[hit] = (bad[hit] ?? 0) + 1;

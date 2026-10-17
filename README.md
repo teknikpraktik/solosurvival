@@ -38,3 +38,13 @@ npm run sim -- 20 24 # balanseringssimulering: matcher per cell, rutnätsstorlek
 - Zombier hålls i spelarens sammanhängande nätverkskomponent.
 - Tailwind är inte installerat än; UI:t är minimal CSS tills etapp 4.
 - Utan `NEXT_PUBLIC_MAP_STYLE` ritas bara stignätet på mörk bakgrund. En kartleverantör med lämpliga villkor måste väljas före release.
+
+## Hybrid-AI-studie (experimentgren)
+
+Branchen `experiment/hybrid-offroad` innehåller en undersökning av om zombier ska få röra sig långsamt genom terräng utöver stigarna, gjord på verkliga OSM-data från Karlstad (Skutberget, I2-skogen, Sörmon).
+
+- Rapport och rekommendation: [`experiments/hybrid/REPORT.md`](experiments/hybrid/REPORT.md)
+- Fixturer med källa och licens: [`experiments/hybrid/fixtures/README.md`](experiments/hybrid/fixtures/README.md)
+- Visualisering: `npx tsx experiments/hybrid/export-viz.ts && npm run dev`, öppna `/dev/hybrid`
+
+Produktionskoden har bara fått neutrala hakar (kantattribut `offroad`/`speedFactor`, `trailOf()`-vy, kedjeregel i A\*). Stigbundna grafer ger bit-identiska resultat mot `main`.

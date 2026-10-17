@@ -17,7 +17,7 @@ const STYLE: StyleSpecification = { version: 8, sources: {}, layers: [{ id: "bg"
 const fc = (features: GeoJSON.Feature[] = []): GeoJSON.FeatureCollection => ({ type: "FeatureCollection", features });
 const pt = (p: { lat: number; lon: number }, props: Record<string, unknown> = {}): GeoJSON.Feature => ({ type: "Feature", properties: props, geometry: { type: "Point", coordinates: [p.lon, p.lat] } });
 const line = (pts: { lat: number; lon: number }[], props: Record<string, unknown> = {}): GeoJSON.Feature => ({ type: "Feature", properties: props, geometry: { type: "LineString", coordinates: pts.map((p) => [p.lon, p.lat]) } });
-const MODELS = ["B1-25", "B2-25", "B3-25", "B2-50"];
+const MODELS = ["B1-25", "B2-25", "B3-25", "B2-50", "B2-50-nms", "B2-25-perm"];
 
 interface AreaInfo { id: string; name: string; imageCoords: [number, number][] }
 interface Pane { map: MapLibreMap; session: SimSession; g: TrailGraph; label: string; hist: Map<string, { ll: { lat: number; lon: number }; off: boolean }[]>; prevOff: Map<string, boolean>; ready: boolean }
@@ -160,7 +160,7 @@ export default function HybridViewer() {
   const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
   return (
     <div className="map-shell" style={{ display: "flex", flexDirection: "column" }}>
-      <style>{`.pane{position:relative;flex:1;min-height:0}.tag{position:absolute;left:8px;bottom:8px;z-index:2;background:#131a22e8;border:1px solid #243040;border-radius:10px;padding:6px 10px;font-size:.8rem;font-variant-numeric:tabular-nums}.logbox{position:absolute;right:8px;bottom:8px;z-index:2;max-width:55%;font-size:.7rem;color:#fdba74;text-align:right;line-height:1.3;pointer-events:none}`}</style>
+      <style>{`.pane{position:relative;flex:1;min-height:0}.tag{position:absolute;left:8px;bottom:8px;z-index:2;background:#131a22e8;border:1px solid #243040;border-radius:10px;padding:6px 10px;font-size:.8rem;font-variant-numeric:tabular-nums}.logbox{position:absolute;right:8px;bottom:64px;z-index:2;max-width:55%;font-size:.7rem;color:#fdba74;text-align:right;line-height:1.3;pointer-events:none}`}</style>
       <div className="hud" style={{ position: "absolute", zIndex: 5 }}>
         <span className="pill">{err ? "Fel" : "HYBRID-AI · experiment"}</span>
         <button className="pill" onClick={() => setPlaying((p) => !p)} style={{ color: "inherit" }}>{playing ? "⏸" : "▶"}</button>

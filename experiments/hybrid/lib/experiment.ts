@@ -12,7 +12,8 @@ import { SimSession, type StrategyName } from "@/sim/runner";
 import type { AreaDef } from "../areas";
 import { loadAreaGraph, type AreaGraph } from "./graphs";
 import { buildHybridGraph, type HybridConfig, type HybridResult } from "./hybrid-graph";
-import { buildRaster, C, classAt, type TerrainRaster } from "./raster";
+import { blockersFor } from "./blockers";
+import { buildRaster, type TerrainRaster } from "./raster";
 import { makePlanner, zombieEtas as etasOf } from "./planner";
 import { createPairedSession, mapToHybrid, randomStart, type Density } from "./pairing";
 export { mapToHybrid, randomStart };
@@ -184,10 +185,9 @@ export function runMatch(sc: Scenario, model: ModelSpec, from?: { zombies: Zombi
         m.maxStepAllowedM = Math.max(m.maxStepAllowedM, z.speedMps * STEP_S);
       }
       prevPos.set(z.id, ll);
-      if (off && z.distanceAlongEdgeM > 8 && z.distanceAlongEdgeM < e.lengthM - 8) {
+      if (off) {
         const l = toLocal(c.ag.fx.origin, ll);
-        const cls = classAt(c.raster, l.x, l.y);
-        if (cls !== C.FOREST && cls !== C.OPEN && cls !== C.UNKNOWN) m.offroadViolations++;
+        if (blockersFor(c.raster).pointBlocked([l.x, l.y])) m.offroadViolations++;
       }
       const d = haversineM(ll, pl);
       nearest = Math.min(nearest, d);

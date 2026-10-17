@@ -3,6 +3,7 @@ import { pointAlong, toLocal, type LatLon } from "@/geo/geometry";
 import { indexGraph } from "@/geo/graph/graph";
 import type { RawEdge, SerializedGraph, TrailGraph } from "@/geo/graph/types";
 import type { Fixture } from "./fixture";
+import { blockersFor } from "./blockers";
 import { C, classAt, type TerrainRaster } from "./raster";
 
 export interface HybridConfig {
@@ -84,6 +85,8 @@ function slice(geometry: LatLon[], cum: number[], from: number, to: number): Lat
 export function buildHybridGraph(trail: SerializedGraph, fx: Fixture, raster: TerrainRaster, cfg: HybridConfig): HybridResult {
   const t0 = performance.now();
   const base = indexGraph(trail);
+  const blockers = blockersFor(raster);
+  const inside = (a: { x: number; y: number }) => a.x >= 0 && a.y >= 0 && a.x <= fx.widthM && a.y <= fx.heightM;
   const passable = cfg.terrain === "verified" ? PASSABLE_VERIFIED : PASSABLE_PERMISSIVE;
   const xy = (p: LatLon) => toLocal(fx.origin, p);
 
@@ -173,6 +176,8 @@ export function buildHybridGraph(trail: SerializedGraph, fx: Fixture, raster: Te
           const B = anchors[bi];
           const d = Math.hypot(A.x - B.x, A.y - B.y);
           if (d > cfg.maxLinkM || d < 15) continue;
+          // Data är fullständig bara inom rutan: förbindelser får aldrig ligga utanför den (stigar kan sticka ut över kanten).
+          if (!inside(A) || !inside(B)) continue;
           stats.candidatePairs++;
           // Nytta: stigväg i meter-ekvivalenter mot off-road-tid (d / faktor).
           const trailDist = dist[bi];
@@ -190,7 +195,15 @@ export function buildHybridGraph(trail: SerializedGraph, fx: Fixture, raster: Te
           cands.push({ a: ai, b: bi, d, benefit });
         }
     cands.sort((x, y) => y.benefit - x.benefit);
-    accepted.push(...cands.slice(0, cfg.maxLinksPerAnchor));
+    // Exakt kontroll mot kända hinder längs HELA förbindelsen (inga undantag vid ändarna, ingen rasterupplösning).
+    // Görs lazy, bara för de bäst rankade, vilket ger samma resultat som att kontrollera alla först.
+    let taken = 0;
+    for (const c of cands) {
+      if (taken >= cfg.maxLinksPerAnchor) break;
+      if (blockers.segmentBlocked([A.x, A.y], [anchors[c.b].x, anchors[c.b].y])) { stats.rejectedTerrain++; stats.rejectedByClass.hinder = (stats.rejectedByClass.hinder ?? 0) + 1; continue; }
+      accepted.push(c);
+      taken++;
+    }
   }
 
   // 4. Gles ut så att ingen ankarpunkt får fler än maxLinksPerAnchor även som mål.
