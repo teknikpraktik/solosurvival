@@ -11,6 +11,7 @@ import { objectivesFromProposal } from "@/routes/objectives";
 import { estimateTimeLimitS } from "@/routes/timing";
 import type { RouteProposal } from "@/routes/types";
 import { makeGoalBot, newBotStats } from "@/sim/bots";
+import { randomStart } from "@/sim/start";
 import { SimSession } from "@/sim/runner";
 import type { AreaDef } from "../../data/areas";
 import { loadAreaGraphs } from "../../data/lib/load";
@@ -28,17 +29,7 @@ export function areaNet(id: AreaDef["id"], activity: Activity): AreaNet {
   return n;
 }
 
-export function randomStart(g: TrailGraph, seed: number): LatLon {
-  const rng: RngHolder = { rngState: (seed * 40503 + 7) >>> 0 };
-  const edges = [...g.edges.values()];
-  const total = edges.reduce((s, e) => s + e.lengthM, 0);
-  let r = rand(rng) * total;
-  for (const e of edges) {
-    r -= e.lengthM;
-    if (r <= 0) return edgeLatLon(g, { edgeId: e.id, distM: rand(rng) * e.lengthM });
-  }
-  return edgeLatLon(g, { edgeId: edges[0].id, distM: edges[0].lengthM / 2 });
-}
+export { randomStart };
 
 export interface ModeScenario {
   area: AreaDef["id"];
@@ -53,11 +44,14 @@ export interface ModeScenario {
   proposalIndex?: number;
   /** Zombietäthet relativt PRD:s antal (default 1). */
   density?: number;
+  /** Mission: tvinga antal checkpoints. */
+  checkpoints?: 1 | 2 | 3;
+  deadEndPolicy?: "avoid" | "allow";
 }
 
 export interface ModeMetrics {
   area: string; activity: string; mode: string; difficulty: string; size: number; seed: number; bot: string;
-  routeValid: boolean;
+  routeValid: boolean; cps: number; policy: string; routeMaxDepth: number; routeExits: number;
   routeType: string; routeLengthM: number; routeDeviation: number; routeQuality: number; routeDeadEndShare: number; routeReuse: number; checkpoints: number;
   genMs: number;
   result: string; endS: number; limitS: number; reached: number; timeToGoalS: number; distanceM: number;
@@ -69,20 +63,20 @@ export function runModeMatch(sc: ModeScenario): { m: ModeMetrics; proposals: Rou
   const start = randomStart(net.g, sc.seed);
   const base: ModeMetrics = {
     area: sc.area, activity: sc.activity, mode: sc.mode, difficulty: sc.difficulty, size: sc.size, seed: sc.seed, bot: sc.bot,
-    routeValid: true, routeType: "-", routeLengthM: 0, routeDeviation: 0, routeQuality: 0, routeDeadEndShare: 0, routeReuse: 0, checkpoints: 0,
+    routeValid: true, cps: sc.checkpoints ?? 0, policy: sc.deadEndPolicy ?? "avoid", routeMaxDepth: 0, routeExits: 0, routeType: "-", routeLengthM: 0, routeDeviation: 0, routeQuality: 0, routeDeadEndShare: 0, routeReuse: 0, checkpoints: 0,
     genMs: 0, result: "", endS: 0, limitS: 0, reached: 0, timeToGoalS: NaN, distanceM: 0, blocked: 0, decisions: 0, deviations: 0, peakZombies: 0, simMs: 0,
   };
   let durationS = sc.size;
   let proposals: RouteProposal[] = [];
   let objectives;
   if (sc.mode !== "survival") {
-    const r = generateRoutes(net.g, { start, activity: sc.activity, mode: sc.mode, targetLengthM: sc.size, seed: sc.seed, hazardNodes: net.hazard });
+    const r = generateRoutes(net.g, { start, activity: sc.activity, mode: sc.mode, targetLengthM: sc.size, seed: sc.seed, hazardNodes: net.hazard, checkpoints: sc.checkpoints, deadEndPolicy: sc.deadEndPolicy });
     proposals = r.proposals;
     base.genMs = r.stats.ms;
     const p = proposals[Math.min(sc.proposalIndex ?? 0, proposals.length - 1)];
     if (!p) return { m: { ...base, routeValid: false, result: "no_route" }, proposals };
     base.routeType = p.type; base.routeLengthM = p.lengthM; base.routeDeviation = p.deviation; base.routeQuality = p.quality.score;
-    base.routeDeadEndShare = p.metrics.deadEndShare; base.routeReuse = p.metrics.reuseShare; base.checkpoints = p.waypoints.filter((w) => w.kind === "checkpoint").length;
+    base.routeDeadEndShare = p.metrics.deadEndShare; base.routeReuse = p.metrics.reuseShare; base.checkpoints = p.waypoints.filter((w) => w.kind === "checkpoint").length; base.routeMaxDepth = p.metrics.maxWaypointDeadEndDepthM; base.routeExits = p.metrics.minWaypointExits;
     durationS = estimateTimeLimitS(p.lengthM, sc.activity, sc.difficulty, p.waypoints.length);
     objectives = objectivesFromProposal(p);
   }

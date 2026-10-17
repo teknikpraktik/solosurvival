@@ -38,3 +38,13 @@ npm run sim -- 20 24 # balanseringssimulering: matcher per cell, rutnätsstorlek
 - Zombier hålls i spelarens sammanhängande nätverkskomponent.
 - Tailwind är inte installerat än; UI:t är minimal CSS tills etapp 4.
 - Utan `NEXT_PUBLIC_MAP_STYLE` ritas bara stignätet på mörk bakgrund. En kartleverantör med lämpliga villkor måste väljas före release.
+
+## Etapp 2.5: kartdata, ruttgenerering och tre spellägen
+
+Experimentell utvecklingskod på branchen `feature/etapp-2.5-routes` (hybridstudien ligger kvar, ej mergad, på `experiment/hybrid-offroad`).
+
+- Rapport och rekommendation: [`docs/ETAPP-2.5.md`](docs/ETAPP-2.5.md)
+- Kartdatakällor (OSM-extrakt, Lantmäteriet, Skogsstyrelsen): [`experiments/data/DATA-SOURCES.md`](experiments/data/DATA-SOURCES.md)
+- Ruttgenerator: `src/routes/` · målmodell: `src/engine/objectives/` · lägesregler: `src/config/modes.ts` · botar: `src/sim/bots.ts`
+- Dev-vy: `npx tsx experiments/routes/export-viz.ts && npm run dev`, öppna `/dev/routes`
+- Utvärdering: `npx tsx experiments/routes/eval-routes.ts`, `experiments/routes/run-all.sh`, resultat i `experiments/routes/results-*.md`

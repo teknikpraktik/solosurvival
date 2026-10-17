@@ -51,6 +51,18 @@ describe("Escape (A→B)", () => {
       expect(haversineM(p.geometry.at(-1)!, p.waypoints[0])).toBeLessThan(1);
     }
   });
+  it("använder omväg (via) när ingen destination ligger på rätt avstånd längs kortaste vägen", () => {
+    const long = generateRoutes(g, { ...req, targetLengthM: 3600 });
+    expect(long.proposals.length).toBeGreaterThan(0);
+    for (const p of long.proposals) {
+      expect(p.withinTolerance).toBe(true);
+      expect(p.metrics.reuseShare).toBeLessThanOrEqual(0.2);
+      expect(geoLen(p)).toBeCloseTo(p.lengthM, 0);
+      expectConnected(g, p);
+      expect(haversineM(p.waypoints[0], req.start)).toBeGreaterThanOrEqual(500);
+    }
+    expect(long.notes.some((n) => n.includes("omväg"))).toBe(true);
+  });
   it("är deterministisk per seed", () => {
     expect(generateRoutes(g, req).proposals.map((p) => p.id + p.lengthM)).toEqual(generateRoutes(g, req).proposals.map((p) => p.id + p.lengthM));
   });

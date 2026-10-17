@@ -81,14 +81,14 @@ function metricsFor(c: Ctx, legs: Leg[], wps: Waypoint[], isPointToPoint: boolea
 }
 
 /** Riskbedömning från geografin: ingen kännedom om zombierörelser. */
-function rate(m: RouteMetrics, deviation: number, tol: number, type: RouteType, mode: "escape" | "mission"): RouteProposal["quality"] {
+function rate(m: RouteMetrics, deviation: number, tol: number, type: RouteType, mode: "escape" | "mission", ignoreDeadEnds = false): RouteProposal["quality"] {
   const flags: string[] = [];
   let s = 100;
   const over = Math.max(0, Math.abs(deviation) - tol);
   if (over > 0) { s -= Math.min(30, over * 150); flags.push(`avviker ${(deviation * 100).toFixed(0)} % från önskad längd`); }
-  if (m.deadEndShare > 0.1) { s -= Math.min(25, m.deadEndShare * 60); flags.push(`${(m.deadEndShare * 100).toFixed(0)} % i återvändsgrenar`); }
-  if (m.maxWaypointDeadEndDepthM > PREFERRED_MAX_DEPTH_M) { s -= 15; flags.push(`målpunkt ${m.maxWaypointDeadEndDepthM.toFixed(0)} m in i återvändsgren`); }
-  if (m.minWaypointExits < 2) { s -= 12; flags.push("målpunkt med bara en utgång ur huvudnätet"); }
+  if (!ignoreDeadEnds && m.deadEndShare > 0.1) { s -= Math.min(25, m.deadEndShare * 60); flags.push(`${(m.deadEndShare * 100).toFixed(0)} % i återvändsgrenar`); }
+  if (!ignoreDeadEnds && m.maxWaypointDeadEndDepthM > PREFERRED_MAX_DEPTH_M) { s -= 15; flags.push(`målpunkt ${m.maxWaypointDeadEndDepthM.toFixed(0)} m in i återvändsgren`); }
+  if (!ignoreDeadEnds && m.minWaypointExits < 2) { s -= 12; flags.push("målpunkt med bara en utgång ur huvudnätet"); }
   if (m.hazardCrossings > 0) { s -= Math.min(30, 10 * m.hazardCrossings); flags.push(`${m.hazardCrossings} korsning(ar) med större väg`); }
   if (m.decisionPoints < 3) { s -= 10; flags.push("få vägval"); }
   if (mode === "escape" && m.alternativeRatio === null) { s -= 10; flags.push("saknar alternativ väg till målet"); }
@@ -116,7 +116,7 @@ function finish(c: Ctx, legs: Leg[], wps: Waypoint[], mode: "escape" | "mission"
     mode, type, waypoints: wps, lengthM, deviation, withinTolerance: Math.abs(deviation) <= tol,
     geometry: joinGeometry(legs), edgeIds: [...new Set(legs.flatMap((l) => l.edgeIds))], metrics: m,
     path: legs.flatMap((l, i) => legSteps(c.g, l, i === 0)),
-    quality: rate(m, deviation, tol, type, mode),
+    quality: rate(m, deviation, tol, type, mode, c.req.deadEndPolicy === "allow"),
   };
 }
 
@@ -133,7 +133,7 @@ function pickDiverse(c: Ctx, pool: RouteProposal[], count: number): RouteProposa
   const rank = (p: RouteProposal) => p.quality.score + (p.withinTolerance ? 50 : 0) + (p.type === "loop" ? 10 : 0);
   for (const p of [...pool].sort((a, b) => rank(b) - rank(a))) {
     if (out.length >= count) break;
-    if (out.every((q) => jaccard(q.edgeIds, p.edgeIds, c.g) < 0.5 && (p.mode === "mission" || haversineM(q.waypoints.at(-1)!, p.waypoints.at(-1)!) > 250))) out.push(p);
+    if (out.every((q) => jaccard(q.edgeIds, p.edgeIds, c.g) < 0.5 && (p.mode === "mission" || haversineM(q.waypoints.at(-1)!, p.waypoints.at(-1)!) > 200))) out.push(p);
   }
   return out;
 }
@@ -152,7 +152,7 @@ function generateEscape(c: Ctx, notes: string[]): { pool: RouteProposal[]; candi
   }
   if (!cands.length) { notes.push("Inga användbara destinationer hittades."); return { pool: [], candidates: 0 }; }
   const pool: RouteProposal[] = [];
-  const sorted = cands.sort((a, b) => Math.abs(a.dev) - Math.abs(b.dev)).slice(0, 80);
+  const sorted = cands.sort((a, b) => Math.abs(a.dev) - Math.abs(b.dev)).slice(0, 250);
   sorted.forEach((x, i) => {
     const leg = legBetween(c.g, c.start, nodePos(c.g, x.n));
     if (!leg) return;
@@ -163,10 +163,41 @@ function generateEscape(c: Ctx, notes: string[]): { pool: RouteProposal[]; candi
   const out: RouteProposal[] = [];
   const bearing = (p: RouteProposal) => bearingDeg(c.startLL, p.waypoints[0]);
   for (const p of [...pool].sort((a, b) => (b.quality.score + (b.withinTolerance ? 50 : 0)) - (a.quality.score + (a.withinTolerance ? 50 : 0)))) {
-    if (out.length >= 12) break;
-    if (out.every((q) => Math.abs(((bearing(p) - bearing(q) + 540) % 360) - 180) >= 45 && haversineM(q.waypoints[0], p.waypoints[0]) > 300)) out.push(p);
+    if (out.length >= 24) break;
+    if (out.every((q) => Math.abs(((bearing(p) - bearing(q) + 540) % 360) - 180) >= 25 && haversineM(q.waypoints[0], p.waypoints[0]) > 200)) out.push(p);
   }
   return { pool: out.length ? out : pool.slice(0, 12), candidates: cands.length };
+}
+
+/**
+ * A→B med omväg: referensrutten behöver inte vara kortaste vägen. Används när för få destinationer ligger på rätt avstånd.
+ * Rutten går start → via-punkt → destination, med straff på redan använda kanter så att den inte dubblerar sig.
+ */
+function generateEscapeVia(c: Ctx, need: number): RouteProposal[] {
+  const L = c.req.targetLengthM;
+  const tol = c.req.tolerance ?? 0.1;
+  const elig = [...c.dist].filter(([n, d]) => d > 150 && eligibleNode(c, n, HARD_MAX_DEPTH_M)).map(([n]) => n);
+  if (elig.length < 4) return [];
+  const out: RouteProposal[] = [];
+  const samples = c.req.samples ?? 300;
+  for (let s = 0; s < samples && out.length < need * 6; s++) {
+    const via = elig[Math.floor(rand(c.rng) * elig.length)];
+    const dest = elig[Math.floor(rand(c.rng) * elig.length)];
+    if (via === dest || haversineM(nodeLatLon(c.g, via), nodeLatLon(c.g, dest)) < 200) continue;
+    // Destinationen ska ligga tydligt från start, annars är det en förklädd slinga.
+    if (haversineM(nodeLatLon(c.g, dest), c.startLL) < Math.max(500, 0.15 * L)) continue;
+    const pen = new Map<string, number>();
+    const l1 = legBetween(c.g, c.start, nodePos(c.g, via), pen);
+    if (!l1) continue;
+    addPenalty(pen, l1.edgeIds, 6);
+    const l2b = legBetween(c.g, nodePos(c.g, via), nodePos(c.g, dest), pen);
+    if (!l2b) continue;
+    const total = l1.lengthM + l2b.lengthM;
+    if (Math.abs(total - L) / L > tol * 1.5) continue;
+    const p = finish(c, [l1, l2b], [mkWaypoint(c, "B", "destination", dest)], "escape", 1000 + s);
+    if (p && p.metrics.reuseShare <= 0.2) out.push(p);
+  }
+  return out;
 }
 
 /** A→A: slumpade checkpoint-uppsättningar; avsnitt planeras med straff på redan använda kanter så att slingor uppstår. */
@@ -233,6 +264,13 @@ export function generateRoutes(g: TrailGraph, req: RouteRequest): RouteResult {
     junction: (n) => (g.adj.get(n)?.length ?? 0) >= 3,
   };
   const res = req.mode === "escape" ? { ...generateEscape(c, notes), evaluated: 0 } : generateMission(c, notes);
+  if (req.mode === "escape") {
+    const direct = res.pool.filter((p) => p.withinTolerance).length;
+    if (direct < (req.count ?? 3)) {
+      const via = generateEscapeVia(c, (req.count ?? 3) - direct);
+      if (via.length) { res.pool.push(...via); notes.push(`${via.length} förslag går via en omväg eftersom för få destinationer ligger på rätt avstånd längs kortaste vägen.`); }
+    }
+  }
   const proposals = pickDiverse(c, res.pool, req.count ?? 3);
   if (proposals.length < (req.count ?? 3)) notes.push(`Bara ${proposals.length} tillräckligt olika förslag gick att generera.`);
   return { proposals, notes, stats: { candidates: res.candidates, evaluated: res.evaluated || res.candidates, ms: performance.now() - t0 } };
