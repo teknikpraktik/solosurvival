@@ -84,3 +84,34 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .attrib { position: absolute; left: 8px; bottom: 3px; z-index: 6; font-size: 10px; color: #9fb0c0; text-decoration: none; background: #0b0f14aa; padding: 1px 5px; border-radius: 4px; }
 .controls { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 14px); }
 .sheet { padding-bottom: calc(max(14px, env(safe-area-inset-bottom)) + 12px); }
+/* Kartsymboler */
+.pmark { width: 40px; height: 40px; pointer-events: none; }
+.pmark .arrow, .pmark .dot { position: absolute; inset: 0; transition: transform .8s linear, opacity .3s; will-change: transform; }
+.pmark .dot { opacity: 1; } .pmark.has-heading .dot { opacity: 0; } .pmark:not(.has-heading) .arrow { opacity: 0; }
+.zmark { width: 34px; height: 34px; pointer-events: none; filter: drop-shadow(0 0 3px #000c); }
+.zmark .zring { transition: stroke .3s; }
+.zmark.chase .zring { stroke: #ff4d4d; stroke-width: 2.4; }
+.zmark.chase .zeye { fill: #ff2a2a; }
+.compass { position: relative; }
+.compass svg { width: 26px; height: 26px; transition: transform .8s linear; }
+/* Dialoger */
+.modal-backdrop { position: fixed; inset: 0; z-index: 50; background: #0b0f14d9; display: flex; align-items: center; justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+.modal { width: min(440px, 100%); max-height: 100%; display: flex; flex-direction: column; background: var(--panel); border: 1px solid #2d3b4d; border-radius: 16px; overflow: hidden; }
+.modal.bad { border-color: #b91c1c; }
+.modal-head { display: flex; align-items: center; gap: 8px; padding: 12px 8px 4px 16px; }
+.modal-head h2 { flex: 1; margin: 0; font-size: 1.1rem; letter-spacing: .05em; }
+.modal-body { padding: 4px 16px 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 8px; }
+.modal-actions { padding: 10px 16px 16px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #243040; background: var(--panel); }
+.modal-actions .btn { width: 100%; }
+.xbtn { display: inline-flex; align-items: center; justify-content: center; min-width: 48px; min-height: 48px; border-radius: 12px; border: 1px solid #2d3b4d; background: #1b2430; color: var(--text); font-size: 1.2rem; text-decoration: none; cursor: pointer; }
+.controls .iconbtn { flex: 0 0 48px; padding: 0; font-size: 1.2rem; }
+.controls .wide { flex: 2; }
+.controls { gap: 8px; }
+.controls button { min-width: 0; padding: 0 4px; font-size: .85rem; letter-spacing: .03em; }
+.controls .iconbtn { flex: 0 0 44px; }
+.controls .wide { flex: 1.5; }
+.controls { gap: 6px; }
+.controls .iconbtn { flex: 0 0 42px; }
+.controls .wide { flex: 1; }
+.controls button:last-child { flex: 1.3; }

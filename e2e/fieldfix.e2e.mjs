@@ -1,0 +1,150 @@
+// Fälttest 1-rättningar i webbläsaren: Track Up, riktningspil, dialoger (ej överlappande knappar, X), zombiemarkörer, nätverk per minut.
+// GPS är MOCKAD (Playwright setGeolocation, ingen heading/speed i API:t – riktningen härleds ur förflyttning). Inte ett fälttest.
+import { chromium } from "playwright-core";
+import { destPoint } from "./geo.mjs";
+
+const BASE = process.env.BASE_URL ?? "http://localhost:3100";
+const VW = Number(process.env.VW ?? 390), VH = Number(process.env.VH ?? 844);
+const START = { latitude: 59.40731, longitude: 13.46753, accuracy: 6 };
+const OUT = process.env.E2E_OUT ?? "e2e/out-fix";
+import { mkdirSync } from "node:fs"; mkdirSync(OUT, { recursive: true });
+const res = [];
+const check = (n, ok, i = "") => { res.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${i ? " – " + i : ""}`); };
+
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+const ctx = await browser.newContext({ viewport: { width: VW, height: VH }, isMobile: true, hasTouch: true, permissions: ["geolocation"], geolocation: START, locale: "sv-SE" });
+await ctx.addInitScript(() => { try { localStorage.setItem("outbreak.debug", "on"); } catch {} });
+const page = await ctx.newPage();
+const reqs = []; const errs = [];
+page.on("requestfinished", async (r) => { try { const s = await r.sizes(); reqs.push({ host: new URL(r.url()).host, url: r.url(), bytes: s.responseBodySize + s.responseHeadersSize, t: Date.now() }); } catch {} });
+page.on("pageerror", (e) => errs.push(String(e)));
+
+/** Är elementet synligt och nåbart (ingen annan ruta täcker dess mitt) och helt inom skärmen? */
+const reachable = async (locator) => locator.evaluate((el) => {
+  const r = el.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const top = document.elementFromPoint(cx, cy);
+  return { inside: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight, hit: !!top && (el === top || el.contains(top)), w: r.width, h: r.height };
+});
+
+await page.goto(BASE + "/new");
+for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
+await page.getByText(/GPS klar/).waitFor({ timeout: 15000 });
+await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
+await page.getByRole("button", { name: "VISA OMRÅDE" }).click();
+await page.getByText(/Matchlängd/).first().waitFor({ timeout: 60000 });
+for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
+await page.getByRole("button", { name: "START", exact: true }).click();
+await page.waitForURL("**/play");
+for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
+
+// Dialog "Redo att starta"
+const dlg = page.getByRole("dialog", { name: "Redo att starta" });
+await dlg.waitFor({ timeout: 10000 });
+const startBtn = dlg.getByRole("button", { name: "STARTA" });
+let r = await reachable(startBtn);
+check("startdialog: STARTA helt synlig och nåbar", r.inside && r.hit, JSON.stringify(r));
+const x = dlg.getByRole("button", { name: "Stäng" });
+r = await reachable(x);
+check("startdialog: X nåbar och minst 44 px", r.inside && r.hit && r.w >= 44 && r.h >= 44, `${r.w}x${r.h}`);
+const xb = await x.boundingBox(), db = await dlg.locator(".modal").boundingBox();
+check("startdialog: X uppe till höger i dialogen", xb.x + xb.width > db.x + db.width - 70 && xb.y < db.y + 70);
+await page.screenshot({ path: `${OUT}/dialog-start.png` });
+// X stänger dialogen; kontrollfältet blir nåbart
+await x.click();
+await page.waitForTimeout(300);
+check("X stänger dialogen", (await page.getByRole("dialog").count()) === 0);
+const ctrl = page.locator(".controls").getByRole("button", { name: "STARTA" });
+r = await reachable(ctrl);
+check("kontrollfältets STARTA nåbart när dialogen stängts", r.inside && r.hit);
+await ctrl.click();
+
+// Gå: öst 4 m/s 25 s, 90° vänster (norr) 25 s, U-sväng (söder) 25 s.
+let p = { latitude: START.latitude, longitude: START.longitude };
+const map = page.locator('[data-testid="map"]');
+const bearings = [];
+const leg = async (bearing, secs, speed = 4) => { for (let i = 0; i < secs; i++) { p = destPoint(p, speed, bearing); await ctx.setGeolocation({ ...p, accuracy: 6 }); await page.waitForTimeout(1000); } bearings.push(Number(await map.getAttribute("data-bearing"))); };
+const t0 = Date.now(); const reqBefore = reqs.length;
+await leg(90, 25);
+await page.screenshot({ path: `${OUT}/trackup-east.png` });
+await leg(0, 25);
+await leg(180, 25);
+const near = (a, b, tol) => Math.abs(((a - b + 540) % 360) - 180) <= tol;
+check("Track Up: kartan roterar mot färdriktningen (öst, norr, söder)", near(bearings[0], 90, 25) && near(bearings[1], 0, 25) && near(bearings[2], 180, 25), JSON.stringify(bearings));
+check("pilen visas (har riktning)", (await page.locator(".pmark.has-heading").count()) === 1);
+const minutes = (Date.now() - t0) / 60000;
+const mine = reqs.slice(reqBefore);
+const own = mine.filter((q) => q.host.includes("localhost") || q.host.includes("vercel.app"));
+const tiles = mine.filter((q) => q.host.includes("openfreemap"));
+console.log("totalt anrop under gång:", mine.length);
+console.log(`NÄT per minut under gång (${minutes.toFixed(2)} min): egen server ${(own.length / minutes).toFixed(1)} anrop, ${(own.reduce((a, q) => a + q.bytes, 0) / minutes / 1024).toFixed(1)} KiB; kartrutor ${(tiles.length / minutes).toFixed(1)} anrop, ${(tiles.reduce((a, q) => a + q.bytes, 0) / minutes / 1024).toFixed(1)} KiB`);
+
+// Zombiemarkörer om någon är inom närhetsradien
+const pill = await page.locator(".hudbar .pill").filter({ hasText: /Zombie|Inga zombier/ }).first().innerText();
+const m = pill.match(/Zombie (\d+(?:\.\d)?) (m|km)/);
+const dist = m ? Number(m[1]) * (m[2] === "km" ? 1000 : 1) : null;
+console.log("zombie-pill:", pill);
+if (dist !== null && dist <= 500) check("zombiemarkör ritas när zombie är inom 500 m", (await page.locator(".zmark").count()) >= 1);
+else check("zombie-pill visar avstånd eller 'inga ännu'", /Zombie|Inga zombier ännu/.test(pill));
+check("zombiemarkörer bara inom närhetsradien", (await page.locator(".zmark").count()) <= (dist !== null && dist <= 500 ? 20 : 0));
+
+// Tvinga fram en zombie 300 m bort på en kant (via felsökningshaket) och kontrollera markör + mjuk rörelse.
+const placed = await page.evaluate(() => {
+  const s = window.__outbreak; const live = s.live; const pos = live.filter.position;
+  const hav = (a, b) => { const R = 6371000, r = Math.PI / 180, dLa = (b.lat - a.lat) * r, dLo = (b.lon - a.lon) * r; const h = Math.sin(dLa / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
+  let best = null;
+  for (const e of live.g.edges.values()) for (let d = 0; d <= e.lengthM; d += 10) {
+    const f = d / e.lengthM; const i = Math.min(e.geometry.length - 2, Math.floor(f * (e.geometry.length - 1))); const a = e.geometry[i], b = e.geometry[i + 1]; const t = f * (e.geometry.length - 1) - i;
+    const ll = { lat: a.lat + (b.lat - a.lat) * t, lon: a.lon + (b.lon - a.lon) * t };
+    const diff = Math.abs(hav(ll, pos) - 300); if (!best || diff < best.diff) best = { e: e.id, d, diff };
+  }
+  const z = live.state.zombies[0]; z.edgeId = best.e; z.distanceAlongEdgeM = best.d; z.route = []; z.state = "patrol";
+  return best;
+});
+await page.waitForTimeout(1500);
+check("zombiemarkör (SVG-ansikte) syns när zombie är 300 m bort", (await page.locator(".zmark svg.zsvg").count()) >= 1, JSON.stringify(placed));
+await page.screenshot({ path: `${OUT}/zombie-on-map.png` });
+const jumps = await page.evaluate(() => new Promise((resolve) => {
+  const el = document.querySelector(".zmark"); if (!el) return resolve(null);
+  let last = null, max = 0, n = 0; const t0 = performance.now();
+  const f = (now) => { const r = el.getBoundingClientRect(); if (last) max = Math.max(max, Math.hypot(r.x - last.x, r.y - last.y)); last = { x: r.x, y: r.y }; n++; if (now - t0 < 3000) requestAnimationFrame(f); else resolve({ maxPx: max, frames: n }); };
+  requestAnimationFrame(f);
+}));
+console.log("zombiemarkör rörelse:", JSON.stringify(jumps));
+check("zombiemarkören hoppar inte mellan bildrutor (< 6 px/bildruta)", jumps !== null && jumps.maxPx < 6, JSON.stringify(jumps));
+
+// Kompass: byt till North Up
+const compass = page.locator(".controls .compass");
+await compass.click(); await page.waitForTimeout(1500);
+check("kompassknappen byter till North Up", near(Number(await map.getAttribute("data-bearing")), 0, 6));
+await compass.click(); await page.waitForTimeout(300);
+
+// Paus → dialog → nåbara knappar (håll GPS färsk, annars visar dialogen korrekt "VÄNTAR PÅ GPS…")
+for (let i = 0; i < 3; i++) { await ctx.setGeolocation({ ...p, accuracy: 6 }); await page.waitForTimeout(500); }
+await page.locator(".controls").getByRole("button", { name: "PAUS" }).click();
+const pd = page.getByRole("dialog", { name: "Pausad" });
+await pd.waitFor();
+for (const name of ["FORTSÄTT", "AVSLUTA"]) { r = await reachable(pd.getByRole("button", { name, exact: true })); check(`pausdialog: ${name} nåbar`, r.inside && r.hit); }
+await page.screenshot({ path: `${OUT}/dialog-pause.png` });
+// Avsluta-bekräftelse
+await pd.getByRole("button", { name: "AVSLUTA" }).click();
+const cd = page.getByRole("dialog", { name: "Avsluta matchen?" });
+await cd.waitFor();
+for (const name of ["AVSLUTA", "FORTSÄTT SPELA", "Stäng"]) { r = await reachable(cd.getByRole("button", { name, exact: true })); check(`bekräftelse: ${name} nåbar`, r.inside && r.hit); }
+await cd.getByRole("button", { name: "AVSLUTA", exact: true }).click();
+const fd = page.getByRole("dialog", { name: "AVBRUTEN" });
+await fd.waitFor();
+check("Match slut: inget X (obligatoriskt beslut)", (await fd.getByRole("button", { name: "Stäng" }).count()) === 0);
+for (const name of ["TILL START", "PREVIOUS GAMES"]) { r = await reachable(fd.getByText(name, { exact: true })); check(`Match slut: ${name} nåbar`, r.inside && r.hit); }
+await page.screenshot({ path: `${OUT}/dialog-end.png` });
+
+// Sidor: X uppe till höger
+for (const [url, t] of [["/how-to-play", "HOW TO PLAY"], ["/history", "PREVIOUS GAMES"], ["/field", "TESTLÄGE"]]) {
+  await page.goto(BASE + url);
+  r = await reachable(page.getByRole("link", { name: "Stäng" }));
+  check(`${t}: ✕ nåbar (≥44 px)`, r.inside && r.hit && r.w >= 44);
+}
+const real = errs.filter((e) => !/WebGL|swiftshader/i.test(e));
+check("inga JS-fel", real.length === 0, real.slice(0, 2).join(" | "));
+await browser.close();
+process.exit(res.every(Boolean) ? 0 : 1);

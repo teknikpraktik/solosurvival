@@ -58,11 +58,17 @@ export function dataRadiusM(p: MatchParams): number {
   return p.targetLengthM * 0.5 + 500;
 }
 
+/** Spelområden med datahämtningsradie under denna gräns räknas som "små" (se proximityRadiusM). */
+export const LARGE_AREA_RADIUS_M = 3500;
+
 /**
- * Hur nära en zombie måste vara för att synas på kartan (m). Preliminärt UI-värde (påverkar inte motorn);
- * justeras efter fälttest. Längre för snabbare aktiviteter eftersom reaktionssträckan är längre.
+ * Närhetsradie (m): inom detta geografiska avstånd syns zombier på kartan och en ny zombie ger ett varningsljud.
+ * 500 m i små spelområden (Walk/Run-slingor, korta Escape), 1 000 m i stora (MTB, långa pass, Survival över ca 3,5 km radie).
+ * Utgår från samma radie som kartdata hämtas med (`dataRadiusM`), alltså spelområdets faktiska storlek – aldrig från zoom eller pixlar.
  */
-export const AWARENESS_M: Record<Activity, number> = { walk: 150, run: 250, mtb: 400 };
+export function proximityRadiusM(p: MatchParams): number {
+  return dataRadiusM(p) >= LARGE_AREA_RADIUS_M ? 1000 : 500;
+}
 
 /** Före matchstart: bästa acceptabla noggrannhet (m) för att få starta, och när varning visas. */
 export const START_MAX_ACCURACY_M = 25;

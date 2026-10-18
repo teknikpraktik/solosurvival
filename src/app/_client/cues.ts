@@ -16,7 +16,28 @@ const PATTERN: Record<Cue, { f: number[]; vib: number[] }> = {
   goal: { f: [523, 784], vib: [120] },
   info: { f: [600], vib: [80] },
   end: { f: [392, 330, 262], vib: [400] },
+  zombie: { f: [110, 78], vib: [60, 40, 120] },
 };
+
+/** Lokal ljudfil (cachas av service workern); avkodas en gång. Faller tillbaka på syntetiskt ljud om den saknas. */
+const SAMPLES: Partial<Record<Cue, string>> = { zombie: "/audio/zombie-near.wav" };
+const buffers = new Map<Cue, AudioBuffer>();
+const loading = new Set<Cue>();
+
+/** Förladdar och avkodar matchens ljudfiler (anropas efter första användarinteraktionen). */
+export async function preloadCues(): Promise<void> {
+  try {
+    ctx ??= new AudioContext();
+    for (const [cue, url] of Object.entries(SAMPLES) as [Cue, string][]) {
+      if (buffers.has(cue) || loading.has(cue)) continue;
+      loading.add(cue);
+      try {
+        const r = await fetch(url);
+        buffers.set(cue, await ctx.decodeAudioData(await r.arrayBuffer()));
+      } catch { /* synt-reserv används */ } finally { loading.delete(cue); }
+    }
+  } catch { /* ljud ej tillgängligt */ }
+}
 
 /** Ljud och vibration så att spelaren inte behöver titta på skärmen (särskilt viktigt på cykel). Vibration saknas på iPhone. */
 export function playCue(cue: Cue): void {
@@ -25,6 +46,16 @@ export function playCue(cue: Cue): void {
   try {
     ctx ??= new AudioContext();
     if (ctx.state === "suspended") void ctx.resume();
+    const buf = buffers.get(cue);
+    if (buf) {
+      const src = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.7;
+      src.buffer = buf;
+      src.connect(gain).connect(ctx.destination);
+      src.start();
+      return;
+    }
     let t = ctx.currentTime;
     for (const f of PATTERN[cue].f) {
       const o = ctx.createOscillator();
@@ -43,5 +74,5 @@ export function playCue(cue: Cue): void {
 
 /** Anropas vid en knapptryckning så att ljud tillåts senare under spelet. */
 export function unlockAudio(): void {
-  try { ctx ??= new AudioContext(); void ctx.resume(); } catch { /* ignoreras */ }
+  try { ctx ??= new AudioContext(); void ctx.resume(); void preloadCues(); } catch { /* ignoreras */ }
 }

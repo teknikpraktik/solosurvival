@@ -42,6 +42,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // Ny datauppsättning på servern rensar gamla tiles i cachen.
       try { const m = await store.loadManifest(); await cache?.purgeOthers(m.dataVersion); } catch { /* offline: använd cache */ }
       if (cancelled) return;
+      // Felsökningshak för fälttest/e2e: localStorage "outbreak.debug" = "on" exponerar sessionen som window.__outbreak.
+      try { if (localStorage.getItem("outbreak.debug") === "on") (window as unknown as { __outbreak?: PlaySession }).__outbreak = session; } catch { /* ignoreras */ }
       setCtx({ session, db, ready: true });
     })();
     const vis = () => session?.onVisibility(document.hidden);

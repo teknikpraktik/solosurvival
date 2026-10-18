@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PageHeader } from "../_client/Modal";
 import { useCallback, useEffect, useState } from "react";
 import { MatchStorage, type HistoryRecord } from "@/play/storage";
 import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_LABEL, RESULT_LABEL, fmtDate, fmtKm, fmtTime } from "../_client/format";
@@ -16,7 +17,7 @@ export default function History() {
 
   return (
     <main className="page">
-      <div className="topbar"><Link className="back" href="/" aria-label="Tillbaka">←</Link><h1>PREVIOUS GAMES</h1></div>
+      <PageHeader title="PREVIOUS GAMES" />
       {items === null && <div className="muted">Laddar…</div>}
       {items?.length === 0 && <div className="card">Inga matcher än. {ctx && !ctx.db && "Lokal lagring är inte tillgänglig i den här webbläsaren (t.ex. privat läge), så matcher sparas inte."}</div>}
       <div className="hist">
