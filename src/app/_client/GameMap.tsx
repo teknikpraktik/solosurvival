@@ -3,7 +3,7 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Map as MapLibreMap, Marker, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
-import type { LatLon } from "@/geo/geometry";
+import { bearingDeg, haversineM, type LatLon } from "@/geo/geometry";
 import type { TrailGraph } from "@/geo/graph/types";
 import { unwrapToward } from "@/play/heading";
 import { ZombieAnimator, type ZombieTarget } from "@/play/zombie-anim";
@@ -160,7 +160,7 @@ export default function GameMap(props: GameMapProps) {
 
   // --- Zombier: en enda rAF-loop som animerar mellan motorns uppdateringar ---
   const animRef = useRef<ZombieAnimator | null>(null);
-  const zMarkers = useRef(new Map<string, { m: Marker; el: HTMLDivElement; dir: HTMLElement; lat: number; lon: number }>());
+  const zMarkers = useRef(new Map<string, { m: Marker; el: HTMLDivElement; dir: HTMLElement; label: HTMLElement; lat: number; lon: number; text: string }>());
   const loopRef = useRef<{ raf: number; running: boolean; last: number }>({ raf: 0, running: false, last: 0 });
   const frozenRef = useRef(false);
   frozenRef.current = !!frozen;
@@ -176,8 +176,8 @@ export default function GameMap(props: GameMapProps) {
       if (!z) {
         const el = document.createElement("div");
         el.className = "zmark";
-        el.innerHTML = `${ZOMBIE_SVG}<span class="zdir">${ZOMBIE_DIR_SVG}</span>`;
-        z = { m: new Marker({ element: el, rotationAlignment: "viewport", pitchAlignment: "viewport" }).setLngLat([f.lon, f.lat]).addTo(map), el, dir: el.querySelector(".zdir") as HTMLElement, lat: f.lat, lon: f.lon };
+        el.innerHTML = `${ZOMBIE_SVG}<span class="zdir">${ZOMBIE_DIR_SVG}</span><span class="zlabel"></span>`;
+        z = { m: new Marker({ element: el, rotationAlignment: "viewport", pitchAlignment: "viewport" }).setLngLat([f.lon, f.lat]).addTo(map), el, dir: el.querySelector(".zdir") as HTMLElement, label: el.querySelector(".zlabel") as HTMLElement, lat: f.lat, lon: f.lon, text: "" };
         zMarkers.current.set(f.id, z);
       } else if (Math.abs(z.lat - f.lat) > 1e-8 || Math.abs(z.lon - f.lon) > 1e-8) {
         z.m.setLngLat([f.lon, f.lat]);
@@ -187,6 +187,21 @@ export default function GameMap(props: GameMapProps) {
       // Rörelsepil: tydlig rörelse även på låg zoom (zombier går ~1 m/s, bara någon pixel i sekunden). Vinkel relativt skärmen.
       if (f.bearing === null) z.dir.style.opacity = "0";
       else { z.dir.style.opacity = "1"; z.dir.style.transform = `rotate(${f.bearing - bearingRef.current}deg) translateY(-24px)`; }
+    }
+    // Avståndsetikett vid de tre zombier som är närmast spelaren, placerad åt spelarens håll (relativt skärmen).
+    const me = propsRef.current.player;
+    const near = new Set<string>();
+    if (me) frames.map((f) => ({ id: f.id, d: haversineM(f, me) })).sort((a, b) => a.d - b.d).slice(0, 3).forEach((x) => near.add(x.id));
+    for (const f of frames) {
+      const z = zMarkers.current.get(f.id);
+      if (!z) continue;
+      if (!me || !near.has(f.id)) { if (z.text !== "") { z.label.style.opacity = "0"; z.text = ""; } continue; }
+      const d = haversineM(f, me);
+      const text = d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d / (d < 100 ? 1 : 5)) * (d < 100 ? 1 : 5)} m`;
+      if (text !== z.text) { z.label.textContent = text; z.text = text; }
+      const a = ((bearingDeg(f, me) - bearingRef.current) * Math.PI) / 180;
+      z.label.style.opacity = "1";
+      z.label.style.transform = `translate(-50%, -50%) translate(${(Math.sin(a) * 40).toFixed(1)}px, ${(-Math.cos(a) * 40).toFixed(1)}px)`;
     }
     for (const [id, z] of zMarkers.current) if (!live.has(id)) { z.m.remove(); zMarkers.current.delete(id); }
   };

@@ -132,7 +132,7 @@ describe("paus och GPS-bortfall", () => {
     const g = gridGraph(14, 14, 150);
     const res = simulateMatch({
       g, activity: "run", difficulty: "hard", durationS: 1500, seed: 5, strategy: "avoid",
-      gpsOutages: [[400, 520]],
+      gpsOutages: [[60, 180]], // tidigt: med magnet-jakt och snabbare zombier hinner spelaren annars smittas före bortfallet
     });
     expect(res.events.some((e) => e.type === "gps_lost_long")).toBe(true);
     expect(res.state.result).not.toBe("incomplete");

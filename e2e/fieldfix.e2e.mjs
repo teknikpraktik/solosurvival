@@ -79,14 +79,6 @@ const tiles = mine.filter((q) => q.host.includes("openfreemap"));
 console.log("totalt anrop under gång:", mine.length);
 console.log(`NÄT per minut under gång (${minutes.toFixed(2)} min): egen server ${(own.length / minutes).toFixed(1)} anrop, ${(own.reduce((a, q) => a + q.bytes, 0) / minutes / 1024).toFixed(1)} KiB; kartrutor ${(tiles.length / minutes).toFixed(1)} anrop, ${(tiles.reduce((a, q) => a + q.bytes, 0) / minutes / 1024).toFixed(1)} KiB`);
 
-// Zombiemarkörer om någon är inom närhetsradien
-const pill = await page.locator(".hudbar .pill").filter({ hasText: /Zombie|Inga zombier/ }).first().innerText();
-const m = pill.match(/Zombie (\d+(?:\.\d)?) (m|km)/);
-const dist = m ? Number(m[1]) * (m[2] === "km" ? 1000 : 1) : null;
-console.log("zombie-pill:", pill);
-if (dist !== null && dist <= 500) check("zombiemarkör ritas när zombie är inom 500 m", (await page.locator(".zmark").count()) >= 1);
-else check("zombie-pill visar avstånd eller 'inga ännu'", /Zombie|Inga zombier ännu/.test(pill));
-check("zombiemarkörer bara inom närhetsradien", (await page.locator(".zmark").count()) <= (dist !== null && dist <= 500 ? 20 : 0));
 
 // Zombierna rör sig faktiskt efter försprånget (magnet-jakt): jämför positioner 10 s isär.
 const snap = () => page.evaluate(() => Object.fromEntries(window.__outbreak.getView().match.zombiesNear.map((z) => [z.id, [z.lat, z.lon]])));
@@ -113,6 +105,10 @@ const placed = await page.evaluate(() => {
 await page.waitForTimeout(1500);
 check("zombiemarkör (SVG-ansikte) syns när zombie är 300 m bort", (await page.locator(".zmark svg.zsvg").count()) >= 1, JSON.stringify(placed));
 await page.screenshot({ path: `${OUT}/zombie-on-map.png` });
+const labels = await page.locator(".zlabel").evaluateAll((els) => els.filter((e) => getComputedStyle(e).opacity !== "0").map((e) => e.textContent));
+console.log("avståndsetiketter:", JSON.stringify(labels));
+check("avstånd skrivs vid högst de tre närmaste zombierna", labels.length >= 1 && labels.length <= 3 && labels.every((t) => /^\d+ m$|^\d\.\d km$/.test(t)));
+check("HUD-rutan med zombieavstånd är borta", (await page.locator(".hudbar .pill").filter({ hasText: /^Zombie \d|Inga zombier/ }).count()) === 0);
 const jumps = await page.evaluate(() => new Promise((resolve) => {
   const el = document.querySelector(".zmark"); if (!el) return resolve(null);
   let last = null, max = 0, n = 0; const t0 = performance.now();
