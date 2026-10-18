@@ -64,3 +64,7 @@ HUD:en visade närmaste zombie oavsett avstånd, men kartan ritade bara zombier 
 - Kartdata hämtas runt mittpunkten mellan A och B (radie 0,75 × avståndet + 600 m) så att båda täcks.
 - Är A vald långt från din position kan du se rutten men inte starta: "Du är N m från A. Gå till A för att starta" (inom 60 m från A), med länk "Sätt A till min position".
 - Tidsgräns, mål (en destination B), zombier, magnet-jakt och övrig motor är oförändrade.
+
+## Fälttest 5: avståndsetiketter och +20 % zombiefart
+- Avstånd skrivs vid de **tre zombier som är närmast spelaren** (uppdateras varje bildruta), placerade åt spelarens håll relativt skärmen (40 px från markören, följer kartrotationen). HUD-rutan "Zombie N m" är borttagen. Etikett: hela meter under 100 m, annars närmaste 5 m, ≥ 1 km som "1,2 km".
+- Zombiefart +20 % (Normal): Walk 5,4 km/h, Run 9 km/h, MTB 14,4 km/h (Lätt ×0,8, Svår ×1,2: Walk Svår ≈ 6,5 km/h).
