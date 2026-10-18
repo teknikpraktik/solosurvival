@@ -15,6 +15,8 @@ export interface AiContext {
   /** Spelarens validerade position – används bara för närhetsdetektering (upptäcktsradie). */
   playerPos: LatLon;
   playerObservation: Observation | null;
+  /** Magnet-jakt: färsk observation av spelaren (null om GPS ogiltig eller magnet av). */
+  magnetObservation?: Observation | null;
   /** Sant under tick då ett periodiskt positionsavslöjande sker. */
   reveal: boolean;
   /** Sant om positionen är giltig nog att upptäcka spelaren. */
@@ -150,7 +152,9 @@ function planToLastKnown(ctx: AiContext, z: Zombie): boolean {
 
 function scheduleReplan(ctx: AiContext, z: Zombie, inContact: boolean) {
   // Under direktkontakt följer zombien snabbare efter; annars gäller den begränsade frekvensen (PRD 8.4).
-  z.replanAtS = ctx.timeS + (inContact ? CONTACT_REPLAN_S : REPLAN_MIN_S + rand(ctx.rng) * REPLAN_JITTER_S);
+  // Magnet-jakt sprider omplaneringarna (2–4 s) så att många zombier inte planerar samma tick.
+  const contact = ctx.magnetObservation ? CONTACT_REPLAN_S + rand(ctx.rng) * 2 : CONTACT_REPLAN_S;
+  z.replanAtS = ctx.timeS + (inContact ? contact : REPLAN_MIN_S + rand(ctx.rng) * REPLAN_JITTER_S);
 }
 
 /** Ett AI-steg för en zombie. `arrived` anger att rörelsen nådde sitt mål under föregående tick. */
@@ -160,9 +164,12 @@ export function updateZombieAI(ctx: AiContext, z: Zombie, arrived: boolean): voi
 
   // 1. Upptäckt via närhet (kräver giltig GPS).
   const dist = haversineM(zll, ctx.playerPos);
-  const inContact = ctx.detectionEnabled && dist <= rules.detectionRadiusM;
+  // Magnet-jakt: med giltig GPS känner zombien alltid spelarens (snappade) position och jagar kontinuerligt, oavsett avstånd.
+  // Gäller bara nätet (stigbunden): zombien går den kortaste vägen längs stigar/vägar mot spelaren.
+  const magnet = !!ctx.magnetObservation;
+  const inContact = magnet || (ctx.detectionEnabled && dist <= rules.detectionRadiusM);
   if (inContact) {
-    const obs = makeObservation(ctx.g, ctx.playerPos, timeS);
+    const obs = ctx.magnetObservation ?? makeObservation(ctx.g, ctx.playerPos, timeS);
     if (obs) {
       observe(z, obs);
       z.contactLostS = 0;

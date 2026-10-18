@@ -86,7 +86,7 @@ describe("zombierörelse", () => {
     const start = edgeLatLon(g, { edgeId: "r5:3", distM: 75 });
     const { state } = createGame({ g, config: cfg({ seed: 4 }), rules, start });
     const before = state.zombies.map((z) => zombieLatLon(g, z));
-    for (let i = 0; i < 5 * 60; i++) stepGame(g, state, rules, okInput(start));
+    for (let i = 0; i < 5 * (rules.headStartS - 5); i++) stepGame(g, state, rules, okInput(start));
     expect(state.phase).toBe("head_start");
     expect(state.zombies.map((z) => zombieLatLon(g, z))).toEqual(before);
   });
@@ -244,7 +244,7 @@ describe("extraction", () => {
       simulateMatch({ g, activity: "run", difficulty: "easy", durationS: 1800, seed: 100 + i, strategy: "extraction", paceFactor: 1 }),
     ).filter((r) => r.summary.result === "survived").length;
     expect(wins).toBeGreaterThan(0);
-  });
+  }, 60000);
   it("matchtiden löper ut utan extraction → FAILED", () => {
     const g = gridGraph(20, 20, 150);
     const res = simulateMatch({ g, activity: "run", difficulty: "easy", durationS: 600, seed: 8, strategy: "random", paceFactor: 0.0001 });

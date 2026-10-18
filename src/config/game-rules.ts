@@ -35,6 +35,9 @@ export interface Rules {
   /** Zombier som tillkommer per minut efter försprånget. */
   growthPerMin: number;
   spawnMinDistanceM: number;
+  spawnMaxDistanceM: number;
+  /** Magnet-jakt: zombier känner alltid spelarens (giltiga) position och jagar kontinuerligt, utan upptäcktsradie. */
+  magnetic: boolean;
   revealIntervalS: number;
   detectionRadiusM: number;
   interceptShare: number;
@@ -68,6 +71,8 @@ export function resolveRules(
     maxZombies,
     growthPerMin: (maxZombies - initialZombies) / growthWindowMin,
     spawnMinDistanceM: a.spawnMinDistanceM,
+    spawnMaxDistanceM: a.spawnMaxDistanceM,
+    magnetic: true,
     revealIntervalS: d.revealIntervalS,
     detectionRadiusM: d.detectionRadiusM,
     interceptShare: d.interceptShare,
