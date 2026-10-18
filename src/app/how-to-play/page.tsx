@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { PageHeader } from "../_client/Modal";
 
 export const metadata = { title: "Så spelar du – OUTBREAK" };
 
 export default function HowToPlay() {
   return (
     <main className="page">
-      <div className="topbar"><Link className="back" href="/" aria-label="Tillbaka">←</Link><h1>HOW TO PLAY</h1></div>
+      <PageHeader title="HOW TO PLAY" />
 
       <div className="card warn">
         <b>Säkerhet först.</b> Spelet är bara en vägledning. Du bestämmer alltid hur du rör dig. Följ trafikregler, korsa inte väg eller järnväg bara för att spelet föreslår det, och gå eller cykla inte in på privat mark, i farlig terräng eller över vatten. Titta aldrig på skärmen när du cyklar – använd ljud och vibration, eller stanna. Du kan avsluta när som helst, och det kostar ingenting att stanna av säkerhetsskäl.
@@ -13,6 +14,9 @@ export default function HowToPlay() {
 
       <h2>Idén</h2>
       <p>Zombier rör sig bara längs verkliga stigar och vägar. Du rör dig i verkligheten med telefonen i fickan eller på styret. Spelet följer din GPS-position.</p>
+
+      <h2>Kartan</h2>
+      <p>Pilen är du och pekar dit du rör dig. Kartan roterar så att färdriktningen är uppåt (Track Up); kompassknappen växlar till norr uppåt. Stillastående behåller pilen senaste riktning. Zombier syns som ansikten när de är närmare än 500 m (1 km i stora spelområden), och ett kort ljud varnar första gången en ny zombie kommer så nära. Ljudet kan stängas av med högtalarknappen.</p>
 
       <h2>Spellägen</h2>
       <ul>

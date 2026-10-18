@@ -54,7 +54,7 @@ try {
   await page.waitForURL("**/play");
   await page.waitForSelector('[data-testid="map"][data-loaded="true"]', { timeout: 20000 });
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-  await page.getByRole("button", { name: "STARTA" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "STARTA" }).click();
   await page.waitForTimeout(500);
   for (let i = 0; i < 12; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(1000); }
   const timeText = await page.locator('[aria-label="Återstående tid"]').innerText();
@@ -67,12 +67,12 @@ try {
   await page.getByText(/Pausad|Redo att starta/).first().waitFor({ timeout: 15000 });
   check("omladdning återställer pausad match", true);
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(500); }
-  await page.getByRole("button", { name: "FORTSÄTT" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "FORTSÄTT", exact: true }).click();
   await page.waitForTimeout(500);
-  check("kan fortsätta efter återställning", (await page.getByRole("button", { name: "PAUS" }).count()) === 1);
+  check("kan fortsätta efter återställning", (await page.locator(".controls").getByRole("button", { name: "PAUS" }).count()) === 1);
 
-  await page.getByRole("button", { name: "AVSLUTA" }).click();
-  await page.getByRole("button", { name: "AVSLUTA", exact: true }).last().click();
+  await page.locator(".controls").getByRole("button", { name: "AVSLUTA" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "AVSLUTA", exact: true }).click();
   await page.getByText("AVBRUTEN").first().waitFor({ timeout: 10000 });
   await page.screenshot({ path: `${OUT}/05-finished.png` });
   check("avbryt avslutar matchen", true);

@@ -8,14 +8,21 @@ import { GpsProvider, type GeoLike, type GpsErrorCode, type GpsEvent } from "@/g
 import type { GPSFix, GpsQuality } from "@/gps/types";
 import type { TileStore } from "@/data/store";
 import type { RouteProposal } from "@/routes/types";
-import { AWARENESS_M, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
+import { proximityRadiusM, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
 import { FieldLog } from "./fieldlog";
+import { HeadingTracker } from "./heading";
 import { LiveGame } from "./live-game";
 import { createLiveMatch, matchDurationS } from "./match";
 import { prepareMatch, type Prepared } from "./prepare";
 import { MatchStorage, type HistoryRecord } from "./storage";
 
-export type Cue = "danger" | "alert" | "goal" | "info" | "end";
+export type Cue = "danger" | "alert" | "goal" | "info" | "end" | "zombie";
+
+/** Minsta tid (ms) mellan två närhetsljud; nya zombier som dyker upp under tiden grupperas till ett ljud. */
+export const ZOMBIE_SOUND_COOLDOWN_MS = 12_000;
+const CHECK_MS = 1_000;
+const SAMPLE_MS = 30_000;
+const CUE_MSG_MS = 6_000;
 
 export interface SessionDeps {
   geo: GeoLike | undefined;
@@ -35,6 +42,10 @@ export type Stage = "idle" | "locating" | "preparing" | "preview" | "playing" | 
 
 export interface ZombieView {
   id: string;
+  edgeId: string;
+  distM: number;
+  dir: 1 | -1;
+  speedMps: number;
   lat: number;
   lon: number;
   distanceM: number;
@@ -45,6 +56,8 @@ export interface SessionView {
   stage: Stage;
   gpsError: { code: GpsErrorCode; message: string } | null;
   position: LatLon | null;
+  /** Stabil färdriktning (0–360, 0 = norr) eller null; ren presentation. */
+  heading: number | null;
   accuracyM: number | null;
   quality: GpsQuality;
   fixAgeMs: number | null;
@@ -67,7 +80,12 @@ export interface MatchView {
   elapsedS: number;
   limitS: number;
   distanceM: number;
+  /** Zombier inom närhetsradien (ritas på kartan). */
   zombiesNear: ZombieView[];
+  proximityM: number;
+  /** Antal levande zombier i matchen. */
+  zombieCount: number;
+  /** Avstånd (m) till närmaste zombie oavsett radie, null om inga. */
   nearestZombieM: number | null;
   infection: number;
   objectives: { index: number; total: number; holdS: number; next: { id: string; kind: string; lat: number; lon: number } | null } | null;
@@ -111,6 +129,15 @@ export class PlaySession {
   private cached: SessionView | null = null;
   private routeGenMs = 0;
   history: HistoryRecord | null = null;
+  private readonly heading = new HeadingTracker();
+  /** Zombier som redan har gett närhetsljud (en gång per zombie per match, även om den lämnar och återkommer). */
+  private alerted = new Set<string>();
+  private pendingZombieSound = false;
+  private lastZombieSoundMs = -Infinity;
+  private lastCheckMs = 0;
+  private lastSampleMs = 0;
+  private silentFirstCheck = false;
+  private cueMsgs: { text: string; until: number }[] = [];
 
   constructor(private readonly d: SessionDeps) {
     this.now = d.now ?? Date.now;
@@ -152,6 +179,11 @@ export class PlaySession {
       }
     } else {
       verdict = this.pre.push(e.fix, t).verdict;
+    }
+    if (verdict === "accepted" || verdict === "reacquired") {
+      const pos = this.live && !this.live.finished ? this.live.filter.position : this.pre.position;
+      if (verdict === "reacquired") this.heading.rebase();
+      if (pos) this.heading.update({ pos, accuracyM: e.fix.accuracyM, gpsHeadingDeg: e.fix.headingDeg, gpsSpeedMps: e.fix.speedMps, tMs: e.fix.timestampMs });
     }
     this.emit();
   }
@@ -239,7 +271,14 @@ export class PlaySession {
     const t = this.now();
     this.stage = "playing";
     this.log = new FieldLog(live.state.id, t, this.d.traceEnabled?.() ?? false, this.d.userAgent);
+    this.alerted = new Set();
+    this.pendingZombieSound = false;
+    this.lastZombieSoundMs = -Infinity;
+    this.lastCheckMs = 0;
+    this.lastSampleMs = 0;
+    this.silentFirstCheck = !fresh;
     this.log.add(t, "match_start", {
+      zombiesInitial: live.state.zombies.length, rulesZombies: { initial: live.rules.initialZombies, max: live.rules.maxZombies, headStartS: live.rules.headStartS, spawnMinM: live.rules.spawnMinDistanceM }, proximityM: proximityRadiusM(params),
       mode: params.mode, activity: params.activity, difficulty: params.difficulty,
       plannedLengthM: this.proposal ? Math.round(this.proposal.lengthM) : null, routeGenerationMs: Math.round(this.routeGenMs),
       tiles: this.prepared?.load ? { n: this.prepared.load.tiles, cache: this.prepared.load.fromCache, net: this.prepared.load.fromNetwork, gzBytes: this.prepared.load.networkGzipBytes } : undefined,
@@ -318,6 +357,7 @@ export class PlaySession {
       this.messages = ["Appen var inaktiv en stund och spelet pausades. Tryck Fortsätt."];
     }
     if (events.length) this.endMatch(events);
+    if (this.stage === "playing" && !live.state.paused && t - this.lastCheckMs >= CHECK_MS) { this.lastCheckMs = t; this.checkZombies(live, t); }
     if (this.stage === "playing" && t - this.lastSaveMs > SAVE_EVERY_MS) void this.persist();
     // React-vyn uppdateras ungefär 2 gånger per sekund; kartan ritar själv från live-objektet.
     if (events.length || t - this.lastEmitMs >= 500) this.emit();
@@ -332,6 +372,8 @@ export class PlaySession {
         case "objective_reached": this.cue("goal", e.index + 1 >= (live.state.objectives?.targets.length ?? 0) ? "Sista målet nått" : "Checkpoint registrerat"); this.log?.add(t, "objective", { id: e.targetId, atS: Math.round(live.state.elapsedSeconds) }); break;
         case "zombie_detected": this.cue("alert", "Zombie har upptäckt dig"); break;
         case "infection_contact": this.cue("danger", "Zombie nära – gå bort!"); this.log?.add(t, "infection_contact"); break;
+        case "zombie_spawned": this.log?.add(t, "zombie_spawned", { id: e.zombieId, n: live.state.zombies.length }); break;
+        case "spawn_skipped": this.log?.add(t, "spawn_skipped", { n: live.state.zombies.length, atS: Math.round(live.state.elapsedSeconds) }); break;
         case "extraction_opened": this.cue("info", "Extraction öppen"); this.log?.add(t, "extraction_opened"); break;
         case "gps_lost_long": this.cue("alert", "GPS borta en längre stund"); this.log?.add(t, "gps_lost_long"); break;
         case "phase": this.log?.add(t, "phase", { phase: e.phase }); break;
@@ -343,9 +385,42 @@ export class PlaySession {
     else if (events.some((e) => e.type === "objective_reached" || e.type === "phase" || e.type === "infection_contact")) void this.persist();
   }
 
+  /**
+   * Närhetsljud och provtagning till testloggen. Ljud triggas av en spelhändelse – en zombie som första gången är inom
+   * närhetsradien (geografiskt avstånd) – aldrig av att samma zombie återkommer i en uppdatering. Cooldown och gruppering mot ljudspam.
+   */
+  private checkZombies(live: LiveGame, t: number): void {
+    const s = live.state;
+    const pos = live.filter.position ?? s.player.position;
+    const radius = this.params ? proximityRadiusM(this.params) : 500;
+    let nearest = Infinity;
+    let inRange = 0;
+    let fresh = 0;
+    for (const z of s.zombies) {
+      const d = haversineM(zombieLatLon(live.g, z), pos);
+      nearest = Math.min(nearest, d);
+      if (d > radius) continue;
+      inRange++;
+      if (!this.alerted.has(z.id)) { this.alerted.add(z.id); fresh++; }
+    }
+    if (this.silentFirstCheck) { this.silentFirstCheck = false; fresh = 0; } // återställd match: redan kända zombier ger inget ljud
+    if (fresh > 0) this.pendingZombieSound = true;
+    if (this.pendingZombieSound && t - this.lastZombieSoundMs >= ZOMBIE_SOUND_COOLDOWN_MS) {
+      this.pendingZombieSound = false;
+      this.lastZombieSoundMs = t;
+      this.cue("zombie", "Zombie nära");
+      this.log?.add(t, "zombie_near_sound", { fresh, inRange });
+    }
+    if (t - this.lastSampleMs >= SAMPLE_MS) {
+      this.lastSampleMs = t;
+      this.log?.add(t, "zombie_sample", { n: s.zombies.length, nearest: Number.isFinite(nearest) ? Math.round(nearest) : null, inRange, radius, phase: s.phase, atS: Math.round(s.elapsedSeconds) });
+    }
+  }
+
   private cue(c: Cue, text: string) {
     this.d.onCue?.(c, text);
-    this.messages = [text, ...this.messages].slice(0, 3);
+    // Händelsemeddelanden (t.ex. "Zombie nära") visas en kort stund och försvinner sedan av sig själva.
+    this.cueMsgs = [{ text, until: this.now() + CUE_MSG_MS }, ...this.cueMsgs.filter((m) => m.text !== text)].slice(0, 3);
   }
 
   private async finishMatch(): Promise<void> {
@@ -437,6 +512,7 @@ export class PlaySession {
     this.messages = [];
     this.stage = this.provider.running ? "locating" : "idle";
     this.pre = new GpsFilter({ maxPlausibleSpeedMps: ACTIVITIES.mtb.maxPlausibleSpeedMps });
+    this.heading.reset();
     this.emit();
   }
 
@@ -460,6 +536,7 @@ export class PlaySession {
       stage: this.stage,
       gpsError: this.gpsError,
       position: pos,
+      heading: this.heading.heading,
       accuracyM: this.lastAccuracy,
       quality,
       fixAgeMs: live ? live.status(t).fixAgeMs : null,
@@ -469,18 +546,18 @@ export class PlaySession {
       movedFromPreview: moved && this.stage === "preview",
       match: live ? this.matchView(live, t) : null,
       storageWarning: this.storageWarning,
-      messages: this.messages,
+      messages: [...this.cueMsgs.filter((m) => m.until > t).map((m) => m.text), ...this.messages],
     };
   }
 
   private matchView(live: LiveGame, t: number): MatchView {
     const s = live.state;
     const pos = live.filter.position ?? s.player.position;
-    const aware = AWARENESS_M[s.config.activity];
+    const aware = this.params ? proximityRadiusM(this.params) : 500;
     const zs: ZombieView[] = s.zombies
       .map((z) => {
         const ll = zombieLatLon(live.g, z);
-        return { id: z.id, lat: ll.lat, lon: ll.lon, distanceM: haversineM(ll, pos), state: z.state };
+        return { id: z.id, edgeId: z.edgeId, distM: z.distanceAlongEdgeM, dir: z.dir, speedMps: z.speedMps, lat: ll.lat, lon: ll.lon, distanceM: haversineM(ll, pos), state: z.state };
       })
       .sort((a, b) => a.distanceM - b.distanceM);
     const o = s.objectives;
@@ -496,7 +573,9 @@ export class PlaySession {
       limitS: s.config.durationSeconds,
       distanceM: s.player.distanceM,
       zombiesNear: zs.filter((z) => z.distanceM <= aware),
-      nearestZombieM: zs.length && zs[0].distanceM <= aware ? zs[0].distanceM : null,
+      proximityM: aware,
+      zombieCount: zs.length,
+      nearestZombieM: zs.length ? zs[0].distanceM : null,
       infection: s.infectionProgressSeconds,
       objectives: o ? { index: o.index, total: o.targets.length, holdS: o.holdS, next: next ? { id: next.id, kind: next.kind, lat: next.lat, lon: next.lon } : null } : null,
       extraction: s.extractionNodeId ? (live.g.nodes.get(s.extractionNodeId) ?? null) : null,

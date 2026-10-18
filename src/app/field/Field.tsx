@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PageHeader } from "../_client/Modal";
 import { useCallback, useEffect, useState } from "react";
 import { exportAllLogs, type FieldLogData } from "@/play/fieldlog";
 import { MatchStorage } from "@/play/storage";
@@ -37,7 +38,7 @@ export default function Field() {
 
   return (
     <main className="page">
-      <div className="topbar"><Link className="back" href="/" aria-label="Tillbaka">←</Link><h1>TESTLÄGE</h1></div>
+      <PageHeader title="TESTLÄGE" />
       <div className="card">Loggar, matcher och GPS-spår är lokala: ingen telemetri skickas och inget laddas upp. Export sker bara när du trycker på knappen. Enda externa anropet är kartrutor från OpenFreeMap (se HOW TO PLAY).</div>
 
       <h2>GPS-test (utan match)</h2>

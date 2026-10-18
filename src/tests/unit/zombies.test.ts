@@ -1,0 +1,213 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import "fake-indexeddb/auto";
+import { IDBFactory } from "fake-indexeddb";
+import { beforeAll, describe, expect, it } from "vitest";
+import { TileStore, type Fetcher } from "@/data/store";
+import { prepareMatch, type Prepared } from "@/play/prepare";
+import { defaultParams, proximityRadiusM, withActivity, dataRadiusM, type MatchParams } from "@/play/config";
+import { createLiveMatch } from "@/play/match";
+import type { LiveGame } from "@/play/live-game";
+import { openDb } from "@/play/idb";
+import { PlaySession, ZOMBIE_SOUND_COOLDOWN_MS } from "@/play/session";
+import { cumulativeLengths, haversineM, pointAlong, type LatLon } from "@/geo/geometry";
+import { zombieLatLon } from "@/engine/core/movement";
+import { stepGame } from "@/engine/core/engine";
+import { snapToGraph } from "@/geo/graph/graph";
+import type { Difficulty } from "@/config/difficulty";
+import type { Activity } from "@/config/activities";
+import type { GeoLike } from "@/gps/provider/provider";
+
+const root = path.join(import.meta.dirname, "..", "..", "..", "public", "data", "v1", "varmland");
+const fsFetch: Fetcher = async (url) => ({ ok: true, status: 200, json: async () => JSON.parse(readFileSync(path.join(root, url.replace(/^\/data\/v1\/varmland\//, "").replace(/\?.*$/, "")), "utf8")) });
+const START: LatLon = { lat: 59.40731, lon: 13.46753 };
+const prep: Record<string, Prepared> = {};
+beforeAll(async () => {
+  for (const [k, a, mode] of [["walk-mission", "walk", "mission"], ["mtb-survival", "mtb", "survival"], ["walk-survival", "walk", "survival"]] as const) {
+    prep[k] = await prepareMatch(new TileStore("/data/v1/varmland", fsFetch), START, { ...withActivity(defaultParams("walk"), a), mode, seed: 5 });
+  }
+}, 60000);
+
+const mk = (key: string, difficulty: Difficulty, activity: Activity = "walk", mode: MatchParams["mode"] = "mission") => {
+  const params: MatchParams = { ...withActivity(defaultParams("walk"), activity), mode, difficulty, seed: 5 };
+  const proposal = prep[key].proposals[0] ?? null;
+  return { params, live: createLiveMatch({ id: "z", params, start: START, proposal, graph: prep[key].graph!, dataVersion: "t" }) };
+};
+const fix = (live: LiveGame, p: LatLon, t: number) => live.pushFix({ latitude: p.lat, longitude: p.lon, accuracyM: 5, timestampMs: t }, t);
+
+describe("Testfall A: zombier (riktiga Värmlandsdata, simulerad GPS)", () => {
+  for (const difficulty of ["easy", "normal", "hard"] as Difficulty[]) {
+    it(`${difficulty}: initial spawn enligt reglerna, ingen hoppad spawn, antal ökar successivt och minskar aldrig`, () => {
+      const { live } = mk("walk-mission", difficulty);
+      expect(live.state.zombies.length).toBe(live.rules.initialZombies);
+      expect(live.state.zombies.length).toBeGreaterThan(0);
+      const pos0 = live.state.player.position;
+      for (const z of live.state.zombies) expect(haversineM(zombieLatLon(live.g, z), pos0)).toBeGreaterThanOrEqual(live.rules.spawnMinDistanceM); // aldrig ovanpå spelaren
+      const geom = prep["walk-mission"].proposals[0].geometry;
+      const cum = cumulativeLengths(geom);
+      let t = 3e7; fix(live, START, t); live.resume(t);
+      let skipped = 0, prev = live.state.zombies.length, d = 0;
+      const counts: number[] = [prev];
+      for (let s = 0; s < 2400 && !live.finished; s++) {
+        for (let k = 0; k < 5; k++) { t += 200; for (const e of live.tick(t)) if (e.type === "spawn_skipped") skipped++; }
+        d = Math.min(cum.at(-1)!, d + 1.3);
+        fix(live, pointAlong(geom, cum, d), t);
+        expect(live.state.zombies.length).toBeGreaterThanOrEqual(prev); // försvinner aldrig tyst
+        prev = live.state.zombies.length;
+        if (s % 300 === 0) counts.push(prev);
+        for (const z of live.state.zombies) { const ll = zombieLatLon(live.g, z); expect(Number.isFinite(ll.lat + ll.lon)).toBe(true); }
+      }
+      expect(Math.max(...counts)).toBeGreaterThan(counts[0]); // tillkommer successivt
+      expect(skipped).toBeLessThan(5);
+    });
+  }
+
+  it("svårighet påverkar hotbilden: fler, snabbare och mer uppmärksamma zombier", () => {
+    const r = (d: Difficulty) => mk("walk-mission", d).live.rules;
+    expect(r("easy").initialZombies).toBeLessThan(r("normal").initialZombies);
+    expect(r("normal").initialZombies).toBeLessThan(r("hard").initialZombies);
+    expect(r("easy").zombieSpeedMps).toBeLessThan(r("hard").zombieSpeedMps);
+    expect(r("easy").detectionRadiusM).toBeLessThan(r("hard").detectionRadiusM);
+  });
+
+  it("en zombie nära en stillastående spelare upptäcker, jagar och fångar (infektion)", () => {
+    for (const difficulty of ["easy", "normal", "hard"] as Difficulty[]) {
+      const { live } = mk("walk-mission", difficulty);
+      let t = 4e7; fix(live, START, t); live.resume(t);
+      live.state.phase = "survival";
+      live.state.neutralUntilS = 0;
+      // Placera en zombie ~50 m längs kanten från spelaren (inom upptäcktsradien för alla nivåer).
+      const snap = snapToGraph(live.g, START)!;
+      const edge = live.g.edges.get(snap.edgeId)!;
+      const along = snap.distM + 50 <= edge.lengthM ? snap.distM + 50 : Math.max(0, snap.distM - 50);
+      expect(Math.abs(along - snap.distM)).toBeGreaterThan(30);
+      const z = live.state.zombies[0];
+      z.edgeId = edge.id; z.distanceAlongEdgeM = along; z.route = []; z.state = "patrol";
+      live.state.zombies = [z];
+      for (let s = 0; s < 240 && !live.finished; s++) { for (let k = 0; k < 5; k++) { t += 200; live.tick(t); } fix(live, START, t); }
+      expect(live.state.result, difficulty).toBe("infected");
+    }
+  });
+
+  it("spelaren utanför det ursprungliga spelområdet: motorn fungerar och zombier finns kvar", () => {
+    const { live } = mk("walk-mission", "normal");
+    let t = 5e7; fix(live, START, t); live.resume(t);
+    const far = { lat: START.lat + 0.05, lon: START.lon + 0.07 }; // ~6 km bort
+    live.state.phase = "survival";
+    const n0 = live.state.zombies.length;
+    for (let s = 0; s < 120; s++) { for (let k = 0; k < 5; k++) { t += 200; live.tick(t); } fix(live, s < 5 ? START : far, t); }
+    expect(live.state.zombies.length).toBeGreaterThanOrEqual(n0);
+    for (const z of live.state.zombies) expect(Number.isFinite(zombieLatLon(live.g, z).lat)).toBe(true);
+  });
+
+  it("närhetsradie: 500 m i små och 1000 m i stora spelområden, från områdets storlek (inte zoom)", () => {
+    const p = (a: Activity, mode: MatchParams["mode"], len: number): MatchParams => ({ ...withActivity(defaultParams("walk"), a), mode, targetLengthM: len, seed: 1 });
+    expect(proximityRadiusM(p("walk", "mission", 3000))).toBe(500);
+    expect(proximityRadiusM(p("walk", "escape", 3000))).toBe(500);
+    expect(proximityRadiusM(p("run", "mission", 5000))).toBe(500);
+    expect(proximityRadiusM(p("mtb", "mission", 10000))).toBe(1000);
+    expect(proximityRadiusM(p("mtb", "escape", 10000))).toBe(1000);
+    expect(proximityRadiusM(p("mtb", "survival", 10000))).toBe(1000);
+    expect(dataRadiusM(p("walk", "survival", 3000))).toBeLessThan(3500);
+  });
+});
+
+function fakeGeo() {
+  let ok: Parameters<GeoLike["watchPosition"]>[0] | null = null;
+  const geo: GeoLike = { watchPosition: (a) => { ok = a; return 1; }, clearWatch: () => { ok = null; } };
+  return { geo, fix: (p: LatLon, acc: number, ts: number) => ok?.({ coords: { latitude: p.lat, longitude: p.lon, accuracy: acc, speed: null, heading: null }, timestamp: ts }) };
+}
+
+describe("Testfall D: närhetsljud", () => {
+  async function setup() {
+    const g = fakeGeo();
+    const db = await openDb(new IDBFactory());
+    let clock = 60_000_000;
+    const timers: (() => void)[] = [];
+    const cues: string[] = [];
+    const session = new PlaySession({ geo: g.geo, db, store: new TileStore("/data/v1/varmland", fsFetch), now: () => clock, setInterval: (fn) => { timers.push(fn); return 1; }, clearInterval: () => undefined, onCue: (c) => cues.push(c) });
+    const advance = (ms: number) => { for (let i = 0; i < ms; i += 200) { clock += 200; timers.forEach((f) => f()); if (i % 1000 === 0) g.fix(START, 5, clock); } };
+    session.startLocating();
+    for (let i = 0; i < 3; i++) { g.fix(START, 5, clock); clock += 1000; }
+    await session.prepare({ ...withActivity(defaultParams("walk"), "walk"), mode: "survival", difficulty: "normal", seed: 9 });
+    await session.startMatch();
+    g.fix(START, 5, clock);
+    session.resume();
+    return { session, advance, cues, now: () => clock };
+  }
+  /** Flyttar en zombie så att den står ~`targetM` meter från spelaren (luftlinje) på en kant. */
+  const place = (live: LiveGame, idx: number, targetM: number) => {
+    const pos = live.filter.position!;
+    let best: { e: string; d: number; diff: number } | null = null;
+    for (const e of live.g.edges.values()) for (let d = 0; d <= e.lengthM; d += 5) {
+      const diff = Math.abs(haversineM(pointAlong(e.geometry, e.cumM, d), pos) - targetM);
+      if (!best || diff < best.diff) best = { e: e.id, d, diff };
+    }
+    const z = live.state.zombies[idx];
+    z.edgeId = best!.e; z.distanceAlongEdgeM = best!.d; z.route = []; z.state = "patrol"; z.speedMps = 0;
+  };
+
+  it("ny zombie i närheten ger exakt ett ljud; samma zombie som lämnar och återkommer ger inget nytt; grupperas med cooldown", async () => {
+    const { session, advance, cues } = await setup();
+    const live = session.live!;
+    live.state.phase = "head_start"; // zombierna står still; vi styr positionerna själva
+    // Alla zombier långt bort först.
+    for (let i = 0; i < live.state.zombies.length; i++) place(live, i, 4000);
+    advance(3000);
+    cues.length = 0;
+    place(live, 0, 400); // kommer in i 500 m-radien
+    advance(2500);
+    expect(cues.filter((c) => c === "zombie")).toHaveLength(1);
+    // Fler uppdateringar med samma zombie inne: inget nytt ljud.
+    advance(20_000);
+    expect(cues.filter((c) => c === "zombie")).toHaveLength(1);
+    // Lämnar och återkommer: inget nytt ljud (en gång per zombie).
+    place(live, 0, 4000); advance(3000); place(live, 0, 300); advance(3000);
+    expect(cues.filter((c) => c === "zombie")).toHaveLength(1);
+    // Ny zombie efter cooldown → nytt ljud. En tredje strax därefter (inom cooldown) väntar och ger ETT ljud när cooldown gått.
+    if (live.state.zombies.length >= 3) {
+      place(live, 1, 450); advance(2000);
+      expect(cues.filter((c) => c === "zombie")).toHaveLength(2);
+      place(live, 2, 350); advance(3000);
+      expect(cues.filter((c) => c === "zombie")).toHaveLength(2); // cooldown: inget nytt ännu
+      advance(ZOMBIE_SOUND_COOLDOWN_MS);
+      expect(cues.filter((c) => c === "zombie")).toHaveLength(3);
+      advance(ZOMBIE_SOUND_COOLDOWN_MS * 2);
+      expect(cues.filter((c) => c === "zombie")).toHaveLength(3);
+    }
+  }, 60000);
+
+  it("zombier utanför radien (500 m) ger inget ljud", async () => {
+    const { session, advance, cues } = await setup();
+    const live = session.live!;
+    live.state.phase = "head_start";
+    for (let i = 0; i < live.state.zombies.length; i++) place(live, i, 900);
+    cues.length = 0;
+    advance(15_000);
+    expect(cues.filter((c) => c === "zombie")).toHaveLength(0);
+  }, 60000);
+
+  it("vyn visar zombier inom radien på kartan och alltid närmaste avstånd", async () => {
+    const { session, advance } = await setup();
+    const live = session.live!;
+    live.state.phase = "head_start";
+    for (let i = 0; i < live.state.zombies.length; i++) place(live, i, 4000);
+    place(live, 0, 300);
+    advance(1500);
+    const v = session.getView().match!;
+    expect(v.proximityM).toBe(500);
+    expect(v.zombiesNear.map((z) => z.id)).toEqual([live.state.zombies[0].id]);
+    expect(v.nearestZombieM).toBeGreaterThan(200);
+    expect(v.nearestZombieM).toBeLessThan(400);
+    expect(v.zombieCount).toBe(live.state.zombies.length);
+  }, 60000);
+
+  it("zombiehändelser loggas för att skilja spawn-, routing- och renderingsfel", async () => {
+    const { session, advance } = await setup();
+    advance(35_000);
+    const log = session.fieldLog!;
+    const start = log.data.entries.find((e) => e.k === "match_start")!;
+    expect((start.d as { zombiesInitial: number }).zombiesInitial).toBeGreaterThan(0);
+    expect(log.data.entries.some((e) => e.k === "zombie_sample")).toBe(true);
+  }, 60000);
+});

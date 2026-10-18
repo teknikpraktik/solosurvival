@@ -45,12 +45,13 @@ export function ServiceWorker() {
     return () => { clearInterval(h); document.removeEventListener("visibilitychange", vis); };
   }, []);
 
-  if (!waiting && !newBuild) return null;
+  // Under en match visas ingenting (raden skulle täcka spelkontrollerna); den dyker upp när matchen är slut.
+  if ((!waiting && !newBuild) || inMatch) return null;
   const apply = () => { if (waiting) waiting.postMessage({ type: "SKIP_WAITING" }); else location.reload(); };
   return (
     <div className="update card good" role="status">
       <div>En ny version av spelet finns.</div>
-      <button className="btn" style={{ width: "100%", marginTop: 8 }} disabled={inMatch} onClick={apply}>{inMatch ? "UPPDATERA EFTER MATCHEN" : "UPPDATERA"}</button>
+      <button className="btn" style={{ width: "100%", marginTop: 8 }} onClick={apply}>UPPDATERA</button>
     </div>
   );
 }

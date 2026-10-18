@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { PageHeader } from "../_client/Modal";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { Activity } from "@/config/activities";
@@ -119,7 +120,7 @@ export default function NewGame() {
 
   return (
     <main className="page">
-      <div className="topbar"><Link className="back" href="/" aria-label="Tillbaka">←</Link><h1>NEW GAME</h1></div>
+      <PageHeader title="NEW GAME" />
       <div className={`card ${gps.tone}`} role="status">{gps.text}</div>
       <Seg<GameMode> label="Spelläge" value={p.mode} options={(["mission", "escape", "survival"] as GameMode[]).map((m) => ({ v: m, t: MODE_LABEL[m] }))} onChange={(mode) => set({ mode })} />
       <div className="muted">{MODE_HELP[p.mode]}</div>

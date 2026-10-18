@@ -8,3 +8,5 @@ experiments/routes/results/*.jsonl
 public/version.json
 e2e/out
 e2e/out-small
+e2e/out-prod*
+e2e/out-fix*
