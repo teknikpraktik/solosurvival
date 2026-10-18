@@ -38,3 +38,6 @@ Radie enligt avsnitt 1. Ett ljud när en zombie för första gången är inom ra
 
 ## Kvarstående
 Verklig GPS/heading på iPhone och Android; ljudnivå och ringkontakt/tyst-läge; läsbarhet i solljus; zombie-balans på Lätt; PWA-läge.
+
+## Uppföljning efter fälttestet (zombie 600 m syntes i HUD men ritades inte)
+HUD:en visade närmaste zombie oavsett avstånd, men kartan ritade bara zombier inom närhetsradien (500 m i små områden). Nu ritas och räknas zombier inom `VISIBLE_RADIUS_M` = 1 000 m (alla områden); längre bort visar HUD:en "Inga zombier inom 1 km". Varningsljudets radie (500/1 000 m) är oförändrad.
