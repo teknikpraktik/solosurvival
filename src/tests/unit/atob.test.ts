@@ -73,10 +73,10 @@ describe("A TO B (egen A och B, ingen sträcka)", () => {
   it("för nära och för långt avslås", async () => {
     const near = await prepareMatch(store(), A, params({ pointA: A, pointB: destinationPoint(A, 150, 90) }));
     expect(near.status).toBe("no_route");
-    expect(near.message).toMatch(/för nära/);
+    expect(near.message).toMatch(/too close/);
     const far = await prepareMatch(store(), A, params({ pointA: A, pointB: destinationPoint(A, atoBMaxStraightM("walk") + 1000, 0) }));
     expect(far.status).toBe("sparse");
-    expect(far.message).toMatch(/för långt/);
+    expect(far.message).toMatch(/too far/);
   });
 
   it("A utanför regionen avslås; pointA/pointB överlever clampParams", async () => {

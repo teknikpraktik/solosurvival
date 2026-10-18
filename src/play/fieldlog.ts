@@ -38,7 +38,7 @@ export class FieldLog {
     this.t0 = now;
     this.data = {
       schema: LOG_SCHEMA, matchId, startedAtIso: new Date(now).toISOString(), userAgent, entries: [], renderProblems: 0,
-      battery: { note: "Batteri mäts manuellt: notera procent före och efter, och skärmens ljusstyrka. Webbläsare på iPhone saknar Battery API." },
+      battery: { note: "Measure battery manually: note the percentage before and after, and screen brightness. Browsers on iPhone have no Battery API." },
     };
     if (traceEnabled) this.data.trace = [];
   }

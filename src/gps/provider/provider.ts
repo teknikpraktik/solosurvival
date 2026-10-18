@@ -35,7 +35,7 @@ export class GpsProvider {
 
   start(listener: (e: GpsEvent) => void): void {
     if (!this.geo) {
-      listener({ type: "error", code: "unsupported", message: "Enheten eller webbläsaren saknar stöd för plats." });
+      listener({ type: "error", code: "unsupported", message: "This device or browser does not support location." });
       return;
     }
     this.stop();
@@ -69,8 +69,8 @@ export class GpsProvider {
 }
 
 export const errorText: Record<GpsErrorCode, string> = {
-  denied: "Platsåtkomst nekad. Tillåt plats för webbplatsen i webbläsarens inställningar och ladda om.",
-  unavailable: "Ingen position tillgänglig just nu. Gå ut under bar himmel.",
-  timeout: "Det tar lång tid att få en position. Gå ut under bar himmel.",
-  unsupported: "Den här webbläsaren stöder inte plats.",
+  denied: "Location access denied. Allow location for this site in your browser settings and reload.",
+  unavailable: "No location available right now. Move to open sky.",
+  timeout: "Getting a location is taking long. Move to open sky.",
+  unsupported: "This browser does not support location.",
 };

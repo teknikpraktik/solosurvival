@@ -133,7 +133,7 @@ describe("lagring och återställning", () => {
     const { st } = await fresh();
     const { live, params, proposal } = mk("mission");
     const geom = proposal!.geometry;
-    walk(live, geom.slice(0, 20), 1.3, 100, false);
+    walk(live, geom.slice(0, 20), 1.3, 40, false);
     expect(live.finished).toBe(false);
     await st.begin(live, params, proposal, START, "test");
     await st.save(live, params, proposal, START, "test");

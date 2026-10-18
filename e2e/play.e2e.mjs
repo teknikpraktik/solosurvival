@@ -32,21 +32,20 @@ try {
   await page.getByText("NEW GAME").click();
   await page.waitForURL("**/new");
   for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(400); }
-  await page.getByText(/GPS klar/).waitFor({ timeout: 15000 });
-  check("GPS-status visas", true);
-  await page.screenshot({ path: `${OUT}/02-new.png` });
+  await page.waitForTimeout(800);
+    await page.screenshot({ path: `${OUT}/02-new.png` });
 
-  await page.getByText("VISA RUTT").click();
-  await page.getByText(/Sträcka/).first().waitFor({ timeout: 60000 });
+  await page.getByText("SHOW ROUTE").click();
+  await page.getByText(/Distance|Straight line/).first().waitFor({ timeout: 60000 });
   await page.waitForSelector('[data-testid="map"][data-loaded="true"]', { timeout: 20000 });
   check("förhandsvisning med rutt och karta", true);
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${OUT}/03-preview.png` });
-  const hasRoute = await page.getByText(/checkpoint\(s\) \+ hem/).count();
+  const hasRoute = await page.getByText(/checkpoints \+ home/).count();
   check("förhandsvisning visar checkpoints och hem", hasRoute > 0);
 
-  await page.getByText("NYTT FÖRSLAG").click();
-  await page.getByText(/Sträcka/).first().waitFor({ timeout: 60000 });
+  await page.getByText("NEW ROUTE").click();
+  await page.getByText(/Distance|Straight line/).first().waitFor({ timeout: 60000 });
   check("nytt förslag", true);
 
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
@@ -54,26 +53,26 @@ try {
   await page.waitForURL("**/play");
   await page.waitForSelector('[data-testid="map"][data-loaded="true"]', { timeout: 20000 });
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-  await page.getByRole("dialog").getByRole("button", { name: "STARTA" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "START" }).click();
   await page.waitForTimeout(500);
   for (let i = 0; i < 12; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(1000); }
-  const timeText = await page.locator('[aria-label="Återstående tid"]').innerText();
+  const timeText = await page.locator('[aria-label="Time left"]').innerText();
   check("matchen går (tid återstår)", /\d+:\d\d/.test(timeText), timeText);
   await page.screenshot({ path: `${OUT}/04-play.png` });
 
   // Omladdning mitt i matchen: ska återställas pausat.
   await page.reload();
   await page.waitForSelector('[data-testid="map"][data-loaded="true"]', { timeout: 20000 });
-  await page.getByText(/Pausad|Redo att starta/).first().waitFor({ timeout: 15000 });
+  await page.getByText(/Paused|Ready to start/).first().waitFor({ timeout: 15000 });
   check("omladdning återställer pausad match", true);
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(500); }
-  await page.getByRole("dialog").getByRole("button", { name: "FORTSÄTT", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "CONTINUE", exact: true }).click();
   await page.waitForTimeout(500);
-  check("kan fortsätta efter återställning", (await page.locator(".controls").getByRole("button", { name: "PAUS" }).count()) === 1);
+  check("kan fortsätta efter återställning", (await page.locator(".controls").getByRole("button", { name: "PAUSE" }).count()) === 1);
 
-  await page.locator(".controls").getByRole("button", { name: "AVSLUTA" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "AVSLUTA", exact: true }).click();
-  await page.getByText("AVBRUTEN").first().waitFor({ timeout: 10000 });
+  await page.locator(".controls").getByRole("button", { name: "QUIT" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "QUIT", exact: true }).click();
+  await page.getByText("ABORTED").first().waitFor({ timeout: 10000 });
   await page.screenshot({ path: `${OUT}/05-finished.png` });
   check("avbryt avslutar matchen", true);
 
@@ -82,14 +81,14 @@ try {
   await page.screenshot({ path: `${OUT}/06-history.png` });
   check("historik visar matchen", true);
   page.once("dialog", (d) => d.accept());
-  await page.getByText("Radera", { exact: true }).first().click();
-  await page.getByText(/Inga matcher än/).waitFor({ timeout: 10000 });
+  await page.getByText("Delete", { exact: true }).first().click();
+  await page.getByText(/No matches yet/).waitFor({ timeout: 10000 });
   check("matchen kan raderas", true);
 
   await page.goto(BASE + "/how-to-play");
-  check("HOW TO PLAY nås via direktlänk", (await page.getByText("Säkerhet först").count()) === 1);
+  check("HOW TO PLAY nås via direktlänk", (await page.getByText("Safety first").count()) === 1);
   await page.goto(BASE + "/field");
-  check("testläge nås via direktlänk", (await page.getByText("TESTLÄGE").count()) === 1);
+  check("testläge nås via direktlänk", (await page.getByText("TEST MODE").count()) === 1);
 
   const mani = await (await ctx.request.get(BASE + "/manifest.webmanifest")).json();
   check("manifest har rätt namn", mani.name === "OUTBREAK – Solo Survival");

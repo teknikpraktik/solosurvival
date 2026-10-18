@@ -11,10 +11,10 @@ const page = await ctx.newPage();
 const errs = []; page.on("pageerror", (e) => errs.push(String(e)));
 await page.goto(BASE + "/new");
 for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-await page.getByText(/GPS klar/).waitFor({ timeout: 15000 });
+await page.waitForTimeout(800);
 await page.getByRole("button", { name: "A TO B", exact: true }).click();
 check("ingen sträckereglage i A TO B", (await page.locator("#dist").count()) === 0 && (await page.locator("#dur").count()) === 0);
-check("VISA RUTT låst tills B valts", await page.getByRole("button", { name: "VÄLJ B PÅ KARTAN" }).isDisabled());
+check("VISA RUTT låst tills B valts", await page.getByRole("button", { name: "PICK B ON THE MAP" }).isDisabled());
 const map = page.getByTestId("pickmap");
 await map.scrollIntoViewIfNeeded();
 await page.waitForSelector('[data-testid="pickmap"] [data-loaded="true"]', { timeout: 20000 });
@@ -25,25 +25,25 @@ for (const [dx, dy] of [[90, -90], [-100, -80], [110, 60], [-60, 100], [0, -120]
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(200); }
   await page.mouse.click(box.x + box.width / 2 + dx, box.y + box.height / 2 + dy);
   await page.waitForTimeout(500);
-  if (!(await page.getByRole("button", { name: "VISA RUTT" }).isEnabled())) continue;
+  if (!(await page.getByRole("button", { name: "SHOW ROUTE" }).isEnabled())) continue;
   await page.screenshot({ path: `${OUT}/pick.png` });
-  await page.getByRole("button", { name: "VISA RUTT" }).click();
-  try { await page.getByText(/Sträcka/).first().waitFor({ timeout: 40000 }); ok = true; break; }
-  catch { info = await page.locator(".sheet .card").first().innerText().catch(() => ""); await page.getByRole("button", { name: "ÄNDRA" }).click().catch(() => {}); await page.waitForTimeout(500); }
+  await page.getByRole("button", { name: "SHOW ROUTE" }).click();
+  try { await page.getByText(/Distance|Straight line/).first().waitFor({ timeout: 40000 }); ok = true; break; }
+  catch { info = await page.locator(".sheet .card").first().innerText().catch(() => ""); await page.getByRole("button", { name: "CHANGE" }).click().catch(() => {}); await page.waitForTimeout(500); }
 }
 check("B vald på kartan ger en rutt A→B", ok, info);
 if (ok) {
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${OUT}/preview.png` });
-  check("förhandsvisning visar A och B-markörer", (await page.locator('[aria-label="Mål A"]').count()) === 1 && (await page.locator('[aria-label="Mål B"]').count()) === 1);
-  check("ingen 'nytt förslag' i A TO B", (await page.getByRole("button", { name: "NYTT FÖRSLAG" }).count()) === 0);
+  check("förhandsvisning visar A och B-markörer", (await page.locator('[aria-label="Objective A"]').count()) === 1 && (await page.locator('[aria-label="Objective B"]').count()) === 1);
+  check("ingen 'nytt förslag' i A TO B", (await page.getByRole("button", { name: "NEW ROUTE" }).count()) === 0);
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
   await page.getByRole("button", { name: "START", exact: true }).click();
   await page.waitForURL("**/play");
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-  await page.getByRole("dialog").getByRole("button", { name: "STARTA" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "START" }).click();
   await page.waitForTimeout(1500);
-  check("A TO B-match går, mål 1/1", (await page.getByText(/Mål 1\/1/).count()) === 1);
+  check("A TO B-match går, mål 1/1", (await page.getByText(/Goal 1\/1/).count()) === 1);
   await page.screenshot({ path: `${OUT}/play.png` });
 }
 check("inga JS-fel", errs.filter((e) => !/WebGL|swiftshader/i.test(e)).length === 0, errs.slice(0, 2).join(" | "));

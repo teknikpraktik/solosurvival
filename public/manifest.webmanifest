@@ -1,8 +1,8 @@
 {
   "name": "OUTBREAK – Solo Survival",
   "short_name": "OUTBREAK",
-  "description": "GPS-baserat överlevnadsspel längs verkliga stigar.",
-  "lang": "sv",
+  "description": "GPS-based zombie survival game along real trails.",
+  "lang": "en",
   "id": "/",
   "start_url": "/",
   "scope": "/",

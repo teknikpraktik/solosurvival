@@ -47,7 +47,7 @@ function undelta(d: number[]): number[] {
 }
 
 export function decodeTile(tile: TileFile, unitDeg = 1e-6): TileWay[] {
-  if (tile.f !== TILE_FORMAT) throw new Error(`Okänt tileformat ${tile.f}`);
+  if (tile.f !== TILE_FORMAT) throw new Error(`Unknown tile format ${tile.f}`);
   return tile.w.map((w) => {
     const ids = undelta(w.n), la = undelta(w.y), lo = undelta(w.x);
     return {

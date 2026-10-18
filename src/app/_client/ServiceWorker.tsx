@@ -50,8 +50,8 @@ export function ServiceWorker() {
   const apply = () => { if (waiting) waiting.postMessage({ type: "SKIP_WAITING" }); else location.reload(); };
   return (
     <div className="update card good" role="status">
-      <div>En ny version av spelet finns.</div>
-      <button className="btn" style={{ width: "100%", marginTop: 8 }} onClick={apply}>UPPDATERA</button>
+      <div>A new version of the game is available.</div>
+      <button className="btn" style={{ width: "100%", marginTop: 8 }} onClick={apply}>UPDATE</button>
     </div>
   );
 }

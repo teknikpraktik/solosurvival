@@ -14,8 +14,8 @@ export default function ResumeBanner() {
   if (!ctx || (!active && !live)) return null;
   return (
     <div className="card good" style={{ width: "min(320px,100%)" }}>
-      <div style={{ marginBottom: 8 }}>Pågående match hittades.</div>
-      <Link className="btn primary" href="/play" style={{ width: "100%" }}>FORTSÄTT MATCH</Link>
+      <div style={{ marginBottom: 8 }}>A match in progress was found.</div>
+      <Link className="btn primary" href="/play" style={{ width: "100%" }}>CONTINUE MATCH</Link>
     </div>
   );
 }

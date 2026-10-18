@@ -85,13 +85,13 @@ function rate(m: RouteMetrics, deviation: number, tol: number, type: RouteType, 
   const flags: string[] = [];
   let s = 100;
   const over = Math.max(0, Math.abs(deviation) - tol);
-  if (over > 0) { s -= Math.min(30, over * 150); flags.push(`avviker ${(deviation * 100).toFixed(0)} % från önskad längd`); }
-  if (!ignoreDeadEnds && m.deadEndShare > 0.1) { s -= Math.min(25, m.deadEndShare * 60); flags.push(`${(m.deadEndShare * 100).toFixed(0)} % i återvändsgrenar`); }
-  if (!ignoreDeadEnds && m.maxWaypointDeadEndDepthM > PREFERRED_MAX_DEPTH_M) { s -= 15; flags.push(`målpunkt ${m.maxWaypointDeadEndDepthM.toFixed(0)} m in i återvändsgren`); }
-  if (!ignoreDeadEnds && m.minWaypointExits < 2) { s -= 12; flags.push("målpunkt med bara en utgång ur huvudnätet"); }
-  if (m.hazardCrossings > 0) { s -= Math.min(30, 10 * m.hazardCrossings); flags.push(`${m.hazardCrossings} korsning(ar) med större väg`); }
-  if (m.decisionPoints < 3) { s -= 10; flags.push("få vägval"); }
-  if (mode === "escape" && m.alternativeRatio === null) { s -= 10; flags.push("saknar alternativ väg till målet"); }
+  if (over > 0) { s -= Math.min(30, over * 150); flags.push(`${(deviation * 100).toFixed(0)} % off the wanted length`); }
+  if (!ignoreDeadEnds && m.deadEndShare > 0.1) { s -= Math.min(25, m.deadEndShare * 60); flags.push(`${(m.deadEndShare * 100).toFixed(0)} % in dead ends`); }
+  if (!ignoreDeadEnds && m.maxWaypointDeadEndDepthM > PREFERRED_MAX_DEPTH_M) { s -= 15; flags.push(`a target ${m.maxWaypointDeadEndDepthM.toFixed(0)} m into a dead end`); }
+  if (!ignoreDeadEnds && m.minWaypointExits < 2) { s -= 12; flags.push("a target with only one way out of the main network"); }
+  if (m.hazardCrossings > 0) { s -= Math.min(30, 10 * m.hazardCrossings); flags.push(`${m.hazardCrossings} crossing(s) with a major road`); }
+  if (m.decisionPoints < 3) { s -= 10; flags.push("few route choices"); }
+  if (mode === "escape" && m.alternativeRatio === null) { s -= 10; flags.push("no alternative way to the target"); }
   if (mode === "mission") {
     if (type === "out-and-back") { s -= 10; flags.push("ut-och-tillbaka"); }
     else if (m.reuseShare > 0.25) { s -= m.reuseShare * 30; flags.push(`${(m.reuseShare * 100).toFixed(0)} % upprepade segment`); }
@@ -148,9 +148,9 @@ function generateEscape(c: Ctx, notes: string[]): { pool: RouteProposal[]; candi
     // Närmaste användbara alternativ utanför toleransen.
     const near = all.filter((x) => Math.abs(x.dev) <= tol * 3 && eligibleNode(c, x.n, HARD_MAX_DEPTH_M)).sort((a, b) => Math.abs(a.dev) - Math.abs(b.dev)).slice(0, 40);
     cands = [...cands, ...near.filter((x) => !cands.includes(x))];
-    if (!cands.some((x) => Math.abs(x.dev) <= tol)) notes.push(`Ingen destination inom ±${(tol * 100).toFixed(0)} % av önskad längd; visar närmaste alternativ.`);
+    if (!cands.some((x) => Math.abs(x.dev) <= tol)) notes.push(`No destination within ±${(tol * 100).toFixed(0)} % of the wanted length; showing closest alternatives.`);
   }
-  if (!cands.length) { notes.push("Inga användbara destinationer hittades."); return { pool: [], candidates: 0 }; }
+  if (!cands.length) { notes.push("No usable destinations found."); return { pool: [], candidates: 0 }; }
   const pool: RouteProposal[] = [];
   const sorted = cands.sort((a, b) => Math.abs(a.dev) - Math.abs(b.dev)).slice(0, c.req.maxCandidates ?? 250);
   sorted.forEach((x, i) => {
@@ -246,7 +246,7 @@ function generateMission(c: Ctx, notes: string[]): { pool: RouteProposal[]; cand
     }
     if (pool.some((p) => p.withinTolerance && p.quality.score >= 70)) break;
   }
-  if (!pool.some((p) => p.withinTolerance)) notes.push(`Ingen slinga inom ±${((c.req.tolerance ?? 0.1) * 100).toFixed(0)} % hittades; visar närmaste alternativ.`);
+  if (!pool.some((p) => p.withinTolerance)) notes.push(`No loop within ±${((c.req.tolerance ?? 0.1) * 100).toFixed(0)} % found; showing closest alternatives.`);
   return { pool, candidates: pool.length, evaluated };
 }
 
@@ -255,7 +255,7 @@ export function generateRoutes(g: TrailGraph, req: RouteRequest): RouteResult {
   const t0 = performance.now();
   const notes: string[] = [];
   const snap = snapToGraph(g, req.start);
-  if (!snap || snap.offNetworkM > 150) return { proposals: [], notes: ["Startpositionen ligger för långt från stignätet."], stats: { candidates: 0, evaluated: 0, ms: 0 } };
+  if (!snap || snap.offNetworkM > 150) return { proposals: [], notes: ["The start position is too far from the trail network."], stats: { candidates: 0, evaluated: 0, ms: 0 } };
   const start: EdgePos = { edgeId: snap.edgeId, distM: snap.distM };
   const c: Ctx = {
     g, an: analyzeNetwork(g), req, start, startLL: req.start,
@@ -268,10 +268,10 @@ export function generateRoutes(g: TrailGraph, req: RouteRequest): RouteResult {
     const direct = res.pool.filter((p) => p.withinTolerance).length;
     if (direct < (req.count ?? 3)) {
       const via = generateEscapeVia(c, (req.count ?? 3) - direct);
-      if (via.length) { res.pool.push(...via); notes.push(`${via.length} förslag går via en omväg eftersom för få destinationer ligger på rätt avstånd längs kortaste vägen.`); }
+      if (via.length) { res.pool.push(...via); notes.push(`${via.length} proposals take a detour because too few destinations lie at the right distance along the shortest path.`); }
     }
   }
   const proposals = pickDiverse(c, res.pool, req.count ?? 3);
-  if (proposals.length < (req.count ?? 3)) notes.push(`Bara ${proposals.length} tillräckligt olika förslag gick att generera.`);
+  if (proposals.length < (req.count ?? 3)) notes.push(`Only ${proposals.length} sufficiently different proposals could be generated.`);
   return { proposals, notes, stats: { candidates: res.candidates, evaluated: res.evaluated || res.candidates, ms: performance.now() - t0 } };
 }

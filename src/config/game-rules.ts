@@ -17,7 +17,7 @@ export const EXTRACTION_HOLD_S = 5;
 
 /** Zombie-spurt: jagande zombie inom radien spurtar en stund med högre fart, och måste sedan återhämta sig. */
 export const SPRINT_RADIUS_M = 100;
-export const SPRINT_DURATION_S = 20;
+export const SPRINT_DURATION_S = 30;
 export const SPRINT_SPEED_FACTOR = 2;
 export const SPRINT_COOLDOWN_S = 30;
 

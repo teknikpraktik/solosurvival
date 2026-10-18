@@ -5,7 +5,7 @@ import { ServiceWorker } from "./_client/ServiceWorker";
 
 export const metadata: Metadata = {
   title: "OUTBREAK – Solo Survival",
-  description: "GPS-baserat överlevnadsspel längs verkliga stigar.",
+  description: "GPS-based zombie survival game along real trails.",
   applicationName: "OUTBREAK – Solo Survival",
   manifest: "/manifest.webmanifest",
   icons: { icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png" },
@@ -22,7 +22,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="sv">
+    <html lang="en">
       <body>
         <SessionProvider>{children}</SessionProvider>
         <ServiceWorker />

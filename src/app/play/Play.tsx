@@ -9,6 +9,7 @@ import { RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 import { cuesEnabled, setCuesEnabled, unlockAudio } from "../_client/cues";
 import { Modal } from "../_client/Modal";
+import { Scare } from "../_client/Scare";
 import type { MapMarker } from "../_client/GameMap";
 
 const GameMap = dynamic(() => import("../_client/GameMap"), { ssr: false });
@@ -25,17 +26,18 @@ export default function Play() {
   const [pauseDismissed, setPauseDismissed] = useState(false);
   const [gpsDismissed, setGpsDismissed] = useState(false);
   const [sound, setSound] = useState(true);
+  const [scareDone, setScareDone] = useState(false);
   useEffect(() => { setSound(cuesEnabled()); }, []);
   const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
 
-  // Direktlänk/omladdning: försök återställa en sparad match.
+  // Deep link / reload: try to restore a saved match.
   useEffect(() => {
     if (!session || tried) return;
     setTried(true);
     if (session.getView().match) { session.startLocating(); return; }
     void session.restoreActive().then((r) => {
       if (!r) router.replace("/");
-      else if (!r.ok) setRestoreMsg(r.reason ?? "Matchen kunde inte återställas.");
+      else if (!r.ok) setRestoreMsg(r.reason ?? "The match could not be restored.");
     });
   }, [session, tried, router]);
 
@@ -49,7 +51,16 @@ export default function Play() {
       tone: i < m.objectives!.index ? "done" : i === m.objectives!.index ? "next" : "todo",
     }));
   }, [m?.proposal, m?.objectives?.index]);
-  const route = useMemo(() => (m?.proposal ? [{ points: m.proposal.geometry, selected: true }] : []), [m?.proposal]);
+  // A TO B: any route counts, so only a faint straight line from A to B is drawn.
+  const route = useMemo(() => {
+    const pr = m?.proposal;
+    if (!pr) return [];
+    if (m?.mode === "escape") {
+      const b = pr.waypoints[0];
+      return [{ points: [pr.geometry[0], { lat: b.lat, lon: b.lon }], selected: false, faint: true }];
+    }
+    return [{ points: pr.geometry, selected: true }];
+  }, [m?.proposal, m?.mode]);
   const zombies = useMemo(() => (m?.zombiesNear ?? []).map((z) => ({ id: z.id, edgeId: z.edgeId, distM: z.distM, speedMps: z.speedMps, chasing: z.state === "chase" || z.state === "intercept", sprinting: z.sprinting })), [m?.zombiesNear]);
   useEffect(() => { if (m && !m.paused) setPauseDismissed(false); }, [m?.paused]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -58,17 +69,17 @@ export default function Play() {
       <main className="page">
         <div className="card bad">{restoreMsg}</div>
         <Link className="btn" href="/history">PREVIOUS GAMES</Link>
-        <Link className="btn" href="/">TILL START</Link>
+        <Link className="btn" href="/">HOME</Link>
       </main>
     );
   }
-  if (!view || !m || !session) return <main className="center"><p className="hint">Laddar…</p></main>;
+  if (!view || !m || !session) return <main className="center"><p className="hint">Loading…</p></main>;
 
   const finished = view.stage === "finished" || m.phase === "finished";
+  // Captured: a short scary full-screen image (with the scream sound) before the result dialog.
+  const scare = finished && m.result === "infected" && !scareDone;
   const home = m.objectives?.next;
   const dHome = home && view.position ? Math.round(live?.distanceTo(home) ?? 0) : null;
-  const gpsPill = view.gpsError ? errorText[view.gpsError.code] : m.gpsLost ? "GPS saknas" : view.quality === "infection_paused" ? "GPS svag" : view.quality === "verify" ? "GPS ok−" : "GPS ok";
-  const gpsTone = m.gpsLost || view.gpsError ? "bad" : view.quality === "ok" ? "" : "warn";
   const remaining = Math.max(0, m.limitS - m.elapsedS);
   const ready = m.elapsedS < 0.5;
   const canResume = !m.needsFix && !m.gpsLost;
@@ -94,14 +105,13 @@ export default function Play() {
       <div className="hudbar">
         <div className="line">
           <span className="pill">{MODE_LABEL[m.mode]}</span>
-          <span className="pill" aria-label="Återstående tid">{fmtTime(remaining)}</span>
-          <span className={`pill ${gpsTone}`}>{gpsPill}</span>
+          <span className="pill" aria-label="Time left">{fmtTime(remaining)}</span>
         </div>
         <div className="line">
           {m.objectives ? (
-            <span className="pill">Mål {Math.min(m.objectives.index + 1, m.objectives.total)}/{m.objectives.total}{dHome !== null ? ` · ${dHome} m` : ""}{m.objectives.holdS > 0 ? ` · ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
+            <span className="pill">Goal {Math.min(m.objectives.index + 1, m.objectives.total)}/{m.objectives.total}{dHome !== null ? ` · ${dHome} m` : ""}{m.objectives.holdS > 0 ? ` · ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
           ) : (
-            <span className="pill">{m.extraction ? "Extraction öppen" : m.phase === "head_start" ? `Försprång ${fmtTime(m.headStartLeftS)}` : "Överlev"}</span>
+            <span className="pill">{m.extraction ? "Extraction open" : m.phase === "head_start" ? `Head start ${fmtTime(m.headStartLeftS)}` : "Survive"}</span>
           )}
         </div>
         {m.infection > 0 && <div className="infect" aria-label="Smittrisk"><div style={{ width: `${Math.min(100, (m.infection / 3) * 100)}%` }} /></div>}
@@ -111,79 +121,80 @@ export default function Play() {
       {!finished && (
         <div className="controls">
           {m.paused ? (
-            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); session.resume(); setFollow(true); }}>{ready ? "STARTA" : "FORTSÄTT"}</button>
+            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); session.resume(); setFollow(true); }}>{ready ? "START" : "CONTINUE"}</button>
           ) : (
-            <button className="wide" onClick={() => session.pause("manual")}>PAUS</button>
+            <button className="wide" onClick={() => session.pause("manual")}>PAUSE</button>
           )}
-          <button className="iconbtn" onClick={() => setFollow(true)} aria-label="Centrera på mig">⌖</button>
-          <button className="iconbtn compass" onClick={() => { setTrackUp((t) => !t); setFollow(true); }} aria-label={trackUp ? "Track Up (tryck för North Up)" : "North Up (tryck för Track Up)"} aria-pressed={trackUp}>
+          <button className="iconbtn" onClick={() => setFollow(true)} aria-label="Center on me">⌖</button>
+          <button className="iconbtn compass" onClick={() => { setTrackUp((t) => !t); setFollow(true); }} aria-label={trackUp ? "Track Up (tap for North Up)" : "North Up (tap for Track Up)"} aria-pressed={trackUp}>
             <svg viewBox="0 0 26 26" style={{ transform: trackUp && view.heading != null ? `rotate(${-view.heading}deg)` : "none" }} aria-hidden="true">
               <path d="M13 2l5 11h-10z" fill="#ef4444" /><path d="M13 24l-5-11h10z" fill="#8b98a5" /><circle cx="13" cy="13" r="1.8" fill="#0b0f14" />
             </svg>
           </button>
-          <button className="iconbtn" onClick={() => { const on = !sound; setSound(on); setCuesEnabled(on); }} aria-label={sound ? "Ljud på (tryck för av)" : "Ljud av (tryck för på)"} aria-pressed={sound}>{sound ? "🔊" : "🔇"}</button>
-          <button onClick={() => setConfirmEnd(true)}>AVSLUTA</button>
+          <button className="iconbtn" onClick={() => { const on = !sound; setSound(on); setCuesEnabled(on); }} aria-label={sound ? "Sound on (tap to mute)" : "Sound off (tap to unmute)"} aria-pressed={sound}>{sound ? "🔊" : "🔇"}</button>
+          <button onClick={() => setConfirmEnd(true)}>QUIT</button>
         </div>
       )}
 
       {!finished && m.paused && !pauseDismissed && !confirmEnd && (
         <Modal
-          title={ready ? "Redo att starta" : "Pausad"}
+          title={ready ? "Ready to start" : "Paused"}
           onClose={() => setPauseDismissed(true)}
           actions={
             <>
-              <button className="btn primary big" disabled={!canResume} onClick={() => { unlockAudio(); session.resume(); setFollow(true); }}>{canResume ? (ready ? "STARTA" : "FORTSÄTT") : "VÄNTAR PÅ GPS…"}</button>
-              <button className="btn" onClick={() => setConfirmEnd(true)}>AVSLUTA</button>
+              <button className="btn primary big" disabled={!canResume} onClick={() => { unlockAudio(); session.resume(); setFollow(true); }}>{canResume ? (ready ? "START" : "CONTINUE") : "WAITING FOR LOCATION…"}</button>
+              <button className="btn" onClick={() => setConfirmEnd(true)}>QUIT</button>
             </>
           }
         >
-          {m.frozen && !ready && <div className="muted">Appen var inaktiv. Ingen tid har räknats.</div>}
-          {!ready && <div className="muted">Efter paus är du skyddad mot smitta i 5 sekunder.</div>}
-          <div className="muted">Appen måste vara öppen och i förgrunden för att GPS ska fungera.</div>
+          {m.frozen && !ready && <div className="muted">The app was inactive. No time was counted.</div>}
+          {!ready && <div className="muted">After a pause you are protected for 5 seconds.</div>}
+          <div className="muted">The app must stay open and in the foreground for location to work.</div>
         </Modal>
       )}
 
       {!finished && !m.paused && m.gpsLostLong && !gpsDismissed && !confirmEnd && (
         <Modal
-          title="GPS saknas"
+          title="Location lost"
           tone="bad"
           onClose={() => setGpsDismissed(true)}
-          actions={<button className="btn" onClick={() => setConfirmEnd(true)}>AVSLUTA</button>}
+          actions={<button className="btn" onClick={() => setConfirmEnd(true)}>QUIT</button>}
         >
-          <div className="muted">GPS har saknats i över en minut. Klockan och zombierna står stilla. Gå till öppen yta och vänta.</div>
+          <div className="muted">Your location has been lost for over a minute. The clock and the zombies stand still. Move to open sky and wait.</div>
         </Modal>
       )}
 
       {confirmEnd && !finished && (
         <Modal
-          title="Avsluta matchen?"
+          title="Quit the match?"
           onClose={() => setConfirmEnd(false)}
           actions={
             <>
-              <button className="btn primary" onClick={() => { setConfirmEnd(false); void session.abort(); }}>AVSLUTA</button>
-              <button className="btn" onClick={() => setConfirmEnd(false)}>FORTSÄTT SPELA</button>
+              <button className="btn primary" onClick={() => { setConfirmEnd(false); void session.abort(); }}>QUIT</button>
+              <button className="btn" onClick={() => setConfirmEnd(false)}>KEEP PLAYING</button>
             </>
           }
         >
-          <div className="muted">Matchen sparas som avbruten.</div>
+          <div className="muted">The match is saved as aborted.</div>
         </Modal>
       )}
 
-      {/* Match slut är ett obligatoriskt beslut: inget X, spelaren väljer vart hen går. */}
-      {finished && (
+      {scare && <Scare onDone={() => setScareDone(true)} />}
+      {/* Match over is a mandatory decision: no X, the player chooses where to go. */}
+      {finished && !scare && (
         <Modal
           title={RESULT_LABEL[m.result ?? "incomplete"]?.toUpperCase() ?? "MATCH SLUT"}
           actions={
             <>
-              <Link className="btn primary" href="/" onClick={() => session.reset()}>TILL START</Link>
+              <Link className="btn primary" href="/" onClick={() => session.reset()}>HOME</Link>
               <Link className="btn" href="/history" onClick={() => session.reset()}>PREVIOUS GAMES</Link>
             </>
           }
         >
-          <div className="stat"><span>Matchtid</span><b>{fmtTime(m.elapsedS)}</b></div>
-          <div className="stat"><span>Uppmätt sträcka</span><b>{fmtKm(m.distanceM)}</b></div>
-          {m.objectives && <div className="stat"><span>Mål</span><b>{m.objectives.index}/{m.objectives.total}</b></div>}
-          {view.storageWarning && <div className="muted">Resultatet kunde inte sparas lokalt.</div>}
+          <div className="stat"><span>Match time</span><b>{fmtTime(m.elapsedS)}</b></div>
+          <div className="stat"><span>Distance moved</span><b>{fmtKm(m.distanceM)}</b></div>
+          {m.objectives && <div className="stat"><span>Goals</span><b>{m.objectives.index}/{m.objectives.total}</b></div>}
+          {view.storageWarning && <div className="muted">The result could not be saved locally.</div>}
         </Modal>
       )}
     </div>

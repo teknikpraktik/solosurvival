@@ -71,3 +71,14 @@ HUD:en visade närmaste zombie oavsett avstånd, men kartan ritade bara zombier 
 
 ## Fälttest 6: zombie-spurt
 En jagande zombie (chase/intercept) som kommer inom **100 m** (fågelvägen) börjar **spurta**: dubbel fart (×2) i **20 s**, därefter **30 s återhämtning** (ingen ny spurt) innan den kan spurta igen. Konstanter i `game-rules.ts` (`SPRINT_*`), tillståndet (`sprintUntilS`, `sprintReadyAtS`) ligger i `Zombie` och sparas/återställs med matchen. Händelsen `zombie_sprint` loggas; varningen "Zombie spurtar!" spelas som kraftig signal högst var 8:e sekund. På kartan får spurtande zombier snabbare, tjockare puls och rödare etikett; animationen följer den dubbla farten längs stigen.
+
+## Fälttest 7: On foot / Bike, engelska, skräm, fler checkpoints
+- **Aktiviteter:** promenad borttagen. UI-valen är **On foot** (intern aktivitet `walk`, spelarfart 1,3 m/s) och **Bike** (`mtb`). `run` finns kvar internt men visas inte. Äldre sparade matcher visas som On foot/Bike.
+- **Allt UI på engelska** (sidor, dialoger, meddelanden, ruttvarningar, GPS-fel, historik, testläge, HOW TO PLAY, manifest, `lang="en"`). Utvecklarsimulatorn `/dev` och dokumentationen är oförändrade.
+- **Zombiefart:** On foot 6,75 km/h (+25 %), Bike 15,8 km/h (+10 %; cyklistens vanliga fart ≈ 16 km/h). Lätt ×0,8, Svår ×1,2. **Spurt 30 s** (var 20), x2 fart, 30 s återhämtning.
+- **Mission:** ett checkpoint per ca 500 m (`src/routes/densify.ts`), jämnt längs slingan i körordning, hem sist. Spawn-exklusionszonen runt checkpoints krymper till 80 m när det finns fler än 6 mål.
+- **A TO B:** valfri väg gäller. Kartan visar bara en svag streckad **fågelvägslinje** A–B (inte den kortaste vägen, inga ruttförslag). Den beräknade kortaste vägen används bara för att kontrollera att B går att nå och för tidsgränsen.
+- **Zombievarningar** ("Zombie approaching", "Zombies are hunting you" …) visas mitt på skärmen med centrerad text och blinkande röd bakgrund (av vid "reduce motion").
+- **Fångad:** helskärmsbild (`public/img/captured.svg`) med skakning och blixtar i 2,8 s, skrik-ljud (`public/audio/captured-scream.wav`, genereras av `scripts/make-audio.mjs`, följer ljudknappen) och vibration, därefter resultatdialogen (utan X). Ljudfilen förladdas vid START.
+- **Startsidan** har en mörk skräm-bakgrund (`public/img/hero.svg`).
+- **GPS-info visas inte** för spelaren (ingen GPS-pill, inga noggrannhetssiffror): bara korta meddelanden när något kräver åtgärd (söker position, nekad åtkomst, signal förlorad). Detaljerad GPS finns kvar under Test mode.

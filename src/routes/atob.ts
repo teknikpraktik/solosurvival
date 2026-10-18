@@ -65,9 +65,9 @@ export function generateAtoB(g: TrailGraph, a: LatLon, b: LatLon, hazardNodes: S
       minWaypointExits: 2, alternativeRatio: legs.length > 1 ? legs[0].lengthM / leg.lengthM : null, directness: direct / leg.lengthM,
     };
     let score = 100;
-    if (hazards > 0) { score -= 20; flags.push(`${hazards} korsning(ar) med större väg`); }
-    if (metrics.directness < 0.5) { score -= 10; flags.push("ruttens längd är mer än dubbelt så lång som fågelvägen"); }
-    if (hazardNodes.has(destEdge.from) || hazardNodes.has(destEdge.to)) flags.push("B ligger nära en större väg – var försiktig");
+    if (hazards > 0) { score -= 20; flags.push(`${hazards} crossing(s) with a major road`); }
+    if (metrics.directness < 0.5) { score -= 10; flags.push("the route is more than twice as long as the straight line"); }
+    if (hazardNodes.has(destEdge.from) || hazardNodes.has(destEdge.to)) flags.push("B is close to a major road – be careful");
     return {
       id: `atob-${i}`, mode: "escape", type: "point-to-point",
       waypoints: [{ id: "B", kind: "destination", nodeId: destEdge.from, lat: bLL.lat, lon: bLL.lon }],
@@ -76,6 +76,6 @@ export function generateAtoB(g: TrailGraph, a: LatLon, b: LatLon, hazardNodes: S
       metrics, quality: { score: Math.max(0, score), flags },
     };
   });
-  if (proposals.length < 2) notes.push("Bara en rimlig väg hittades mellan A och B.");
+  if (proposals.length < 2) notes.push("Only one reasonable way was found between A and B.");
   return { status: "ok", aSnapM: sa.offNetworkM, bSnapM: sb.offNetworkM, proposals, notes };
 }
