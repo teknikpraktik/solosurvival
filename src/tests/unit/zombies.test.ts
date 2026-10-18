@@ -202,6 +202,22 @@ describe("Testfall D: närhetsljud", () => {
     expect(v.zombieCount).toBe(live.state.zombies.length);
   }, 60000);
 
+  it("zombie 600 m bort ritas (syns i vyn) men ger inget varningsljud i litet område", async () => {
+    const { session, advance, cues } = await setup();
+    const live = session.live!;
+    live.state.phase = "head_start";
+    for (let i = 0; i < live.state.zombies.length; i++) place(live, i, 4000);
+    place(live, 0, 600);
+    cues.length = 0;
+    advance(3000);
+    const v = session.getView().match!;
+    expect(v.zombiesNear.map((z) => z.id)).toContain(live.state.zombies[0].id);
+    expect(cues.filter((c) => c === "zombie")).toHaveLength(0);
+    place(live, 0, 1300);
+    advance(2000);
+    expect(session.getView().match!.zombiesNear).toHaveLength(0);
+  }, 60000);
+
   it("zombiehändelser loggas för att skilja spawn-, routing- och renderingsfel", async () => {
     const { session, advance } = await setup();
     advance(35_000);

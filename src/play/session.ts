@@ -8,7 +8,7 @@ import { GpsProvider, type GeoLike, type GpsErrorCode, type GpsEvent } from "@/g
 import type { GPSFix, GpsQuality } from "@/gps/types";
 import type { TileStore } from "@/data/store";
 import type { RouteProposal } from "@/routes/types";
-import { proximityRadiusM, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
+import { proximityRadiusM, VISIBLE_RADIUS_M, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
 import { FieldLog } from "./fieldlog";
 import { HeadingTracker } from "./heading";
 import { LiveGame } from "./live-game";
@@ -80,7 +80,7 @@ export interface MatchView {
   elapsedS: number;
   limitS: number;
   distanceM: number;
-  /** Zombier inom närhetsradien (ritas på kartan). */
+  /** Zombier inom VISIBLE_RADIUS_M (ritas på kartan). */
   zombiesNear: ZombieView[];
   proximityM: number;
   /** Antal levande zombier i matchen. */
@@ -572,7 +572,7 @@ export class PlaySession {
       elapsedS: s.elapsedSeconds,
       limitS: s.config.durationSeconds,
       distanceM: s.player.distanceM,
-      zombiesNear: zs.filter((z) => z.distanceM <= aware),
+      zombiesNear: zs.filter((z) => z.distanceM <= VISIBLE_RADIUS_M),
       proximityM: aware,
       zombieCount: zs.length,
       nearestZombieM: zs.length ? zs[0].distanceM : null,

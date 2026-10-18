@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { VISIBLE_RADIUS_M } from "@/play/config";
 import { errorText } from "@/gps/provider/provider";
 import { RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
@@ -71,7 +72,7 @@ export default function Play() {
   const gpsTone = m.gpsLost || view.gpsError ? "bad" : view.quality === "ok" ? "" : "warn";
   const remaining = Math.max(0, m.limitS - m.elapsedS);
   const fmtDist = (d: number) => (d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d)} m`);
-  const zombiePill = m.nearestZombieM === null ? "Inga zombier ännu" : `Zombie ${fmtDist(m.nearestZombieM)}`;
+  const zombiePill = m.nearestZombieM === null ? "Inga zombier ännu" : m.nearestZombieM <= VISIBLE_RADIUS_M ? `Zombie ${fmtDist(m.nearestZombieM)}` : "Inga zombier inom 1 km";
   const ready = m.elapsedS < 0.5;
   const canResume = !m.needsFix && !m.gpsLost;
 

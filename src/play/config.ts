@@ -58,6 +58,12 @@ export function dataRadiusM(p: MatchParams): number {
   return p.targetLengthM * 0.5 + 500;
 }
 
+/**
+ * Zombier ritas på kartan (och räknas i HUD:ens "Zombie N m") inom detta avstånd, oavsett spelområdets storlek. Skild från
+ * `proximityRadiusM`, som bara styr varningsljudet. Fälttest 1: zombie 600 m bort stod i HUD men ritades inte eftersom kartradien då var 500 m.
+ */
+export const VISIBLE_RADIUS_M = 1000;
+
 /** Spelområden med datahämtningsradie under denna gräns räknas som "små" (se proximityRadiusM). */
 export const LARGE_AREA_RADIUS_M = 3500;
 
