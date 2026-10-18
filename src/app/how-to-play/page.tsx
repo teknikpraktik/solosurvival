@@ -21,7 +21,7 @@ export default function HowToPlay() {
       <h2>Spellägen</h2>
       <ul>
         <li><b>MISSION</b> – en slinga från start. Nå 1–3 checkpoints i ordning och gå sedan tillbaka till start.</li>
-        <li><b>ESCAPE</b> – ta dig från start till en målpunkt (A→B).</li>
+        <li><b>A TO B</b> – du väljer själv A (start, standard din position) och B (mål) på kartan. Rutten är kortaste vägen längs stigar och vägar; ingen sträcka ställs in. Du måste stå vid A för att starta.</li>
         <li><b>SURVIVAL</b> – ingen rutt. Överlev tills extraction öppnar (efter 80 % av matchtiden) och nå den.</li>
       </ul>
       <p>Rutten som visas är ett förslag. Du får gå var du vill – men zombierna följer bara stigarna, och mål räknas först när du står inom 30 m i 5 sekunder.</p>

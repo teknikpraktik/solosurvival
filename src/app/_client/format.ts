@@ -2,10 +2,10 @@ import type { GameMode } from "@/engine/objectives/objectives";
 import type { Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
 
-export const MODE_LABEL: Record<GameMode, string> = { mission: "MISSION", escape: "ESCAPE", survival: "SURVIVAL" };
+export const MODE_LABEL: Record<GameMode, string> = { mission: "MISSION", escape: "A TO B", survival: "SURVIVAL" };
 export const MODE_HELP: Record<GameMode, string> = {
   mission: "Slinga från start: nå 1–3 checkpoints i ordning och gå sedan tillbaka till start.",
-  escape: "Ta dig från start till en mål-punkt (A→B) innan tiden går ut.",
+  escape: "Välj själv A och B på kartan och ta dig från A till B innan tiden går ut.",
   survival: "Ingen rutt: överlev tills extraction öppnar och nå den.",
 };
 export const ACTIVITY_LABEL: Record<Activity, string> = { walk: "Promenad", run: "Löpning", mtb: "MTB" };

@@ -56,3 +56,11 @@ HUD:en visade närmaste zombie oavsett avstånd, men kartan ritade bara zombier 
 - **Försprång borttaget** (`headStartS` = 0 i alla aktiviteter): zombierna går och jagar från första sekunden. Motorn stödjer fortfarande ett valfritt försprång via reglerna.
 - **Inte vid startpunkten:** minsta spawnavstånd 300 m för Walk/Run (tidigare 200/250) och 400 m för MTB, högsta 1 000 m.
 - **Fart (Normal):** Walk 4,5 km/h, Run 7,5 km/h, MTB 12 km/h (tidigare 3,5/6,5/11). Lätt ×0,8, Svår ×1,2 (Walk Svår ≈ 5,4 km/h, fortare än en lugn gångfart: man får smita undan via annan väg).
+
+## Fälttest 4: A TO B (ESCAPE bytt namn, egen A och B)
+- Läget heter nu **A TO B** (internt fortfarande `escape`, så sparade matcher och tester fungerar). Ingen sträcka ställs in; sträckreglaget finns bara i MISSION (Survival har matchlängd).
+- I NEW GAME väljer du A och B genom att trycka på en liten karta ("Välj A"/"Välj B"). A är din position om du inte väljer något annat (länk "Använd min position som A"). B måste väljas innan VISA RUTT går att trycka.
+- Rutten (`src/routes/atob.ts`) är kortaste vägen längs stigar/vägar från A till B plus upp till två tydligt olika alternativ (≤ 1,6 × kortaste, olika kanter). B (och A) måste ligga ≤ 150 m från en stig i samma sammanhängande nät; annars avslås valet med förklaring (för nära < 300 m, för långt > 70 % av aktivitetens maxsträcka fågelvägen: Walk 4 km, Run 8 km, MTB 21 km, B utanför Värmland, ingen väg mellan punkterna).
+- Kartdata hämtas runt mittpunkten mellan A och B (radie 0,75 × avståndet + 600 m) så att båda täcks.
+- Är A vald långt från din position kan du se rutten men inte starta: "Du är N m från A. Gå till A för att starta" (inom 60 m från A), med länk "Sätt A till min position".
+- Tidsgräns, mål (en destination B), zombier, magnet-jakt och övrig motor är oförändrade.
