@@ -41,3 +41,13 @@ Verklig GPS/heading på iPhone och Android; ljudnivå och ringkontakt/tyst-läge
 
 ## Uppföljning efter fälttestet (zombie 600 m syntes i HUD men ritades inte)
 HUD:en visade närmaste zombie oavsett avstånd, men kartan ritade bara zombier inom närhetsradien (500 m i små områden). Nu ritas och räknas zombier inom `VISIBLE_RADIUS_M` = 1 000 m (alla områden); längre bort visar HUD:en "Inga zombier inom 1 km". Varningsljudets radie (500/1 000 m) är oförändrad.
+
+## Fälttest 2: mer action (zombier, magnet-jakt, närmare spawn)
+Önskemål efter spel i Normal: fler zombier, jakt "som magneter", zombier nära redan vid start (max 1 km). Avsiktliga balansändringar (alla värden i `src/config/activities.ts` och `game-rules.ts`):
+- **Fler zombier (Normal):** Walk 6 start / 18 max (tidigare 3/9), Run 8/24 (4/12), MTB 10/30 (5/15). Lätt ×0,7, Svår ×1,3 som tidigare.
+- **Spawn nära:** nya zombier hamnar 200–1 000 m från spelaren (Run 250–1 000, MTB 400–1 000; fågelvägen, och högst 1,5 × längs nätet). Om inget säkert ställe finns i bandet släpps övre gränsen (`spawn_relaxed` i loggen) i stället för att inga zombier tillkommer.
+- **Magnet-jakt (`rules.magnetic`):** med giltig GPS känner varje zombie spelarens snappade position (en delad observation per sekund) och jagar kontinuerligt längs nätet, utan upptäcktsradie. Zombie-AI:n är i övrigt oförändrad: stigbunden, kortaste väg, genskjutning, ingen kunskap om mål eller extraction. Ogiltig/ingen GPS ⇒ ingen magnet (som tidigare). Replaneringar sprids 2–4 s.
+- **Snabbare och tidigare:** zombiefart Walk 3,5 km/h (2,5), Run 6,5 (5), MTB 11 (9); försprång 60 s Walk/Run och 90 s MTB (180/240). Spelaren går fortfarande fortare än en zombie (Svår Walk ≈ 4,2 km/h), men kan fångas framifrån, av genskjutare och vid stopp.
+- Ett gemensamt larm "Zombier jagar dig" (högst var 15:e s) i stället för ett per zombie.
+- **Vägar:** zombier går på alla vägar och stigar som finns i spelets nät (stigar, spår, service-, bostads- och landsvägar utan genomfart). Större vägar (≤ tertiary) och järnväg är medvetet utanför nätet av säkerhetsskäl (spelaren ska aldrig ledas dit). Zombier på större vägar kräver kanter märkta "bara zombier" i grafen – kan göras separat.
+- Mätt: motorsteg 0,05 ms med 26 zombier. Simulerade vinstandelar (naiv extraction-bot, rutnät, 20 frön) är i stort sett oförändrade jämfört med före (Walk Normal 15/20, Run Lätt 16/20, Run Normal 8/20).

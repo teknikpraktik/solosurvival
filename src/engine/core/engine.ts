@@ -78,18 +78,20 @@ export function createGame({ g, config, rules, start, id, objectives }: CreateGa
 }
 
 function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos, events: GameEvent[]): boolean {
-  const spawn = findSpawn(
-    g,
-    {
-      player: s.player.position,
-      playerPos,
-      component: s.component,
-      zombiePositions: s.zombies.map((z) => zombieLatLon(g, z)),
-      minDistanceM: rules.spawnMinDistanceM,
-      avoid: s.objectives?.targets.filter((t) => t.kind !== "home").map((t) => ({ p: t, r: OBJECTIVE_SPAWN_EXCLUSION_M })),
-    },
-    s,
-  );
+  const ctx = {
+    player: s.player.position,
+    playerPos,
+    component: s.component,
+    zombiePositions: s.zombies.map((z) => zombieLatLon(g, z)),
+    minDistanceM: rules.spawnMinDistanceM,
+    avoid: s.objectives?.targets.filter((t) => t.kind !== "home").map((t) => ({ p: t, r: OBJECTIVE_SPAWN_EXCLUSION_M })),
+  };
+  let spawn = findSpawn(g, { ...ctx, maxDistanceM: rules.spawnMaxDistanceM }, s);
+  if (!spawn) {
+    // Inget säkert ställe inom bandet (t.ex. spelaren långt från nätet): släpp övre gränsen hellre än att inga zombier alls tillkommer.
+    spawn = findSpawn(g, ctx, s);
+    if (spawn) events.push({ type: "spawn_relaxed" });
+  }
   if (!spawn) {
     events.push({ type: "spawn_skipped" });
     return false;
@@ -199,6 +201,12 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
     }
   }
 
+  // Magnet-jakt: en gemensam, ungefär sekundfärsk observation av spelaren som alla zombier jagar mot.
+  if (hunting && rules.magnetic && detection) {
+    const m = s.player.magnetObservation;
+    if (!m || t - m.observedAtS >= 1) s.player.magnetObservation = makeObservation(g, input.position, t, s.component) ?? m;
+  }
+
   // Zombier.
   if (hunting) {
     const aiEvents: { type: "zombie_detected"; zombieId: string }[] = [];
@@ -212,6 +220,7 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
           timeS: t,
           playerPos: input.position,
           playerObservation: s.player.lastObservation ?? null,
+          magnetObservation: rules.magnetic && detection ? (s.player.magnetObservation ?? null) : null,
           reveal,
           detectionEnabled: detection,
           events: aiEvents,

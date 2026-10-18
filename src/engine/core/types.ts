@@ -58,6 +58,8 @@ export interface PlayerState {
   distanceM: number;
   /** Senast validerade position som AI:n har rätt att veta om. */
   lastObservation?: Observation;
+  /** Magnet-jakt: spelarens snappade position, uppdaterad ca varje sekund. Delas av alla zombier (ett nätsnap i stället för ett per zombie). */
+  magnetObservation?: Observation;
 }
 
 export interface GameState {
@@ -96,6 +98,7 @@ export type GameEvent =
   | { type: "reveal" }
   | { type: "zombie_spawned"; zombieId: string }
   | { type: "spawn_skipped" }
+  | { type: "spawn_relaxed" }
   | { type: "zombie_detected"; zombieId: string }
   | { type: "infection_contact" }
   | { type: "extraction_opened"; nodeId: string }

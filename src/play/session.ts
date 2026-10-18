@@ -137,6 +137,7 @@ export class PlaySession {
   private lastCheckMs = 0;
   private lastSampleMs = 0;
   private silentFirstCheck = false;
+  private lastDetectCueMs = -Infinity;
   private cueMsgs: { text: string; until: number }[] = [];
 
   constructor(private readonly d: SessionDeps) {
@@ -370,9 +371,13 @@ export class PlaySession {
     for (const e of events) {
       switch (e.type) {
         case "objective_reached": this.cue("goal", e.index + 1 >= (live.state.objectives?.targets.length ?? 0) ? "Sista målet nått" : "Checkpoint registrerat"); this.log?.add(t, "objective", { id: e.targetId, atS: Math.round(live.state.elapsedSeconds) }); break;
-        case "zombie_detected": this.cue("alert", "Zombie har upptäckt dig"); break;
+        case "zombie_detected":
+          // Med magnet-jakt upptäcker många zombier spelaren samtidigt: ett gemensamt larm, inte ett per zombie.
+          if (t - this.lastDetectCueMs > 15_000) { this.lastDetectCueMs = t; this.cue("alert", "Zombier jagar dig"); }
+          break;
         case "infection_contact": this.cue("danger", "Zombie nära – gå bort!"); this.log?.add(t, "infection_contact"); break;
         case "zombie_spawned": this.log?.add(t, "zombie_spawned", { id: e.zombieId, n: live.state.zombies.length }); break;
+        case "spawn_relaxed": this.log?.add(t, "spawn_relaxed", { n: live.state.zombies.length }); break;
         case "spawn_skipped": this.log?.add(t, "spawn_skipped", { n: live.state.zombies.length, atS: Math.round(live.state.elapsedSeconds) }); break;
         case "extraction_opened": this.cue("info", "Extraction öppen"); this.log?.add(t, "extraction_opened"); break;
         case "gps_lost_long": this.cue("alert", "GPS borta en längre stund"); this.log?.add(t, "gps_lost_long"); break;

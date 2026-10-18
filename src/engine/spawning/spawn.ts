@@ -10,6 +10,8 @@ export interface SpawnContext {
   component: number;
   zombiePositions: LatLon[];
   minDistanceM: number;
+  /** Högsta fågelvägsavstånd till spelaren (och 1,5 × längs nätet). Utelämnat = ingen gräns. */
+  maxDistanceM?: number;
   /** Minsta avstånd till andra zombier, så att nya inte hamnar i en klunga. */
   minSpacingM?: number;
   tries?: number;
@@ -28,7 +30,8 @@ export function findSpawn(g: TrailGraph, ctx: SpawnContext, rng: RngHolder): Edg
   const dists = networkDistances(g, ctx.playerPos);
   const spacing = ctx.minSpacingM ?? 100;
 
-  for (let i = 0; i < (ctx.tries ?? 60); i++) {
+  // Med övre gräns är träffytan mindre: fler försök (varje försök är billigt).
+  for (let i = 0; i < (ctx.tries ?? (ctx.maxDistanceM !== undefined ? 400 : 60)); i++) {
     // Längdviktad slumpning av kant.
     let r = rand(rng) * total;
     let edge = edges[edges.length - 1];
@@ -41,9 +44,13 @@ export function findSpawn(g: TrailGraph, ctx: SpawnContext, rng: RngHolder): Edg
     }
     const pos: EdgePos = { edgeId: edge.id, distM: rand(rng) * edge.lengthM };
     const ll = edgeLatLon(g, pos);
-    if (haversineM(ll, ctx.player) < ctx.minDistanceM) continue;
+    const direct = haversineM(ll, ctx.player);
+    if (direct < ctx.minDistanceM) continue;
+    if (ctx.maxDistanceM !== undefined && direct > ctx.maxDistanceM) continue;
     // Oriktade nät: avståndet från spelaren till spawn räknas längs nätet.
-    if (distanceToPos(g, ctx.playerPos, dists, pos) < ctx.minDistanceM) continue;
+    const net = distanceToPos(g, ctx.playerPos, dists, pos);
+    if (net < ctx.minDistanceM) continue;
+    if (ctx.maxDistanceM !== undefined && net > ctx.maxDistanceM * 1.5) continue;
     if (ctx.zombiePositions.some((z) => haversineM(z, ll) < spacing)) continue;
     if (ctx.avoid?.some((a) => haversineM(a.p, ll) < a.r)) continue;
     return pos;

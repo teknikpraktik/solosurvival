@@ -37,30 +37,51 @@ const fix = (live: LiveGame, p: LatLon, t: number) => live.pushFix({ latitude: p
 
 describe("Testfall A: zombier (riktiga Värmlandsdata, simulerad GPS)", () => {
   for (const difficulty of ["easy", "normal", "hard"] as Difficulty[]) {
-    it(`${difficulty}: initial spawn enligt reglerna, ingen hoppad spawn, antal ökar successivt och minskar aldrig`, () => {
+    it(`${difficulty}: initial spawn 200–1000 m från spelaren, antal ökar successivt (smittpaus) och minskar aldrig`, () => {
       const { live } = mk("walk-mission", difficulty);
       expect(live.state.zombies.length).toBe(live.rules.initialZombies);
-      expect(live.state.zombies.length).toBeGreaterThan(0);
+      expect(live.state.zombies.length).toBeGreaterThanOrEqual(3);
       const pos0 = live.state.player.position;
-      for (const z of live.state.zombies) expect(haversineM(zombieLatLon(live.g, z), pos0)).toBeGreaterThanOrEqual(live.rules.spawnMinDistanceM); // aldrig ovanpå spelaren
-      const geom = prep["walk-mission"].proposals[0].geometry;
-      const cum = cumulativeLengths(geom);
-      let t = 3e7; fix(live, START, t); live.resume(t);
-      let skipped = 0, prev = live.state.zombies.length, d = 0;
-      const counts: number[] = [prev];
-      for (let s = 0; s < 2400 && !live.finished; s++) {
-        for (let k = 0; k < 5; k++) { t += 200; for (const e of live.tick(t)) if (e.type === "spawn_skipped") skipped++; }
-        d = Math.min(cum.at(-1)!, d + 1.3);
-        fix(live, pointAlong(geom, cum, d), t);
-        expect(live.state.zombies.length).toBeGreaterThanOrEqual(prev); // försvinner aldrig tyst
-        prev = live.state.zombies.length;
-        if (s % 300 === 0) counts.push(prev);
-        for (const z of live.state.zombies) { const ll = zombieLatLon(live.g, z); expect(Number.isFinite(ll.lat + ll.lon)).toBe(true); }
+      for (const z of live.state.zombies) {
+        const d = haversineM(zombieLatLon(live.g, z), pos0);
+        expect(d).toBeGreaterThanOrEqual(live.rules.spawnMinDistanceM);
+        expect(d).toBeLessThanOrEqual(live.rules.spawnMaxDistanceM); // nära nog för action direkt, aldrig ovanpå spelaren
       }
-      expect(Math.max(...counts)).toBeGreaterThan(counts[0]); // tillkommer successivt
-      expect(skipped).toBeLessThan(5);
+      // Kör motorn 20 min med smitta pausad (kvalitet infection_paused) så att tillväxten kan mätas utan att matchen tar slut.
+      live.state.paused = false;
+      let skipped = 0, prev = live.state.zombies.length;
+      const counts = [prev];
+      for (let i = 0; i < 5 * 60 * 20; i++) {
+        for (const e of stepGame(live.g, live.state, live.rules, { position: pos0, quality: "infection_paused", accuracyM: 25 })) if (e.type === "spawn_skipped") skipped++;
+        expect(live.state.zombies.length).toBeGreaterThanOrEqual(prev);
+        prev = live.state.zombies.length;
+        if (i % 3000 === 0) counts.push(prev);
+      }
+      expect(Math.max(...counts)).toBeGreaterThan(counts[0]);
+      expect(skipped).toBeLessThan(10);
+      for (const z of live.state.zombies) { const ll = zombieLatLon(live.g, z); expect(Number.isFinite(ll.lat + ll.lon)).toBe(true); }
     });
   }
+
+  it("magnet-jakt: alla zombier jagar och konvergerar mot en stillastående spelare längs nätet (Normal)", () => {
+    const { live } = mk("walk-mission", "normal");
+    live.state.paused = false;
+    const pos = live.state.player.position;
+    const dist = () => live.state.zombies.map((z) => haversineM(zombieLatLon(live.g, z), pos));
+    const d0 = dist();
+    expect(d0.length).toBeGreaterThanOrEqual(6);
+    let chasing = 0;
+    for (let i = 0; i < 5 * 240; i++) { stepGame(live.g, live.state, live.rules, { position: pos, quality: "infection_paused", accuracyM: 25 }); }
+    chasing = live.state.zombies.filter((z) => z.state === "chase" || z.state === "intercept").length;
+    expect(chasing).toBeGreaterThanOrEqual(Math.floor(live.state.zombies.length * 0.9));
+    const d1 = dist();
+    const mean = (a: number[]) => a.reduce((x, y) => x + y, 0) / a.length;
+    expect(mean(d1.slice(0, d0.length))).toBeLessThan(mean(d0) - 80); // går mot spelaren (≈ 1 m/s i 3 min efter försprånget)
+    // Och med smitta på blir spelaren fångad.
+    let t = 0;
+    for (; t < 5 * 60 * 25 && live.state.result === undefined; t++) stepGame(live.g, live.state, live.rules, { position: pos, quality: "ok", accuracyM: 5 });
+    expect(live.state.result).toBe("infected");
+  });
 
   it("svårighet påverkar hotbilden: fler, snabbare och mer uppmärksamma zombier", () => {
     const r = (d: Difficulty) => mk("walk-mission", d).live.rules;

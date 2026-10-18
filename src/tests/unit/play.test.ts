@@ -133,11 +133,12 @@ describe("lagring och återställning", () => {
     const { st } = await fresh();
     const { live, params, proposal } = mk("mission");
     const geom = proposal!.geometry;
-    walk(live, geom.slice(0, 20), 1.3, 60 * 15, false);
+    walk(live, geom.slice(0, 20), 1.3, 100, false);
+    expect(live.finished).toBe(false);
     await st.begin(live, params, proposal, START, "test");
     await st.save(live, params, proposal, START, "test");
     const out = await st.loadActive();
-    expect(out && out.ok).toBe(true);
+    expect(out && out.ok, JSON.stringify(out && !out.ok ? out.reason : "")).toBe(true);
     const r = (out as { ok: true; restored: import("@/play/storage").Restored }).restored;
     expect(JSON.parse(JSON.stringify(r.live.state))).toEqual(JSON.parse(JSON.stringify({ ...live.state, paused: true })));
     expect(r.live.state.rngState).toBe(live.state.rngState);
@@ -271,7 +272,7 @@ describe("prestanda", () => {
     live.state.phase = "survival";
     live.state.paused = false;
     // Fyll upp till max zombier.
-    Object.assign(live.rules, { initialZombies: 15, maxZombies: 15 });
+    Object.assign(live.rules, { initialZombies: 40, maxZombies: 40 });
     const pos = live.state.player.position;
     const N = 3000;
     const t0 = performance.now();
