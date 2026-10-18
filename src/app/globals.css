@@ -71,8 +71,6 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .overlay .card { width: min(440px, 100%); display: flex; flex-direction: column; gap: 10px; }
 .infect { height: 8px; border-radius: 4px; background: #1b2430; overflow: hidden; }
 .infect > div { height: 100%; background: #ef4444; }
-.toast { position: absolute; left: 12px; right: 12px; top: calc(max(10px, env(safe-area-inset-top)) + 96px); z-index: 4; pointer-events: none; display: flex; flex-direction: column; gap: 6px; }
-.toast .card { padding: 8px 12px; font-weight: 700; }
 .hist { display: flex; flex-direction: column; gap: 8px; }
 .hist .card { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; }
 .hist .res { font-weight: 800; }
@@ -138,9 +136,3 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 @keyframes scare-shake { 0% { transform: translate(0,0); } 25% { transform: translate(-6px,4px); } 50% { transform: translate(5px,-5px); } 75% { transform: translate(-4px,-3px); } 100% { transform: translate(0,0); } }
 @keyframes scare-zoom { from { scale: 1; } to { scale: 1.35; } }
 @media (prefers-reduced-motion: reduce) { .scare, .scare img { animation: none; } }
-/* Event messages: centered on screen, centered text, flashing background */
-.toast { top: 38%; align-items: center; }
-.toast .card { width: min(320px, 100%); text-align: center; font-size: 1.05rem; background: #7f1d1d; border-color: #ff4d4d; color: #fff; animation: toast-flash .45s steps(2) 5, toast-in .2s ease-out; }
-@keyframes toast-flash { 0% { background: #7f1d1d; } 50% { background: #ef4444; } 100% { background: #7f1d1d; } }
-@keyframes toast-in { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .toast .card { animation: none; } }
