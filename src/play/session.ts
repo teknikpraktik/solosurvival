@@ -83,6 +83,8 @@ export interface MatchView {
   /** Zombier inom VISIBLE_RADIUS_M (ritas på kartan). */
   zombiesNear: ZombieView[];
   proximityM: number;
+  /** Sekunder kvar av försprånget (zombierna står stilla tills det är slut), annars 0. */
+  headStartLeftS: number;
   /** Antal levande zombier i matchen. */
   zombieCount: number;
   /** Avstånd (m) till närmaste zombie oavsett radie, null om inga. */
@@ -579,6 +581,7 @@ export class PlaySession {
       distanceM: s.player.distanceM,
       zombiesNear: zs.filter((z) => z.distanceM <= VISIBLE_RADIUS_M),
       proximityM: aware,
+      headStartLeftS: s.phase === "head_start" ? Math.max(0, live.rules.headStartS - s.elapsedSeconds) : 0,
       zombieCount: zs.length,
       nearestZombieM: zs.length ? zs[0].distanceM : null,
       infection: s.infectionProgressSeconds,
