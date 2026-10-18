@@ -68,3 +68,6 @@ HUD:en visade närmaste zombie oavsett avstånd, men kartan ritade bara zombier 
 ## Fälttest 5: avståndsetiketter och +20 % zombiefart
 - Avstånd skrivs vid de **tre zombier som är närmast spelaren** (uppdateras varje bildruta), placerade åt spelarens håll relativt skärmen (40 px från markören, följer kartrotationen). HUD-rutan "Zombie N m" är borttagen. Etikett: hela meter under 100 m, annars närmaste 5 m, ≥ 1 km som "1,2 km".
 - Zombiefart +20 % (Normal): Walk 5,4 km/h, Run 9 km/h, MTB 14,4 km/h (Lätt ×0,8, Svår ×1,2: Walk Svår ≈ 6,5 km/h).
+
+## Fälttest 6: zombie-spurt
+En jagande zombie (chase/intercept) som kommer inom **100 m** (fågelvägen) börjar **spurta**: dubbel fart (×2) i **20 s**, därefter **30 s återhämtning** (ingen ny spurt) innan den kan spurta igen. Konstanter i `game-rules.ts` (`SPRINT_*`), tillståndet (`sprintUntilS`, `sprintReadyAtS`) ligger i `Zombie` och sparas/återställs med matchen. Händelsen `zombie_sprint` loggas; varningen "Zombie spurtar!" spelas som kraftig signal högst var 8:e sekund. På kartan får spurtande zombier snabbare, tjockare puls och rödare etikett; animationen följer den dubbla farten längs stigen.

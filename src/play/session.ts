@@ -46,6 +46,8 @@ export interface ZombieView {
   distM: number;
   dir: 1 | -1;
   speedMps: number;
+  /** Zombien spurtar just nu (dubbel fart). */
+  sprinting: boolean;
   lat: number;
   lon: number;
   distanceM: number;
@@ -142,6 +144,7 @@ export class PlaySession {
   private lastSampleMs = 0;
   private silentFirstCheck = false;
   private lastDetectCueMs = -Infinity;
+  private lastSprintCueMs = -Infinity;
   private cueMsgs: { text: string; until: number }[] = [];
 
   constructor(private readonly d: SessionDeps) {
@@ -386,6 +389,10 @@ export class PlaySession {
           break;
         case "infection_contact": this.cue("danger", "Zombie nära – gå bort!"); this.log?.add(t, "infection_contact"); break;
         case "zombie_spawned": this.log?.add(t, "zombie_spawned", { id: e.zombieId, n: live.state.zombies.length }); break;
+        case "zombie_sprint":
+          this.log?.add(t, "zombie_sprint", { id: e.zombieId });
+          if (t - this.lastSprintCueMs > 8_000) { this.lastSprintCueMs = t; this.cue("danger", "Zombie spurtar!"); }
+          break;
         case "spawn_relaxed": this.log?.add(t, "spawn_relaxed", { n: live.state.zombies.length }); break;
         case "spawn_skipped": this.log?.add(t, "spawn_skipped", { n: live.state.zombies.length, atS: Math.round(live.state.elapsedSeconds) }); break;
         case "extraction_opened": this.cue("info", "Extraction öppen"); this.log?.add(t, "extraction_opened"); break;
@@ -572,7 +579,7 @@ export class PlaySession {
     const zs: ZombieView[] = s.zombies
       .map((z) => {
         const ll = zombieLatLon(live.g, z);
-        return { id: z.id, edgeId: z.edgeId, distM: z.distanceAlongEdgeM, dir: z.dir, speedMps: z.speedMps, lat: ll.lat, lon: ll.lon, distanceM: haversineM(ll, pos), state: z.state };
+        return { id: z.id, edgeId: z.edgeId, distM: z.distanceAlongEdgeM, dir: z.dir, speedMps: z.speedMps * (z.sprintUntilS !== undefined ? live.rules.sprintSpeedFactor : 1), sprinting: z.sprintUntilS !== undefined, lat: ll.lat, lon: ll.lon, distanceM: haversineM(ll, pos), state: z.state };
       })
       .sort((a, b) => a.distanceM - b.distanceM);
     const o = s.objectives;

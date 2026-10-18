@@ -211,7 +211,22 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   if (hunting) {
     const aiEvents: { type: "zombie_detected"; zombieId: string }[] = [];
     for (const z of s.zombies) {
-      const arrived = advanceZombie(g, z, z.speedMps * STEP_S, s);
+      // Spurt: en jagande zombie nära spelaren dubblar farten i en kort stund och måste sedan återhämta sig.
+      if (z.sprintUntilS !== undefined && t >= z.sprintUntilS) {
+        z.sprintUntilS = undefined;
+        z.sprintReadyAtS = t + rules.sprintCooldownS;
+      }
+      if (
+        z.sprintUntilS === undefined &&
+        (z.state === "chase" || z.state === "intercept") &&
+        t >= (z.sprintReadyAtS ?? 0) &&
+        haversineM(zombieLatLon(g, z), input.position) <= rules.sprintRadiusM
+      ) {
+        z.sprintUntilS = t + rules.sprintDurationS;
+        events.push({ type: "zombie_sprint", zombieId: z.id });
+      }
+      const speed = z.speedMps * (z.sprintUntilS !== undefined ? rules.sprintSpeedFactor : 1);
+      const arrived = advanceZombie(g, z, speed * STEP_S, s);
       updateZombieAI(
         {
           g,
