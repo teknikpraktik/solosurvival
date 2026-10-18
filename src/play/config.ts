@@ -1,4 +1,5 @@
 import { ACTIVITIES, type Activity } from "@/config/activities";
+import { haversineM, type LatLon } from "@/geo/geometry";
 import type { Difficulty } from "@/config/difficulty";
 import type { GameMode } from "@/engine/objectives/objectives";
 
@@ -10,6 +11,9 @@ export interface MatchParams {
   targetLengthM: number;
   /** Survival: matchlängd (s). Escape/Mission: tidsgräns beräknas från rutten. */
   durationS: number;
+  /** A TO B (escape): spelarens valda start A (null = min position) och mål B. Ingen sträcka ställs in; längden följer av valen. */
+  pointA?: LatLon | null;
+  pointB?: LatLon | null;
   seed: number;
 }
 
@@ -51,9 +55,21 @@ export function clampParams(p: MatchParams): MatchParams {
   };
 }
 
+/** Längsta fågelvägsavstånd A–B (m) för A TO B, per aktivitet (håller datamängden rimlig). */
+export const atoBMaxStraightM = (a: Activity): number => Math.round(DISTANCE_LIMITS[a].max * 0.7);
+export const A_TO_B_MIN_STRAIGHT_M = 300;
+
+/** Mittpunkt för kartdata: mitt mellan A och B i A TO B, annars start. */
+export function dataCenter(p: MatchParams, start: LatLon): LatLon {
+  if (p.mode === "escape" && p.pointB) return { lat: (start.lat + p.pointB.lat) / 2, lon: (start.lon + p.pointB.lon) / 2 };
+  return start;
+}
+
 /** Radien (m) kring start som behöver kartdata. Håller nere nedladdningen för korta matcher. */
 export function dataRadiusM(p: MatchParams): number {
   if (p.mode === "survival") return Math.max(ACTIVITIES[p.activity].autoRadiusM, ACTIVITIES[p.activity].playerPaceMps * p.durationS * 0.5);
+  // A TO B: A och B är valda (A sätts till startpositionen vid förberedelsen); datan måste täcka båda plus omvägar.
+  if (p.mode === "escape" && p.pointA && p.pointB) return haversineM(p.pointA, p.pointB) * 0.75 + 600;
   if (p.mode === "escape") return p.targetLengthM * 0.75 + 300;
   return p.targetLengthM * 0.5 + 500;
 }

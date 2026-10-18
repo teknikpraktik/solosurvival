@@ -66,6 +66,8 @@ export interface SessionView {
   params: MatchParams | null;
   /** Spelaren har rört sig för långt från den startpunkt som förslaget gjordes för. */
   movedFromPreview: boolean;
+  /** Avstånd (m) mellan din position och förhandsvisningens startpunkt (A), annars null. */
+  distToPreviewStartM: number | null;
   match: MatchView | null;
   storageWarning: boolean;
   messages: string[];
@@ -203,12 +205,16 @@ export class PlaySession {
 
   // --- förberedelse ---
   async prepare(params: MatchParams): Promise<Prepared | null> {
-    const start = this.currentStart();
+    const gps = this.currentStart();
+    // A TO B: spelaren kan ha valt A själv (annars min position). Förhandsvisning går utan GPS om A är vald; start kräver att man står vid A.
+    const isAB = params.mode === "escape" && !!params.pointB;
+    const start = isAB && params.pointA ? params.pointA : gps;
     if (!start) {
       this.messages = [`Väntar på bättre GPS-signal (bättre än ${START_MAX_ACCURACY_M} m).`];
       this.emit();
       return null;
     }
+    if (isAB) params = { ...params, pointA: start };
     this.stage = "preparing";
     this.params = params;
     this.previewStart = start;
@@ -251,7 +257,8 @@ export class PlaySession {
     const start = this.currentStart();
     if (!prep || !params || !prep.graph || !start || prep.status === "off_network" || prep.status === "outside_region" || prep.status === "sparse" || prep.status === "no_route") return false;
     if (this.previewStart && haversineM(start, this.previewStart) > START_MOVED_LIMIT_M) {
-      this.messages = ["Du har rört dig från startpunkten. Uppdatera förslaget först."];
+      const d = Math.round(haversineM(start, this.previewStart));
+      this.messages = [params.mode === "escape" && params.pointB ? `Du är ${d} m från A. Gå till A för att starta.` : "Du har rört dig från startpunkten. Uppdatera förslaget först."];
       this.emit();
       return false;
     }
@@ -551,6 +558,7 @@ export class PlaySession {
       selected: this.selected,
       params: this.params,
       movedFromPreview: moved && this.stage === "preview",
+      distToPreviewStartM: start && pos ? Math.round(haversineM(start, pos)) : null,
       match: live ? this.matchView(live, t) : null,
       storageWarning: this.storageWarning,
       messages: [...this.cueMsgs.filter((m) => m.until > t).map((m) => m.text), ...this.messages],

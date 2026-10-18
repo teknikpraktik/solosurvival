@@ -138,3 +138,24 @@ describe("PlaySession: hela flödet med falsk GPS (simulerat, inte fältbevis)",
     expect(await session.startMatch()).toBe(false);
   });
 });
+
+describe("A TO B i sessionen", () => {
+  it("egen A långt från min position: förhandsvisning går, start kräver att man står vid A", async () => {
+    const { g, session, advance, now } = await make();
+    session.startLocating();
+    for (let i = 0; i < 3; i++) { g.fix(START, 6, now()); advance(1000); }
+    const A2 = { lat: 59.40731, lon: 13.46753 };
+    const probe = await session.prepare({ ...defaultParams("walk"), mode: "survival", seed: 1 });
+    const nodes = [...probe!.graph!.nodes.values()];
+    const a = nodes.find((n) => Math.abs(n.lat - A2.lat) > 0.004 && Math.abs(n.lat - A2.lat) < 0.007) ?? nodes[0]; // ~500 m från min position
+    const b = nodes.find((n) => n !== a && Math.hypot(n.lat - a.lat, n.lon - a.lon) > 0.008) ?? nodes[nodes.length - 1];
+    session.backToConfig();
+    const prep = await session.prepare({ ...defaultParams("walk"), mode: "escape", pointA: { lat: a.lat, lon: a.lon }, pointB: { lat: b.lat, lon: b.lon }, seed: 2 });
+    expect(["ok", "no_route", "sparse", "off_network"]).toContain(prep!.status);
+    if (prep!.status === "ok") {
+      expect(session.getView().distToPreviewStartM).toBeGreaterThan(60);
+      expect(await session.startMatch()).toBe(false);
+      expect(session.getView().messages.join(" ")).toMatch(/Gå till A/);
+    }
+  });
+});

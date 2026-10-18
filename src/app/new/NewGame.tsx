@@ -8,11 +8,12 @@ import { useEffect, useMemo, useState } from "react";
 import type { Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
 import type { GameMode } from "@/engine/objectives/objectives";
-import { DISTANCE_LIMITS, DURATION_LIMITS, START_MAX_ACCURACY_M, START_WARN_ACCURACY_M, clampParams, defaultParams, withActivity, type MatchParams } from "@/play/config";
+import { DISTANCE_LIMITS, DURATION_LIMITS, atoBMaxStraightM, START_MAX_ACCURACY_M, START_WARN_ACCURACY_M, clampParams, defaultParams, withActivity, type MatchParams } from "@/play/config";
 import { estimatedMinutes } from "@/play/prepare";
 import { errorText } from "@/gps/provider/provider";
 import { matchDurationS } from "@/play/match";
 import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_HELP, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
+import type { MapMarker } from "../_client/GameMap";
 import { cuesEnabled, setCuesEnabled, unlockAudio } from "../_client/cues";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 
@@ -37,6 +38,7 @@ export default function NewGame() {
   const [p, setP] = useState<MatchParams>(() => defaultParams("walk"));
   const [cues, setCues] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [pick, setPick] = useState<"A" | "B">("B");
 
   useEffect(() => { setCues(cuesEnabled()); }, []);
   useEffect(() => {
@@ -60,13 +62,15 @@ export default function NewGame() {
     return { tone: "good", text: `GPS klar, ±${Math.round(view.accuracyM)} m.` };
   }, [view]);
 
-  const canPrepare = !!session?.currentStart() && !busy && stage !== "preparing";
+  const isAB = p.mode === "escape";
+  const canPrepare = (!!session?.currentStart() || (isAB && !!p.pointA)) && (!isAB || !!p.pointB) && !busy && stage !== "preparing";
   const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
 
   const limit = DISTANCE_LIMITS[p.activity];
   const dur = DURATION_LIMITS[p.activity];
   const routes = (prepared?.proposals ?? []).map((r, i) => ({ points: r.geometry, selected: i === (view?.selected ?? 0) }));
-  const markers = proposal ? proposal.waypoints.filter((w) => w.kind !== "home").map((w, i) => ({ id: w.id, label: w.kind === "destination" ? "B" : String(i + 1), lat: w.lat, lon: w.lon, tone: "todo" as const })) : [];
+  const markers: MapMarker[] = proposal ? proposal.waypoints.filter((w) => w.kind !== "home").map((w, i) => ({ id: w.id, label: w.kind === "destination" ? "B" : String(i + 1), lat: w.lat, lon: w.lon, tone: "todo" as const })) : [];
+  if (proposal && isAB && view?.params?.pointA) markers.push({ id: "A", label: "A", lat: view.params.pointA.lat, lon: view.params.pointA.lon, tone: "done" });
 
   if (preview && view) {
     const status = prepared?.status;
@@ -89,7 +93,7 @@ export default function NewGame() {
               <div className="stat"><span>Sträcka</span><b>{fmtKm(proposal.lengthM)}</b></div>
               <div className="stat"><span>Uppskattad tid</span><b>ca {estimatedMinutes(proposal.lengthM, p)} min</b></div>
               <div className="stat"><span>Tidsgräns</span><b>{fmtTime(matchDurationS(p, proposal))}</b></div>
-              <div className="stat"><span>Mål</span><b>{p.mode === "escape" ? "Destination B" : `${proposal.waypoints.filter((w) => w.kind === "checkpoint").length} checkpoint(s) + hem`}</b></div>
+              <div className="stat"><span>Mål</span><b>{p.mode === "escape" ? "Punkt B" : `${proposal.waypoints.filter((w) => w.kind === "checkpoint").length} checkpoint(s) + hem`}</b></div>
               {proposal.quality.flags.length > 0 && <div className="muted">{proposal.quality.flags.join(" · ")}</div>}
             </>
           )}
@@ -99,11 +103,16 @@ export default function NewGame() {
               <div className="muted">Survival har ingen rutt. Du rör dig fritt längs stigarna. Extraction öppnar vid 80 % av tiden.</div>
             </>
           )}
-          {view.movedFromPreview && <div className="card warn">Du har rört dig från startpunkten. Uppdatera förslaget.</div>}
+          {view.movedFromPreview && (
+            <div className="card warn">
+              {isAB ? `Du är ${view.distToPreviewStartM ?? "?"} m från A. Gå till A för att starta.` : "Du har rört dig från startpunkten. Uppdatera förslaget."}
+              {isAB && <button className="link" style={{ display: "block" }} onClick={() => run(() => session!.prepare({ ...(view.params ?? p), pointA: null }))}>Sätt A till min position</button>}
+            </div>
+          )}
           {view.messages.map((m) => <div key={m} className="card warn">{m}</div>)}
           <div className="muted">Rutten är en vägledning, inte ett krav. Korsa aldrig väg eller järnväg bara för att spelet föreslår det.</div>
           <div className="row">
-            <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "UPPDATERA" : "NYTT FÖRSLAG"}</button>
+            {!isAB && <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "UPPDATERA" : "NYTT FÖRSLAG"}</button>}
             <button className="btn" disabled={busy} onClick={() => session!.backToConfig()}>ÄNDRA</button>
           </div>
           <button
@@ -131,11 +140,32 @@ export default function NewGame() {
           <label htmlFor="dur">Matchlängd: <b>{Math.round(p.durationS / 60)} min</b></label>
           <input id="dur" type="range" min={dur.minMin} max={dur.maxMin} step={dur.stepMin} value={Math.round(p.durationS / 60)} onChange={(e) => set({ durationS: Number(e.target.value) * 60 })} />
         </div>
-      ) : (
+      ) : p.mode === "mission" ? (
         <div className="field">
-          <label htmlFor="dist">{p.mode === "escape" ? "Sträcka A→B" : "Sträcka (slinga)"}: <b>{fmtKm(p.targetLengthM)}</b></label>
+          <label htmlFor="dist">Sträcka (slinga): <b>{fmtKm(p.targetLengthM)}</b></label>
           <input id="dist" type="range" min={limit.min} max={limit.max} step={limit.step} value={p.targetLengthM} onChange={(e) => set({ targetLengthM: Number(e.target.value) })} />
           <span className="muted">Tidsgränsen beräknas från rutten i lugn fart. Ingen bonus för att vara snabb.</span>
+        </div>
+      ) : (
+        <div className="field">
+          <div className="seg" role="group" aria-label="Välj punkt">
+            <button aria-pressed={pick === "A"} onClick={() => setPick("A")}>Välj A{p.pointA ? " ✓" : ""}</button>
+            <button aria-pressed={pick === "B"} onClick={() => setPick("B")}>Välj B{p.pointB ? " ✓" : ""}</button>
+          </div>
+          <div className="pickmap" data-testid="pickmap">
+            <GameMap
+              zoom={14}
+              player={view?.position}
+              accuracyM={view?.accuracyM}
+              fit={p.pointA && p.pointB ? [p.pointA, p.pointB] : null}
+              markers={[...(p.pointA ? [{ id: "A", label: "A", lat: p.pointA.lat, lon: p.pointA.lon, tone: "done" as const }] : []), ...(p.pointB ? [{ id: "B", label: "B", lat: p.pointB.lat, lon: p.pointB.lon, tone: "next" as const }] : [])]}
+              onPick={(pt) => { set(pick === "A" ? { pointA: pt } : { pointB: pt }); if (pick === "A") setPick("B"); }}
+            />
+          </div>
+          <span className="muted">
+            Tryck på kartan för att sätta {pick}. {p.pointA ? "" : "A är din position om du inte väljer något annat. "}Punkterna bör ligga vid en stig eller väg. Rutten blir kortaste vägen; sträckan följer av ditt val (högst {Math.round(atoBMaxStraightM(p.activity) / 1000)} km fågelvägen).
+          </span>
+          {p.pointA && <button className="link" onClick={() => set({ pointA: null })}>Använd min position som A</button>}
         </div>
       )}
       <label className="muted" style={{ display: "flex", gap: 10, alignItems: "center", minHeight: 44 }}>
@@ -143,7 +173,7 @@ export default function NewGame() {
         Ljud och vibration vid händelser (vibration saknas på iPhone)
       </label>
       <button className="btn primary big" disabled={!canPrepare} onClick={() => run(async () => { unlockAudio(); await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) })); })}>
-        {p.mode === "survival" ? "VISA OMRÅDE" : "VISA RUTT"}
+        {p.mode === "survival" ? "VISA OMRÅDE" : isAB && !p.pointB ? "VÄLJ B PÅ KARTAN" : "VISA RUTT"}
       </button>
       {!ctx && <div className="muted">Laddar…</div>}
     </main>

@@ -36,13 +36,13 @@ function pathType(h: string): PathType {
 }
 
 /**
- * Bygger aktivitetens stignät kring `center`.
+ * Bygger aktivitetens stignät kring `center`. Komponenten som ligger närmast `anchor` (standard `center`) väljs; avstånd/åtkomstpunkt avser `anchor`.
  * - Aktivitetsfiltret `decideWay` avgör vilka ways som får användas.
  * - Varje stig delas vid delade noder med större väg/järnväg/vattendrag; delarna får egna ändnoder, så nätet
  *   aldrig förbinder två sidor av en väg (spelet föreslår aldrig en vägkorsning).
  * - Nätet klipps till cirkeln och begränsas till den komponent som startpunkten ligger närmast.
  */
-export function buildRegionGraph(ways: TileWay[], activity: Activity, center: LatLon, radiusM: number): RegionGraph {
+export function buildRegionGraph(ways: TileWay[], activity: Activity, center: LatLon, radiusM: number, anchor: LatLon = center): RegionGraph {
   const excluded: Record<string, number> = {};
   const raw: RawWay[] = [];
   const hazardNodes = new Set<string>();
@@ -87,7 +87,7 @@ export function buildRegionGraph(ways: TileWay[], activity: Activity, center: La
   const MIN_COMPONENT_M = 1500;
   const bestPer = new Map<number, { edgeId: string; distM: number }>();
   for (const e of idx.edges.values()) {
-    const pr = projectToPolyline(e.geometry, e.cumM, center);
+    const pr = projectToPolyline(e.geometry, e.cumM, anchor);
     const cur = bestPer.get(e.component);
     if (!cur || pr.distanceM < cur.distM) bestPer.set(e.component, { edgeId: e.id, distM: pr.distanceM });
   }
@@ -104,7 +104,7 @@ export function buildRegionGraph(ways: TileWay[], activity: Activity, center: La
     graph = { ...clipped, nodes: clipped.nodes.filter((n) => cids.has(n.id)), edges };
     componentKm = best.len / 1000;
     const e = idx.edges.get(best.edgeId)!;
-    near = projectToPolyline(e.geometry, e.cumM, center).point;
+    near = projectToPolyline(e.geometry, e.cumM, anchor).point;
   }
   const gnodes = new Set(graph.nodes.map((n) => n.id));
   return {

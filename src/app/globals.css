@@ -120,3 +120,5 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .zmark.chase::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid #ff4d4d; opacity: 0; animation: zpulse 1.6s ease-out infinite; pointer-events: none; }
 @keyframes zpulse { 0% { transform: scale(.7); opacity: .8; } 100% { transform: scale(1.6); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .zmark.chase::after { animation: none; } }
+.pickmap { position: relative; height: 300px; border-radius: 12px; overflow: hidden; border: 1px solid #243040; }
+.pickmap .map-canvas, .pickmap .maplibregl-map { position: absolute; inset: 0; }

@@ -6,7 +6,9 @@ import { indexGraph } from "@/geo/graph/graph";
 import type { TrailGraph } from "@/geo/graph/types";
 import { generateRoutes } from "@/routes/generate";
 import type { RouteProposal } from "@/routes/types";
-import { dataRadiusM, type MatchParams } from "./config";
+import { A_TO_B_MIN_STRAIGHT_M, atoBMaxStraightM, dataCenter, dataRadiusM, type MatchParams } from "./config";
+import { generateAtoB } from "@/routes/atob";
+import { haversineM } from "@/geo/geometry";
 
 export type PrepareStatus =
   | "ok"
@@ -45,11 +47,25 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
   if (!store.covers(start)) {
     return { ...base, status: "outside_region", message: "Du befinner dig utanför det område som spelet har kartdata för (Värmland).", dataVersion: manifest.dataVersion };
   }
+  const atob = p.mode === "escape" && !!p.pointB;
+  if (atob) {
+    const straight = haversineM(start, p.pointB!);
+    if (straight > atoBMaxStraightM(p.activity)) {
+      return { ...base, status: "sparse", message: `A och B ligger för långt från varandra (${(straight / 1000).toFixed(1)} km). Längsta avstånd för den här aktiviteten är ${(atoBMaxStraightM(p.activity) / 1000).toFixed(0)} km.`, dataVersion: manifest.dataVersion };
+    }
+    if (straight < A_TO_B_MIN_STRAIGHT_M) {
+      return { ...base, status: "no_route", message: `A och B ligger för nära varandra (minst ${A_TO_B_MIN_STRAIGHT_M} m). Välj en B-punkt längre bort.`, dataVersion: manifest.dataVersion };
+    }
+    if (!store.covers(p.pointB!)) {
+      return { ...base, status: "outside_region", message: "B ligger utanför det område som spelet har kartdata för (Värmland).", dataVersion: manifest.dataVersion };
+    }
+  }
   const radius = dataRadiusM(p);
+  const center = dataCenter(p, start);
   const t1 = performance.now();
-  const { ways, stats } = await store.loadAround(start, radius);
+  const { ways, stats } = await store.loadAround(center, radius);
   const t2 = performance.now();
-  const region = buildRegionGraph(ways, p.activity, start, radius);
+  const region = buildRegionGraph(ways, p.activity, center, radius, start);
   const t3 = performance.now();
   const timing = { loadMs: t2 - t1, graphMs: t3 - t2, routeMs: 0, totalMs: 0 };
   const done = (r: Omit<Prepared, "timing" | "dataVersion" | "region" | "load">, graph?: TrailGraph): Prepared => {
@@ -67,7 +83,7 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
           : `Närmaste stig för ${label} ligger cirka ${Math.round(region.startSnapM)} m bort. Gå till en stig eller en väg i närheten och försök igen.`,
     });
   }
-  if (p.mode !== "survival" && region.stats.componentKm * 1000 < p.targetLengthM * MIN_NETWORK_FACTOR) {
+  if (p.mode !== "survival" && !atob && region.stats.componentKm * 1000 < p.targetLengthM * MIN_NETWORK_FACTOR) {
     return done({
       ...base,
       status: "sparse",
@@ -80,6 +96,19 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
       return done({ ...base, status: "sparse", message: "För lite sammanhängande stig här för Survival (minst 3 km behövs)." }, graph);
     }
     return done({ ...base, status: "ok" }, graph);
+  }
+  if (atob) {
+    const t5 = performance.now();
+    const ab = generateAtoB(graph, start, p.pointB!, region.hazardNodes, A_TO_B_MIN_STRAIGHT_M);
+    timing.routeMs = performance.now() - t5;
+    const msg: Record<string, string> = {
+      b_off: "B ligger för långt från en stig som hör till samma nät som A. Välj en punkt närmare en stig eller väg.",
+      a_off: "A ligger för långt från en stig. Välj en punkt närmare en stig eller väg.",
+      too_close: `A och B ligger för nära varandra (minst ${A_TO_B_MIN_STRAIGHT_M} m).`,
+      no_path: "Det finns ingen väg mellan A och B i kartdatan. Välj en annan B-punkt.",
+    };
+    if (ab.status !== "ok") return done({ ...base, status: ab.status === "a_off" ? "off_network" : "no_route", message: msg[ab.status], notes: ab.notes }, graph);
+    return done({ status: "ok", proposals: ab.proposals, notes: ab.notes }, graph);
   }
   const t4 = performance.now();
   const res = generateRoutes(graph, {

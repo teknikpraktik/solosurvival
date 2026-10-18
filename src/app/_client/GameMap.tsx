@@ -56,6 +56,8 @@ export interface GameMapProps {
   follow?: boolean;
   fit?: LatLon[] | null;
   onUserMove?: () => void;
+  /** Tryck på kartan (t.ex. för att välja A/B). */
+  onPick?: (p: LatLon) => void;
   onError?: (what: string) => void;
 }
 
@@ -77,6 +79,7 @@ export default function GameMap(props: GameMapProps) {
     mapRef.current = map;
     map.touchZoomRotate.disableRotation();
     map.on("dragstart", () => propsRef.current.onUserMove?.());
+    map.on("click", (e) => propsRef.current.onPick?.({ lat: e.lngLat.lat, lon: e.lngLat.lng }));
     let tileErrors = 0;
     map.on("error", (e) => {
       // Kartbilden är en bonus: tappas tiles (offline/begränsning) fortsätter spelet på det egna nätet. Logga bara de första felen.
