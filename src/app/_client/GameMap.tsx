@@ -184,6 +184,7 @@ export default function GameMap(props: GameMapProps) {
         z.lat = f.lat; z.lon = f.lon;
       }
       z.el.classList.toggle("chase", f.chasing);
+      z.el.classList.toggle("sprint", f.sprinting);
       // Rörelsepil: tydlig rörelse även på låg zoom (zombier går ~1 m/s, bara någon pixel i sekunden). Vinkel relativt skärmen.
       if (f.bearing === null) z.dir.style.opacity = "0";
       else { z.dir.style.opacity = "1"; z.dir.style.transform = `rotate(${f.bearing - bearingRef.current}deg) translateY(-24px)`; }

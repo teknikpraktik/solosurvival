@@ -78,7 +78,7 @@ describe("zombierörelse", () => {
       }
       if (state.result === "infected") break;
     }
-    expect(maxMove).toBeLessThanOrEqual(rules.zombieSpeedMps * STEP_S + 0.01);
+    expect(maxMove).toBeLessThanOrEqual(rules.zombieSpeedMps * rules.sprintSpeedFactor * STEP_S + 0.01); // högst spurtfart
   });
   it("zombier är stilla under försprånget", () => {
     const g = gridGraph(12, 12, 150);

@@ -15,6 +15,12 @@ export const EXTRACTION_OPEN_FRACTION = 0.8;
 export const EXTRACTION_RADIUS_M = 30;
 export const EXTRACTION_HOLD_S = 5;
 
+/** Zombie-spurt: jagande zombie inom radien spurtar en stund med högre fart, och måste sedan återhämta sig. */
+export const SPRINT_RADIUS_M = 100;
+export const SPRINT_DURATION_S = 20;
+export const SPRINT_SPEED_FACTOR = 2;
+export const SPRINT_COOLDOWN_S = 30;
+
 /** Neutral återstartsperiod efter paus, utan infektion (PRD 7.2). */
 export const RESUME_NEUTRAL_S = 5;
 /** Efter så här lång GPS-förlust erbjuds spelaren att avsluta som INCOMPLETE (PRD 6.4). */
@@ -38,6 +44,10 @@ export interface Rules {
   spawnMaxDistanceM: number;
   /** Magnet-jakt: zombier känner alltid spelarens (giltiga) position och jagar kontinuerligt, utan upptäcktsradie. */
   magnetic: boolean;
+  sprintRadiusM: number;
+  sprintDurationS: number;
+  sprintSpeedFactor: number;
+  sprintCooldownS: number;
   revealIntervalS: number;
   detectionRadiusM: number;
   interceptShare: number;
@@ -73,6 +83,10 @@ export function resolveRules(
     spawnMinDistanceM: a.spawnMinDistanceM,
     spawnMaxDistanceM: a.spawnMaxDistanceM,
     magnetic: true,
+    sprintRadiusM: SPRINT_RADIUS_M,
+    sprintDurationS: SPRINT_DURATION_S,
+    sprintSpeedFactor: SPRINT_SPEED_FACTOR,
+    sprintCooldownS: SPRINT_COOLDOWN_S,
     revealIntervalS: d.revealIntervalS,
     detectionRadiusM: d.detectionRadiusM,
     interceptShare: d.interceptShare,

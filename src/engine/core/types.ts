@@ -51,6 +51,10 @@ export interface Zombie {
   tacticalAtS: number;
   contactLostS: number;
   canIntercept: boolean;
+  /** Spurt: spelklocka (s) då pågående spurt slutar. Saknas när zombien inte spurtar. */
+  sprintUntilS?: number;
+  /** Tidigast tid (s) för nästa spurt (återhämtning). */
+  sprintReadyAtS?: number;
 }
 
 export interface PlayerState {
@@ -98,6 +102,7 @@ export type GameEvent =
   | { type: "reveal" }
   | { type: "zombie_spawned"; zombieId: string }
   | { type: "spawn_skipped" }
+  | { type: "zombie_sprint"; zombieId: string }
   | { type: "spawn_relaxed" }
   | { type: "zombie_detected"; zombieId: string }
   | { type: "infection_contact" }

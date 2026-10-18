@@ -123,3 +123,5 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .pickmap { position: relative; height: 300px; border-radius: 12px; overflow: hidden; border: 1px solid #243040; }
 .pickmap .map-canvas, .pickmap .maplibregl-map { position: absolute; inset: 0; }
 .zmark .zlabel { position: absolute; left: 50%; top: 50%; opacity: 0; white-space: nowrap; font: 700 12px system-ui, sans-serif; color: #fff; background: #0b0f14e6; border: 1px solid #ff4d4d; border-radius: 8px; padding: 1px 6px; pointer-events: none; transition: opacity .3s; font-variant-numeric: tabular-nums; }
+.zmark.sprint::after { animation-duration: .6s; border-width: 3px; inset: -9px; }
+.zmark.sprint .zlabel { background: #7f1d1d; }

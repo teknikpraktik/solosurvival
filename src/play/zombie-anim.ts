@@ -8,6 +8,7 @@ export interface ZombieTarget {
   distM: number;
   speedMps: number;
   chasing: boolean;
+  sprinting?: boolean;
 }
 
 export interface ZombieFrame {
@@ -15,6 +16,7 @@ export interface ZombieFrame {
   lat: number;
   lon: number;
   chasing: boolean;
+  sprinting: boolean;
   /** Färdriktning (0–360, 0 = norr) senast den rörde sig, annars null. */
   bearing: number | null;
 }
@@ -105,7 +107,7 @@ export class ZombieAnimator {
       // Riktning ur den visuella förflyttningen (minst 0,3 m), så pilen följer stigens faktiska riktning.
       if (!z.last) z.last = p;
       else if (haversineM(z.last, p) >= 0.3) { z.bearing = bearingDeg(z.last, p); z.last = p; }
-      out.push({ id, lat: p.lat, lon: p.lon, chasing: z.target.chasing, bearing: z.bearing });
+      out.push({ id, lat: p.lat, lon: p.lon, chasing: z.target.chasing, sprinting: !!z.target.sprinting, bearing: z.bearing });
     }
     return out;
   }

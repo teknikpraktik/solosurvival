@@ -50,7 +50,7 @@ export default function Play() {
     }));
   }, [m?.proposal, m?.objectives?.index]);
   const route = useMemo(() => (m?.proposal ? [{ points: m.proposal.geometry, selected: true }] : []), [m?.proposal]);
-  const zombies = useMemo(() => (m?.zombiesNear ?? []).map((z) => ({ id: z.id, edgeId: z.edgeId, distM: z.distM, speedMps: z.speedMps, chasing: z.state === "chase" || z.state === "intercept" })), [m?.zombiesNear]);
+  const zombies = useMemo(() => (m?.zombiesNear ?? []).map((z) => ({ id: z.id, edgeId: z.edgeId, distM: z.distM, speedMps: z.speedMps, chasing: z.state === "chase" || z.state === "intercept", sprinting: z.sprinting })), [m?.zombiesNear]);
   useEffect(() => { if (m && !m.paused) setPauseDismissed(false); }, [m?.paused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (restoreMsg) {
