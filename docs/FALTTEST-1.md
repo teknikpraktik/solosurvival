@@ -51,3 +51,8 @@ HUD:en visade närmaste zombie oavsett avstånd, men kartan ritade bara zombier 
 - Ett gemensamt larm "Zombier jagar dig" (högst var 15:e s) i stället för ett per zombie.
 - **Vägar:** zombier går på alla vägar och stigar som finns i spelets nät (stigar, spår, service-, bostads- och landsvägar utan genomfart). Större vägar (≤ tertiary) och järnväg är medvetet utanför nätet av säkerhetsskäl (spelaren ska aldrig ledas dit). Zombier på större vägar kräver kanter märkta "bara zombier" i grafen – kan göras separat.
 - Mätt: motorsteg 0,05 ms med 26 zombier. Simulerade vinstandelar (naiv extraction-bot, rutnät, 20 frön) är i stort sett oförändrade jämfört med före (Walk Normal 15/20, Run Lätt 16/20, Run Normal 8/20).
+
+## Fälttest 3: inget försprång, snabbare zombier
+- **Försprång borttaget** (`headStartS` = 0 i alla aktiviteter): zombierna går och jagar från första sekunden. Motorn stödjer fortfarande ett valfritt försprång via reglerna.
+- **Inte vid startpunkten:** minsta spawnavstånd 300 m för Walk/Run (tidigare 200/250) och 400 m för MTB, högsta 1 000 m.
+- **Fart (Normal):** Walk 4,5 km/h, Run 7,5 km/h, MTB 12 km/h (tidigare 3,5/6,5/11). Lätt ×0,8, Svår ×1,2 (Walk Svår ≈ 5,4 km/h, fortare än en lugn gångfart: man får smita undan via annan väg).
