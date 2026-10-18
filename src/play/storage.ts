@@ -145,12 +145,12 @@ export class MatchStorage {
       await this.meta.delete(ACTIVE_KEY);
       return { ok: false, reason };
     };
-    if (!rec || !graph) return interrupt("Sparad match saknar data.");
-    if (rec.schema !== SNAPSHOT_SCHEMA || rec.rulesVersion !== RULES_VERSION) return interrupt("Matchen sparades med en annan version av spelet och kan inte återupptas.");
+    if (!rec || !graph) return interrupt("The saved match has no data.");
+    if (rec.schema !== SNAPSHOT_SCHEMA || rec.rulesVersion !== RULES_VERSION) return interrupt("The match was saved with another version of the game and cannot be resumed.");
     const s = rec.state;
-    if (!s || s.phase === "finished" || !Number.isFinite(s.elapsedSeconds) || !Array.isArray(s.zombies)) return interrupt("Sparad match är skadad.");
+    if (!s || s.phase === "finished" || !Number.isFinite(s.elapsedSeconds) || !Array.isArray(s.zombies)) return interrupt("The saved match is damaged.");
     const g = indexGraph(graph);
-    for (const z of s.zombies) if (!g.edges.has(z.edgeId)) return interrupt("Sparad match stämmer inte med kartdatan.");
+    for (const z of s.zombies) if (!g.edges.has(z.edgeId)) return interrupt("The saved match does not fit the map data.");
     const prev = await this.history.get(id);
     const live = LiveGame.restore(g, s, rec.params, rec.proposal, rec.counters ?? emptyCounters(), rec.lastFix, rec.fixSeq);
     return { ok: true, restored: { live, params: rec.params, proposal: rec.proposal, start: rec.start, dataVersion: rec.dataVersion, startedAt: prev?.startedAt ?? rec.savedAt } };

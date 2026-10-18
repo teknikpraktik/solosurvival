@@ -155,7 +155,7 @@ describe("A TO B i sessionen", () => {
     if (prep!.status === "ok") {
       expect(session.getView().distToPreviewStartM).toBeGreaterThan(60);
       expect(await session.startMatch()).toBe(false);
-      expect(session.getView().messages.join(" ")).toMatch(/Gå till A/);
+      expect(session.getView().messages.join(" ")).toMatch(/Go to A/);
     }
   });
 });

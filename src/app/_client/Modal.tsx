@@ -19,7 +19,7 @@ export function Modal({ title, onClose, children, actions, tone }: { title: stri
       <div className={`modal${tone ? ` ${tone}` : ""}`}>
         <div className="modal-head">
           <h2>{title}</h2>
-          {onClose && <button className="xbtn" onClick={onClose} aria-label="Stäng">✕</button>}
+          {onClose && <button className="xbtn" onClick={onClose} aria-label="Close">✕</button>}
         </div>
         {children && <div className="modal-body">{children}</div>}
         <div className="modal-actions">{actions}</div>
@@ -33,7 +33,7 @@ export function PageHeader({ title, href = "/" }: { title: string; href?: string
   return (
     <div className="topbar">
       <h1 style={{ flex: 1 }}>{title}</h1>
-      <a className="xbtn" href={href} aria-label="Stäng">✕</a>
+      <a className="xbtn" href={href} aria-label="Close">✕</a>
     </div>
   );
 }

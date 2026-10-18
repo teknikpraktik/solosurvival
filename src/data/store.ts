@@ -33,7 +33,7 @@ export class TileStore {
   /** Manifestet hämtas alltid färskt (servern svarar med must-revalidate). */
   async loadManifest(): Promise<TileManifest> {
     const r = await this.fetcher(`${this.baseUrl}/manifest.json`);
-    if (!r.ok) throw new Error(`Kartdata kunde inte hämtas (${r.status})`);
+    if (!r.ok) throw new Error(`Map data could not be loaded (${r.status})`);
     const m = (await r.json()) as TileManifest;
     if (this.manifest && this.manifest.dataVersion !== m.dataVersion) this.memory.clear();
     this.manifest = m;
@@ -66,7 +66,7 @@ export class TileStore {
       if (file) stats.fromCache++;
       else {
         const r = await this.fetcher(`${this.baseUrl}/t/${tileKey(ty, tx)}.json?v=${m.dataVersion}`);
-        if (!r.ok) throw new Error(`Kartruta ${tileKey(ty, tx)} kunde inte hämtas (${r.status})`);
+        if (!r.ok) throw new Error(`Map tile ${tileKey(ty, tx)} could not be loaded (${r.status})`);
         file = (await r.json()) as TileFile;
         stats.fromNetwork++;
         stats.networkGzipBytes += entry[4];

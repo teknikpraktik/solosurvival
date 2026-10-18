@@ -125,3 +125,22 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .zmark .zlabel { position: absolute; left: 50%; top: 50%; opacity: 0; white-space: nowrap; font: 700 12px system-ui, sans-serif; color: #fff; background: #0b0f14e6; border: 1px solid #ff4d4d; border-radius: 8px; padding: 1px 6px; pointer-events: none; transition: opacity .3s; font-variant-numeric: tabular-nums; }
 .zmark.sprint::after { animation-duration: .6s; border-width: 3px; inset: -9px; }
 .zmark.sprint .zlabel { background: #7f1d1d; }
+/* Start page backdrop */
+.hero { background: linear-gradient(#0b0f1455, #0b0f1422 45%, #0b0f14aa), url("/img/hero.svg") center / cover no-repeat; text-shadow: 0 2px 10px #000; }
+.hero .title { color: #ff3b2a; text-shadow: 0 0 18px #ff1a0a88, 0 2px 8px #000; }
+.hero .btn { background: #131a22d9; backdrop-filter: blur(2px); }
+.hero .btn.primary { background: #8b1111e6; }
+/* Captured jump scare */
+.scare { position: fixed; inset: 0; z-index: 60; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; animation: scare-flash .35s steps(2) 6; }
+.scare img { width: 100%; height: 100%; object-fit: cover; animation: scare-shake .12s linear infinite, scare-zoom 2.8s ease-in forwards; }
+.scare-text { position: absolute; bottom: 10%; left: 0; right: 0; text-align: center; font-size: 2.6rem; font-weight: 900; letter-spacing: .2em; color: #ff2a1a; text-shadow: 0 0 16px #000, 0 0 30px #ff0000; }
+@keyframes scare-flash { 0% { filter: none; } 50% { filter: brightness(2.2) saturate(2) hue-rotate(-10deg); } }
+@keyframes scare-shake { 0% { transform: translate(0,0); } 25% { transform: translate(-6px,4px); } 50% { transform: translate(5px,-5px); } 75% { transform: translate(-4px,-3px); } 100% { transform: translate(0,0); } }
+@keyframes scare-zoom { from { scale: 1; } to { scale: 1.35; } }
+@media (prefers-reduced-motion: reduce) { .scare, .scare img { animation: none; } }
+/* Event messages: centered on screen, centered text, flashing background */
+.toast { top: 38%; align-items: center; }
+.toast .card { width: min(320px, 100%); text-align: center; font-size: 1.05rem; background: #7f1d1d; border-color: #ff4d4d; color: #fff; animation: toast-flash .45s steps(2) 5, toast-in .2s ease-out; }
+@keyframes toast-flash { 0% { background: #7f1d1d; } 50% { background: #ef4444; } 100% { background: #7f1d1d; } }
+@keyframes toast-in { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .toast .card { animation: none; } }

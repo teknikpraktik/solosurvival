@@ -36,7 +36,7 @@ export interface MapMarker {
 
 export interface GameMapProps {
   graph?: TrailGraph | null;
-  routes?: { points: LatLon[]; selected: boolean }[];
+  routes?: { points: LatLon[]; selected: boolean; faint?: boolean }[];
   markers?: MapMarker[];
   player?: LatLon | null;
   accuracyM?: number | null;
@@ -89,7 +89,8 @@ export default function GameMap(props: GameMapProps) {
       map.addSource("net", { type: "geojson", data: fc() });
       map.addLayer({ id: "net", type: "line", source: "net", paint: { "line-color": "#64748b", "line-width": 1.8, "line-opacity": 0.85 } });
       map.addSource("routes", { type: "geojson", data: fc() });
-      map.addLayer({ id: "routes", type: "line", source: "routes", paint: { "line-color": ["case", ["get", "sel"], "#22d3ee", "#64748b"], "line-width": ["case", ["get", "sel"], 5, 2.5], "line-opacity": ["case", ["get", "sel"], 0.95, 0.5] } });
+      map.addLayer({ id: "routes-faint", type: "line", source: "routes", filter: ["==", ["get", "faint"], true], paint: { "line-color": "#e2e8f0", "line-width": 2, "line-opacity": 0.4, "line-dasharray": [2, 3] } });
+      map.addLayer({ id: "routes", type: "line", source: "routes", filter: ["!=", ["get", "faint"], true], paint: { "line-color": ["case", ["get", "sel"], "#22d3ee", "#64748b"], "line-width": ["case", ["get", "sel"], 5, 2.5], "line-opacity": ["case", ["get", "sel"], 0.95, 0.5] } });
       map.addSource("acc", { type: "geojson", data: fc() });
       map.addLayer({ id: "acc", type: "fill", source: "acc", paint: { "fill-color": "#3b82f6", "fill-opacity": 0.15 } });
       for (const id of ["extraction", "start"]) map.addSource(id, { type: "geojson", data: fc() });
@@ -104,7 +105,7 @@ export default function GameMap(props: GameMapProps) {
 
   const { graph, routes, markers, player, accuracyM, start, zombies, extraction, follow, fit, frozen, heading, trackUp } = props;
   useEffect(() => { if (loaded) src("net", fc(graph ? [...graph.edges.values()].map((e) => line(e.geometry)) : [])); }, [loaded, graph]);
-  useEffect(() => { if (loaded) src("routes", fc((routes ?? []).map((r) => line(r.points, { sel: r.selected })))); }, [loaded, routes]);
+  useEffect(() => { if (loaded) src("routes", fc((routes ?? []).map((r) => line(r.points, { sel: r.selected, faint: !!r.faint })))); }, [loaded, routes]);
   useEffect(() => { if (loaded) src("start", fc(start ? [pt(start)] : [])); }, [loaded, start]);
   useEffect(() => { if (loaded) src("extraction", fc(extraction ? [pt(extraction)] : [])); }, [loaded, extraction]);
   // --- Spelarmarkör (riktningspil) och Track Up ---
@@ -245,7 +246,7 @@ export default function GameMap(props: GameMapProps) {
     markersRef.current = (markers ?? []).map((m) => {
       const d = document.createElement("div");
       d.textContent = m.label;
-      d.setAttribute("aria-label", `Mål ${m.label}`);
+      d.setAttribute("aria-label", `Objective ${m.label}`);
       d.style.cssText = `width:28px;height:28px;border-radius:50%;background:${TONE[m.tone]};color:#fff;font:700 14px system-ui;display:flex;align-items:center;justify-content:center;border:2px solid #fff;${m.tone === "next" ? "box-shadow:0 0 0 4px #16a34a66;" : ""}`;
       return new Marker({ element: d }).setLngLat([m.lon, m.lat]).addTo(map);
     });

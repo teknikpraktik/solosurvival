@@ -32,7 +32,7 @@ export function openDb(factory: IDBFactory = indexedDB, name = DB_NAME): Promise
       for (const s of STORES) if (!db.objectStoreNames.contains(s)) db.createObjectStore(s);
     };
     open.onerror = () => reject(open.error);
-    open.onblocked = () => reject(new Error("Databasen är blockerad av en annan flik."));
+    open.onblocked = () => reject(new Error("The database is blocked by another tab."));
     open.onsuccess = () => {
       const db = open.result;
       db.onversionchange = () => db.close();

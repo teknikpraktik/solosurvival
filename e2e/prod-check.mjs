@@ -32,10 +32,10 @@ check("HTTPS/Permissions-Policy", /geolocation=\(self\)/.test((await ctx.request
 for (const mode of ["SURVIVAL", "MISSION"]) // A TO B testas i e2e/atob.e2e.mjs {
   await page.goto(BASE + "/new");
   for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-  await page.getByText(/GPS klar/).waitFor({ timeout: 15000 });
+  await page.waitForTimeout(800);
   await page.getByRole("button", { name: mode, exact: true }).click();
-  await page.getByRole("button", { name: /VISA (RUTT|OMRÅDE)/ }).click();
-  await page.getByText(mode === "SURVIVAL" ? /Matchlängd/ : /Sträcka/).first().waitFor({ timeout: 60000 });
+  await page.getByRole("button", { name: /SHOW (ROUTE|AREA)/ }).click();
+  await page.getByText(mode === "SURVIVAL" ? /Match length/ : /Distance|Straight line/).first().waitFor({ timeout: 60000 });
   await page.waitForSelector('[data-testid="map"][data-loaded="true"]', { timeout: 20000 });
   await page.waitForTimeout(2500);
   const txt = await page.locator(".sheet").innerText();
@@ -45,18 +45,18 @@ for (const mode of ["SURVIVAL", "MISSION"]) // A TO B testas i e2e/atob.e2e.mjs 
   await page.getByRole("button", { name: "START", exact: true }).click();
   await page.waitForURL("**/play");
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-  await page.getByRole("dialog").getByRole("button", { name: "STARTA" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "START" }).click();
   for (let i = 0; i < 8; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(1000); }
-  const t = await page.locator('[aria-label="Återstående tid"]').innerText();
+  const t = await page.locator('[aria-label="Time left"]').innerText();
   check(`${mode}: match går`, /\d+:\d\d/.test(t), t);
-  await page.locator(".controls").getByRole("button", { name: "PAUS" }).click();
-  check(`${mode}: paus`, (await page.getByText("Pausad").count()) > 0);
+  await page.locator(".controls").getByRole("button", { name: "PAUSE" }).click();
+  check(`${mode}: paus`, (await page.getByText("Paused").count()) > 0);
   await page.reload();
-  await page.getByText(/Pausad|Redo att starta/).first().waitFor({ timeout: 15000 });
+  await page.getByText(/Paused|Ready to start/).first().waitFor({ timeout: 15000 });
   check(`${mode}: återställs efter omladdning`, true);
-  await page.getByRole("dialog").getByRole("button", { name: "AVSLUTA", exact: true }).click(); // pausdialogen
-  await page.getByRole("dialog").getByRole("button", { name: "AVSLUTA", exact: true }).click(); // bekräftelsen
-  await page.getByText("AVBRUTEN").first().waitFor({ timeout: 10000 });
+  await page.getByRole("dialog").getByRole("button", { name: "QUIT", exact: true }).click(); // pausdialogen
+  await page.getByRole("dialog").getByRole("button", { name: "QUIT", exact: true }).click(); // bekräftelsen
+  await page.getByText("ABORTED").first().waitFor({ timeout: 10000 });
 }
 // Horisontell scroll / layout
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);

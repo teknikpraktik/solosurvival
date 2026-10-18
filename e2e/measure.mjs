@@ -16,17 +16,17 @@ cdp.on("Network.requestWillBeSent", (e) => urls.set(e.requestId, e.request.url))
 cdp.on("Network.loadingFinished", (e) => { const u = urls.get(e.requestId); if (u) reqs.push({ host: new URL(u).host, bytes: e.encodedDataLength, t: Date.now() }); });
 await page.goto(BASE + "/new");
 for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-await page.getByText(/GPS klar/).waitFor({ timeout: 15000 });
+await page.waitForTimeout(800);
 await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
-await page.getByRole("button", { name: "VISA OMRÅDE" }).click();
-await page.getByText(/Matchlängd/).first().waitFor({ timeout: 60000 });
+await page.getByRole("button", { name: "SHOW AREA" }).click();
+await page.getByText(/Match length/).first().waitFor({ timeout: 60000 });
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 await page.getByRole("button", { name: "START", exact: true }).click();
 await page.waitForURL("**/play");
 await page.waitForSelector('[data-testid="map"][data-loaded="true"]');
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-const dlgBtn = page.getByRole("dialog").getByRole("button", { name: "STARTA" });
-if (await dlgBtn.count()) await dlgBtn.click(); else await page.locator(".controls").getByRole("button", { name: "STARTA" }).click();
+const dlgBtn = page.getByRole("dialog").getByRole("button", { name: "START" });
+if (await dlgBtn.count()) await dlgBtn.click(); else await page.locator(".controls").getByRole("button", { name: "START" }).click();
 await page.waitForTimeout(1500);
 // Frame-timing + long tasks
 await page.evaluate(() => { window.__f = []; window.__lt = 0; let l = performance.now(); const f = (n) => { window.__f.push(n - l); l = n; requestAnimationFrame(f); }; requestAnimationFrame(f); try { new PerformanceObserver((l) => { window.__lt += l.getEntries().length; }).observe({ entryTypes: ["longtask"] }); } catch {} });

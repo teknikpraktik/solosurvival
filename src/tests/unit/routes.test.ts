@@ -61,7 +61,7 @@ describe("Escape (A→B)", () => {
       expectConnected(g, p);
       expect(haversineM(p.waypoints[0], req.start)).toBeGreaterThanOrEqual(500);
     }
-    expect(long.notes.some((n) => n.includes("omväg"))).toBe(true);
+    expect(long.notes.some((n) => n.includes("detour"))).toBe(true);
   });
   it("är deterministisk per seed", () => {
     expect(generateRoutes(g, req).proposals.map((p) => p.id + p.lengthM)).toEqual(generateRoutes(g, req).proposals.map((p) => p.id + p.lengthM));

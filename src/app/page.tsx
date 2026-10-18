@@ -3,7 +3,7 @@ import ResumeBanner from "./_client/ResumeBanner";
 
 export default function Home() {
   return (
-    <main className="center">
+    <main className="center hero">
       <h1 className="title">OUTBREAK</h1>
       <p className="sub">SOLO SURVIVAL</p>
       <ResumeBanner />
@@ -11,10 +11,10 @@ export default function Home() {
       <Link className="btn" href="/history">PREVIOUS GAMES</Link>
       <Link className="btn" href="/how-to-play">HOW TO PLAY</Link>
       <p className="hint" style={{ maxWidth: 320 }}>
-        Spelet är vägledande. Följ trafikregler och markägares anvisningar, korsa aldrig väg eller järnväg på rutten, och titta inte på skärmen när du cyklar.
+        The game is only a guide. Follow traffic rules and landowners&apos; instructions, never cross a road or railway just because the game suggests it, and never look at the screen while cycling.
       </p>
       <p className="hint">
-        <Link href="/field">Testläge</Link> · <Link href="/dev">Simulator</Link>
+        <Link href="/field">Test mode</Link> · <Link href="/dev">Simulator</Link>
       </p>
     </main>
   );

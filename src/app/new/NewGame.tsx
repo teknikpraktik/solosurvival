@@ -8,8 +8,9 @@ import { useEffect, useMemo, useState } from "react";
 import type { Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
 import type { GameMode } from "@/engine/objectives/objectives";
-import { DISTANCE_LIMITS, DURATION_LIMITS, atoBMaxStraightM, START_MAX_ACCURACY_M, START_WARN_ACCURACY_M, clampParams, defaultParams, withActivity, type MatchParams } from "@/play/config";
+import { DISTANCE_LIMITS, DURATION_LIMITS, atoBMaxStraightM, START_MAX_ACCURACY_M, clampParams, defaultParams, withActivity, type MatchParams } from "@/play/config";
 import { estimatedMinutes } from "@/play/prepare";
+import { haversineM } from "@/geo/geometry";
 import { errorText } from "@/gps/provider/provider";
 import { matchDurationS } from "@/play/match";
 import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_HELP, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
@@ -53,13 +54,13 @@ export default function NewGame() {
   const proposal = prepared?.proposals[view?.selected ?? 0] ?? null;
   const set = (patch: Partial<MatchParams>) => setP((cur) => clampParams({ ...cur, ...patch }));
 
+  // Location details are not shown to the player: only a short note when something needs attention.
   const gps = useMemo(() => {
-    if (!view) return { tone: "", text: "Startar…" };
+    if (!view) return null;
     if (view.gpsError) return { tone: "bad", text: errorText[view.gpsError.code] };
-    if (view.accuracyM === null) return { tone: "warn", text: "Söker position… Gå ut under bar himmel." };
-    if (view.accuracyM > START_MAX_ACCURACY_M) return { tone: "warn", text: `Svag GPS (±${Math.round(view.accuracyM)} m). Vänta på bättre signal.` };
-    if (view.accuracyM > START_WARN_ACCURACY_M) return { tone: "warn", text: `GPS ±${Math.round(view.accuracyM)} m – funkar, men bättre signal ger rättvisare spel.` };
-    return { tone: "good", text: `GPS klar, ±${Math.round(view.accuracyM)} m.` };
+    if (view.accuracyM === null) return { tone: "warn", text: "Finding your location… Move to open sky." };
+    if (view.accuracyM > START_MAX_ACCURACY_M) return { tone: "warn", text: "Waiting for a better location signal…" };
+    return null;
   }, [view]);
 
   const isAB = p.mode === "escape";
@@ -68,7 +69,12 @@ export default function NewGame() {
 
   const limit = DISTANCE_LIMITS[p.activity];
   const dur = DURATION_LIMITS[p.activity];
-  const routes = (prepared?.proposals ?? []).map((r, i) => ({ points: r.geometry, selected: i === (view?.selected ?? 0) }));
+  // A TO B: any way goes, so only a faint straight line between A and B is drawn (not the shortest path).
+  const abA = view?.params?.pointA ?? null;
+  const abB = proposal?.waypoints[0] ?? null;
+  const routes = isAB
+    ? (abA && abB ? [{ points: [abA, { lat: abB.lat, lon: abB.lon }], selected: false, faint: true }] : [])
+    : (prepared?.proposals ?? []).map((r, i) => ({ points: r.geometry, selected: i === (view?.selected ?? 0) }));
   const markers: MapMarker[] = proposal ? proposal.waypoints.filter((w) => w.kind !== "home").map((w, i) => ({ id: w.id, label: w.kind === "destination" ? "B" : String(i + 1), lat: w.lat, lon: w.lon, tone: "todo" as const })) : [];
   if (proposal && isAB && view?.params?.pointA) markers.push({ id: "A", label: "A", lat: view.params.pointA.lat, lon: view.params.pointA.lon, tone: "done" });
 
@@ -77,43 +83,43 @@ export default function NewGame() {
     const ok = status === "ok" || status === "alternative";
     return (
       <div className="map-shell">
-        <GameMap graph={prepared?.graph} routes={routes} markers={markers} start={session?.currentStart()} player={view.position} accuracyM={view.accuracyM} fit={proposal?.geometry ?? (view.position ? [view.position] : null)} />
+        <GameMap graph={prepared?.graph} routes={routes} markers={markers} start={session?.currentStart()} player={view.position} accuracyM={view.accuracyM} fit={isAB && abA && abB ? [abA, { lat: abB.lat, lon: abB.lon }] : proposal?.geometry ?? (view.position ? [view.position] : null)} />
         <div className="hudbar"><div className="line"><span className="pill">{MODE_LABEL[p.mode]} · {ACTIVITY_LABEL[p.activity]}</span><Link className="pill" href="/">✕</Link></div></div>
         <div className="sheet">
-          {stage === "preparing" && <div className="card">Hämtar kartdata och beräknar rutt…</div>}
+          {stage === "preparing" && <div className="card">Loading map data and planning…</div>}
           {stage !== "preparing" && prepared && !ok && <div className="card bad">{prepared.message}</div>}
           {stage !== "preparing" && prepared?.status === "alternative" && <div className="card warn">{prepared.message}</div>}
-          {stage !== "preparing" && prepared && ok && p.mode !== "survival" && prepared.proposals.length > 1 && (
-            <div className="chips" role="group" aria-label="Förslag">
-              {prepared.proposals.map((r, i) => <button key={r.id} className="chip" aria-pressed={i === view.selected} onClick={() => session!.select(i)}>Förslag {i + 1}</button>)}
+          {stage !== "preparing" && prepared && ok && p.mode === "mission" && prepared.proposals.length > 1 && (
+            <div className="chips" role="group" aria-label="Proposals">
+              {prepared.proposals.map((r, i) => <button key={r.id} className="chip" aria-pressed={i === view.selected} onClick={() => session!.select(i)}>Route {i + 1}</button>)}
             </div>
           )}
           {stage !== "preparing" && ok && proposal && (
             <>
-              <div className="stat"><span>Sträcka</span><b>{fmtKm(proposal.lengthM)}</b></div>
-              <div className="stat"><span>Uppskattad tid</span><b>ca {estimatedMinutes(proposal.lengthM, p)} min</b></div>
-              <div className="stat"><span>Tidsgräns</span><b>{fmtTime(matchDurationS(p, proposal))}</b></div>
-              <div className="stat"><span>Mål</span><b>{p.mode === "escape" ? "Punkt B" : `${proposal.waypoints.filter((w) => w.kind === "checkpoint").length} checkpoint(s) + hem`}</b></div>
+              <div className="stat"><span>{isAB ? "Straight line" : "Distance"}</span><b>{fmtKm(isAB && abA && abB ? haversineM(abA, abB) : proposal.lengthM)}</b></div>
+              <div className="stat"><span>Estimated time</span><b>about {estimatedMinutes(proposal.lengthM, p)} min</b></div>
+              <div className="stat"><span>Time limit</span><b>{fmtTime(matchDurationS(p, proposal))}</b></div>
+              <div className="stat"><span>Goal</span><b>{p.mode === "escape" ? "Point B – any route" : `${proposal.waypoints.filter((w) => w.kind === "checkpoint").length} checkpoints + home`}</b></div>
               {proposal.quality.flags.length > 0 && <div className="muted">{proposal.quality.flags.join(" · ")}</div>}
             </>
           )}
           {stage !== "preparing" && ok && p.mode === "survival" && (
             <>
-              <div className="stat"><span>Matchlängd</span><b>{fmtTime(p.durationS)}</b></div>
-              <div className="muted">Survival har ingen rutt. Du rör dig fritt längs stigarna. Extraction öppnar vid 80 % av tiden.</div>
+              <div className="stat"><span>Match length</span><b>{fmtTime(p.durationS)}</b></div>
+              <div className="muted">Survival has no route. Move freely along the trails. Extraction opens at 80 % of the time.</div>
             </>
           )}
           {view.movedFromPreview && (
             <div className="card warn">
-              {isAB ? `Du är ${view.distToPreviewStartM ?? "?"} m från A. Gå till A för att starta.` : "Du har rört dig från startpunkten. Uppdatera förslaget."}
-              {isAB && <button className="link" style={{ display: "block" }} onClick={() => run(() => session!.prepare({ ...(view.params ?? p), pointA: null }))}>Sätt A till min position</button>}
+              {isAB ? `You are ${view.distToPreviewStartM ?? "?"} m from A. Go to A to start.` : "You have moved from the start point. Update the route."}
+              {isAB && <button className="link" style={{ display: "block" }} onClick={() => run(() => session!.prepare({ ...(view.params ?? p), pointA: null }))}>Set A to my position</button>}
             </div>
           )}
           {view.messages.map((m) => <div key={m} className="card warn">{m}</div>)}
-          <div className="muted">Rutten är en vägledning, inte ett krav. Korsa aldrig väg eller järnväg bara för att spelet föreslår det.</div>
+          <div className="muted">{isAB ? "Any route you like counts. The line is only a hint. Never cross a road or railway just because the game suggests it." : "The route is guidance, not a requirement. Never cross a road or railway just because the game suggests it."}</div>
           <div className="row">
-            {!isAB && <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "UPPDATERA" : "NYTT FÖRSLAG"}</button>}
-            <button className="btn" disabled={busy} onClick={() => session!.backToConfig()}>ÄNDRA</button>
+            {!isAB && <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "REFRESH" : "NEW ROUTE"}</button>}
+            <button className="btn" disabled={busy} onClick={() => session!.backToConfig()}>CHANGE</button>
           </div>
           <button
             className="btn primary big"
@@ -130,27 +136,27 @@ export default function NewGame() {
   return (
     <main className="page">
       <PageHeader title="NEW GAME" />
-      <div className={`card ${gps.tone}`} role="status">{gps.text}</div>
-      <Seg<GameMode> label="Spelläge" value={p.mode} options={(["mission", "escape", "survival"] as GameMode[]).map((m) => ({ v: m, t: MODE_LABEL[m] }))} onChange={(mode) => set({ mode })} />
+      {gps && <div className={`card ${gps.tone}`} role="status">{gps.text}</div>}
+      <Seg<GameMode> label="Mode" value={p.mode} options={(["mission", "escape", "survival"] as GameMode[]).map((m) => ({ v: m, t: MODE_LABEL[m] }))} onChange={(mode) => set({ mode })} />
       <div className="muted">{MODE_HELP[p.mode]}</div>
-      <Seg<Activity> label="Aktivitet" value={p.activity} options={(["walk", "run", "mtb"] as Activity[]).map((a) => ({ v: a, t: ACTIVITY_LABEL[a] }))} onChange={(a) => setP(withActivity(p, a))} />
-      <Seg<Difficulty> label="Svårighet" value={p.difficulty} options={(["easy", "normal", "hard"] as Difficulty[]).map((d) => ({ v: d, t: DIFFICULTY_LABEL[d] }))} onChange={(difficulty) => set({ difficulty })} />
+      <Seg<Activity> label="Activity" value={p.activity} options={(["walk", "mtb"] as Activity[]).map((a) => ({ v: a, t: ACTIVITY_LABEL[a] }))} onChange={(a) => setP(withActivity(p, a))} />
+      <Seg<Difficulty> label="Difficulty" value={p.difficulty} options={(["easy", "normal", "hard"] as Difficulty[]).map((d) => ({ v: d, t: DIFFICULTY_LABEL[d] }))} onChange={(difficulty) => set({ difficulty })} />
       {p.mode === "survival" ? (
         <div className="field">
-          <label htmlFor="dur">Matchlängd: <b>{Math.round(p.durationS / 60)} min</b></label>
+          <label htmlFor="dur">Match length: <b>{Math.round(p.durationS / 60)} min</b></label>
           <input id="dur" type="range" min={dur.minMin} max={dur.maxMin} step={dur.stepMin} value={Math.round(p.durationS / 60)} onChange={(e) => set({ durationS: Number(e.target.value) * 60 })} />
         </div>
       ) : p.mode === "mission" ? (
         <div className="field">
-          <label htmlFor="dist">Sträcka (slinga): <b>{fmtKm(p.targetLengthM)}</b></label>
+          <label htmlFor="dist">Distance (loop): <b>{fmtKm(p.targetLengthM)}</b></label>
           <input id="dist" type="range" min={limit.min} max={limit.max} step={limit.step} value={p.targetLengthM} onChange={(e) => set({ targetLengthM: Number(e.target.value) })} />
-          <span className="muted">Tidsgränsen beräknas från rutten i lugn fart. Ingen bonus för att vara snabb.</span>
+          <span className="muted">The time limit is calculated from the route at a calm pace. No bonus for being fast.</span>
         </div>
       ) : (
         <div className="field">
-          <div className="seg" role="group" aria-label="Välj punkt">
-            <button aria-pressed={pick === "A"} onClick={() => setPick("A")}>Välj A{p.pointA ? " ✓" : ""}</button>
-            <button aria-pressed={pick === "B"} onClick={() => setPick("B")}>Välj B{p.pointB ? " ✓" : ""}</button>
+          <div className="seg" role="group" aria-label="Pick a point">
+            <button aria-pressed={pick === "A"} onClick={() => setPick("A")}>Pick A{p.pointA ? " ✓" : ""}</button>
+            <button aria-pressed={pick === "B"} onClick={() => setPick("B")}>Pick B{p.pointB ? " ✓" : ""}</button>
           </div>
           <div className="pickmap" data-testid="pickmap">
             <GameMap
@@ -163,19 +169,19 @@ export default function NewGame() {
             />
           </div>
           <span className="muted">
-            Tryck på kartan för att sätta {pick}. {p.pointA ? "" : "A är din position om du inte väljer något annat. "}Punkterna bör ligga vid en stig eller väg. Rutten blir kortaste vägen; sträckan följer av ditt val (högst {Math.round(atoBMaxStraightM(p.activity) / 1000)} km fågelvägen).
+            Tap the map to set {pick}. {p.pointA ? "" : "A is your position unless you pick another. "}Points should be near a trail or road. Any route between A and B counts; the straight line is only a hint (at most {Math.round(atoBMaxStraightM(p.activity) / 1000)} km apart).
           </span>
-          {p.pointA && <button className="link" onClick={() => set({ pointA: null })}>Använd min position som A</button>}
+          {p.pointA && <button className="link" onClick={() => set({ pointA: null })}>Use my position as A</button>}
         </div>
       )}
       <label className="muted" style={{ display: "flex", gap: 10, alignItems: "center", minHeight: 44 }}>
         <input type="checkbox" checked={cues} onChange={(e) => { setCues(e.target.checked); setCuesEnabled(e.target.checked); }} style={{ width: 22, height: 22 }} />
-        Ljud och vibration vid händelser (vibration saknas på iPhone)
+        Sound and vibration for events (no vibration on iPhone)
       </label>
       <button className="btn primary big" disabled={!canPrepare} onClick={() => run(async () => { unlockAudio(); await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) })); })}>
-        {p.mode === "survival" ? "VISA OMRÅDE" : isAB && !p.pointB ? "VÄLJ B PÅ KARTAN" : "VISA RUTT"}
+        {p.mode === "survival" ? "SHOW AREA" : isAB && !p.pointB ? "PICK B ON THE MAP" : "SHOW ROUTE"}
       </button>
-      {!ctx && <div className="muted">Laddar…</div>}
+      {!ctx && <div className="muted">Loading…</div>}
     </main>
   );
 }

@@ -29,22 +29,22 @@ const reachable = async (locator) => locator.evaluate((el) => {
 
 await page.goto(BASE + "/new");
 for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-await page.getByText(/GPS klar/).waitFor({ timeout: 15000 });
+await page.waitForTimeout(800);
 await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
-await page.getByRole("button", { name: "VISA OMRÅDE" }).click();
-await page.getByText(/Matchlängd/).first().waitFor({ timeout: 60000 });
+await page.getByRole("button", { name: "SHOW AREA" }).click();
+await page.getByText(/Match length/).first().waitFor({ timeout: 60000 });
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 await page.getByRole("button", { name: "START", exact: true }).click();
 await page.waitForURL("**/play");
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 
-// Dialog "Redo att starta"
-const dlg = page.getByRole("dialog", { name: "Redo att starta" });
+// Dialog "Ready to start"
+const dlg = page.getByRole("dialog", { name: "Ready to start" });
 await dlg.waitFor({ timeout: 10000 });
-const startBtn = dlg.getByRole("button", { name: "STARTA" });
+const startBtn = dlg.getByRole("button", { name: "START" });
 let r = await reachable(startBtn);
 check("startdialog: STARTA helt synlig och nåbar", r.inside && r.hit, JSON.stringify(r));
-const x = dlg.getByRole("button", { name: "Stäng" });
+const x = dlg.getByRole("button", { name: "Close" });
 r = await reachable(x);
 check("startdialog: X nåbar och minst 44 px", r.inside && r.hit && r.w >= 44 && r.h >= 44, `${r.w}x${r.h}`);
 const xb = await x.boundingBox(), db = await dlg.locator(".modal").boundingBox();
@@ -54,7 +54,7 @@ await page.screenshot({ path: `${OUT}/dialog-start.png` });
 await x.click();
 await page.waitForTimeout(300);
 check("X stänger dialogen", (await page.getByRole("dialog").count()) === 0);
-const ctrl = page.locator(".controls").getByRole("button", { name: "STARTA" });
+const ctrl = page.locator(".controls").getByRole("button", { name: "START" });
 r = await reachable(ctrl);
 check("kontrollfältets STARTA nåbart när dialogen stängts", r.inside && r.hit);
 await ctrl.click();
@@ -108,6 +108,7 @@ await page.screenshot({ path: `${OUT}/zombie-on-map.png` });
 const labels = await page.locator(".zlabel").evaluateAll((els) => els.filter((e) => getComputedStyle(e).opacity !== "0").map((e) => e.textContent));
 console.log("avståndsetiketter:", JSON.stringify(labels));
 check("avstånd skrivs vid högst de tre närmaste zombierna", labels.length >= 1 && labels.length <= 3 && labels.every((t) => /^\d+ m$|^\d\.\d km$/.test(t)));
+check("ingen GPS-info i HUD:en", !(await page.locator(".hudbar").innerText()).includes("GPS"));
 check("HUD-rutan med zombieavstånd är borta", (await page.locator(".hudbar .pill").filter({ hasText: /^Zombie \d|Inga zombier/ }).count()) === 0);
 const jumps = await page.evaluate(() => new Promise((resolve) => {
   const el = document.querySelector(".zmark"); if (!el) return resolve(null);
@@ -126,27 +127,27 @@ await compass.click(); await page.waitForTimeout(300);
 
 // Paus → dialog → nåbara knappar (håll GPS färsk, annars visar dialogen korrekt "VÄNTAR PÅ GPS…")
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation({ ...p, accuracy: 6 }); await page.waitForTimeout(500); }
-await page.locator(".controls").getByRole("button", { name: "PAUS" }).click();
-const pd = page.getByRole("dialog", { name: "Pausad" });
+await page.locator(".controls").getByRole("button", { name: "PAUSE" }).click();
+const pd = page.getByRole("dialog", { name: "Paused" });
 await pd.waitFor();
-for (const name of ["FORTSÄTT", "AVSLUTA"]) { r = await reachable(pd.getByRole("button", { name, exact: true })); check(`pausdialog: ${name} nåbar`, r.inside && r.hit); }
+for (const name of ["CONTINUE", "QUIT"]) { r = await reachable(pd.getByRole("button", { name, exact: true })); check(`pausdialog: ${name} nåbar`, r.inside && r.hit); }
 await page.screenshot({ path: `${OUT}/dialog-pause.png` });
 // Avsluta-bekräftelse
-await pd.getByRole("button", { name: "AVSLUTA" }).click();
-const cd = page.getByRole("dialog", { name: "Avsluta matchen?" });
+await pd.getByRole("button", { name: "QUIT" }).click();
+const cd = page.getByRole("dialog", { name: "Quit the match?" });
 await cd.waitFor();
-for (const name of ["AVSLUTA", "FORTSÄTT SPELA", "Stäng"]) { r = await reachable(cd.getByRole("button", { name, exact: true })); check(`bekräftelse: ${name} nåbar`, r.inside && r.hit); }
-await cd.getByRole("button", { name: "AVSLUTA", exact: true }).click();
-const fd = page.getByRole("dialog", { name: "AVBRUTEN" });
+for (const name of ["QUIT", "KEEP PLAYING", "Close"]) { r = await reachable(cd.getByRole("button", { name, exact: true })); check(`bekräftelse: ${name} nåbar`, r.inside && r.hit); }
+await cd.getByRole("button", { name: "QUIT", exact: true }).click();
+const fd = page.getByRole("dialog", { name: "ABORTED" });
 await fd.waitFor();
-check("Match slut: inget X (obligatoriskt beslut)", (await fd.getByRole("button", { name: "Stäng" }).count()) === 0);
-for (const name of ["TILL START", "PREVIOUS GAMES"]) { r = await reachable(fd.getByText(name, { exact: true })); check(`Match slut: ${name} nåbar`, r.inside && r.hit); }
+check("Match slut: inget X (obligatoriskt beslut)", (await fd.getByRole("button", { name: "Close" }).count()) === 0);
+for (const name of ["HOME", "PREVIOUS GAMES"]) { r = await reachable(fd.getByText(name, { exact: true })); check(`Match slut: ${name} nåbar`, r.inside && r.hit); }
 await page.screenshot({ path: `${OUT}/dialog-end.png` });
 
 // Sidor: X uppe till höger
-for (const [url, t] of [["/how-to-play", "HOW TO PLAY"], ["/history", "PREVIOUS GAMES"], ["/field", "TESTLÄGE"]]) {
+for (const [url, t] of [["/how-to-play", "HOW TO PLAY"], ["/history", "PREVIOUS GAMES"], ["/field", "TEST MODE"]]) {
   await page.goto(BASE + url);
-  r = await reachable(page.getByRole("link", { name: "Stäng" }));
+  r = await reachable(page.getByRole("link", { name: "Close" }));
   check(`${t}: ✕ nåbar (≥44 px)`, r.inside && r.hit && r.w >= 44);
 }
 const real = errs.filter((e) => !/WebGL|swiftshader/i.test(e));

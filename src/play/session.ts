@@ -16,7 +16,7 @@ import { createLiveMatch, matchDurationS } from "./match";
 import { prepareMatch, type Prepared } from "./prepare";
 import { MatchStorage, type HistoryRecord } from "./storage";
 
-export type Cue = "danger" | "alert" | "goal" | "info" | "end" | "zombie";
+export type Cue = "danger" | "alert" | "goal" | "info" | "end" | "zombie" | "captured";
 
 /** Minsta tid (ms) mellan två närhetsljud; nya zombier som dyker upp under tiden grupperas till ett ljud. */
 export const ZOMBIE_SOUND_COOLDOWN_MS = 12_000;
@@ -213,7 +213,7 @@ export class PlaySession {
     const isAB = params.mode === "escape" && !!params.pointB;
     const start = isAB && params.pointA ? params.pointA : gps;
     if (!start) {
-      this.messages = [`Väntar på bättre GPS-signal (bättre än ${START_MAX_ACCURACY_M} m).`];
+      this.messages = ["Waiting for a better location signal…"];
       this.emit();
       return null;
     }
@@ -227,7 +227,7 @@ export class PlaySession {
     try {
       this.prepared = await prepareMatch(this.d.store, start, params);
     } catch (err) {
-      this.prepared = { status: "no_route", message: `Kartdata kunde inte hämtas: ${(err as Error).message}`, proposals: [], notes: [], timing: { loadMs: 0, graphMs: 0, routeMs: 0, totalMs: 0 } };
+      this.prepared = { status: "no_route", message: `Map data could not be loaded: ${(err as Error).message}`, proposals: [], notes: [], timing: { loadMs: 0, graphMs: 0, routeMs: 0, totalMs: 0 } };
     }
     this.routeGenMs = performance.now() - t0;
     this.selected = 0;
@@ -261,7 +261,7 @@ export class PlaySession {
     if (!prep || !params || !prep.graph || !start || prep.status === "off_network" || prep.status === "outside_region" || prep.status === "sparse" || prep.status === "no_route") return false;
     if (this.previewStart && haversineM(start, this.previewStart) > START_MOVED_LIMIT_M) {
       const d = Math.round(haversineM(start, this.previewStart));
-      this.messages = [params.mode === "escape" && params.pointB ? `Du är ${d} m från A. Gå till A för att starta.` : "Du har rört dig från startpunkten. Uppdatera förslaget först."];
+      this.messages = [params.mode === "escape" && params.pointB ? `You are ${d} m from A. Go to A to start.` : "You have moved from the start point. Update the route first."];
       this.emit();
       return false;
     }
@@ -309,7 +309,7 @@ export class PlaySession {
     if (!live || live.finished) return false;
     const t = this.now();
     if (!live.resume(t)) {
-      this.messages = ["Väntar på GPS-position innan spelet kan fortsätta."];
+      this.messages = ["Waiting for your location before the game can continue."];
       this.emit();
       return false;
     }
@@ -336,7 +336,7 @@ export class PlaySession {
       this.pause("hidden");
       void this.releaseWakeLock();
     } else if (this.live && !this.live.finished) {
-      this.messages = ["Spelet pausades när appen lämnade förgrunden. Tryck Fortsätt."];
+      this.messages = ["The game paused when the app left the foreground. Tap Continue."];
       this.emit();
     }
   }
@@ -367,7 +367,7 @@ export class PlaySession {
     if (!before && live.state.paused) {
       // Fryst app: spelet pausades av LiveGame.
       this.log?.add(t, "freeze");
-      this.messages = ["Appen var inaktiv en stund och spelet pausades. Tryck Fortsätt."];
+      this.messages = ["The app was inactive for a while and the game paused. Tap Continue."];
     }
     if (events.length) this.endMatch(events);
     if (this.stage === "playing" && !live.state.paused && t - this.lastCheckMs >= CHECK_MS) { this.lastCheckMs = t; this.checkZombies(live, t); }
@@ -382,21 +382,21 @@ export class PlaySession {
     let finished = false;
     for (const e of events) {
       switch (e.type) {
-        case "objective_reached": this.cue("goal", e.index + 1 >= (live.state.objectives?.targets.length ?? 0) ? "Sista målet nått" : "Checkpoint registrerat"); this.log?.add(t, "objective", { id: e.targetId, atS: Math.round(live.state.elapsedSeconds) }); break;
+        case "objective_reached": this.cue("goal", e.index + 1 >= (live.state.objectives?.targets.length ?? 0) ? "Final objective reached" : "Checkpoint reached"); this.log?.add(t, "objective", { id: e.targetId, atS: Math.round(live.state.elapsedSeconds) }); break;
         case "zombie_detected":
           // Med magnet-jakt upptäcker många zombier spelaren samtidigt: ett gemensamt larm, inte ett per zombie.
-          if (t - this.lastDetectCueMs > 15_000) { this.lastDetectCueMs = t; this.cue("alert", "Zombier jagar dig"); }
+          if (t - this.lastDetectCueMs > 15_000) { this.lastDetectCueMs = t; this.cue("alert", "Zombies are hunting you"); }
           break;
-        case "infection_contact": this.cue("danger", "Zombie nära – gå bort!"); this.log?.add(t, "infection_contact"); break;
+        case "infection_contact": this.cue("danger", "Zombie close – move away!"); this.log?.add(t, "infection_contact"); break;
         case "zombie_spawned": this.log?.add(t, "zombie_spawned", { id: e.zombieId, n: live.state.zombies.length }); break;
         case "zombie_sprint":
           this.log?.add(t, "zombie_sprint", { id: e.zombieId });
-          if (t - this.lastSprintCueMs > 8_000) { this.lastSprintCueMs = t; this.cue("danger", "Zombie spurtar!"); }
+          if (t - this.lastSprintCueMs > 8_000) { this.lastSprintCueMs = t; this.cue("danger", "Zombie sprinting!"); }
           break;
         case "spawn_relaxed": this.log?.add(t, "spawn_relaxed", { n: live.state.zombies.length }); break;
         case "spawn_skipped": this.log?.add(t, "spawn_skipped", { n: live.state.zombies.length, atS: Math.round(live.state.elapsedSeconds) }); break;
-        case "extraction_opened": this.cue("info", "Extraction öppen"); this.log?.add(t, "extraction_opened"); break;
-        case "gps_lost_long": this.cue("alert", "GPS borta en längre stund"); this.log?.add(t, "gps_lost_long"); break;
+        case "extraction_opened": this.cue("info", "Extraction open"); this.log?.add(t, "extraction_opened"); break;
+        case "gps_lost_long": this.cue("alert", "Location lost for a while"); this.log?.add(t, "gps_lost_long"); break;
         case "phase": this.log?.add(t, "phase", { phase: e.phase }); break;
         case "finished": finished = true; this.log?.add(t, "finished", { result: e.result }); break;
         default: break;
@@ -429,7 +429,7 @@ export class PlaySession {
     if (this.pendingZombieSound && t - this.lastZombieSoundMs >= ZOMBIE_SOUND_COOLDOWN_MS) {
       this.pendingZombieSound = false;
       this.lastZombieSoundMs = t;
-      this.cue("zombie", "Zombie nära");
+      this.cue("zombie", "Zombie approaching");
       this.log?.add(t, "zombie_near_sound", { fresh, inRange });
     }
     if (t - this.lastSampleMs >= SAMPLE_MS) {
@@ -462,7 +462,8 @@ export class PlaySession {
     } catch {
       this.storageWarning = true;
     }
-    this.cue("end", "Match slut");
+    if (live.state.result === "infected") this.cue("captured", "You were captured!");
+    else this.cue("end", "Match over");
     this.emit();
   }
 
@@ -499,7 +500,7 @@ export class PlaySession {
     this.startedAt = r.startedAt;
     this.prepared = null;
     this.attachMatch(false);
-    this.messages = ["Matchen återställdes och är pausad. Tryck Fortsätt när GPS-positionen är på plats."];
+    this.messages = ["Match restored and paused. Tap Continue when your location is back."];
     this.startLocating();
     this.emit();
     return { ok: true };

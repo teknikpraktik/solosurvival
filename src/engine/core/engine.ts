@@ -84,7 +84,7 @@ function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos,
     component: s.component,
     zombiePositions: s.zombies.map((z) => zombieLatLon(g, z)),
     minDistanceM: rules.spawnMinDistanceM,
-    avoid: s.objectives?.targets.filter((t) => t.kind !== "home").map((t) => ({ p: t, r: OBJECTIVE_SPAWN_EXCLUSION_M })),
+    avoid: s.objectives?.targets.filter((t) => t.kind !== "home").map((t) => ({ p: t, r: (s.objectives?.targets.length ?? 0) > 6 ? 80 : OBJECTIVE_SPAWN_EXCLUSION_M })), // smalare zon när checkpoints ligger tätt (Mission)
   };
   let spawn = findSpawn(g, { ...ctx, maxDistanceM: rules.spawnMaxDistanceM }, s);
   if (!spawn) {

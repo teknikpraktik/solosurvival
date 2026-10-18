@@ -87,3 +87,23 @@ describe("matchinställningar", () => {
     expect(r).toBeLessThan(2500);
   });
 });
+
+describe("Mission: ett checkpoint per ca 500 m", () => {
+  it("checkpoints jämnt längs slingan i ordning, hem sist", async () => {
+    for (const len of [3000, 5000]) {
+      const r = await prepareMatch(store(), I2, { ...params({ mode: "mission", targetLengthM: len }), seed: 4 });
+      expect(["ok", "alternative"]).toContain(r.status);
+      for (const pr of r.proposals) {
+        const cps = pr.waypoints.filter((w) => w.kind === "checkpoint");
+        expect(pr.waypoints.at(-1)!.kind).toBe("home");
+        const expected = Math.floor((pr.lengthM - 250) / 500);
+        expect(cps.length).toBe(expected);
+        expect(cps.length).toBeGreaterThanOrEqual(Math.floor(len / 500) - 2);
+        // Ordnade längs geometrin: avståndet längs rutten växer.
+        const along = cps.map((c) => { let best = 0, bd = Infinity; pr.geometry.forEach((p, i) => { const d = Math.hypot(p.lat - c.lat, p.lon - c.lon); if (d < bd) { bd = d; best = i; } }); return best; });
+        for (let i = 1; i < along.length; i++) expect(along[i]).toBeGreaterThanOrEqual(along[i - 1]);
+        expect(new Set(cps.map((c) => c.id)).size).toBe(cps.length);
+      }
+    }
+  });
+});

@@ -18,8 +18,8 @@ export default function History() {
   return (
     <main className="page">
       <PageHeader title="PREVIOUS GAMES" />
-      {items === null && <div className="muted">Laddar…</div>}
-      {items?.length === 0 && <div className="card">Inga matcher än. {ctx && !ctx.db && "Lokal lagring är inte tillgänglig i den här webbläsaren (t.ex. privat läge), så matcher sparas inte."}</div>}
+      {items === null && <div className="muted">Loading…</div>}
+      {items?.length === 0 && <div className="card">No matches yet. {ctx && !ctx.db && "Local storage is not available in this browser (for example private mode), so matches are not saved."}</div>}
       <div className="hist">
         {items?.map((h) => (
           <div className="card" key={h.id}>
@@ -27,15 +27,15 @@ export default function History() {
             <div className={`res ${h.result}`}>{RESULT_LABEL[h.result] ?? h.result}</div>
             <div className="muted">{fmtDate(h.startedAt)}</div>
             <div className="muted" style={{ textAlign: "right" }}>{fmtTime(h.elapsedS)} · {fmtKm(h.measuredDistanceM)}</div>
-            <div className="muted">{h.plannedLengthM ? `Rutt ${fmtKm(h.plannedLengthM)}` : "Ingen rutt"}{h.checkpoints ? ` · mål ${h.checkpoints.reached}/${h.checkpoints.total}` : ""}</div>
+            <div className="muted">{h.plannedLengthM ? `Route ${fmtKm(h.plannedLengthM)}` : "No route"}{h.checkpoints ? ` · goals ${h.checkpoints.reached}/${h.checkpoints.total}` : ""}</div>
             <div style={{ textAlign: "right" }}>
-              <button className="link" onClick={async () => { if (st && confirm("Radera den här matchen från enheten?")) { await st.deleteMatch(h.id); await load(); } }}>Radera</button>
+              <button className="link" onClick={async () => { if (st && confirm("Delete this match from the device?")) { await st.deleteMatch(h.id); await load(); } }}>Delete</button>
             </div>
           </div>
         ))}
       </div>
       {items && items.length > 0 && (
-        <button className="link" onClick={async () => { if (st && confirm("Radera ALLA matcher och testdata från enheten?")) { await st.deleteAll(); await load(); } }}>Radera allt</button>
+        <button className="link" onClick={async () => { if (st && confirm("Delete ALL matches and test data from the device?")) { await st.deleteAll(); await load(); } }}>Delete all</button>
       )}
     </main>
   );
