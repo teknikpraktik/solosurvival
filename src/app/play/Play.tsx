@@ -116,7 +116,6 @@ export default function Play() {
         </div>
         {m.infection > 0 && <div className="infect" aria-label="Smittrisk"><div style={{ width: `${Math.min(100, (m.infection / 3) * 100)}%` }} /></div>}
       </div>
-      <div className="toast" aria-live="polite">{view.messages.map((t) => <div key={t} className="card">{t}</div>)}</div>
 
       {!finished && (
         <div className="controls">
