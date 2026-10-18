@@ -115,3 +115,8 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .controls .iconbtn { flex: 0 0 42px; }
 .controls .wide { flex: 1; }
 .controls button:last-child { flex: 1.3; }
+.zmark { position: relative; overflow: visible; }
+.zmark .zdir { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; opacity: 0; transition: opacity .3s; pointer-events: none; }
+.zmark.chase::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid #ff4d4d; opacity: 0; animation: zpulse 1.6s ease-out infinite; pointer-events: none; }
+@keyframes zpulse { 0% { transform: scale(.7); opacity: .8; } 100% { transform: scale(1.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .zmark.chase::after { animation: none; } }

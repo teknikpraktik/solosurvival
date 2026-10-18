@@ -1,4 +1,4 @@
-import { pointAlong, type LatLon } from "@/geo/geometry";
+import { bearingDeg, haversineM, pointAlong, type LatLon } from "@/geo/geometry";
 import type { GraphEdge, TrailGraph } from "@/geo/graph/types";
 
 /** Auktoritativ zombieposition från motorn (kant + sträcka längs kanten). */
@@ -15,6 +15,8 @@ export interface ZombieFrame {
   lat: number;
   lon: number;
   chasing: boolean;
+  /** Färdriktning (0–360, 0 = norr) senast den rörde sig, annars null. */
+  bearing: number | null;
 }
 
 /** Större avstånd än så mellan visuell och auktoritativ position räknas som omplacering (spawn/återställning) och animeras inte. */
@@ -26,6 +28,8 @@ interface Visual {
   edgeId: string;
   distM: number;
   target: ZombieTarget;
+  last?: LatLon;
+  bearing: number | null;
 }
 
 const endDist = (e: GraphEdge, node: string) => (node === e.to ? e.lengthM : 0);
@@ -46,7 +50,7 @@ export class ZombieAnimator {
     for (const t of list) {
       seen.add(t.id);
       const cur = this.v.get(t.id);
-      if (!cur) this.v.set(t.id, { edgeId: t.edgeId, distM: t.distM, target: t });
+      if (!cur) this.v.set(t.id, { edgeId: t.edgeId, distM: t.distM, target: t, bearing: null });
       else cur.target = t;
     }
     for (const id of [...this.v.keys()]) if (!seen.has(id)) this.v.delete(id);
@@ -98,7 +102,10 @@ export class ZombieAnimator {
       const e = this.g.edges.get(z.edgeId);
       if (!e) continue;
       const p: LatLon = pointAlong(e.geometry, e.cumM, Math.max(0, Math.min(e.lengthM, z.distM)));
-      out.push({ id, lat: p.lat, lon: p.lon, chasing: z.target.chasing });
+      // Riktning ur den visuella förflyttningen (minst 0,3 m), så pilen följer stigens faktiska riktning.
+      if (!z.last) z.last = p;
+      else if (haversineM(z.last, p) >= 0.3) { z.bearing = bearingDeg(z.last, p); z.last = p; }
+      out.push({ id, lat: p.lat, lon: p.lon, chasing: z.target.chasing, bearing: z.bearing });
     }
     return out;
   }

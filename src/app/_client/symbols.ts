@@ -28,3 +28,6 @@ export const DOT_SVG = `<svg viewBox="0 0 40 40" width="40" height="40" xmlns="h
 <circle cx="20" cy="20" r="11" fill="none" stroke="#0b0f14" stroke-width="5" opacity=".75"/>
 <circle cx="20" cy="20" r="11" fill="#2f7cff" stroke="#ffffff" stroke-width="2.6"/>
 </svg>`;
+
+/** Liten riktningstriangel som visas vid en rörlig zombie (roteras med CSS). */
+export const ZOMBIE_DIR_SVG = `<svg viewBox="0 0 14 14" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M7 1 L12.5 12 L7 9.2 L1.5 12 Z" fill="#ff4d4d" stroke="#0b0f14" stroke-width="1.2" stroke-linejoin="round"/></svg>`;

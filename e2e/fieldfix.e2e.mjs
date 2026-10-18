@@ -88,6 +88,15 @@ if (dist !== null && dist <= 500) check("zombiemarkör ritas när zombie är ino
 else check("zombie-pill visar avstånd eller 'inga ännu'", /Zombie|Inga zombier ännu/.test(pill));
 check("zombiemarkörer bara inom närhetsradien", (await page.locator(".zmark").count()) <= (dist !== null && dist <= 500 ? 20 : 0));
 
+// Zombierna rör sig faktiskt efter försprånget (magnet-jakt): jämför positioner 10 s isär.
+const snap = () => page.evaluate(() => Object.fromEntries(window.__outbreak.getView().match.zombiesNear.map((z) => [z.id, [z.lat, z.lon]])));
+const hav = (a, b) => { const r = Math.PI / 180, dLa = (b[0] - a[0]) * r, dLo = (b[1] - a[1]) * r; const h = Math.sin(dLa / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLo / 2) ** 2; return 2 * 6371000 * Math.asin(Math.sqrt(h)); };
+const z0 = await snap();
+for (let i = 0; i < 10; i++) { p = destPoint(p, 1.3, 180); await ctx.setGeolocation({ ...p, accuracy: 6 }); await page.waitForTimeout(1000); }
+const z1 = await snap();
+const moved = Object.keys(z0).filter((id) => z1[id]).map((id) => hav(z0[id], z1[id]));
+console.log("zombier flyttade (m på 10 s):", moved.map((m) => m.toFixed(1)).join(","));
+check("zombier rör sig mot spelaren efter försprånget", moved.length > 0 && Math.max(...moved) >= 4, `${moved.length} zombier`);
 // Tvinga fram en zombie 300 m bort på en kant (via felsökningshaket) och kontrollera markör + mjuk rörelse.
 const placed = await page.evaluate(() => {
   const s = window.__outbreak; const live = s.live; const pos = live.filter.position;

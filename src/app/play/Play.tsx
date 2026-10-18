@@ -72,7 +72,7 @@ export default function Play() {
   const gpsTone = m.gpsLost || view.gpsError ? "bad" : view.quality === "ok" ? "" : "warn";
   const remaining = Math.max(0, m.limitS - m.elapsedS);
   const fmtDist = (d: number) => (d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d)} m`);
-  const zombiePill = m.nearestZombieM === null ? "Inga zombier ännu" : m.nearestZombieM <= VISIBLE_RADIUS_M ? `Zombie ${fmtDist(m.nearestZombieM)}` : "Inga zombier inom 1 km";
+  const zombiePill = m.phase === "head_start" && m.zombieCount > 0 ? `Zombier vaknar ${fmtTime(m.headStartLeftS)}` : m.nearestZombieM === null ? "Inga zombier ännu" : m.nearestZombieM <= VISIBLE_RADIUS_M ? `Zombie ${fmtDist(m.nearestZombieM)}` : "Inga zombier inom 1 km";
   const ready = m.elapsedS < 0.5;
   const canResume = !m.needsFix && !m.gpsLost;
 
@@ -88,6 +88,7 @@ export default function Play() {
         frozen={m.paused || finished}
         heading={view.heading}
         trackUp={trackUp}
+        zoom={16}
         extraction={m.extraction}
         follow={follow}
         onUserMove={() => setFollow(false)}
@@ -103,7 +104,7 @@ export default function Play() {
           {m.objectives ? (
             <span className="pill">Mål {Math.min(m.objectives.index + 1, m.objectives.total)}/{m.objectives.total}{dHome !== null ? ` · ${dHome} m` : ""}{m.objectives.holdS > 0 ? ` · ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
           ) : (
-            <span className="pill">{m.extraction ? "Extraction öppen" : m.phase === "head_start" ? "Försprång" : "Överlev"}</span>
+            <span className="pill">{m.extraction ? "Extraction öppen" : m.phase === "head_start" ? `Försprång ${fmtTime(m.headStartLeftS)}` : "Överlev"}</span>
           )}
           <span className={`pill ${m.nearestZombieM !== null && m.nearestZombieM < 60 ? "bad" : ""}`}>{zombiePill}</span>
         </div>
