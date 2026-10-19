@@ -70,7 +70,7 @@ describe("spelmotor med mål", () => {
   it("Escape: vinst när destinationen nås; ingen extraction öppnas", () => {
     const dest = edgeLatLon(g, { edgeId: "r7:9", distM: 0 });
     const objectives = createObjectives([{ id: "B", kind: "destination", ...dest }]);
-    const s = new SimSession({ g, activity: "run", difficulty: "easy", durationS: 3000, seed: 3, strategy: "avoid", start, mode: "escape", objectives, strategyFn: makeGoalBot("follower", newBotStats()) });
+    const s = new SimSession({ g, activity: "run", difficulty: "easy", durationS: 3000, seed: 3, strategy: "avoid", start, mode: "escape", objectives, strategyFn: makeGoalBot("follower", newBotStats()), rulesPatch: { initialZombies: 0, maxZombies: 0 } }); // utan zombier: testet gäller målet, inte hotbilden
     while (!s.finished) s.step();
     expect(s.state.result).toBe("survived");
     expect(s.state.extractionNodeId).toBeUndefined();

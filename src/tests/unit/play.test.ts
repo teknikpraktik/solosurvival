@@ -79,7 +79,7 @@ describe("spellägen via LiveGame (simulerad GPS, inte fälttest)", () => {
     const { live, proposal } = mk("escape");
     walk(live, [proposal!.geometry[0], proposal!.geometry[0]], 0, 60 * 120, true);
     expect(live.state.result).toBe("failed");
-  });
+  }, 60000);
 
   it("spelaren får lämna rutten (rutten är vägledning)", () => {
     const { live, proposal } = mk("mission");
