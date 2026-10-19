@@ -81,3 +81,31 @@ console.log("zombie-near.wav", buf.length, "bytes");
   writeFileSync("public/audio/jump-scream.wav", b3);
   console.log("jump-scream.wav", b3.length, "bytes");
 }
+
+// --- Spänning: otäck, orolig dröne (2,4 s) som spelas när kartan zoomar in på zombier i cykelläget ---
+{
+  const SR4 = 22050, D4 = 2.4, N4 = Math.floor(SR4 * D4);
+  let sd4 = 777;
+  const r4 = () => ((sd4 = (sd4 * 1664525 + 1013904223) >>> 0) / 4294967296) * 2 - 1;
+  const o4 = new Float32Array(N4);
+  let a = 0, b = 0, c = 0, lp4 = 0;
+  for (let i = 0; i < N4; i++) {
+    const t = i / SR4;
+    a += (2 * Math.PI * (62 + 8 * t)) / SR4;      // låg grundton, stigande
+    b += (2 * Math.PI * (66 + 8 * t)) / SR4;      // liten sekund över: dissonans/svävning
+    c += (2 * Math.PI * (233 + 40 * Math.sin(2 * Math.PI * 0.7 * t))) / SR4; // tritonus-skimmer
+    lp4 += 0.05 * (r4() - lp4);
+    const beat = (x) => Math.exp(-Math.pow(((t - x) * 14), 2)); // två dova hjärtslag
+    const heart = Math.sin(2 * Math.PI * 48 * t) * (beat(0.55) + 0.8 * beat(0.8) + beat(1.45) + 0.8 * beat(1.7));
+    const v = Math.sin(a) * 0.5 + Math.sin(b) * 0.45 + Math.sin(c) * 0.12 * (0.5 + 0.5 * Math.sin(2 * Math.PI * 3.1 * t)) + lp4 * 0.9 + heart * 0.9;
+    const env = Math.min(1, t / 0.5) * Math.pow(Math.max(0, 1 - t / D4), 0.9);
+    o4[i] = Math.tanh(v * 1.4) * env * 0.6;
+  }
+  const b4 = Buffer.alloc(44 + N4 * 2);
+  b4.write("RIFF", 0); b4.writeUInt32LE(36 + N4 * 2, 4); b4.write("WAVEfmt ", 8); b4.writeUInt32LE(16, 16);
+  b4.writeUInt16LE(1, 20); b4.writeUInt16LE(1, 22); b4.writeUInt32LE(SR4, 24); b4.writeUInt32LE(SR4 * 2, 28);
+  b4.writeUInt16LE(2, 32); b4.writeUInt16LE(16, 34); b4.write("data", 36); b4.writeUInt32LE(N4 * 2, 40);
+  for (let i = 0; i < N4; i++) b4.writeInt16LE(Math.max(-32767, Math.min(32767, Math.round(o4[i] * 32767))), 44 + i * 2);
+  writeFileSync("public/audio/tension.wav", b4);
+  console.log("tension.wav", b4.length, "bytes");
+}

@@ -46,7 +46,12 @@ export default function HowToPlay() {
       <p>Trails and roads come from OpenStreetMap (© OpenStreetMap contributors, ODbL). Map data can be incomplete or wrong. The game excludes trails marked private or forbidden and tries to avoid roads, railways and water – but a stretch appearing in the game does not mean it is safe or allowed.</p>
 
       <h2>Credits</h2>
-      <p>The photographs used in the app are derived from <a href="https://commons.wikimedia.org/wiki/File:As_a_film_Make-up_artist,_Creating_Zombies_is_something_I_enjoy_doing_at_SCARLET_STUDIOS.jpg">a zombie make-up photo on Wikimedia Commons</a> (CC0 / public domain), cropped, darkened and colour-graded.</p>
+      <p>Photographs used in the app, all cropped, darkened and colour-graded:</p>
+      <ul>
+        <li>Start page: “Crazy zombie boy in the studio” by Heath Cajandig, <a href="https://commons.wikimedia.org/wiki/File:Crazy_zombie_boy_in_the_studio.jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>.</li>
+        <li>Captured screen: “Zombie Halloween Mask” by Sharpshotefx, <a href="https://commons.wikimedia.org/wiki/File:Zombie_Halloween_Mask.jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</li>
+        <li>Other images: <a href="https://commons.wikimedia.org/wiki/File:As_a_film_Make-up_artist,_Creating_Zombies_is_something_I_enjoy_doing_at_SCARLET_STUDIOS.jpg">a zombie make-up photo on Wikimedia Commons</a> (CC0 / public domain).</li>
+      </ul>
 
       <h2>Your data</h2>
       <p>Matches, location data and test logs are stored only on your device. No login, no upload. You can delete matches under PREVIOUS GAMES.</p>

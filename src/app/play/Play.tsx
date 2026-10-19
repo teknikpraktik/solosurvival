@@ -7,8 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { errorText } from "@/gps/provider/provider";
 import { RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
-import { cuesEnabled, setCuesEnabled, unlockAudio } from "../_client/cues";
-import { BIKE_VIEW_RETURN_S } from "@/play/bike-view";
+import { cuesEnabled, playCue, setCuesEnabled, unlockAudio } from "../_client/cues";
+import { BIKE_TENSION_COOLDOWN_S, BIKE_VIEW_RETURN_S, nextBikeClose } from "@/play/bike-view";
 import { Modal } from "../_client/Modal";
 import { Scare } from "../_client/Scare";
 import { JumpScare } from "../_client/JumpScare";
@@ -65,6 +65,17 @@ export default function Play() {
 
   const m = view?.match ?? null;
   bikeRef.current = m?.activity === "mtb";
+  // Bike: zoom in when a zombie is within 200 m (back out beyond 260 m) and play an uneasy sound on zooming in (with a cooldown).
+  const [bikeClose, setBikeClose] = useState(false);
+  const lastTension = useRef(-Infinity);
+  const nearestM = m && !m.paused && m.phase !== "finished" ? m.nearestZombieM : null;
+  const wantClose = bikeRef.current && nextBikeClose(bikeClose, nearestM);
+  useEffect(() => {
+    if (wantClose === bikeClose) return;
+    setBikeClose(wantClose);
+    const now = Date.now();
+    if (wantClose && now - lastTension.current >= BIKE_TENSION_COOLDOWN_S * 1000) { lastTension.current = now; playCue("tension"); }
+  }, [wantClose, bikeClose]);
   const live = session?.live ?? null;
   const markers = useMemo<MapMarker[]>(() => {
     const o = m?.proposal;
@@ -123,6 +134,7 @@ export default function Play() {
         extraction={m.extraction}
         follow={follow}
         bikeView={m.activity === "mtb"}
+        bikeClose={bikeClose}
         onUserMove={onUserMove}
         onError={(w) => session.fieldLog?.renderProblem(Date.now(), w)}
       />
