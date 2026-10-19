@@ -124,7 +124,7 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .zmark.sprint::after { animation-duration: .6s; border-width: 3px; inset: -9px; }
 .zmark.sprint .zlabel { background: #7f1d1d; }
 /* Start page backdrop */
-.hero { background: linear-gradient(#0b0f1455, #0b0f1422 45%, #0b0f14aa), url("/img/hero.svg") center / cover no-repeat; text-shadow: 0 2px 10px #000; }
+.hero { background: linear-gradient(#0b0f1455, #0b0f1422 45%, #0b0f14aa), url("/img/hero.jpg") center / cover no-repeat, url("/img/hero.svg") center / cover no-repeat; text-shadow: 0 2px 10px #000; }
 .hero .title { color: #ff3b2a; text-shadow: 0 0 18px #ff1a0a88, 0 2px 8px #000; }
 .hero .btn { background: #131a22d9; backdrop-filter: blur(2px); }
 .hero .btn.primary { background: #8b1111e6; }

@@ -45,6 +45,9 @@ export default function HowToPlay() {
       <h2>Map data</h2>
       <p>Trails and roads come from OpenStreetMap (© OpenStreetMap contributors, ODbL). Map data can be incomplete or wrong. The game excludes trails marked private or forbidden and tries to avoid roads, railways and water – but a stretch appearing in the game does not mean it is safe or allowed.</p>
 
+      <h2>Credits</h2>
+      <p>The jump-scare and start-page photographs are derived from <a href="https://commons.wikimedia.org/wiki/File:As_a_film_Make-up_artist,_Creating_Zombies_is_something_I_enjoy_doing_at_SCARLET_STUDIOS.jpg">a zombie make-up photo on Wikimedia Commons</a> (CC0 / public domain), cropped, darkened and colour-graded.</p>
+
       <h2>Your data</h2>
       <p>Matches, location data and test logs are stored only on your device. No login, no upload. You can delete matches under PREVIOUS GAMES.</p>
       <p>The background map (forest, water, roads) is loaded as map tiles from OpenFreeMap (data © OpenStreetMap contributors, © OpenMapTiles). That provider sees your IP address and which map area is shown, but not your location as such or your matches. Without a connection the game works with just the trail network.</p>

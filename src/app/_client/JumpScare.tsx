@@ -11,7 +11,7 @@ export function JumpScare({ onDone }: { onDone: () => void }) {
   return (
     <div className="jump" aria-hidden="true">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/img/jump.svg" alt="" />
+      <img src="/img/jump.jpg" alt="" onError={(e) => { (e.target as HTMLImageElement).src = "/img/jump.svg"; }} />
     </div>
   );
 }

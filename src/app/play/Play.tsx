@@ -30,6 +30,8 @@ export default function Play() {
   const [scareDone, setScareDone] = useState(false);
   const [jump, setJump] = useState(false);
   const lastScare = useRef(0);
+  // Preload the jump-scare photo so it appears instantly when it fires.
+  useEffect(() => { const i = new Image(); i.src = "/img/jump.jpg"; }, []);
   // Random jump scare (planned by the session): show the image briefly; the scream comes from the cue system.
   useEffect(() => {
     const n = view?.scareNonce ?? 0;

@@ -91,3 +91,7 @@ Normal = nuvarande värden (On foot 6,75 km/h, 6 start / 18 max zombier). **Easy
 
 ## Fälttest 10: slumpade skrämmor
 1–2 per match (planeras vid start, `planScares`): första efter 90–420 s speltid, andra (50 %) 240–480 s senare. Skrämman visas först när en zombie närmar sig (≤ 200 m) efter planerad tid, så den känns motiverad. Visas ~1,3 s: bild `public/img/jump.svg` + skrik `public/audio/jump-scream.wav` (följer ljudknappen) + vibration. Blockerar inte spelet (matchen pausas inte, inga klick fångas). **Aldrig på Bike** (säkerhet) och kan stängas av i NEW GAME ("Random jump scares", sparas lokalt). Loggas som `jump_scare` i testloggen.
+
+## Fotorealistiska bilder (jump scare + startsida)
+- `public/img/jump.jpg` (närbild ansikte) och `public/img/hero.jpg` (startsidans bakgrund) är bearbetade från ett CC0-foto (Wikimedia Commons, zombie-makeup). Källa anges under HOW TO PLAY → Credits.
+- SVG-versionerna finns kvar som reserv om jpg saknas. Byt filerna för egna foton (samma filnamn).
