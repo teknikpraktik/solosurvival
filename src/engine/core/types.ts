@@ -93,6 +93,8 @@ export interface GameState {
   peakZombies: number;
   /** Spelarens komponent i grafen – zombier hålls i samma komponent. */
   component: number;
+  /** Matchens startposition (A i A TO B). */
+  startPos?: LatLon;
   /** Mål för Escape/Mission. Saknas i Survival (där extraction gäller). */
   objectives?: ObjectiveSet;
 }

@@ -93,3 +93,55 @@ describe("A TO B (egen A och B, ingen sträcka)", () => {
     expect(r.proposals[0].waypoints.some((w) => w.kind === "checkpoint")).toBe(true);
   });
 });
+
+import { inCorridor } from "@/engine/spawning/spawn";
+import { toLocal } from "@/geo/geometry";
+import { stepGame } from "@/engine/core/engine";
+import { zombieLatLon } from "@/engine/core/movement";
+
+describe("A TO B: zombier uppstår mellan A och B", () => {
+  it("inCorridor: bara mellan A och B, inom bredden", () => {
+    const Bp = destinationPoint(A, 2000, 90);
+    const c = { a: A, b: Bp, halfWidthM: 300, minT: 0.05, maxT: 0.97 };
+    expect(inCorridor(destinationPoint(A, 1000, 90), c)).toBe(true);
+    expect(inCorridor(destinationPoint(A, -300, 90), c)).toBe(false); // bakom A
+    expect(inCorridor(destinationPoint(A, 2500, 90), c)).toBe(false); // bortom B
+    expect(inCorridor(destinationPoint(destinationPoint(A, 1000, 90), 500, 0), c)).toBe(false); // för långt åt sidan
+    expect(inCorridor(destinationPoint(destinationPoint(A, 1000, 90), 200, 0), c)).toBe(true);
+  });
+
+  it("alla initiala och senare zombier ligger mellan A och B (framför spelaren), på alla svårigheter", async () => {
+    for (const difficulty of ["easy", "normal", "hard"] as const) {
+      const p = params({ pointA: A, pointB: B, difficulty });
+      const r = await prepareMatch(store(), A, p);
+      const live = createLiveMatch({ id: "c", params: p, start: A, proposal: r.proposals[0], graph: r.graph!, dataVersion: "t" });
+      const bv = toLocal(A, B);
+      const len2 = bv.x * bv.x + bv.y * bv.y;
+      const tOf = (q: LatLon) => { const v = toLocal(A, q); return (v.x * bv.x + v.y * bv.y) / len2; };
+      const lat = (q: LatLon) => { const v = toLocal(A, q); const t = tOf(q); return Math.hypot(v.x - t * bv.x, v.y - t * bv.y); };
+      const half = Math.max(250, 0.3 * Math.sqrt(len2));
+      const check = () => {
+        let inside = 0;
+        for (const z of live.state.zombies) { const ll = zombieLatLon(live.g, z); const t = tOf(ll); if (t >= 0.05 && t <= 0.97 && lat(ll) <= half + 1) inside++; }
+        return inside;
+      };
+      expect(live.state.zombies.length).toBeGreaterThanOrEqual(3);
+      expect(check()).toBe(live.state.zombies.length); // initialt: alla i korridoren
+      // Nya zombier under matchen (spelaren står kvar vid A, smitta pausad så att matchen lever).
+      live.state.paused = false;
+      for (let i = 0; i < 5 * 60 * 4; i++) {
+        const before = live.state.zombies.length;
+        stepGame(live.g, live.state, live.rules, { position: A, quality: "infection_paused", accuracyM: 25 });
+        if (live.state.zombies.length > before) {
+          const z = live.state.zombies.at(-1)!;
+          const ll = zombieLatLon(live.g, z);
+          const t = tOf(ll);
+          expect(t).toBeGreaterThanOrEqual(0.05);
+          expect(t).toBeLessThanOrEqual(0.97);
+          expect(lat(ll)).toBeLessThanOrEqual(half + 1);
+        }
+      }
+      expect(live.state.zombies.length).toBeGreaterThan(live.rules.initialZombies - 1);
+    }
+  });
+});

@@ -82,3 +82,6 @@ En jagande zombie (chase/intercept) som kommer inom **100 m** (fågelvägen) bö
 - **Fångad:** helskärmsbild (`public/img/captured.svg`) med skakning och blixtar i 2,8 s, skrik-ljud (`public/audio/captured-scream.wav`, genereras av `scripts/make-audio.mjs`, följer ljudknappen) och vibration, därefter resultatdialogen (utan X). Ljudfilen förladdas vid START.
 - **Startsidan** har en mörk skräm-bakgrund (`public/img/hero.svg`).
 - **GPS-info visas inte** för spelaren (ingen GPS-pill, inga noggrannhetssiffror): bara korta meddelanden när något kräver åtgärd (söker position, nekad åtkomst, signal förlorad). Detaljerad GPS finns kvar under Test mode.
+
+## Fälttest 8: zombier mellan A och B
+I A TO B spawnar alla zombier (initiala och nya) **mellan A och B**: punktens projektion på linjen A→B ska ligga mellan 5 % och 97 % av sträckan (och framför spelaren när hen rört sig) och högst 30 % av avståndet (minst 250 m) åt sidan. Inget bakom A eller bortom B. Minsta avstånd till spelaren (300 m) gäller som förut; den vanliga 1 km-gränsen används inte i detta läge. Finns ingen plats i korridoren faller spawn tillbaka på vanliga reglerna (`spawn_relaxed` i loggen). Startpositionen sparas i matchtillståndet (`startPos`). Magnet-jakt och spurt är oförändrade, så zombierna lämnar korridoren när de jagar.
