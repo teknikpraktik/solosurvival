@@ -3,6 +3,7 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Map as MapLibreMap, Marker, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
+import { bikeZoom } from "@/play/bike-view";
 import { bearingDeg, haversineM, type LatLon } from "@/geo/geometry";
 import type { TrailGraph } from "@/geo/graph/types";
 import { unwrapToward } from "@/play/heading";
@@ -54,6 +55,8 @@ export interface GameMapProps {
   extraction?: LatLon | null;
   /** Följ spelaren. */
   follow?: boolean;
+  /** Bike view: player centred, zoom fitted so that BIKE_VIEW_AHEAD_M is visible ahead of and behind the player (top/bottom edge). */
+  bikeView?: boolean;
   fit?: LatLon[] | null;
   onUserMove?: () => void;
   /** Tryck på kartan (t.ex. för att välja A/B). */
@@ -79,6 +82,8 @@ export default function GameMap(props: GameMapProps) {
     mapRef.current = map;
     map.touchZoomRotate.disableRotation();
     map.on("dragstart", () => propsRef.current.onUserMove?.());
+    // Bike view: also pinch/scroll zoom and the whole drag count as user interaction (resets the return-to-follow timer).
+    map.on("move", (e) => { if (propsRef.current.bikeView && (e as { originalEvent?: unknown }).originalEvent) propsRef.current.onUserMove?.(); });
     map.on("click", (e) => propsRef.current.onPick?.({ lat: e.lngLat.lat, lon: e.lngLat.lng }));
     let tileErrors = 0;
     map.on("error", (e) => {
@@ -103,7 +108,7 @@ export default function GameMap(props: GameMapProps) {
 
   const src = (id: string, data: GeoJSON.FeatureCollection) => (mapRef.current?.getSource(id) as GeoJSONSource | undefined)?.setData(data);
 
-  const { graph, routes, markers, player, accuracyM, start, zombies, extraction, follow, fit, frozen, heading, trackUp } = props;
+  const { graph, routes, markers, player, accuracyM, start, zombies, extraction, follow, fit, frozen, heading, trackUp, bikeView } = props;
   useEffect(() => { if (loaded) src("net", fc(graph ? [...graph.edges.values()].map((e) => line(e.geometry)) : [])); }, [loaded, graph]);
   useEffect(() => { if (loaded) src("routes", fc((routes ?? []).map((r) => line(r.points, { sel: r.selected, faint: !!r.faint })))); }, [loaded, routes]);
   useEffect(() => { if (loaded) src("start", fc(start ? [pt(start)] : [])); }, [loaded, start]);
@@ -114,6 +119,7 @@ export default function GameMap(props: GameMapProps) {
   const bearingRef = useRef(0); // senast beordrad kartrotation (grader, utrullad)
   const arrowRef = useRef(0);
   const lastCamBearing = useRef(0);
+  const wasFollowing = useRef(true);
   useEffect(() => {
     const map = mapRef.current;
     if (!loaded || !map) return;
@@ -150,14 +156,25 @@ export default function GameMap(props: GameMapProps) {
     if (el.current) el.current.dataset.bearing = String(Math.round(bearing));
     if (follow) {
       const h = map.getContainer().clientHeight;
-      const cam = { center: [player.lon, player.lat] as [number, number], bearing, padding: { top: Math.round(h * 0.3), bottom: 0, left: 0, right: 0 } };
+      const cam: { center: [number, number]; bearing: number; padding: { top: number; bottom: number; left: number; right: number }; zoom?: number } = { center: [player.lon, player.lat], bearing, padding: { top: Math.round(h * 0.3), bottom: 0, left: 0, right: 0 } };
+      let returning = false;
+      if (bikeView) {
+        // Player in the middle of the screen; zoom so that BIKE_VIEW_AHEAD_M fits between the player and the top (and bottom) edge.
+        cam.padding = { top: 0, bottom: 0, left: 0, right: 0 };
+        cam.zoom = bikeZoom(player.lat, h);
+        returning = !wasFollowing.current; // coming back after the user moved the map: ease smoothly
+      }
+      wasFollowing.current = true;
+      if (returning) { map.easeTo({ ...cam, duration: 700, essential: true }); lastCamBearing.current = bearing; return; }
       // Bara en kort animation när kartan ska rotera. Vanlig förflyttning (≈1 m/s … 5 m/s, någon pixel per GPS-fix) hoppar direkt:
       // en rendering per GPS-fix i stället för kontinuerlig animation sparar CPU/GPU och batteri.
       if (Math.abs(bearing - lastCamBearing.current) > 0.5) map.easeTo({ ...cam, duration: 800, easing: (t) => t, essential: true });
       else map.jumpTo(cam);
       lastCamBearing.current = bearing;
     }
-  }, [loaded, player, accuracyM, follow, heading, trackUp]);
+    if (el.current) el.current.dataset.zoom = map.getZoom().toFixed(2);
+  }, [loaded, player, accuracyM, follow, heading, trackUp, bikeView]);
+  useEffect(() => { if (!follow) wasFollowing.current = false; }, [follow]);
 
   // --- Zombier: en enda rAF-loop som animerar mellan motorns uppdateringar ---
   const animRef = useRef<ZombieAnimator | null>(null);

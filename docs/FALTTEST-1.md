@@ -106,3 +106,8 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 ## Capture-flöde och HUD
 - Captured: bilden visas 3 s (timern startar en gång; tidigare kunde omrenderingar vid varje GPS-uppdatering starta om den), därefter dialogen GAME OVER med sammanfattning och knapparna HOME / PREVIOUS GAMES.
 - Topprad: närmaste zombie (avstånd, alla zombies, alltid synligt) och på Bike spelarens fart i km/h (`src/play/speed.ts`, jämnad GPS-fart, annars härledd ur positioner; "– km/h" utan färsk mätning).
+
+## Bike-zoom (endast Bike)
+- Spelaren i mitten av skärmen, Track Up och samma pil. Zoomen räknas fram (`bikeZoom` i `src/play/bike-view.ts`) så att 500 m framåt och 500 m bakåt ryms mellan skärmens mitt och över-/underkant (på en 390 px bred telefon blir det ca ±230 m åt sidorna).
+- Drar/zoomar man kartan ligger den kvar; efter 6 s utan beröring (`BIKE_VIEW_RETURN_S`) glider den tillbaka till spelaren och grundzoomen. ⌖-knappen återgår direkt. On foot är oförändrat.
+- E2E: `e2e/bikezoom.e2e.mjs` (mockad GPS).
