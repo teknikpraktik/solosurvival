@@ -16,7 +16,19 @@ import { createLiveMatch, matchDurationS } from "./match";
 import { prepareMatch, type Prepared } from "./prepare";
 import { MatchStorage, type HistoryRecord } from "./storage";
 
-export type Cue = "danger" | "alert" | "goal" | "info" | "end" | "zombie" | "captured";
+export type Cue = "danger" | "alert" | "goal" | "info" | "end" | "zombie" | "captured" | "jump";
+
+/**
+ * Planerar slumpade skrämmor för en match: en första efter 90–420 s speltid och (50 %) en andra 240–480 s senare.
+ * Själva skrämman utlöses först när en zombie närmar sig (≤ 200 m) efter den tidpunkten, så den känns motiverad.
+ */
+export function planScares(random: () => number): number[] {
+  const first = 90 + random() * 330;
+  const times = [first];
+  if (random() < 0.5) times.push(first + 240 + random() * 240);
+  return times;
+}
+export const SCARE_TRIGGER_DISTANCE_M = 200;
 
 /** Minsta tid (ms) mellan två närhetsljud; nya zombier som dyker upp under tiden grupperas till ett ljud. */
 export const ZOMBIE_SOUND_COOLDOWN_MS = 12_000;
@@ -35,6 +47,9 @@ export interface SessionDeps {
   wakeLock?: { request(): Promise<{ release(): Promise<void> } | null> };
   userAgent?: string;
   traceEnabled?: () => boolean;
+  /** Slumpade skrämmor (standard av om utelämnat). Aldrig på cykel. */
+  jumpScares?: () => boolean;
+  random?: () => number;
   onCue?: (cue: Cue, text: string) => void;
 }
 
@@ -73,6 +88,8 @@ export interface SessionView {
   match: MatchView | null;
   storageWarning: boolean;
   messages: string[];
+  /** Ökar varje gång en slumpad skrämma ska visas. */
+  scareNonce: number;
 }
 
 export interface MatchView {
@@ -143,6 +160,8 @@ export class PlaySession {
   private lastCheckMs = 0;
   private lastSampleMs = 0;
   private silentFirstCheck = false;
+  private scareTimes: number[] = [];
+  private scareNonce = 0;
   private lastDetectCueMs = -Infinity;
   private lastSprintCueMs = -Infinity;
   private cueMsgs: { text: string; until: number }[] = [];
@@ -290,6 +309,9 @@ export class PlaySession {
     this.lastCheckMs = 0;
     this.lastSampleMs = 0;
     this.silentFirstCheck = !fresh;
+    // Slumpade skrämmor (aldrig på cykel och bara om påslaget). Återställd match: planera om från nuvarande speltid.
+    const random = this.d.random ?? Math.random;
+    this.scareTimes = this.d.jumpScares?.() && params.activity !== "mtb" ? planScares(random).map((x) => x + (fresh ? 0 : live.state.elapsedSeconds)) : [];
     this.log.add(t, "match_start", {
       zombiesInitial: live.state.zombies.length, rulesZombies: { initial: live.rules.initialZombies, max: live.rules.maxZombies, headStartS: live.rules.headStartS, spawnMinM: live.rules.spawnMinDistanceM }, proximityM: proximityRadiusM(params),
       mode: params.mode, activity: params.activity, difficulty: params.difficulty,
@@ -432,6 +454,12 @@ export class PlaySession {
       this.cue("zombie", "Zombie approaching");
       this.log?.add(t, "zombie_near_sound", { fresh, inRange });
     }
+    if (this.scareTimes.length && s.elapsedSeconds >= this.scareTimes[0] && nearest <= SCARE_TRIGGER_DISTANCE_M && s.phase !== "finished") {
+      this.scareTimes.shift();
+      this.scareNonce++;
+      this.d.onCue?.("jump", "");
+      this.log?.add(t, "jump_scare", { atS: Math.round(s.elapsedSeconds), nearestM: Math.round(nearest) });
+    }
     if (t - this.lastSampleMs >= SAMPLE_MS) {
       this.lastSampleMs = t;
       this.log?.add(t, "zombie_sample", { n: s.zombies.length, nearest: Number.isFinite(nearest) ? Math.round(nearest) : null, inRange, radius, phase: s.phase, atS: Math.round(s.elapsedSeconds) });
@@ -569,6 +597,7 @@ export class PlaySession {
       distToPreviewStartM: start && pos ? Math.round(haversineM(start, pos)) : null,
       match: live ? this.matchView(live, t) : null,
       storageWarning: this.storageWarning,
+      scareNonce: this.scareNonce,
       messages: [...this.cueMsgs.filter((m) => m.until > t).map((m) => m.text), ...this.messages],
     };
   }

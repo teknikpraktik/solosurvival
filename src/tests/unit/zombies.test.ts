@@ -265,3 +265,92 @@ describe("svårighetsgrader: fart och antal", () => {
     expect(n.zombieSpeedMps * 3.6).toBeCloseTo(6.75, 2);
   });
 });
+
+import { planScares, SCARE_TRIGGER_DISTANCE_M } from "@/play/session";
+
+describe("slumpade skrämmor", () => {
+  it("planScares: 1–2 skrämmor, första 90–420 s, andra 240–480 s efter första", () => {
+    for (let i = 0; i < 200; i++) {
+      const t = planScares(Math.random);
+      expect(t.length).toBeGreaterThanOrEqual(1);
+      expect(t.length).toBeLessThanOrEqual(2);
+      expect(t[0]).toBeGreaterThanOrEqual(90);
+      expect(t[0]).toBeLessThanOrEqual(420);
+      if (t[1] !== undefined) { expect(t[1] - t[0]).toBeGreaterThanOrEqual(240); expect(t[1] - t[0]).toBeLessThanOrEqual(480); }
+    }
+    expect(planScares(() => 0.9)).toHaveLength(1);
+    expect(planScares(() => 0.1)).toHaveLength(2);
+  });
+
+  async function setup(opts: { enabled: boolean; activity: Activity }) {
+    const g = fakeGeo();
+    const db = await openDb(new IDBFactory());
+    let clock = 80_000_000;
+    const timers: (() => void)[] = [];
+    const cues: string[] = [];
+    const session = new PlaySession({ geo: g.geo, db, store: new TileStore("/data/v1/varmland", fsFetch), now: () => clock, setInterval: (fn) => { timers.push(fn); return 1; }, clearInterval: () => undefined, onCue: (c) => cues.push(c), jumpScares: () => opts.enabled, random: () => 0.1 });
+    const advance = (ms: number) => { for (let i = 0; i < ms; i += 200) { clock += 200; timers.forEach((f) => f()); if (i % 1000 === 0) g.fix(START, 5, clock); } };
+    session.startLocating();
+    for (let i = 0; i < 3; i++) { g.fix(START, 5, clock); clock += 1000; }
+    await session.prepare({ ...withActivity(defaultParams("walk"), opts.activity), mode: "survival", difficulty: "easy", seed: 9 });
+    await session.startMatch();
+    g.fix(START, 5, clock);
+    session.resume();
+    return { session, advance, cues };
+  }
+  const place = (live: LiveGame, idx: number, targetM: number) => {
+    const pos = live.filter.position!;
+    let best: { e: string; d: number; diff: number } | null = null;
+    for (const e of live.g.edges.values()) for (let d = 0; d <= e.lengthM; d += 5) {
+      const diff = Math.abs(haversineM(pointAlong(e.geometry, e.cumM, d), pos) - targetM);
+      if (!best || diff < best.diff) best = { e: e.id, d, diff };
+    }
+    const z = live.state.zombies[idx];
+    z.edgeId = best!.e; z.distanceAlongEdgeM = best!.d; z.route = []; z.speedMps = 0;
+  };
+
+  it("skrämma utlöses först efter planerad tid och när en zombie närmar sig; högst 2; spelet pausas inte", async () => {
+    const { session, advance, cues } = await setup({ enabled: true, activity: "walk" });
+    const live = session.live!;
+    live.state.phase = "survival";
+    Object.assign(live.rules, { initialZombies: 0, maxZombies: 0, growthPerMin: 0 });
+    for (let i = 0; i < live.state.zombies.length; i++) place(live, i, 600);
+    // Före 90 s: ingen skrämma även om en zombie är nära.
+    place(live, 0, 120);
+    advance(30_000);
+    expect(session.getView().scareNonce).toBe(0);
+    // Efter tiden men zombien långt bort: ingen skrämma.
+    place(live, 0, 600);
+    live.state.elapsedSeconds = 130; // planerad första tid med random=0,1: 123 s
+    advance(5000);
+    expect(session.getView().scareNonce).toBe(0);
+    // Zombie närmar sig (≤ 200 m): skrämma + cue "jump", spelet fortsätter (ej pausat).
+    place(live, 0, SCARE_TRIGGER_DISTANCE_M - 50);
+    advance(3000);
+    expect(session.getView().scareNonce).toBe(1);
+    expect(cues.filter((c) => c === "jump")).toHaveLength(1);
+    expect(live.state.paused).toBe(false);
+    // Samma läge igen direkt: ingen ny (nästa planerad 240+ s senare).
+    advance(10_000);
+    expect(session.getView().scareNonce).toBe(1);
+    live.state.elapsedSeconds = 430; // andra: 123 + 240 + 24 = 387 s
+    advance(3000);
+    expect(session.getView().scareNonce).toBe(2);
+    live.state.elapsedSeconds = 5000;
+    advance(10_000);
+    expect(session.getView().scareNonce).toBe(2); // aldrig fler än planerat
+  }, 60000);
+
+  it("aldrig på cykel och aldrig när avstängt", async () => {
+    for (const o of [{ enabled: true, activity: "mtb" as Activity }, { enabled: false, activity: "walk" as Activity }]) {
+      const { session, advance } = await setup(o);
+      const live = session.live!;
+      live.state.phase = "survival";
+      Object.assign(live.rules, { initialZombies: 0, maxZombies: 0, growthPerMin: 0 });
+      place(live, 0, 100);
+      live.state.elapsedSeconds = 600;
+      advance(5000);
+      expect(session.getView().scareNonce).toBe(0);
+    }
+  }, 60000);
+});

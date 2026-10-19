@@ -55,3 +55,29 @@ console.log("zombie-near.wav", buf.length, "bytes");
   writeFileSync("public/audio/captured-scream.wav", b);
   console.log("captured-scream.wav", b.length, "bytes");
 }
+
+// --- Slumpad skrämma: kort, skarpt, högt skrik (0,9 s), annan klang än fångst-skriket ---
+{
+  const SR3 = 22050, D3 = 0.9, N3 = Math.floor(SR3 * D3);
+  let sd3 = 424242;
+  const r3 = () => ((sd3 = (sd3 * 1664525 + 1013904223) >>> 0) / 4294967296) * 2 - 1;
+  const o3 = new Float32Array(N3);
+  let q1 = 0, q2 = 0, hp = 0, pw = 0;
+  for (let i = 0; i < N3; i++) {
+    const t = i / SR3;
+    const f = 1900 - 900 * t / D3 + 120 * Math.sin(2 * Math.PI * 14 * t); // fallande gällt skrik
+    q1 += (2 * Math.PI * f) / SR3; q2 += (2 * Math.PI * f * 0.5) / SR3;
+    const n = r3(); hp = 0.4 * hp + (n - pw) * 0.95; pw = n;
+    let v = Math.sign(Math.sin(q1)) * 0.35 + Math.sin(q2) * 0.3 + hp * 0.7;
+    v *= 0.7 + 0.3 * Math.sin(2 * Math.PI * 53 * t);
+    const env = Math.min(1, t / 0.008) * Math.pow(1 - t / D3, 0.8);
+    o3[i] = Math.tanh(v * 3.5) * env * 0.85;
+  }
+  const b3 = Buffer.alloc(44 + N3 * 2);
+  b3.write("RIFF", 0); b3.writeUInt32LE(36 + N3 * 2, 4); b3.write("WAVEfmt ", 8); b3.writeUInt32LE(16, 16);
+  b3.writeUInt16LE(1, 20); b3.writeUInt16LE(1, 22); b3.writeUInt32LE(SR3, 24); b3.writeUInt32LE(SR3 * 2, 28);
+  b3.writeUInt16LE(2, 32); b3.writeUInt16LE(16, 34); b3.write("data", 36); b3.writeUInt32LE(N3 * 2, 40);
+  for (let i = 0; i < N3; i++) b3.writeInt16LE(Math.max(-32767, Math.min(32767, Math.round(o3[i] * 32767))), 44 + i * 2);
+  writeFileSync("public/audio/jump-scream.wav", b3);
+  console.log("jump-scream.wav", b3.length, "bytes");
+}

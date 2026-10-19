@@ -136,3 +136,8 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 @keyframes scare-shake { 0% { transform: translate(0,0); } 25% { transform: translate(-6px,4px); } 50% { transform: translate(5px,-5px); } 75% { transform: translate(-4px,-3px); } 100% { transform: translate(0,0); } }
 @keyframes scare-zoom { from { scale: 1; } to { scale: 1.35; } }
 @media (prefers-reduced-motion: reduce) { .scare, .scare img { animation: none; } }
+/* Random jump scare during a match */
+.jump { position: fixed; inset: 0; z-index: 55; background: #000; pointer-events: none; animation: jump-in 1.3s linear forwards; }
+.jump img { width: 100%; height: 100%; object-fit: cover; animation: scare-shake .09s linear infinite; }
+@keyframes jump-in { 0% { opacity: 0; } 6% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .jump img { animation: none; } }

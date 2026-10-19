@@ -17,6 +17,9 @@ const C = createContext<Ctx | null>(null);
 
 export const DATA_BASE = "/data/v1/varmland";
 const TRACE_KEY = "outbreak.trace";
+const SCARE_KEY = "outbreak.scares";
+export const scaresEnabled = () => { try { return localStorage.getItem(SCARE_KEY) !== "off"; } catch { return true; } };
+export const setScaresEnabled = (on: boolean) => { try { localStorage.setItem(SCARE_KEY, on ? "on" : "off"); } catch { /* ignoreras */ } };
 export const traceEnabled = () => { try { return localStorage.getItem(TRACE_KEY) === "on"; } catch { return false; } };
 export const setTraceEnabled = (on: boolean) => { try { localStorage.setItem(TRACE_KEY, on ? "on" : "off"); } catch { /* ignoreras */ } };
 
@@ -36,6 +39,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         store,
         userAgent: navigator.userAgent,
         traceEnabled,
+        jumpScares: scaresEnabled,
         onCue: (c) => playCue(c),
         wakeLock: "wakeLock" in navigator ? { request: () => (navigator as Navigator & { wakeLock: { request(t: "screen"): Promise<{ release(): Promise<void> }> } }).wakeLock.request("screen") } : undefined,
       });
