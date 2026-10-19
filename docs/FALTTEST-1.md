@@ -85,3 +85,6 @@ En jagande zombie (chase/intercept) som kommer inom **100 m** (fågelvägen) bö
 
 ## Fälttest 8: zombier mellan A och B
 I A TO B spawnar alla zombier (initiala och nya) **mellan A och B**: punktens projektion på linjen A→B ska ligga mellan 5 % och 97 % av sträckan (och framför spelaren när hen rört sig) och högst 30 % av avståndet (minst 250 m) åt sidan. Inget bakom A eller bortom B. Minsta avstånd till spelaren (300 m) gäller som förut; den vanliga 1 km-gränsen används inte i detta läge. Finns ingen plats i korridoren faller spawn tillbaka på vanliga reglerna (`spawn_relaxed` i loggen). Startpositionen sparas i matchtillståndet (`startPos`). Magnet-jakt och spurt är oförändrade, så zombierna lämnar korridoren när de jagar.
+
+## Fälttest 9: svårighetsgrader
+Normal = nuvarande värden (On foot 6,75 km/h, 6 start / 18 max zombier). **Easy:** fart ×0,9, antal ×0,7. **Hard:** fart ×2 (On foot 13,5 km/h, Bike 31,6 km/h – mycket snabbt), antal ×2 (On foot 12 start / 36 max). Samma multiplikatorer för alla aktiviteter (`src/config/difficulty.ts`). I A TO B får korridorspawn 50 m minsta zombieavstånd så att även Hard-antalet får plats mellan A och B.

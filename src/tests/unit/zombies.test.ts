@@ -248,3 +248,20 @@ describe("Testfall D: närhetsljud", () => {
     expect(log.data.entries.some((e) => e.k === "zombie_sample")).toBe(true);
   }, 60000);
 });
+
+describe("svårighetsgrader: fart och antal", () => {
+  it("Normal = grundvärden, Lätt något långsammare, Svår dubbel fart och dubbelt så många", async () => {
+    const { resolveRules } = await import("@/config/game-rules");
+    for (const a of ["walk", "mtb"] as const) {
+      const e = resolveRules(a, "easy", 3000), n = resolveRules(a, "normal", 3000), h = resolveRules(a, "hard", 3000);
+      expect(e.zombieSpeedMps / n.zombieSpeedMps).toBeCloseTo(0.9, 5);
+      expect(h.zombieSpeedMps / n.zombieSpeedMps).toBeCloseTo(2, 5);
+      expect(h.initialZombies).toBeGreaterThanOrEqual(n.initialZombies * 1.9);
+      expect(h.maxZombies).toBeGreaterThanOrEqual(n.maxZombies * 1.9);
+      expect(e.initialZombies).toBeLessThan(n.initialZombies);
+    }
+    const n = resolveRules("walk", "normal", 3000), h = resolveRules("walk", "hard", 3000);
+    expect([n.initialZombies, n.maxZombies, h.initialZombies, h.maxZombies]).toEqual([6, 18, 12, 36]);
+    expect(n.zombieSpeedMps * 3.6).toBeCloseTo(6.75, 2);
+  });
+});
