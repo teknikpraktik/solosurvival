@@ -102,3 +102,7 @@ Normal = nuvarande värden (On foot 6,75 km/h, 6 start / 18 max zombier). **Easy
 
 ## Zombiefarter (ny tabell)
 Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 6 / normal 10 / hard 13; Bike easy 14 / normal 17 / hard 24. Spurt = ×1,5 (`SPRINT_SPEED_FACTOR`), 30 s, vila 30 s, radie 100 m. Spurtfart: foot 9 / 15 / 19,5; bike 21 / 25,5 / 36 km/h. Antal zombies per nivå oförändrat (0,7× / 1× / 2×).
+
+## Capture-flöde och HUD
+- Captured: bilden visas 3 s (timern startar en gång; tidigare kunde omrenderingar vid varje GPS-uppdatering starta om den), därefter dialogen GAME OVER med sammanfattning och knapparna HOME / PREVIOUS GAMES.
+- Topprad: närmaste zombie (avstånd, alla zombies, alltid synligt) och på Bike spelarens fart i km/h (`src/play/speed.ts`, jämnad GPS-fart, annars härledd ur positioner; "– km/h" utan färsk mätning).

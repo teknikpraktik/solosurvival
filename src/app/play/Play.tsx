@@ -13,6 +13,8 @@ import { Scare } from "../_client/Scare";
 import { JumpScare } from "../_client/JumpScare";
 import type { MapMarker } from "../_client/GameMap";
 
+const fmtDist = (m: number): string => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`);
+
 const GameMap = dynamic(() => import("../_client/GameMap"), { ssr: false });
 
 export default function Play() {
@@ -124,6 +126,12 @@ export default function Play() {
             <span className="pill">{m.extraction ? "Extraction open" : m.phase === "head_start" ? `Head start ${fmtTime(m.headStartLeftS)}` : "Survive"}</span>
           )}
         </div>
+        {!finished && (
+          <div className="line">
+            <span className="pill" aria-label="Nearest zombie">🧟 {m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>
+            {m.activity === "mtb" && <span className="pill" aria-label="Your speed">{view.speedMps === null ? "– km/h" : `${(view.speedMps * 3.6).toFixed(1)} km/h`}</span>}
+          </div>
+        )}
         {m.infection > 0 && <div className="infect" aria-label="Smittrisk"><div style={{ width: `${Math.min(100, (m.infection / 3) * 100)}%` }} /></div>}
       </div>
 
@@ -193,7 +201,7 @@ export default function Play() {
       {/* Match over is a mandatory decision: no X, the player chooses where to go. */}
       {finished && !scare && (
         <Modal
-          title={RESULT_LABEL[m.result ?? "incomplete"]?.toUpperCase() ?? "MATCH SLUT"}
+          title={m.result === "infected" ? "GAME OVER" : RESULT_LABEL[m.result ?? "incomplete"]?.toUpperCase() ?? "MATCH OVER"}
           actions={
             <>
               <Link className="btn primary" href="/" onClick={() => session.reset()}>HOME</Link>
@@ -201,6 +209,7 @@ export default function Play() {
             </>
           }
         >
+          {m.result === "infected" && <div className="stat"><span>Result</span><b>Captured</b></div>}
           <div className="stat"><span>Match time</span><b>{fmtTime(m.elapsedS)}</b></div>
           <div className="stat"><span>Distance moved</span><b>{fmtKm(m.distanceM)}</b></div>
           {m.objectives && <div className="stat"><span>Goals</span><b>{m.objectives.index}/{m.objectives.total}</b></div>}
