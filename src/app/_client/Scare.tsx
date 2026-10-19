@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
-/** Full-screen "captured" jump scare: a scary local image with shaking and red flashes, shown for a few seconds (the scream is played by the cue system). */
+/** Full-screen "captured" jump scare: a scary local image with shaking and red flashes, shown for 3 seconds, then the GAME OVER summary follows (the scream is played by the cue system). */
 export function Scare({ onDone }: { onDone: () => void }) {
+  // onDone is kept in a ref: the parent re-renders on every GPS update and a new callback must not restart the timer.
+  const done = useRef(onDone);
+  done.current = onDone;
   useEffect(() => {
-    const t = setTimeout(onDone, 2800);
+    const t = setTimeout(() => done.current(), 3000);
     return () => clearTimeout(t);
-  }, [onDone]);
+  }, []);
   return (
     <div className="scare" role="alert" aria-label="You were captured" onClick={onDone}>
       {/* eslint-disable-next-line @next/next/no-img-element */}

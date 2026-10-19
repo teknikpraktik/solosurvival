@@ -11,6 +11,7 @@ import type { RouteProposal } from "@/routes/types";
 import { proximityRadiusM, VISIBLE_RADIUS_M, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
 import { FieldLog } from "./fieldlog";
 import { HeadingTracker } from "./heading";
+import { SpeedTracker } from "./speed";
 import { LiveGame } from "./live-game";
 import { createLiveMatch, matchDurationS } from "./match";
 import { prepareMatch, type Prepared } from "./prepare";
@@ -75,6 +76,8 @@ export interface SessionView {
   position: LatLon | null;
   /** Stabil färdriktning (0–360, 0 = norr) eller null; ren presentation. */
   heading: number | null;
+  /** Smoothed player speed (m/s) for display, or null when unknown. */
+  speedMps: number | null;
   accuracyM: number | null;
   quality: GpsQuality;
   fixAgeMs: number | null;
@@ -95,6 +98,7 @@ export interface SessionView {
 export interface MatchView {
   id: string;
   mode: MatchParams["mode"];
+  activity: MatchParams["activity"];
   phase: string;
   paused: boolean;
   result: string | undefined;
@@ -152,6 +156,7 @@ export class PlaySession {
   private cached: SessionView | null = null;
   private routeGenMs = 0;
   history: HistoryRecord | null = null;
+  private readonly speed = new SpeedTracker();
   private readonly heading = new HeadingTracker();
   /** Zombier som redan har gett närhetsljud (en gång per zombie per match, även om den lämnar och återkommer). */
   private alerted = new Set<string>();
@@ -210,7 +215,8 @@ export class PlaySession {
     }
     if (verdict === "accepted" || verdict === "reacquired") {
       const pos = this.live && !this.live.finished ? this.live.filter.position : this.pre.position;
-      if (verdict === "reacquired") this.heading.rebase();
+      if (verdict === "reacquired") { this.heading.rebase(); this.speed.reset(); }
+      if (pos) this.speed.push(pos, t, e.fix.speedMps);
       if (pos) this.heading.update({ pos, accuracyM: e.fix.accuracyM, gpsHeadingDeg: e.fix.headingDeg, gpsSpeedMps: e.fix.speedMps, tMs: e.fix.timestampMs });
     }
     this.emit();
@@ -566,6 +572,7 @@ export class PlaySession {
     this.stage = this.provider.running ? "locating" : "idle";
     this.pre = new GpsFilter({ maxPlausibleSpeedMps: ACTIVITIES.mtb.maxPlausibleSpeedMps });
     this.heading.reset();
+    this.speed.reset();
     this.emit();
   }
 
@@ -590,6 +597,7 @@ export class PlaySession {
       gpsError: this.gpsError,
       position: pos,
       heading: this.heading.heading,
+      speedMps: this.speed.speedAt(t),
       accuracyM: this.lastAccuracy,
       quality,
       fixAgeMs: live ? live.status(t).fixAgeMs : null,
@@ -621,6 +629,7 @@ export class PlaySession {
     return {
       id: s.id,
       mode: s.config.mode ?? "survival",
+      activity: live.rules.activity,
       phase: s.phase,
       paused: s.paused,
       result: s.result,
