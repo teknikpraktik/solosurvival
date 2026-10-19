@@ -3,11 +3,12 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { errorText } from "@/gps/provider/provider";
 import { RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 import { cuesEnabled, setCuesEnabled, unlockAudio } from "../_client/cues";
+import { BIKE_VIEW_RETURN_S } from "@/play/bike-view";
 import { Modal } from "../_client/Modal";
 import { Scare } from "../_client/Scare";
 import { JumpScare } from "../_client/JumpScare";
@@ -26,6 +27,15 @@ export default function Play() {
   const [tried, setTried] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [trackUp, setTrackUp] = useState(true);
+  // Bike view: after the user has moved/zoomed the map, return to the player after BIKE_VIEW_RETURN_S seconds without interaction.
+  const returnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onUserMove = useCallback(() => {
+    setFollow(false);
+    if (returnTimer.current) clearTimeout(returnTimer.current);
+    if (bikeRef.current) returnTimer.current = setTimeout(() => setFollow(true), BIKE_VIEW_RETURN_S * 1000);
+  }, []);
+  const bikeRef = useRef(false);
+  useEffect(() => () => { if (returnTimer.current) clearTimeout(returnTimer.current); }, []);
   const [pauseDismissed, setPauseDismissed] = useState(false);
   const [gpsDismissed, setGpsDismissed] = useState(false);
   const [sound, setSound] = useState(true);
@@ -54,6 +64,7 @@ export default function Play() {
   }, [session, tried, router]);
 
   const m = view?.match ?? null;
+  bikeRef.current = m?.activity === "mtb";
   const live = session?.live ?? null;
   const markers = useMemo<MapMarker[]>(() => {
     const o = m?.proposal;
@@ -111,7 +122,8 @@ export default function Play() {
         zoom={16}
         extraction={m.extraction}
         follow={follow}
-        onUserMove={() => setFollow(false)}
+        bikeView={m.activity === "mtb"}
+        onUserMove={onUserMove}
         onError={(w) => session.fieldLog?.renderProblem(Date.now(), w)}
       />
       <div className="hudbar">
