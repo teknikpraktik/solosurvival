@@ -156,6 +156,7 @@ export class PlaySession {
   /** Zombier som redan har gett närhetsljud (en gång per zombie per match, även om den lämnar och återkommer). */
   private alerted = new Set<string>();
   private pendingZombieSound = false;
+  private zombieSoundPlayed = false; // the "zombie" sound plays only once per match (at the start)
   private lastZombieSoundMs = -Infinity;
   private lastCheckMs = 0;
   private lastSampleMs = 0;
@@ -305,6 +306,7 @@ export class PlaySession {
     this.log = new FieldLog(live.state.id, t, this.d.traceEnabled?.() ?? false, this.d.userAgent);
     this.alerted = new Set();
     this.pendingZombieSound = false;
+    this.zombieSoundPlayed = false;
     this.lastZombieSoundMs = -Infinity;
     this.lastCheckMs = 0;
     this.lastSampleMs = 0;
@@ -448,8 +450,9 @@ export class PlaySession {
     }
     if (this.silentFirstCheck) { this.silentFirstCheck = false; fresh = 0; } // återställd match: redan kända zombier ger inget ljud
     if (fresh > 0) this.pendingZombieSound = true;
-    if (this.pendingZombieSound && t - this.lastZombieSoundMs >= ZOMBIE_SOUND_COOLDOWN_MS) {
+    if (this.pendingZombieSound && !this.zombieSoundPlayed && t - this.lastZombieSoundMs >= ZOMBIE_SOUND_COOLDOWN_MS) {
       this.pendingZombieSound = false;
+      this.zombieSoundPlayed = true;
       this.lastZombieSoundMs = t;
       this.cue("zombie", "Zombie approaching");
       this.log?.add(t, "zombie_near_sound", { fresh, inRange });

@@ -95,3 +95,7 @@ Normal = nuvarande värden (On foot 6,75 km/h, 6 start / 18 max zombier). **Easy
 ## Fotorealistiska bilder (jump scare + startsida)
 - `public/img/jump.jpg` (närbild ansikte) och `public/img/hero.jpg` (startsidans bakgrund) är bearbetade från ett CC0-foto (Wikimedia Commons, zombie-makeup). Källa anges under HOW TO PLAY → Credits.
 - SVG-versionerna finns kvar som reserv om jpg saknas. Byt filerna för egna foton (samma filnamn).
+
+## Ljud och capture-bild (fälttest)
+- Capture-skärmen visar nu ett foto (`public/img/captured.jpg`, tätare utsnitt ur samma CC0-foto); SVG är reserv.
+- Endast tre ljud finns kvar: "zombie" en gång per match i början, captured-skriket och jump-skriket. Varningspip (hunting, sprint, närkontakt), checkpoint, extraction och match over är ljudlösa (vibration finns kvar).
