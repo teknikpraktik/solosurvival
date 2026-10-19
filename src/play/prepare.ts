@@ -2,7 +2,7 @@ import { ACTIVITIES } from "@/config/activities";
 import { buildRegionGraph, MAX_START_SNAP_M, type RegionGraph } from "@/data/region-graph";
 import type { LoadStats, TileStore } from "@/data/store";
 import type { LatLon } from "@/geo/geometry";
-import { indexGraph } from "@/geo/graph/graph";
+import { indexGraph, snapToGraph } from "@/geo/graph/graph";
 import type { TrailGraph } from "@/geo/graph/types";
 import { generateRoutes } from "@/routes/generate";
 import { densifyCheckpoints, CHECKPOINT_SPACING_BIKE_M, CHECKPOINT_SPACING_M } from "@/routes/densify";
@@ -111,38 +111,61 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
     if (ab.status !== "ok") return done({ ...base, status: ab.status === "a_off" ? "off_network" : "no_route", message: msg[ab.status], notes: ab.notes }, graph);
     return done({ status: "ok", proposals: ab.proposals, notes: ab.notes }, graph);
   }
+  // Bike: the Mission track is planned on easy-to-ride ways (paved/gravel roads, bike lanes, good tracks); zombies still use every way.
+  let routeGraph = graph;
+  if (p.activity === "mtb") {
+    const easyEdges = region.graph.edges.filter((e) => e.easy);
+    if (easyEdges.length) {
+      const eg = indexGraph({ ...region.graph, edges: easyEdges });
+      const snap = snapToGraph(eg, start);
+      const compKm = snap ? eg.components[eg.edges.get(snap.edgeId)!.component].lengthM / 1000 : 0;
+      if (snap && snap.offNetworkM <= MAX_START_SNAP_M && compKm * 1000 >= p.targetLengthM * MIN_NETWORK_FACTOR) routeGraph = eg;
+      else base.notes.push("easy-bike-network-too-sparse: used all rideable ways");
+    } else base.notes.push("easy-bike-network-empty: used all rideable ways");
+  }
   const t4 = performance.now();
-  const res = generateRoutes(graph, {
-    start,
-    activity: p.activity,
-    mode: p.mode === "escape" ? "escape" : "mission",
-    targetLengthM: p.targetLengthM,
-    seed: p.seed,
-    count: 3,
-    hazardNodes: region.hazardNodes,
-    // Begränsat sökdjup: håller genereringen till några sekunder även på en mobil.
-    samples: 100,
-    maxCandidates: 40,
-  });
-  timing.routeMs = performance.now() - t4;
-  // Förslag som berör större väg/järnväg/vatten (hazardCrossings) visas bara om inget annat finns.
-  const safe = res.proposals.filter((x) => x.metrics.hazardCrossings === 0);
-  const proposals = safe.length ? safe : res.proposals;
-  if (!proposals.length) {
-    return done({ ...base, status: "no_route", notes: res.notes, message: "No good route found here. Try another distance or starting point." }, graph);
-  }
-  // Mission: ett checkpoint per ca 500 m (till fots) eller 1 km (cykel) längs slingan.
-  const spacing = p.activity === "mtb" ? CHECKPOINT_SPACING_BIKE_M : CHECKPOINT_SPACING_M;
-  const dense = proposals.map((x) => densifyCheckpoints(graph, x, spacing));
-  const best = dense.filter((x) => x.withinTolerance);
-  if (!best.length) {
-    const nearest = dense.filter((x) => Math.abs(x.deviation) <= 0.25);
-    if (!nearest.length) {
-      return done({ ...base, status: "no_route", notes: res.notes, message: "No route found close to the wanted distance. Adjust the distance and try again." }, graph);
+  type Out = Omit<Prepared, "timing" | "dataVersion" | "region" | "load" | "graph">;
+  const attempt = (rg: TrailGraph): Out => {
+    const res = generateRoutes(rg, {
+      start,
+      activity: p.activity,
+      mode: p.mode === "escape" ? "escape" : "mission",
+      targetLengthM: p.targetLengthM,
+      seed: p.seed,
+      count: 3,
+      hazardNodes: region.hazardNodes,
+      // Begränsat sökdjup: håller genereringen till några sekunder även på en mobil.
+      samples: 100,
+      maxCandidates: 40,
+    });
+    const notes = [...base.notes, ...res.notes];
+    // Förslag som berör större väg/järnväg/vatten (hazardCrossings) visas bara om inget annat finns.
+    const safe = res.proposals.filter((x) => x.metrics.hazardCrossings === 0);
+    const proposals = safe.length ? safe : res.proposals;
+    if (!proposals.length) {
+      return { ...base, status: "no_route", notes, message: "No good route found here. Try another distance or starting point." };
     }
-    return done({ status: "alternative", proposals: nearest, notes: res.notes, message: "No route within ±10 % of the wanted distance. Showing the closest alternatives." }, graph);
+    // Mission: ett checkpoint per ca 500 m (till fots) eller 1 km (cykel) längs slingan.
+    const spacing = p.activity === "mtb" ? CHECKPOINT_SPACING_BIKE_M : CHECKPOINT_SPACING_M;
+    const dense = proposals.map((x) => densifyCheckpoints(rg, x, spacing));
+    const best = dense.filter((x) => x.withinTolerance);
+    if (!best.length) {
+      const nearest = dense.filter((x) => Math.abs(x.deviation) <= 0.25);
+      if (!nearest.length) {
+        return { ...base, status: "no_route", notes, message: "No route found close to the wanted distance. Adjust the distance and try again." };
+      }
+      return { status: "alternative", proposals: nearest, notes, message: "No route within ±10 % of the wanted distance. Showing the closest alternatives." };
+    }
+    return { status: "ok", proposals: best, notes };
+  };
+  let out = attempt(routeGraph);
+  if (out.status === "no_route" && routeGraph !== graph) {
+    // The easy network cannot make a route of this length: fall back to every rideable way (and tell the player).
+    base.notes.push("easy-bike-network-no-route: used all rideable ways");
+    out = attempt(graph);
   }
-  return done({ status: "ok", proposals: best, notes: res.notes }, graph);
+  timing.routeMs = performance.now() - t4;
+  return done(out, graph);
 }
 
 /** Uppskattad tid (s) för en rutt i lugn fart, för visning i förhandsgranskningen. */

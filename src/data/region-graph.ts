@@ -3,7 +3,7 @@ import { buildGraph, type RawWay } from "@/geo/graph/build";
 import { indexGraph } from "@/geo/graph/graph";
 import type { PathType, SerializedGraph } from "@/geo/graph/types";
 import { haversineM, projectToPolyline, type LatLon } from "@/geo/geometry";
-import { decideWay } from "@/geo/osm/overpass";
+import { decideWay, isEasyBikeWay } from "@/geo/osm/overpass";
 import type { TileWay } from "./tile-format";
 
 /** Start längre bort än så från närmaste tillåtna stig räknas som "utanför nätet" (samma gräns som ruttgeneratorn). */
@@ -63,6 +63,7 @@ export function buildRegionGraph(ways: TileWay[], activity: Activity, center: La
     const cuts = [0, ...[...new Set(hz)].filter((i) => i > 0 && i < nodes.length - 1).sort((a, b) => a - b), nodes.length - 1];
     const hazardSet = new Set(hz);
     const type = pathType(w.tags.highway);
+    const easy = activity === "mtb" ? isEasyBikeWay(w.tags) : undefined;
     for (let k = 0; k + 1 < cuts.length; k++) {
       const part = nodes.slice(cuts[k], cuts[k + 1] + 1).map((n) => ({ ...n }));
       if (part.length < 2) continue;
@@ -74,7 +75,7 @@ export function buildRegionGraph(ways: TileWay[], activity: Activity, center: La
       };
       mkPrivate("first", cuts[k]);
       mkPrivate("last", cuts[k + 1]);
-      raw.push({ id: cuts.length > 2 ? `${w.id}.${k}` : w.id, nodes: part, type, oneway: d.oneway });
+      raw.push({ id: cuts.length > 2 ? `${w.id}.${k}` : w.id, nodes: part, type, oneway: d.oneway, easy });
     }
   }
   const all = buildGraph(raw, "openstreetmap");

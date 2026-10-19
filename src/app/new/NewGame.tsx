@@ -88,6 +88,7 @@ export default function NewGame() {
         <div className="sheet">
           {stage === "preparing" && <div className="card">Loading map data and planning…</div>}
           {stage !== "preparing" && prepared && !ok && <div className="card bad">{prepared.message}</div>}
+          {stage !== "preparing" && prepared?.status === "ok" && prepared.notes.some((n) => n.startsWith("easy-bike-network")) && <div className="card warn">Few easy gravel roads or bike lanes here, so the route may include rougher trails.</div>}
           {stage !== "preparing" && prepared?.status === "alternative" && <div className="card warn">{prepared.message}</div>}
           {stage !== "preparing" && prepared && ok && p.mode === "mission" && prepared.proposals.length > 1 && (
             <div className="chips" role="group" aria-label="Proposals">

@@ -72,19 +72,23 @@ export function createGame({ g, config, rules, start, id, objectives }: CreateGa
     startPos: start,
   };
   const events: GameEvent[] = [{ type: "phase", phase: "head_start" }];
+  // Initial zombies keep their distance (time to look around) and, when rules.spreadStart is set (Bike), are spread out:
+  // one per mission checkpoint in turn (farther than startMinDistanceM from the start), otherwise spaced over the whole area.
+  const cps = (objectives?.targets ?? []).filter((t) => t.kind !== "home" && haversineM(t, start) >= rules.startMinDistanceM);
   for (let i = 0; i < rules.initialZombies; i++) {
-    if (!trySpawn(g, state, rules, snap, events)) break;
+    const near = rules.spreadStart && cps.length && state.config.mode !== "escape" ? { p: cps[i % cps.length], minR: 100, maxR: 450 } : undefined;
+    if (!trySpawn(g, state, rules, snap, events, { initial: true, near })) break;
   }
   return { state, events };
 }
 
-function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos, events: GameEvent[]): boolean {
+function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos, events: GameEvent[], opt: { initial?: boolean; near?: { p: LatLon; minR: number; maxR: number } } = {}): boolean {
   const ctx = {
     player: s.player.position,
     playerPos,
     component: s.component,
     zombiePositions: s.zombies.map((z) => zombieLatLon(g, z)),
-    minDistanceM: rules.spawnMinDistanceM,
+    minDistanceM: opt.initial ? rules.startMinDistanceM : rules.spawnMinDistanceM,
     avoid: s.objectives?.targets.filter((t) => t.kind !== "home").map((t) => ({ p: t, r: (s.objectives?.targets.length ?? 0) > 6 ? 80 : OBJECTIVE_SPAWN_EXCLUSION_M })), // smalare zon när checkpoints ligger tätt (Mission)
   };
   // A TO B: zombierna ska uppstå mellan A och B (framför spelaren), inte bakom A eller bortom B.
@@ -97,8 +101,14 @@ function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos,
     const len2 = bv.x * bv.x + bv.y * bv.y;
     const tPlayer = len2 > 0 ? (pv.x * bv.x + pv.y * bv.y) / len2 : 0;
     const dAB = Math.sqrt(len2);
-    spawn = findSpawn(g, { ...ctx, minSpacingM: 50, corridor: { a, b: dest, halfWidthM: Math.max(250, 0.3 * dAB), minT: Math.min(0.9, Math.max(0.05, tPlayer)), maxT: 0.97 } }, s);
+    spawn = findSpawn(g, { ...ctx, minSpacingM: rules.spreadStart && opt.initial ? 200 : 50, corridor: { a, b: dest, halfWidthM: Math.max(250, 0.3 * dAB), minT: Math.min(0.9, Math.max(0.05, tPlayer)), maxT: 0.97 } }, s);
+    if (!spawn && opt.initial && rules.startMinDistanceM > rules.spawnMinDistanceM) spawn = findSpawn(g, { ...ctx, minDistanceM: rules.spawnMinDistanceM, minSpacingM: 50, corridor: { a, b: dest, halfWidthM: Math.max(250, 0.3 * dAB), minT: Math.min(0.9, Math.max(0.05, tPlayer)), maxT: 0.97 } }, s);
   }
+  // Spread start on a mission: next to a checkpoint far from the start.
+  if (!spawn && opt.near) spawn = findSpawn(g, { ...ctx, near: opt.near, minSpacingM: rules.startSpacingM }, s);
+  // Spread start without checkpoints (Survival): anywhere in the area, spaced out, from the start distance outwards.
+  if (!spawn && opt.initial && rules.spreadStart && !dest) spawn = findSpawn(g, { ...ctx, minSpacingM: rules.startSpacingM }, s);
+  if (!spawn && opt.initial && rules.startMinDistanceM > rules.spawnMinDistanceM) spawn = findSpawn(g, { ...ctx, minDistanceM: rules.spawnMinDistanceM, maxDistanceM: rules.spawnMaxDistanceM }, s);
   if (!spawn) spawn = findSpawn(g, { ...ctx, maxDistanceM: rules.spawnMaxDistanceM }, s);
   if (!spawn) {
     // Inget säkert ställe inom bandet (t.ex. spelaren långt från nätet): släpp övre gränsen hellre än att inga zombier alls tillkommer.

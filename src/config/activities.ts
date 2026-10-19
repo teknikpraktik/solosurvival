@@ -8,6 +8,14 @@ export interface ActivityProfile {
   initialZombies: number;
   maxZombies: number;
   /** Minsta avstånd (geografiskt och längs nätet) till spelaren för nya zombier. */
+  /** Initial zombies: minimum distance from the player (m), so the player gets time to look around. */
+  startMinDistanceM: number;
+  /** Initial zombies: minimum distance between each other (m). */
+  startSpacingM: number;
+  /** Initial zombies are spread out over the whole area / along the mission track instead of anywhere in the spawn band. */
+  spreadStart: boolean;
+  /** Zombies only hunt (magnet) / react to position reveals within this distance (m) of the player; farther away they patrol. */
+  magnetRangeM: number;
   spawnMinDistanceM: number;
   /** Högsta fågelvägsavstånd för nya zombier: de ska uppstå nära nog att spelet ger action direkt (fälttest). */
   spawnMaxDistanceM: number;
@@ -26,6 +34,10 @@ export const ACTIVITIES: Record<Activity, ActivityProfile> = {
     zombieSpeedKmh: 6.75,
     initialZombies: 6,
     maxZombies: 18,
+    startMinDistanceM: 300,
+    startSpacingM: 100,
+    spreadStart: false,
+    magnetRangeM: Infinity,
     spawnMinDistanceM: 300,
     spawnMaxDistanceM: 1000,
     playerPaceMps: 1.3,
@@ -38,6 +50,10 @@ export const ACTIVITIES: Record<Activity, ActivityProfile> = {
     zombieSpeedKmh: 9,
     initialZombies: 8,
     maxZombies: 24,
+    startMinDistanceM: 300,
+    startSpacingM: 100,
+    spreadStart: false,
+    magnetRangeM: Infinity,
     spawnMinDistanceM: 300,
     spawnMaxDistanceM: 1000,
     playerPaceMps: 2.8,
@@ -50,8 +66,12 @@ export const ACTIVITIES: Record<Activity, ActivityProfile> = {
     zombieSpeedKmh: 15.8,
     initialZombies: 10,
     maxZombies: 30,
-    spawnMinDistanceM: 400,
-    spawnMaxDistanceM: 1000,
+    startMinDistanceM: 1500,
+    startSpacingM: 300,
+    spreadStart: true,
+    magnetRangeM: 2000,
+    spawnMinDistanceM: 600,
+    spawnMaxDistanceM: 2000,
     playerPaceMps: 4.5,
     maxPlausibleSpeedMps: 20,
   },

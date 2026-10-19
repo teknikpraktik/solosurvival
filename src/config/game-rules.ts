@@ -48,6 +48,10 @@ export interface Rules {
   growthPerMin: number;
   spawnMinDistanceM: number;
   spawnMaxDistanceM: number;
+  startMinDistanceM: number;
+  startSpacingM: number;
+  spreadStart: boolean;
+  magnetRangeM: number;
   /** Magnet-jakt: zombier känner alltid spelarens (giltiga) position och jagar kontinuerligt, utan upptäcktsradie. */
   magnetic: boolean;
   sprintRadiusM: number;
@@ -88,6 +92,10 @@ export function resolveRules(
     growthPerMin: (maxZombies - initialZombies) / growthWindowMin,
     spawnMinDistanceM: a.spawnMinDistanceM,
     spawnMaxDistanceM: a.spawnMaxDistanceM,
+    startMinDistanceM: a.startMinDistanceM,
+    startSpacingM: a.startSpacingM,
+    spreadStart: a.spreadStart,
+    magnetRangeM: a.magnetRangeM,
     magnetic: true,
     sprintRadiusM: SPRINT_RADIUS_M,
     sprintDurationS: SPRINT_DURATION_S,
