@@ -1,4 +1,4 @@
-import { haversineM, type LatLon } from "@/geo/geometry";
+import { haversineM, toLocal, type LatLon } from "@/geo/geometry";
 import { edgeLatLon } from "@/geo/graph/graph";
 import type { EdgePos, TrailGraph } from "@/geo/graph/types";
 import { distanceToPos, networkDistances } from "../pathfinding/astar";
@@ -15,8 +15,25 @@ export interface SpawnContext {
   /** Minsta avstånd till andra zombier, så att nya inte hamnar i en klunga. */
   minSpacingM?: number;
   tries?: number;
+  /**
+   * A TO B: nya zombier ska uppstå mellan A och B (inte bakom A eller bortom B) så att de försöker stoppa spelaren.
+   * Punktens projektion på linjen A→B ska ligga i [minT, maxT] (0 = A, 1 = B) och högst `halfWidthM` från linjen.
+   */
+  corridor?: { a: LatLon; b: LatLon; halfWidthM: number; minT: number; maxT: number };
   /** Zoner där zombier inte får spawna (t.ex. runt checkpoints och destination). */
   avoid?: { p: LatLon; r: number }[];
+}
+
+/** Ligger punkten mellan A och B (projektion på linjen) och inom korridorens halva bredd? */
+export function inCorridor(p: LatLon, c: NonNullable<SpawnContext["corridor"]>): boolean {
+  const b = toLocal(c.a, c.b);
+  const q = toLocal(c.a, p);
+  const len2 = b.x * b.x + b.y * b.y;
+  if (len2 === 0) return false;
+  const t = (q.x * b.x + q.y * b.y) / len2;
+  if (t < c.minT || t > c.maxT) return false;
+  const px = q.x - t * b.x, py = q.y - t * b.y;
+  return Math.hypot(px, py) <= c.halfWidthM;
 }
 
 /**
@@ -51,6 +68,7 @@ export function findSpawn(g: TrailGraph, ctx: SpawnContext, rng: RngHolder): Edg
     const net = distanceToPos(g, ctx.playerPos, dists, pos);
     if (net < ctx.minDistanceM) continue;
     if (ctx.maxDistanceM !== undefined && net > ctx.maxDistanceM * 1.5) continue;
+    if (ctx.corridor && !inCorridor(ll, ctx.corridor)) continue;
     if (ctx.zombiePositions.some((z) => haversineM(z, ll) < spacing)) continue;
     if (ctx.avoid?.some((a) => haversineM(a.p, ll) < a.r)) continue;
     return pos;

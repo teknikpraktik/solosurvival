@@ -6,7 +6,7 @@ import {
   STEP_S,
   type Rules,
 } from "@/config/game-rules";
-import { haversineM, type LatLon } from "@/geo/geometry";
+import { haversineM, toLocal, type LatLon } from "@/geo/geometry";
 import { nodeLatLon, snapToGraph } from "@/geo/graph/graph";
 import type { EdgePos, TrailGraph } from "@/geo/graph/types";
 import type { GpsQuality } from "@/gps/types";
@@ -69,6 +69,7 @@ export function createGame({ g, config, rules, start, id, objectives }: CreateGa
     peakZombies: 0,
     component,
     objectives,
+    startPos: start,
   };
   const events: GameEvent[] = [{ type: "phase", phase: "head_start" }];
   for (let i = 0; i < rules.initialZombies; i++) {
@@ -86,7 +87,19 @@ function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos,
     minDistanceM: rules.spawnMinDistanceM,
     avoid: s.objectives?.targets.filter((t) => t.kind !== "home").map((t) => ({ p: t, r: (s.objectives?.targets.length ?? 0) > 6 ? 80 : OBJECTIVE_SPAWN_EXCLUSION_M })), // smalare zon när checkpoints ligger tätt (Mission)
   };
-  let spawn = findSpawn(g, { ...ctx, maxDistanceM: rules.spawnMaxDistanceM }, s);
+  // A TO B: zombierna ska uppstå mellan A och B (framför spelaren), inte bakom A eller bortom B.
+  const dest = s.config.mode === "escape" ? s.objectives?.targets.find((t) => t.kind === "destination") : undefined;
+  let spawn: EdgePos | null = null;
+  if (dest && s.startPos) {
+    const a = s.startPos;
+    const bv = toLocal(a, dest);
+    const pv = toLocal(a, s.player.position);
+    const len2 = bv.x * bv.x + bv.y * bv.y;
+    const tPlayer = len2 > 0 ? (pv.x * bv.x + pv.y * bv.y) / len2 : 0;
+    const dAB = Math.sqrt(len2);
+    spawn = findSpawn(g, { ...ctx, corridor: { a, b: dest, halfWidthM: Math.max(250, 0.3 * dAB), minT: Math.min(0.9, Math.max(0.05, tPlayer)), maxT: 0.97 } }, s);
+  }
+  if (!spawn) spawn = findSpawn(g, { ...ctx, maxDistanceM: rules.spawnMaxDistanceM }, s);
   if (!spawn) {
     // Inget säkert ställe inom bandet (t.ex. spelaren långt från nätet): släpp övre gränsen hellre än att inga zombier alls tillkommer.
     spawn = findSpawn(g, ctx, s);
