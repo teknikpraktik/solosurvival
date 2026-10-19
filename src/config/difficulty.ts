@@ -13,7 +13,7 @@ export interface DifficultyProfile {
 
 export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
   easy: {
-    speedMultiplier: 0.8,
+    speedMultiplier: 0.9,
     countMultiplier: 0.7,
     revealIntervalS: 180,
     detectionRadiusM: 60,
@@ -29,8 +29,8 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
     revealResponseProb: 0.6,
   },
   hard: {
-    speedMultiplier: 1.2,
-    countMultiplier: 1.3,
+    speedMultiplier: 2,
+    countMultiplier: 2,
     revealIntervalS: 60,
     detectionRadiusM: 140,
     interceptShare: 0.6,

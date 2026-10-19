@@ -97,7 +97,7 @@ function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos,
     const len2 = bv.x * bv.x + bv.y * bv.y;
     const tPlayer = len2 > 0 ? (pv.x * bv.x + pv.y * bv.y) / len2 : 0;
     const dAB = Math.sqrt(len2);
-    spawn = findSpawn(g, { ...ctx, corridor: { a, b: dest, halfWidthM: Math.max(250, 0.3 * dAB), minT: Math.min(0.9, Math.max(0.05, tPlayer)), maxT: 0.97 } }, s);
+    spawn = findSpawn(g, { ...ctx, minSpacingM: 50, corridor: { a, b: dest, halfWidthM: Math.max(250, 0.3 * dAB), minT: Math.min(0.9, Math.max(0.05, tPlayer)), maxT: 0.97 } }, s);
   }
   if (!spawn) spawn = findSpawn(g, { ...ctx, maxDistanceM: rules.spawnMaxDistanceM }, s);
   if (!spawn) {
