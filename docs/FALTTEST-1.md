@@ -99,3 +99,6 @@ Normal = nuvarande värden (On foot 6,75 km/h, 6 start / 18 max zombier). **Easy
 ## Ljud och capture-bild (fälttest)
 - Capture-skärmen visar nu ett foto (`public/img/captured.jpg`, tätare utsnitt ur samma CC0-foto); SVG är reserv.
 - Endast tre ljud finns kvar: "zombie" en gång per match i början, captured-skriket och jump-skriket. Varningspip (hunting, sprint, närkontakt), checkpoint, extraction och match over är ljudlösa (vibration finns kvar).
+
+## Zombiefarter (ny tabell)
+Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 6 / normal 10 / hard 13; Bike easy 14 / normal 17 / hard 24. Spurt = ×1,5 (`SPRINT_SPEED_FACTOR`), 30 s, vila 30 s, radie 100 m. Spurtfart: foot 9 / 15 / 19,5; bike 21 / 25,5 / 36 km/h. Antal zombies per nivå oförändrat (0,7× / 1× / 2×).

@@ -18,7 +18,13 @@ export const EXTRACTION_HOLD_S = 5;
 /** Zombie-spurt: jagande zombie inom radien spurtar en stund med högre fart, och måste sedan återhämta sig. */
 export const SPRINT_RADIUS_M = 100;
 export const SPRINT_DURATION_S = 30;
-export const SPRINT_SPEED_FACTOR = 2;
+export const SPRINT_SPEED_FACTOR = 1.5;
+
+/** Zombie speed (km/h) per activity and difficulty. Run is not selectable in the app and falls back to base speed × difficulty multiplier. */
+export const ZOMBIE_SPEED_KMH: Partial<Record<Activity, Record<Difficulty, number>>> = {
+  walk: { easy: 6, normal: 10, hard: 13 },
+  mtb: { easy: 14, normal: 17, hard: 24 },
+};
 export const SPRINT_COOLDOWN_S = 30;
 
 /** Neutral återstartsperiod efter paus, utan infektion (PRD 7.2). */
@@ -76,7 +82,7 @@ export function resolveRules(
     durationS,
     headStartS: a.headStartS,
     extractionOpensAtS: durationS * EXTRACTION_OPEN_FRACTION,
-    zombieSpeedMps: (a.zombieSpeedKmh / 3.6) * d.speedMultiplier,
+    zombieSpeedMps: (ZOMBIE_SPEED_KMH[activity]?.[difficulty] ?? a.zombieSpeedKmh * d.speedMultiplier) / 3.6,
     initialZombies,
     maxZombies,
     growthPerMin: (maxZombies - initialZombies) / growthWindowMin,
