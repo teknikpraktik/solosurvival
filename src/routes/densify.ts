@@ -4,6 +4,8 @@ import type { RouteProposal, Waypoint } from "./types";
 
 /** Önskat avstånd mellan checkpoints i Mission (m). */
 export const CHECKPOINT_SPACING_M = 500;
+/** Same on Bike (mtb): one checkpoint per km is enough. */
+export const CHECKPOINT_SPACING_BIKE_M = 1000;
 
 /**
  * Mission med ett checkpoint per ca 500 m: lägger checkpoints jämnt fördelade längs den genererade slingan (i körordning)

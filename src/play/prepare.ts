@@ -5,7 +5,7 @@ import type { LatLon } from "@/geo/geometry";
 import { indexGraph } from "@/geo/graph/graph";
 import type { TrailGraph } from "@/geo/graph/types";
 import { generateRoutes } from "@/routes/generate";
-import { densifyCheckpoints } from "@/routes/densify";
+import { densifyCheckpoints, CHECKPOINT_SPACING_BIKE_M, CHECKPOINT_SPACING_M } from "@/routes/densify";
 import type { RouteProposal } from "@/routes/types";
 import { A_TO_B_MIN_STRAIGHT_M, atoBMaxStraightM, dataCenter, dataRadiusM, type MatchParams } from "./config";
 import { generateAtoB } from "@/routes/atob";
@@ -131,8 +131,9 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
   if (!proposals.length) {
     return done({ ...base, status: "no_route", notes: res.notes, message: "No good route found here. Try another distance or starting point." }, graph);
   }
-  // Mission: ett checkpoint per ca 500 m längs slingan.
-  const dense = proposals.map((x) => densifyCheckpoints(graph, x));
+  // Mission: ett checkpoint per ca 500 m (till fots) eller 1 km (cykel) längs slingan.
+  const spacing = p.activity === "mtb" ? CHECKPOINT_SPACING_BIKE_M : CHECKPOINT_SPACING_M;
+  const dense = proposals.map((x) => densifyCheckpoints(graph, x, spacing));
   const best = dense.filter((x) => x.withinTolerance);
   if (!best.length) {
     const nearest = dense.filter((x) => Math.abs(x.deviation) <= 0.25);
