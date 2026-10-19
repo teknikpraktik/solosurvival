@@ -35,17 +35,17 @@ function run(gapM: number, seconds: number) {
 }
 
 describe("zombie-spurt", () => {
-  it("jagande zombie inom 100 m spurtar: dubbel fart i 20 s, sedan normal fart", () => {
+  it("jagande zombie inom 100 m spurtar: 1,5 × fart i 30 s, sedan normal fart", () => {
     const { rules, events, speeds } = run(95, 40);
     const sprints = events.filter((e) => e.type === "zombie_sprint");
     expect(sprints.length).toBeGreaterThanOrEqual(1);
     const base = rules.zombieSpeedMps;
-    // Under spurten ≈ 2 × fart (kantbyten kan ge enstaka avvikelser: använd medianen).
+    // Under spurten ≈ 1,5 × fart (kantbyten kan ge enstaka avvikelser: använd medianen).
     const median = (a: number[]) => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
     const during = speeds.slice(2, Math.floor(SPRINT_DURATION_S / STEP_S) - 5).filter((s) => s > 0.01);
     expect(during.length).toBeGreaterThan(20);
-    expect(median(during)).toBeGreaterThan(base * 1.8);
-    expect(median(during)).toBeLessThan(base * 2.2);
+    expect(median(during)).toBeGreaterThan(base * 1.35);
+    expect(median(during)).toBeLessThan(base * 1.65);
   });
 
   it("utan spurt utanför 100 m", () => {
