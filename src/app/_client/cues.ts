@@ -19,10 +19,11 @@ const PATTERN: Record<Cue, { f: number[]; vib: number[] }> = {
   zombie: { f: [110, 78], vib: [60, 40, 120] },
   captured: { f: [900, 1400, 700, 1600], vib: [300, 80, 300, 80, 500] },
   jump: { f: [1300, 900], vib: [200, 60, 120] },
+  tension: { f: [90, 95, 233], vib: [80, 120, 80] },
 };
 
 /** Lokal ljudfil (cachas av service workern); avkodas en gång. Faller tillbaka på syntetiskt ljud om den saknas. */
-const SAMPLES: Partial<Record<Cue, string>> = { zombie: "/audio/zombie-near.wav", captured: "/audio/captured-scream.wav", jump: "/audio/jump-scream.wav" };
+const SAMPLES: Partial<Record<Cue, string>> = { zombie: "/audio/zombie-near.wav", captured: "/audio/captured-scream.wav", jump: "/audio/jump-scream.wav", tension: "/audio/tension.wav" };
 const buffers = new Map<Cue, AudioBuffer>();
 const loading = new Set<Cue>();
 
@@ -42,7 +43,7 @@ export async function preloadCues(): Promise<void> {
 }
 
 /** Only these cues make sound; the others (alerts, checkpoints, match over) are silent so the game is not noisy. */
-const AUDIBLE = new Set<Cue>(["zombie", "captured", "jump"]);
+const AUDIBLE = new Set<Cue>(["zombie", "captured", "jump", "tension"]);
 
 /** Ljud och vibration så att spelaren inte behöver titta på skärmen (särskilt viktigt på cykel). Vibration saknas på iPhone. */
 export function playCue(cue: Cue): void {

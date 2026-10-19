@@ -17,7 +17,7 @@ import { createLiveMatch, matchDurationS } from "./match";
 import { prepareMatch, type Prepared } from "./prepare";
 import { MatchStorage, type HistoryRecord } from "./storage";
 
-export type Cue = "danger" | "alert" | "goal" | "info" | "end" | "zombie" | "captured" | "jump";
+export type Cue = "danger" | "alert" | "goal" | "info" | "end" | "zombie" | "captured" | "jump" | "tension";
 
 /**
  * Planerar slumpade skrämmor för en match: en första efter 90–420 s speltid och (50 %) en andra 240–480 s senare.

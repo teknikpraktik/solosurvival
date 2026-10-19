@@ -3,7 +3,7 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Map as MapLibreMap, Marker, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
-import { bikeZoom } from "@/play/bike-view";
+import { bikeZoom, BIKE_VIEW_AHEAD_M, BIKE_VIEW_CLOSE_AHEAD_M } from "@/play/bike-view";
 import { bearingDeg, haversineM, type LatLon } from "@/geo/geometry";
 import type { TrailGraph } from "@/geo/graph/types";
 import { unwrapToward } from "@/play/heading";
@@ -55,8 +55,10 @@ export interface GameMapProps {
   extraction?: LatLon | null;
   /** Följ spelaren. */
   follow?: boolean;
-  /** Bike view: player centred, zoom fitted so that BIKE_VIEW_AHEAD_M is visible ahead of and behind the player (top/bottom edge). */
+  /** Bike view: player centred, zoom fitted so that 1 km (300 m when bikeClose) is visible ahead of and behind the player (top/bottom edge). */
   bikeView?: boolean;
+  /** Bike view: zoomed in on the surroundings (zombies close) instead of the wide view. */
+  bikeClose?: boolean;
   fit?: LatLon[] | null;
   onUserMove?: () => void;
   /** Tryck på kartan (t.ex. för att välja A/B). */
@@ -108,7 +110,7 @@ export default function GameMap(props: GameMapProps) {
 
   const src = (id: string, data: GeoJSON.FeatureCollection) => (mapRef.current?.getSource(id) as GeoJSONSource | undefined)?.setData(data);
 
-  const { graph, routes, markers, player, accuracyM, start, zombies, extraction, follow, fit, frozen, heading, trackUp, bikeView } = props;
+  const { graph, routes, markers, player, accuracyM, start, zombies, extraction, follow, fit, frozen, heading, trackUp, bikeView, bikeClose } = props;
   useEffect(() => { if (loaded) src("net", fc(graph ? [...graph.edges.values()].map((e) => line(e.geometry)) : [])); }, [loaded, graph]);
   useEffect(() => { if (loaded) src("routes", fc((routes ?? []).map((r) => line(r.points, { sel: r.selected, faint: !!r.faint })))); }, [loaded, routes]);
   useEffect(() => { if (loaded) src("start", fc(start ? [pt(start)] : [])); }, [loaded, start]);
@@ -120,6 +122,7 @@ export default function GameMap(props: GameMapProps) {
   const arrowRef = useRef(0);
   const lastCamBearing = useRef(0);
   const wasFollowing = useRef(true);
+  const lastClose = useRef(false);
   useEffect(() => {
     const map = mapRef.current;
     if (!loaded || !map) return;
@@ -161,8 +164,10 @@ export default function GameMap(props: GameMapProps) {
       if (bikeView) {
         // Player in the middle of the screen; zoom so that BIKE_VIEW_AHEAD_M fits between the player and the top (and bottom) edge.
         cam.padding = { top: 0, bottom: 0, left: 0, right: 0 };
-        cam.zoom = bikeZoom(player.lat, h);
-        returning = !wasFollowing.current; // coming back after the user moved the map: ease smoothly
+        cam.zoom = bikeZoom(player.lat, h, bikeClose ? BIKE_VIEW_CLOSE_AHEAD_M : BIKE_VIEW_AHEAD_M);
+        // Coming back after the user moved the map, or switching between the wide and the close view: ease smoothly.
+        returning = !wasFollowing.current || lastClose.current !== !!bikeClose;
+        lastClose.current = !!bikeClose;
       }
       wasFollowing.current = true;
       if (returning) { map.easeTo({ ...cam, duration: 700, essential: true }); lastCamBearing.current = bearing; return; }
@@ -173,7 +178,7 @@ export default function GameMap(props: GameMapProps) {
       lastCamBearing.current = bearing;
     }
     if (el.current) el.current.dataset.zoom = map.getZoom().toFixed(2);
-  }, [loaded, player, accuracyM, follow, heading, trackUp, bikeView]);
+  }, [loaded, player, accuracyM, follow, heading, trackUp, bikeView, bikeClose]);
   useEffect(() => { if (!follow) wasFollowing.current = false; }, [follow]);
 
   // --- Zombier: en enda rAF-loop som animerar mellan motorns uppdateringar ---

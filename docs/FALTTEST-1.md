@@ -111,3 +111,9 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 - Spelaren i mitten av skärmen, Track Up och samma pil. Zoomen räknas fram (`bikeZoom` i `src/play/bike-view.ts`) så att 500 m framåt och 500 m bakåt ryms mellan skärmens mitt och över-/underkant (på en 390 px bred telefon blir det ca ±230 m åt sidorna).
 - Drar/zoomar man kartan ligger den kvar; efter 6 s utan beröring (`BIKE_VIEW_RETURN_S`) glider den tillbaka till spelaren och grundzoomen. ⌖-knappen återgår direkt. On foot är oförändrat.
 - E2E: `e2e/bikezoom.e2e.mjs` (mockad GPS).
+
+## Bike-zoom v2, nya bilder, spänningsljud
+- Bike: normalvy 1 km framåt och 1 km bakåt (`BIKE_VIEW_AHEAD_M`), spelaren i mitten, Track Up alltid. När närmaste zombie är inom 200 m zoomar kartan in till ca 300 m framåt (spelaren kvar i mitten); den zoomar ut igen först över 260 m (hysteres). Mjuk övergång (700 ms).
+- Ljud `tension.wav` (otäck dröne + dova hjärtslag, 2,4 s) spelas vid inzoomningen, högst en gång per 45 s, och följer ljudinställningen.
+- Capture-bild: CC BY-foto av en grön zombiemask (Sharpshotefx) i stället för det blodiga CC0-fotot. Startsida: ljusare CC BY-foto (Heath Cajandig). Jump scare använder fortfarande det första CC0-fotot. Attribution under HOW TO PLAY → Credits.
+- E2E-skripten kräver en ren server på port 3100; en gammal serverprocess gav tidigare falska fel (CSS/JS-chunks med fel MIME-typ).
