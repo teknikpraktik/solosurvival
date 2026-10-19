@@ -88,3 +88,6 @@ I A TO B spawnar alla zombier (initiala och nya) **mellan A och B**: punktens pr
 
 ## Fälttest 9: svårighetsgrader
 Normal = nuvarande värden (On foot 6,75 km/h, 6 start / 18 max zombier). **Easy:** fart ×0,9, antal ×0,7. **Hard:** fart ×2 (On foot 13,5 km/h, Bike 31,6 km/h – mycket snabbt), antal ×2 (On foot 12 start / 36 max). Samma multiplikatorer för alla aktiviteter (`src/config/difficulty.ts`). I A TO B får korridorspawn 50 m minsta zombieavstånd så att även Hard-antalet får plats mellan A och B.
+
+## Fälttest 10: slumpade skrämmor
+1–2 per match (planeras vid start, `planScares`): första efter 90–420 s speltid, andra (50 %) 240–480 s senare. Skrämman visas först när en zombie närmar sig (≤ 200 m) efter planerad tid, så den känns motiverad. Visas ~1,3 s: bild `public/img/jump.svg` + skrik `public/audio/jump-scream.wav` (följer ljudknappen) + vibration. Blockerar inte spelet (matchen pausas inte, inga klick fångas). **Aldrig på Bike** (säkerhet) och kan stängas av i NEW GAME ("Random jump scares", sparas lokalt). Loggas som `jump_scare` i testloggen.

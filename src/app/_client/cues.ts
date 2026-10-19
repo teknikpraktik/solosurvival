@@ -18,10 +18,11 @@ const PATTERN: Record<Cue, { f: number[]; vib: number[] }> = {
   end: { f: [392, 330, 262], vib: [400] },
   zombie: { f: [110, 78], vib: [60, 40, 120] },
   captured: { f: [900, 1400, 700, 1600], vib: [300, 80, 300, 80, 500] },
+  jump: { f: [1300, 900], vib: [200, 60, 120] },
 };
 
 /** Lokal ljudfil (cachas av service workern); avkodas en gång. Faller tillbaka på syntetiskt ljud om den saknas. */
-const SAMPLES: Partial<Record<Cue, string>> = { zombie: "/audio/zombie-near.wav", captured: "/audio/captured-scream.wav" };
+const SAMPLES: Partial<Record<Cue, string>> = { zombie: "/audio/zombie-near.wav", captured: "/audio/captured-scream.wav", jump: "/audio/jump-scream.wav" };
 const buffers = new Map<Cue, AudioBuffer>();
 const loading = new Set<Cue>();
 
@@ -51,7 +52,7 @@ export function playCue(cue: Cue): void {
     if (buf) {
       const src = ctx.createBufferSource();
       const gain = ctx.createGain();
-      gain.gain.value = cue === "captured" ? 1 : 0.7;
+      gain.gain.value = cue === "captured" || cue === "jump" ? 1 : 0.7;
       src.buffer = buf;
       src.connect(gain).connect(ctx.destination);
       src.start();

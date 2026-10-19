@@ -3,13 +3,14 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { errorText } from "@/gps/provider/provider";
 import { RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 import { cuesEnabled, setCuesEnabled, unlockAudio } from "../_client/cues";
 import { Modal } from "../_client/Modal";
 import { Scare } from "../_client/Scare";
+import { JumpScare } from "../_client/JumpScare";
 import type { MapMarker } from "../_client/GameMap";
 
 const GameMap = dynamic(() => import("../_client/GameMap"), { ssr: false });
@@ -27,6 +28,13 @@ export default function Play() {
   const [gpsDismissed, setGpsDismissed] = useState(false);
   const [sound, setSound] = useState(true);
   const [scareDone, setScareDone] = useState(false);
+  const [jump, setJump] = useState(false);
+  const lastScare = useRef(0);
+  // Random jump scare (planned by the session): show the image briefly; the scream comes from the cue system.
+  useEffect(() => {
+    const n = view?.scareNonce ?? 0;
+    if (n > lastScare.current) { lastScare.current = n; setJump(true); }
+  }, [view?.scareNonce]);
   useEffect(() => { setSound(cuesEnabled()); }, []);
   const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
 
@@ -178,6 +186,7 @@ export default function Play() {
         </Modal>
       )}
 
+      {jump && !finished && <JumpScare onDone={() => setJump(false)} />}
       {scare && <Scare onDone={() => setScareDone(true)} />}
       {/* Match over is a mandatory decision: no X, the player chooses where to go. */}
       {finished && !scare && (
