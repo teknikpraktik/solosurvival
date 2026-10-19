@@ -19,7 +19,7 @@ export default function HowToPlay() {
 
       <h2>Game modes</h2>
       <ul>
-        <li><b>MISSION</b> – a loop from your start with a checkpoint about every 500 m. Reach them in order, then return to the start.</li>
+        <li><b>MISSION</b> – a loop from your start with a checkpoint about every 500 m on foot or every 1 km by bike. Reach them in order, then return to the start.</li>
         <li><b>A TO B</b> – you pick A (your start, your position by default) and B (the goal) on the map. Any route you like counts; a faint line shows the straight line between A and B. You must stand at A to start.</li>
         <li><b>SURVIVAL</b> – no route. Survive until extraction opens (at 80 % of the time), then reach it.</li>
       </ul>
