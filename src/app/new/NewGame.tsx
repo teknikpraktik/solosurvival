@@ -16,7 +16,6 @@ import { matchDurationS } from "@/play/match";
 import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_HELP, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
 import type { MapMarker } from "../_client/GameMap";
 import { cuesEnabled, setCuesEnabled, unlockAudio } from "../_client/cues";
-import { scaresEnabled, setScaresEnabled } from "../_client/SessionProvider";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 
 const GameMap = dynamic(() => import("../_client/GameMap"), { ssr: false });
@@ -41,9 +40,8 @@ export default function NewGame() {
   const [cues, setCues] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pick, setPick] = useState<"A" | "B">("B");
-  const [scares, setScares] = useState(true);
 
-  useEffect(() => { setCues(cuesEnabled()); setScares(scaresEnabled()); }, []);
+  useEffect(() => { setCues(cuesEnabled()); }, []);
   useEffect(() => {
     if (!session) return;
     if (session.getView().stage === "finished") session.reset();
@@ -179,10 +177,6 @@ export default function NewGame() {
       <label className="muted" style={{ display: "flex", gap: 10, alignItems: "center", minHeight: 44 }}>
         <input type="checkbox" checked={cues} onChange={(e) => { setCues(e.target.checked); setCuesEnabled(e.target.checked); }} style={{ width: 22, height: 22 }} />
         Sound and vibration for events (no vibration on iPhone)
-      </label>
-      <label className="muted" style={{ display: "flex", gap: 10, alignItems: "center", minHeight: 44 }}>
-        <input type="checkbox" checked={scares} onChange={(e) => { setScares(e.target.checked); setScaresEnabled(e.target.checked); }} style={{ width: 22, height: 22 }} />
-        Random jump scares (1–2 per match, never on Bike)
       </label>
       <button className="btn primary big" disabled={!canPrepare} onClick={() => run(async () => { unlockAudio(); await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) })); })}>
         {p.mode === "survival" ? "SHOW AREA" : isAB && !p.pointB ? "PICK B ON THE MAP" : "SHOW ROUTE"}
