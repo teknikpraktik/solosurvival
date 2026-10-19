@@ -11,7 +11,7 @@ export function Scare({ onDone }: { onDone: () => void }) {
   return (
     <div className="scare" role="alert" aria-label="You were captured" onClick={onDone}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/img/captured.svg" alt="" />
+      <img src="/img/captured.jpg" alt="" onError={(e) => { (e.target as HTMLImageElement).src = "/img/captured.svg"; }} />
       <div className="scare-text">CAPTURED</div>
     </div>
   );

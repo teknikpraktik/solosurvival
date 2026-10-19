@@ -40,7 +40,7 @@ check("skräm-overlay visas när man blir fångad", scareSeen);
 if (scareSeen) {
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/scare.png` });
-  check("skrämbilden laddas (lokal SVG)", await page.locator(".scare img").evaluate((i) => i.complete && i.naturalWidth > 0));
+  check("skrämbilden laddas (lokal bild)", await page.locator(".scare img").evaluate((i) => i.complete && i.naturalWidth > 0));
   check("skrik-ljudfilen har hämtats", reqs.some((u) => u.includes("/audio/captured-scream.wav")));
   await page.getByRole("dialog", { name: "CAPTURED" }).waitFor({ timeout: 8000 });
   check("resultatdialog efter skrämman", true);

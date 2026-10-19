@@ -41,10 +41,14 @@ export async function preloadCues(): Promise<void> {
   } catch { /* ljud ej tillgängligt */ }
 }
 
+/** Only these cues make sound; the others (alerts, checkpoints, match over) are silent so the game is not noisy. */
+const AUDIBLE = new Set<Cue>(["zombie", "captured", "jump"]);
+
 /** Ljud och vibration så att spelaren inte behöver titta på skärmen (särskilt viktigt på cykel). Vibration saknas på iPhone. */
 export function playCue(cue: Cue): void {
   if (!cuesEnabled()) return;
   try { navigator.vibrate?.(PATTERN[cue].vib); } catch { /* ej stött */ }
+  if (!AUDIBLE.has(cue)) return;
   try {
     ctx ??= new AudioContext();
     if (ctx.state === "suspended") void ctx.resume();

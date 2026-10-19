@@ -168,7 +168,7 @@ describe("Testfall D: närhetsljud", () => {
     z.edgeId = best!.e; z.distanceAlongEdgeM = best!.d; z.route = []; z.state = "patrol"; z.speedMps = 0;
   };
 
-  it("ny zombie i närheten ger exakt ett ljud; samma zombie som lämnar och återkommer ger inget nytt; grupperas med cooldown", async () => {
+  it("ny zombie i närheten ger exakt ett ljud per match; därefter tyst", async () => {
     const { session, advance, cues } = await setup();
     const live = session.live!;
     live.state.phase = "head_start"; // zombierna står still; vi styr positionerna själva
@@ -185,16 +185,11 @@ describe("Testfall D: närhetsljud", () => {
     // Lämnar och återkommer: inget nytt ljud (en gång per zombie).
     place(live, 0, 4000); advance(3000); place(live, 0, 300); advance(3000);
     expect(cues.filter((c) => c === "zombie")).toHaveLength(1);
-    // Ny zombie efter cooldown → nytt ljud. En tredje strax därefter (inom cooldown) väntar och ger ETT ljud när cooldown gått.
+    // Zombie sound plays only once per match: later zombies, even after the cooldown, stay silent.
     if (live.state.zombies.length >= 3) {
-      place(live, 1, 450); advance(2000);
-      expect(cues.filter((c) => c === "zombie")).toHaveLength(2);
-      place(live, 2, 350); advance(3000);
-      expect(cues.filter((c) => c === "zombie")).toHaveLength(2); // cooldown: inget nytt ännu
-      advance(ZOMBIE_SOUND_COOLDOWN_MS);
-      expect(cues.filter((c) => c === "zombie")).toHaveLength(3);
-      advance(ZOMBIE_SOUND_COOLDOWN_MS * 2);
-      expect(cues.filter((c) => c === "zombie")).toHaveLength(3);
+      place(live, 1, 450); advance(ZOMBIE_SOUND_COOLDOWN_MS);
+      place(live, 2, 350); advance(ZOMBIE_SOUND_COOLDOWN_MS * 2);
+      expect(cues.filter((c) => c === "zombie")).toHaveLength(1);
     }
   }, 60000);
 

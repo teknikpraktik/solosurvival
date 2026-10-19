@@ -131,7 +131,7 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 /* Captured jump scare */
 .scare { position: fixed; inset: 0; z-index: 60; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; animation: scare-flash .35s steps(2) 6; }
 .scare img { width: 100%; height: 100%; object-fit: cover; animation: scare-shake .12s linear infinite, scare-zoom 2.8s ease-in forwards; }
-.scare-text { position: absolute; bottom: 10%; left: 0; right: 0; text-align: center; font-size: 2.6rem; font-weight: 900; letter-spacing: .2em; color: #ff2a1a; text-shadow: 0 0 16px #000, 0 0 30px #ff0000; }
+.scare-text { position: absolute; bottom: 10%; left: 0; right: 0; text-align: center; font-size: 2.6rem; font-weight: 900; letter-spacing: .2em; color: #f4eee8; text-shadow: 0 2px 4px #000, 0 0 18px #000, 0 0 36px #000; }
 @keyframes scare-flash { 0% { filter: none; } 50% { filter: brightness(2.2) saturate(2) hue-rotate(-10deg); } }
 @keyframes scare-shake { 0% { transform: translate(0,0); } 25% { transform: translate(-6px,4px); } 50% { transform: translate(5px,-5px); } 75% { transform: translate(-4px,-3px); } 100% { transform: translate(0,0); } }
 @keyframes scare-zoom { from { scale: 1; } to { scale: 1.35; } }
