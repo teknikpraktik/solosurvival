@@ -13,6 +13,8 @@ export interface RawWay {
   nodes: RawWayNode[];
   type: PathType;
   oneway?: boolean;
+  /** Bike: easy to ride (see isEasyBikeWay). */
+  easy?: boolean;
 }
 
 /**
@@ -54,6 +56,7 @@ export function buildGraph(ways: RawWay[], source = "openstreetmap"): Serialized
           geometry,
           type: w.type,
           oneway: w.oneway || undefined,
+          easy: w.easy || undefined,
         });
         idx++;
       }

@@ -166,10 +166,13 @@ export function updateZombieAI(ctx: AiContext, z: Zombie, arrived: boolean): voi
   const dist = haversineM(zll, ctx.playerPos);
   // Magnet-jakt: med giltig GPS känner zombien alltid spelarens (snappade) position och jagar kontinuerligt, oavsett avstånd.
   // Gäller bara nätet (stigbunden): zombien går den kortaste vägen längs stigar/vägar mot spelaren.
-  const magnet = !!ctx.magnetObservation;
+  // Within magnetRangeM only (Infinity on foot): far-away zombies keep patrolling, so a long track stays spread out. Hysteresis while chasing.
+  const range = rules.magnetRangeM * (z.state === "chase" || z.state === "intercept" ? 1.25 : 1);
+  const inRange = dist <= range;
+  const magnet = !!ctx.magnetObservation && inRange;
   const inContact = magnet || (ctx.detectionEnabled && dist <= rules.detectionRadiusM);
   if (inContact) {
-    const obs = ctx.magnetObservation ?? makeObservation(ctx.g, ctx.playerPos, timeS);
+    const obs = (magnet ? ctx.magnetObservation : null) ?? makeObservation(ctx.g, ctx.playerPos, timeS);
     if (obs) {
       observe(z, obs);
       z.contactLostS = 0;
@@ -184,7 +187,7 @@ export function updateZombieAI(ctx: AiContext, z: Zombie, arrived: boolean): voi
   }
 
   // 2. Periodiskt positionsavslöjande.
-  if (ctx.reveal && ctx.playerObservation) {
+  if (ctx.reveal && ctx.playerObservation && inRange) {
     const o = ctx.playerObservation;
     if (z.state === "patrol") {
       if (rand(ctx.rng) < rules.revealResponseProb) {

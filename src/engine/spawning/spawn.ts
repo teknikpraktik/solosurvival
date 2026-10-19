@@ -20,6 +20,8 @@ export interface SpawnContext {
    * Punktens projektion på linjen A→B ska ligga i [minT, maxT] (0 = A, 1 = B) och högst `halfWidthM` från linjen.
    */
   corridor?: { a: LatLon; b: LatLon; halfWidthM: number; minT: number; maxT: number };
+  /** Spread start: spawn within [minR, maxR] metres of this point (e.g. a mission checkpoint). */
+  near?: { p: LatLon; minR: number; maxR: number };
   /** Zoner där zombier inte får spawna (t.ex. runt checkpoints och destination). */
   avoid?: { p: LatLon; r: number }[];
 }
@@ -48,7 +50,7 @@ export function findSpawn(g: TrailGraph, ctx: SpawnContext, rng: RngHolder): Edg
   const spacing = ctx.minSpacingM ?? 100;
 
   // Med övre gräns är träffytan mindre: fler försök (varje försök är billigt).
-  for (let i = 0; i < (ctx.tries ?? (ctx.maxDistanceM !== undefined ? 400 : 60)); i++) {
+  for (let i = 0; i < (ctx.tries ?? (ctx.near ? 800 : ctx.maxDistanceM !== undefined ? 400 : 60)); i++) {
     // Längdviktad slumpning av kant.
     let r = rand(rng) * total;
     let edge = edges[edges.length - 1];
@@ -68,6 +70,7 @@ export function findSpawn(g: TrailGraph, ctx: SpawnContext, rng: RngHolder): Edg
     const net = distanceToPos(g, ctx.playerPos, dists, pos);
     if (net < ctx.minDistanceM) continue;
     if (ctx.maxDistanceM !== undefined && net > ctx.maxDistanceM * 1.5) continue;
+    if (ctx.near) { const dn = haversineM(ll, ctx.near.p); if (dn < ctx.near.minR || dn > ctx.near.maxR) continue; }
     if (ctx.corridor && !inCorridor(ll, ctx.corridor)) continue;
     if (ctx.zombiePositions.some((z) => haversineM(z, ll) < spacing)) continue;
     if (ctx.avoid?.some((a) => haversineM(a.p, ll) < a.r)) continue;

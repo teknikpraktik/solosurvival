@@ -15,6 +15,8 @@ export interface RawEdge {
   type: PathType;
   /** Sant om kanten bara får färdas från `from` till `to`. */
   oneway?: boolean;
+  /** Bike: easy to ride (paved/gravel road, bike lane, good track). Zombies ignore this; Mission tracks prefer it. */
+  easy?: boolean;
 }
 
 export interface SerializedGraph {

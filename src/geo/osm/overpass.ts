@@ -81,6 +81,37 @@ export function decideWay(tags: Record<string, string> | undefined, activity: Ac
   return { ok: true };
 }
 
+const PAVED = new Set(["paved", "asphalt", "concrete", "concrete:plates", "concrete:lanes", "paving_stones", "sett", "cobblestone", "chipseal", "metal", "bricks"]);
+const GRAVEL = new Set(["gravel", "fine_gravel", "compacted", "unpaved_compacted"]);
+const ROUGH_SURFACE = new Set(["grass", "dirt", "earth", "ground", "mud", "sand", "rock", "pebblestone", "woodchips", "wood", "grass_paver", "snow", "ice", "stepping_stones", "clay", "salt"]);
+const ROUGH_SMOOTHNESS = new Set(["bad", "very_bad", "horrible", "very_horrible", "impassable"]);
+
+/**
+ * Bike: is the way easy to ride (paved or gravel road, bike lane, good forest road)? Used to choose the Mission track only;
+ * zombies may use every allowed way. Unknown surface on a path/footway is NOT assumed easy; a plain "track" (forest/gravel road) is.
+ */
+export function isEasyBikeWay(tags: Record<string, string> | undefined): boolean {
+  const t = tags ?? {};
+  const h = t.highway;
+  if (!h) return false;
+  const scale = Number.parseInt(t["mtb:scale"] ?? "", 10);
+  if (Number.isFinite(scale) && scale >= 1) return false;
+  if (t.sac_scale && t.sac_scale !== "hiking") return false;
+  if (ROUGH_SMOOTHNESS.has(t.smoothness ?? "")) return false;
+  const surface = (t.surface ?? "").split(";")[0];
+  if (ROUGH_SURFACE.has(surface)) return false;
+  if (h === "cycleway" || h === "residential" || h === "living_street" || h === "unclassified") return true;
+  const good = PAVED.has(surface) || GRAVEL.has(surface);
+  if (h === "service") return !["parking_aisle", "driveway"].includes(t.service ?? "");
+  if (h === "track") {
+    const grade = t.tracktype ?? "";
+    if (grade === "grade4" || grade === "grade5") return false;
+    return true;
+  }
+  // path / footway / pedestrian / bridleway: only with a known good surface
+  return good && (h !== "bridleway");
+}
+
 /** Normaliserar ett Overpass-svar till rå-linjer för aktiviteten. Okända/ofullständiga linjer hoppas över. */
 export function normalizeOverpass(resp: OverpassResponse, activity: Activity): RawWay[] {
   const ways: RawWay[] = [];
