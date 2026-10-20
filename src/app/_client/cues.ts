@@ -23,7 +23,7 @@ const PATTERN: Record<Cue, { f: number[]; vib: number[] }> = {
 };
 
 /** Lokal ljudfil (cachas av service workern); avkodas en gång. Faller tillbaka på syntetiskt ljud om den saknas. */
-const SAMPLES: Partial<Record<Cue, string>> = { zombie: "/audio/zombie-near.wav", captured: "/audio/captured-scream.wav", jump: "/audio/jump-scream.wav", tension: "/audio/tension.wav" };
+const SAMPLES: Partial<Record<Cue, string>> = { zombie: "/audio/zombie-near.wav", captured: "/audio/captured-scream.wav", jump: "/audio/jump-scream.wav", tension: "/audio/tension.wav", goal: "/audio/checkpoint.wav" };
 const buffers = new Map<Cue, AudioBuffer>();
 const loading = new Set<Cue>();
 
@@ -42,8 +42,8 @@ export async function preloadCues(): Promise<void> {
   } catch { /* ljud ej tillgängligt */ }
 }
 
-/** Only these cues make sound; the others (alerts, checkpoints, match over) are silent so the game is not noisy. */
-const AUDIBLE = new Set<Cue>(["zombie", "captured", "jump", "tension"]);
+/** Only these cues make sound ("goal" = the rewarding chime when a checkpoint is reached); the others (alerts, extraction, match over) are silent so the game is not noisy. */
+const AUDIBLE = new Set<Cue>(["zombie", "captured", "jump", "tension", "goal"]);
 
 /** Ljud och vibration så att spelaren inte behöver titta på skärmen (särskilt viktigt på cykel). Vibration saknas på iPhone. */
 export function playCue(cue: Cue): void {
@@ -57,7 +57,7 @@ export function playCue(cue: Cue): void {
     if (buf) {
       const src = ctx.createBufferSource();
       const gain = ctx.createGain();
-      gain.gain.value = cue === "captured" || cue === "jump" ? 1 : 0.7;
+      gain.gain.value = cue === "captured" || cue === "jump" || cue === "goal" ? 1 : 0.7;
       src.buffer = buf;
       src.connect(gain).connect(ctx.destination);
       src.start();

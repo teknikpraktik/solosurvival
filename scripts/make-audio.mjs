@@ -109,3 +109,26 @@ console.log("zombie-near.wav", buf.length, "bytes");
   writeFileSync("public/audio/tension.wav", b4);
   console.log("tension.wav", b4.length, "bytes");
 }
+
+// --- Belöning: ljus, glad klockarpeggio (C–E–G–C) med glitter när en checkpoint tas (0,9 s) ---
+{
+  const SR5 = 22050, D5 = 0.9, N5 = Math.floor(SR5 * D5);
+  const o5 = new Float32Array(N5);
+  const notes = [[523.25, 0], [659.25, 0.09], [783.99, 0.18], [1046.5, 0.27]]; // frekvens, start (s)
+  for (const [f, t0] of notes) {
+    for (let i = Math.floor(t0 * SR5); i < N5; i++) {
+      const t = i / SR5 - t0;
+      const env = Math.min(1, t / 0.006) * Math.exp(-t * (f > 1000 ? 3.2 : 5.5));
+      // klockklang: grundton + något ojämna övertoner
+      const s = Math.sin(2 * Math.PI * f * t) + 0.45 * Math.sin(2 * Math.PI * f * 2.76 * t) * Math.exp(-t * 9) + 0.25 * Math.sin(2 * Math.PI * f * 4 * t) * Math.exp(-t * 6);
+      o5[i] += s * env * 0.22;
+    }
+  }
+  const b5 = Buffer.alloc(44 + N5 * 2);
+  b5.write("RIFF", 0); b5.writeUInt32LE(36 + N5 * 2, 4); b5.write("WAVEfmt ", 8); b5.writeUInt32LE(16, 16);
+  b5.writeUInt16LE(1, 20); b5.writeUInt16LE(1, 22); b5.writeUInt32LE(SR5, 24); b5.writeUInt32LE(SR5 * 2, 28);
+  b5.writeUInt16LE(2, 32); b5.writeUInt16LE(16, 34); b5.write("data", 36); b5.writeUInt32LE(N5 * 2, 40);
+  for (let i = 0; i < N5; i++) b5.writeInt16LE(Math.max(-32767, Math.min(32767, Math.round(Math.tanh(o5[i] * 1.2) * 0.9 * 32767))), 44 + i * 2);
+  writeFileSync("public/audio/checkpoint.wav", b5);
+  console.log("checkpoint.wav", b5.length, "bytes");
+}

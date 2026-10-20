@@ -143,3 +143,6 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 - Undantag: startkanten får användas två gånger i samma riktning (halvorna på var sida om startpunkten), och en återvändsgren som startpunkten själv ligger i (oundvikligt).
 - Finns ingen sådan slinga (glest eller trädformat nät, t.ex. Skutberget 5 km+) ges ingen rutt och NEW GAME säger det, i stället för en rutt med återvändsgränder. Mätvärde `reuseShare` räknas nu på den faktiskt gångna kantföljden (förut räknades kanten vid varje checkpoint-skarv dubbelt).
 - Gäller Mission (båda aktiviteterna); A TO B väljer spelaren själv väg. Tester: `src/tests/unit/clean-loops.test.ts`.
+
+## Belöningsljud vid checkpoint
+- `public/audio/checkpoint.wav` (ljus klockarpeggio C–E–G–C, 0,9 s, genereras av `scripts/make-audio.mjs`) spelas när en checkpoint tas (cue `goal`, även vid slutmålet och B i A TO B). Följer ljudinställningen; vibration som förut.
