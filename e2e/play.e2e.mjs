@@ -42,7 +42,7 @@ try {
   await page.waitForTimeout(800);
     await page.screenshot({ path: `${OUT}/02-new.png` });
 
-  await page.getByText("SHOW ROUTE").click();
+  await page.getByText("SHOW COURSE").click();
   await page.getByText(/Distance|Straight line/).first().waitFor({ timeout: 60000 });
   await page.waitForSelector('[data-testid="map"][data-loaded="true"]', { timeout: 20000 });
   check("förhandsvisning med rutt och karta", true);
@@ -51,7 +51,7 @@ try {
   const hasRoute = await page.getByText(/checkpoints \+ home/).count();
   check("förhandsvisning visar checkpoints och hem", hasRoute > 0);
 
-  await page.getByText("NEW ROUTE").click();
+  await page.getByText("NEW COURSE").click();
   await page.getByText(/Distance|Straight line/).first().waitFor({ timeout: 60000 });
   check("nytt förslag", true);
 

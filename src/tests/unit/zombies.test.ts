@@ -57,6 +57,7 @@ describe("Testfall A: zombier (riktiga Värmlandsdata, simulerad GPS)", () => {
         prev = live.state.zombies.length;
         if (i % 3000 === 0) counts.push(prev);
       }
+      counts.push(prev);
       expect(Math.max(...counts)).toBeGreaterThan(counts[0]);
       expect(skipped).toBeLessThan(10);
       for (const z of live.state.zombies) { const ll = zombieLatLon(live.g, z); expect(Number.isFinite(ll.lat + ll.lon)).toBe(true); }

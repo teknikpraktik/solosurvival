@@ -1,3 +1,4 @@
+import { COURSE_DETOUR_FACTOR } from "@/routes/course";
 import { RULES_VERSION } from "@/config/game-rules";
 import { resolveModeRules } from "@/config/modes";
 import { createGame } from "@/engine/core/engine";
@@ -21,7 +22,9 @@ export interface MatchSetup {
 /** Tidsgräns: Survival = vald matchlängd, annars lugn fart längs rutten (ingen bonus för snabbhet). */
 export function matchDurationS(p: MatchParams, proposal: RouteProposal | null): number {
   if (p.mode === "survival" || !proposal) return p.durationS;
-  return estimateTimeLimitS(proposal.lengthM, p.activity, p.difficulty, proposal.waypoints.length);
+  // Mission distances are straight lines between checkpoints; the way actually walked is longer.
+  const lengthM = p.mode === "mission" ? proposal.lengthM * COURSE_DETOUR_FACTOR : proposal.lengthM;
+  return estimateTimeLimitS(lengthM, p.activity, p.difficulty, proposal.waypoints.length);
 }
 
 /** Skapar en match med samma motor och regler som simuleringarna. Spelet startar pausat tills första fixen är på plats. */

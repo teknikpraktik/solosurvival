@@ -146,3 +146,9 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 
 ## Belöningsljud vid checkpoint
 - `public/audio/checkpoint.wav` (ljus klockarpeggio C–E–G–C, 0,9 s, genereras av `scripts/make-audio.mjs`) spelas när en checkpoint tas (cue `goal`, även vid slutmålet och B i A TO B). Följer ljudinställningen; vibration som förut.
+
+## Mission utan rutt (bara checkpoints)
+- Mission lägger bara ut numrerade checkpoints som hämtas i ordning, sedan hem. Ingen rutt ritas (varken i förhandsvisning eller under matchen). Vald sträcka = summan av fågelvägen start → checkpoints → start; checkpoints ca 500 m (till fots) / 1 km (cykel) från varandra. Tidsgräns och tidsuppskattning använder ett omvägstillägg (`COURSE_DETOUR_FACTOR` = 1,35).
+- Generator `src/routes/course.ts`: checkpoints är nätnoder i huvudnätet (aldrig i återvändsgrenar, aldrig vid farliga korsningar, ≥ 150 m från start) på en ring genom start som skalas tills summan stämmer; tre alternativa kurser. Ett "kurs" kan alltid skapas där startpunkten ligger på nätet (provkörning Karlstad/Skutberget, 2–20 km, millisekunder). Bike: checkpoints på lättcyklade vägar när det går, annars alla cyklingsbara (varning i NEW GAME).
+- Gamla rutt-generatorn (`generateRoutes`, `isCleanLoop`) finns kvar för Simulator/dev-vyn.
+- A TO B: upp till 20 km fågelväg (alla aktiviteter). NEW GAME: mer luft överst (iPhone-statusfältet), ny bakgrundsbild (Zombie gals, istolethetv, CC BY 2.0), borttagna förklarande texter.
