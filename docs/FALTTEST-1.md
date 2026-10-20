@@ -127,3 +127,6 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 - Samma kameralogik som Bike (`src/play/camera-view.ts`): spelaren i mitten, Track Up, 6 s återgång efter egen dragning/zoom. On foot: normalvy 400 m framåt/bakåt (≈ zoom 15,4), inzoomad vy 150 m när närmaste zombie är inom 100 m (ut igen över 130 m, ≈ zoom 16,8). Bike: 1 000 m / 300 m (200 / 260 m). Spänningsljudet spelas vid inzoomning i båda lägena (högst 1 gång / 45 s).
 - Capture-bild: offentligt foto (Ian Livesey, PD) av en blodig zombie-cosplayer. Jump scare (endast On foot): zombiemaskfoto (Sharpshotefx, CC BY 4.0). Det blodiga CC0-fotot används inte längre.
 - E2E: `ACTIVITY=foot|bike node e2e/viewzoom.e2e.mjs`.
+
+## Bakgrund på inställningssidor
+- NEW GAME, PREVIOUS GAMES, HOW TO PLAY och testsidorna (`.page`) har en fast, mörktonad fotobakgrund (`public/img/backdrop.jpg`, utsnitt ur PD-fotot "The Walking Dead Cosplay"); överlägget i `globals.css` (`.page::before`) styr hur synlig den är.
