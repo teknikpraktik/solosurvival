@@ -143,7 +143,7 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
     const safe = res.proposals.filter((x) => x.metrics.hazardCrossings === 0);
     const proposals = safe.length ? safe : res.proposals;
     if (!proposals.length) {
-      return { ...base, status: "no_route", notes, message: "No good route found here. Try another distance or starting point." };
+      return { ...base, status: "no_route", notes, message: notes.some((n) => n.startsWith("No loop without dead ends")) ? "No loop without dead ends or repeated streets fits here. Try a shorter distance or another starting point." : "No good route found here. Try another distance or starting point." };
     }
     // Mission: ett checkpoint per ca 500 m (till fots) eller 1 km (cykel) längs slingan.
     const spacing = p.activity === "mtb" ? CHECKPOINT_SPACING_BIKE_M : CHECKPOINT_SPACING_M;

@@ -26,8 +26,14 @@ page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 
 try {
   await page.goto(BASE + "/");
-  await page.getByText("HOW TO PLAY").first().waitFor({ timeout: 20000 }).catch(() => {});
-  check("startsida har tre knappar", (await page.getByText("NEW GAME").count()) === 1 && (await page.getByText("PREVIOUS GAMES").count()) === 1 && (await page.getByText("HOW TO PLAY").count()) === 1);
+  // The start page re-renders once while hydrating in headless runs: wait until the three buttons are there (up to 5 s).
+  let startOk = false, startText = "";
+  for (let i = 0; i < 20 && !startOk; i++) {
+    startText = await page.locator("body").innerText();
+    startOk = ["NEW GAME", "PREVIOUS GAMES", "HOW TO PLAY"].every((t) => startText.includes(t)) && (await page.locator("a.btn").count()) === 3;
+    if (!startOk) await page.waitForTimeout(250);
+  }
+  check("startsida har tre knappar", startOk);
   await page.screenshot({ path: `${OUT}/01-start.png` });
 
   await page.getByText("NEW GAME").click();
