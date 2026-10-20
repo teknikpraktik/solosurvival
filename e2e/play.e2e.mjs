@@ -26,6 +26,7 @@ page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 
 try {
   await page.goto(BASE + "/");
+  await page.getByText("HOW TO PLAY").first().waitFor({ timeout: 20000 }).catch(() => {});
   check("startsida har tre knappar", (await page.getByText("NEW GAME").count()) === 1 && (await page.getByText("PREVIOUS GAMES").count()) === 1 && (await page.getByText("HOW TO PLAY").count()) === 1);
   await page.screenshot({ path: `${OUT}/01-start.png` });
 
