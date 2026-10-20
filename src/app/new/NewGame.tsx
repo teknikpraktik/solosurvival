@@ -39,7 +39,6 @@ export default function NewGame() {
   const [p, setP] = useState<MatchParams>(() => defaultParams("walk"));
   const [cues, setCues] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [pick, setPick] = useState<"A" | "B">("B");
 
   useEffect(() => { setCues(cuesEnabled()); }, []);
   useEffect(() => {
@@ -64,7 +63,7 @@ export default function NewGame() {
   }, [view]);
 
   const isAB = p.mode === "escape";
-  const canPrepare = (!!session?.currentStart() || (isAB && !!p.pointA)) && (!isAB || !!p.pointB) && !busy && stage !== "preparing";
+  const canPrepare = !!session?.currentStart() && (!isAB || !!p.pointB) && !busy && stage !== "preparing";
   const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
 
   const limit = DISTANCE_LIMITS[p.activity];
@@ -112,8 +111,8 @@ export default function NewGame() {
           )}
           {view.movedFromPreview && (
             <div className="card warn">
-              {isAB ? `You are ${view.distToPreviewStartM ?? "?"} m from A. Go to A to start.` : "You have moved from the start point. Update the route."}
-              {isAB && <button className="link" style={{ display: "block" }} onClick={() => run(() => session!.prepare({ ...(view.params ?? p), pointA: null }))}>Set A to my position</button>}
+              {isAB ? `You have moved ${view.distToPreviewStartM ?? "?"} m from A. Update the route from your position.` : "You have moved from the start point. Update the route."}
+              {isAB && <button className="link" style={{ display: "block" }} onClick={() => run(() => session!.prepare({ ...(view.params ?? p), pointA: null }))}>Update A to my position</button>}
             </div>
           )}
           {view.messages.map((m) => <div key={m} className="card warn">{m}</div>)}
@@ -155,24 +154,21 @@ export default function NewGame() {
         </div>
       ) : (
         <div className="field">
-          <div className="seg" role="group" aria-label="Pick a point">
-            <button aria-pressed={pick === "A"} onClick={() => setPick("A")}>Pick A{p.pointA ? " ✓" : ""}</button>
-            <button aria-pressed={pick === "B"} onClick={() => setPick("B")}>Pick B{p.pointB ? " ✓" : ""}</button>
-          </div>
+          <div className="stat"><span>A</span><b>Your position now</b></div>
+          <div className="stat"><span>B</span><b>{p.pointB ? "Picked ✓" : "Tap the map"}</b></div>
           <div className="pickmap" data-testid="pickmap">
             <GameMap
               zoom={14}
               player={view?.position}
               accuracyM={view?.accuracyM}
-              fit={p.pointA && p.pointB ? [p.pointA, p.pointB] : null}
-              markers={[...(p.pointA ? [{ id: "A", label: "A", lat: p.pointA.lat, lon: p.pointA.lon, tone: "done" as const }] : []), ...(p.pointB ? [{ id: "B", label: "B", lat: p.pointB.lat, lon: p.pointB.lon, tone: "next" as const }] : [])]}
-              onPick={(pt) => { set(pick === "A" ? { pointA: pt } : { pointB: pt }); if (pick === "A") setPick("B"); }}
+              fit={view?.position && p.pointB ? [view.position, p.pointB] : null}
+              markers={[...(view?.position ? [{ id: "A", label: "A", lat: view.position.lat, lon: view.position.lon, tone: "done" as const }] : []), ...(p.pointB ? [{ id: "B", label: "B", lat: p.pointB.lat, lon: p.pointB.lon, tone: "next" as const }] : [])]}
+              onPick={(pt) => set({ pointB: pt })}
             />
           </div>
           <span className="muted">
-            Tap the map to set {pick}. {p.pointA ? "" : "A is your position unless you pick another. "}Points should be near a trail or road. Any route between A and B counts; the straight line is only a hint (at most {Math.round(atoBMaxStraightM(p.activity) / 1000)} km apart).
+            A is where you are now. Tap the map to set B, where you want to go. B should be near a trail or road. Any route between A and B counts; the straight line is only a hint (at most {Math.round(atoBMaxStraightM(p.activity) / 1000)} km apart).
           </span>
-          {p.pointA && <button className="link" onClick={() => set({ pointA: null })}>Use my position as A</button>}
         </div>
       )}
       <label className="muted" style={{ display: "flex", gap: 10, alignItems: "center", minHeight: 44 }}>

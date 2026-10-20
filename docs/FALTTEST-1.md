@@ -130,3 +130,6 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 
 ## Bakgrund på inställningssidor
 - NEW GAME, PREVIOUS GAMES, HOW TO PLAY och testsidorna (`.page`) har en fast, mörktonad fotobakgrund (`public/img/backdrop.jpg`, utsnitt ur PD-fotot "The Walking Dead Cosplay"); överlägget i `globals.css` (`.page::before`) styr hur synlig den är.
+
+## A TO B: A = min position
+- A är alltid där spelaren står (ingen "Pick A" längre); spelaren väljer bara B på kartan. `session.prepare` ignorerar en angiven `pointA`. Flyttar man sig mer än 60 m i förhandsvisningen erbjuds "Update A to my position". Backdrop på inställningssidorna byttes till "Zombie Walk 2016" (GoToVan, CC BY 2.0).

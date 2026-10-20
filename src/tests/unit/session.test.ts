@@ -9,7 +9,7 @@ import { defaultParams } from "@/play/config";
 import { openDb } from "@/play/idb";
 import { PlaySession } from "@/play/session";
 import { MatchStorage } from "@/play/storage";
-import { cumulativeLengths, pointAlong, type LatLon } from "@/geo/geometry";
+import { cumulativeLengths, haversineM, pointAlong, type LatLon } from "@/geo/geometry";
 
 const root = path.join(import.meta.dirname, "..", "..", "..", "public", "data", "v1", "varmland");
 const fsFetch: Fetcher = async (url) => {
@@ -140,7 +140,7 @@ describe("PlaySession: hela flödet med falsk GPS (simulerat, inte fältbevis)",
 });
 
 describe("A TO B i sessionen", () => {
-  it("egen A långt från min position: förhandsvisning går, start kräver att man står vid A", async () => {
+  it("A är alltid min position (en angiven pointA ignoreras); man väljer bara B", async () => {
     const { g, session, advance, now } = await make();
     session.startLocating();
     for (let i = 0; i < 3; i++) { g.fix(START, 6, now()); advance(1000); }
@@ -152,10 +152,8 @@ describe("A TO B i sessionen", () => {
     session.backToConfig();
     const prep = await session.prepare({ ...defaultParams("walk"), mode: "escape", pointA: { lat: a.lat, lon: a.lon }, pointB: { lat: b.lat, lon: b.lon }, seed: 2 });
     expect(["ok", "no_route", "sparse", "off_network"]).toContain(prep!.status);
-    if (prep!.status === "ok") {
-      expect(session.getView().distToPreviewStartM).toBeGreaterThan(60);
-      expect(await session.startMatch()).toBe(false);
-      expect(session.getView().messages.join(" ")).toMatch(/Go to A/);
-    }
+    const v = session.getView();
+    expect(haversineM(v.params!.pointA!, START)).toBeLessThan(30); // A = där jag står, inte den angivna punkten
+    if (prep!.status === "ok") expect(v.distToPreviewStartM!).toBeLessThan(30);
   });
 });
