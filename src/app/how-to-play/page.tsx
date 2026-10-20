@@ -20,7 +20,7 @@ export default function HowToPlay() {
       <h2>Game modes</h2>
       <ul>
         <li><b>MISSION</b> – a loop from your start with a checkpoint about every 500 m on foot or every 1 km by bike. Reach them in order, then return to the start.</li>
-        <li><b>A TO B</b> – you pick A (your start, your position by default) and B (the goal) on the map. Any route you like counts; a faint line shows the straight line between A and B. You must stand at A to start.</li>
+        <li><b>A TO B</b> – A is where you are now and you pick B (the goal) on the map. Any route you like counts; a faint line shows the straight line between A and B. You must stand at A to start.</li>
         <li><b>SURVIVAL</b> – no route. Survive until extraction opens (at 80 % of the time), then reach it.</li>
       </ul>
       <p>The route shown is a suggestion. You may go anywhere you like – but zombies follow only the trails, and a goal counts only after you stand within 30 m for 5 seconds.</p>
@@ -50,7 +50,7 @@ export default function HowToPlay() {
       <ul>
         <li>Start page: “Crazy zombie boy in the studio” by Heath Cajandig, <a href="https://commons.wikimedia.org/wiki/File:Crazy_zombie_boy_in_the_studio.jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>.</li>
         <li>Captured screen: “The Walking Dead Cosplay” by Ian Livesey, <a href="https://commons.wikimedia.org/wiki/File:The_Walking_Dead_Cosplay.jpg">Wikimedia Commons</a> (public domain).</li>
-        <li>Settings-page backdrop: crop of the same “The Walking Dead Cosplay” photo (public domain).</li>
+        <li>Settings-page backdrop: “Zombie Walk 2016” by GoToVan, <a href="https://commons.wikimedia.org/wiki/File:Zombie_Walk_2016_(29560783686).jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>.</li>
         <li>Other images: “Zombie Halloween Mask” by Sharpshotefx, <a href="https://commons.wikimedia.org/wiki/File:Zombie_Halloween_Mask.jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</li>
       </ul>
       <p>The route shown is a suggestion. You may go anywhere you like – but zombies follow only the trails, and a goal counts only after you stand within 30 m for 5 seconds.</p>

@@ -235,9 +235,9 @@ export class PlaySession {
   // --- förberedelse ---
   async prepare(params: MatchParams): Promise<Prepared | null> {
     const gps = this.currentStart();
-    // A TO B: spelaren kan ha valt A själv (annars min position). Förhandsvisning går utan GPS om A är vald; start kräver att man står vid A.
+    // A TO B: A is always the player's current position; the player only picks B.
     const isAB = params.mode === "escape" && !!params.pointB;
-    const start = isAB && params.pointA ? params.pointA : gps;
+    const start = gps;
     if (!start) {
       this.messages = ["Waiting for a better location signal…"];
       this.emit();
