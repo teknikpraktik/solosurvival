@@ -133,3 +133,7 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 
 ## A TO B: A = min position
 - A är alltid där spelaren står (ingen "Pick A" längre); spelaren väljer bara B på kartan. `session.prepare` ignorerar en angiven `pointA`. Flyttar man sig mer än 60 m i förhandsvisningen erbjuds "Update A to my position". Backdrop på inställningssidorna byttes till "Zombie Walk 2016" (GoToVan, CC BY 2.0).
+
+## Appikon
+- Ny logotyp: grön zombieskalle med glödande röda ögon i expanderande röda ringar på mörk botten (`scripts/make-icons.py`, Pillow; ersätter `make-icons.mjs`). Storlekar: 192, 512, maskable 512 (innehåll inom 80 % säkerhetszon) och apple-touch 180.
+- Ikon-URL:erna har `?v=2` (manifest och layout) så att service workern och webbläsaren hämtar de nya filerna. Redan installerade PWA:er byter ikon först när hemskärmsgenvägen läggs till igen (iOS) eller manifestet uppdateras av Android (kan ta ett dygn); snabbast är att ta bort genvägen och lägga till appen på nytt.
