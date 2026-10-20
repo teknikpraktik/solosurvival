@@ -1,8 +1,10 @@
-// Bike view: player centred, zoom fitted to 1 km ahead/behind, zooming to 300 m when a zombie is within 200 m, Track Up kept, drag holds the map ~6 s then returns. GPS is MOCKED (Playwright).
+// Game camera (ACTIVITY=bike|foot): player centred, zoom fitted to 1 km ahead/behind, zooming to 300 m when a zombie is within 200 m, Track Up kept, drag holds the map ~6 s then returns. GPS is MOCKED (Playwright).
 import { chromium } from "playwright-core";
+const FOOT = process.env.ACTIVITY === "foot";
+const AHEAD = FOOT ? 400 : 1000, CLOSE_AHEAD = FOOT ? 150 : 300, NEAR_M = FOOT ? 60 : 120, FAR_M = FOOT ? 500 : 700;
 const BASE = process.env.BASE_URL ?? "http://localhost:3100";
 const START = { latitude: 59.40731, longitude: 13.46753, accuracy: 6 };
-const OUT = process.env.E2E_OUT ?? "e2e/out-bike";
+const OUT = process.env.E2E_OUT ?? (FOOT ? "e2e/out-foot" : "e2e/out-bike");
 import { mkdirSync } from "node:fs"; mkdirSync(OUT, { recursive: true });
 const res = []; const check = (n, ok, i = "") => { res.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${i ? " – " + i : ""}`); };
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
@@ -11,7 +13,7 @@ await ctx.addInitScript(() => { try { localStorage.setItem("outbreak.debug", "on
 const page = await ctx.newPage();
 const tick = async (n = 3) => { for (let i = 0; i < n; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); } };
 await page.goto(BASE + "/new"); await tick(4);
-await page.getByRole("button", { name: "Bike", exact: true }).click();
+await page.getByRole("button", { name: FOOT ? "On foot" : "Bike", exact: true }).click();
 await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
 await page.getByRole("button", { name: "SHOW AREA" }).click();
 await page.getByText(/Match length/).first().waitFor({ timeout: 90000 }); await tick();
@@ -25,10 +27,10 @@ const z0 = await zoom();
 // Expected: 2000 m over the map height (844 px) at 59.4°N.
 const mpp = (z) => (40075016.686 * Math.cos((59.40731 * Math.PI) / 180)) / (512 * 2 ** z);
 const aheadM = (844 / 2) * mpp(z0);
-check("bike view: 1 km ahead of the player", Math.abs(aheadM - 1000) < 40, `zoom ${z0}, ${aheadM.toFixed(0)} m to the edge`);
+check("view: normal distance ahead of the player", Math.abs(aheadM - AHEAD) < AHEAD * 0.04, `zoom ${z0}, ${aheadM.toFixed(0)} m to the edge`);
 const box = await page.locator(".pmark").first().boundingBox();
 check("player in the middle of the screen", box && Math.abs(box.y + box.height / 2 - 422) < 30 && Math.abs(box.x + box.width / 2 - 195) < 20, box ? `y=${Math.round(box.y + box.height / 2)}` : "no marker");
-await page.screenshot({ path: `${OUT}/bike-default.png` });
+await page.screenshot({ path: `${OUT}/default.png` });
 // Zombie within 200 m: zoom in to ~300 m ahead, then back out when it is far away again.
 const placeZombie = (target) => page.evaluate((target) => {
   const live = window.__outbreak.live; const pos = live.filter.position;
@@ -43,24 +45,24 @@ const placeZombie = (target) => page.evaluate((target) => {
   for (const o of live.state.zombies.slice(1)) o.speedMps = 0;
   live.state.neutralUntilS = 9999;
 }, target);
-await placeZombie(120);
+await placeZombie(NEAR_M);
 for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(700); }
 const zClose = await zoom();
 const closeM = (844 / 2) * mpp(zClose);
-check("zombie within 200 m: zoomed in to ~300 m ahead", Math.abs(closeM - 300) < 20, `zoom ${zClose}, ${closeM.toFixed(0)} m`);
+check("zombie within 200 m: zoomed in to the close distance", Math.abs(closeM - CLOSE_AHEAD) < CLOSE_AHEAD * 0.07, `zoom ${zClose}, ${closeM.toFixed(0)} m`);
 const boxClose = await page.locator(".pmark").first().boundingBox();
 check("player still in the middle when zoomed in", boxClose && Math.abs(boxClose.y + boxClose.height / 2 - 422) < 30);
-await page.screenshot({ path: `${OUT}/bike-close.png` });
-await placeZombie(700);
+await page.screenshot({ path: `${OUT}/close.png` });
+await placeZombie(FAR_M);
 for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(700); }
-check("zombie far away again: back to the 1 km view", Math.abs((await zoom()) - z0) < 0.1, `zoom ${await zoom()}`);
+check("zombie far away again: back to the normal view", Math.abs((await zoom()) - z0) < 0.1, `zoom ${await zoom()}`);
 // Drag the map: it must stay put and then return after about 6 s.
 await page.mouse.move(200, 400); await page.mouse.down(); await page.mouse.move(200, 650, { steps: 8 }); await page.mouse.up();
 await page.mouse.wheel(0, -400).catch(() => {});
 await page.waitForTimeout(2500); await tick(2);
 const dragged = await page.locator(".pmark").first().boundingBox();
 check("map stays where the user left it", dragged && Math.abs(dragged.y + dragged.height / 2 - 422) > 60, dragged ? `y=${Math.round(dragged.y + dragged.height / 2)}` : "");
-await page.screenshot({ path: `${OUT}/bike-dragged.png` });
+await page.screenshot({ path: `${OUT}/dragged.png` });
 for (let i = 0; i < 12; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(1000); }
 const back = await page.locator(".pmark").first().boundingBox();
 check("returns to the player in the middle after ~6 s", back && Math.abs(back.y + back.height / 2 - 422) < 30);
