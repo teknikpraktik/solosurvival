@@ -4,7 +4,7 @@ import type { Difficulty } from "@/config/difficulty";
 
 export const MODE_LABEL: Record<GameMode, string> = { mission: "MISSION", escape: "A TO B", survival: "SURVIVAL" };
 export const MODE_HELP: Record<GameMode, string> = {
-  mission: "A loop from your start: reach the checkpoints in order, then return to the start.",
+  mission: "Fetch the numbered checkpoints in order, then return home. No route, choose your own way.",
   escape: "A is where you are now. Pick B on the map and get there before time runs out. Any way you like.",
   survival: "No route: survive until extraction opens, then reach it.",
 };

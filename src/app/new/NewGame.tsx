@@ -10,6 +10,7 @@ import type { Difficulty } from "@/config/difficulty";
 import type { GameMode } from "@/engine/objectives/objectives";
 import { DISTANCE_LIMITS, DURATION_LIMITS, atoBMaxStraightM, START_MAX_ACCURACY_M, clampParams, defaultParams, withActivity, type MatchParams } from "@/play/config";
 import { estimatedMinutes } from "@/play/prepare";
+import { COURSE_DETOUR_FACTOR } from "@/routes/course";
 import { haversineM } from "@/geo/geometry";
 import { errorText } from "@/gps/provider/provider";
 import { matchDurationS } from "@/play/match";
@@ -73,7 +74,7 @@ export default function NewGame() {
   const abB = proposal?.waypoints[0] ?? null;
   const routes = isAB
     ? (abA && abB ? [{ points: [abA, { lat: abB.lat, lon: abB.lon }], selected: false, faint: true }] : [])
-    : (prepared?.proposals ?? []).map((r, i) => ({ points: r.geometry, selected: i === (view?.selected ?? 0) }));
+    : []; // Mission: no route line, only the numbered checkpoints
   const markers: MapMarker[] = proposal ? proposal.waypoints.filter((w) => w.kind !== "home").map((w, i) => ({ id: w.id, label: w.kind === "destination" ? "B" : String(i + 1), lat: w.lat, lon: w.lon, tone: "todo" as const })) : [];
   if (proposal && isAB && view?.params?.pointA) markers.push({ id: "A", label: "A", lat: view.params.pointA.lat, lon: view.params.pointA.lon, tone: "done" });
 
@@ -91,13 +92,13 @@ export default function NewGame() {
           {stage !== "preparing" && prepared?.status === "alternative" && <div className="card warn">{prepared.message}</div>}
           {stage !== "preparing" && prepared && ok && p.mode === "mission" && prepared.proposals.length > 1 && (
             <div className="chips" role="group" aria-label="Proposals">
-              {prepared.proposals.map((r, i) => <button key={r.id} className="chip" aria-pressed={i === view.selected} onClick={() => session!.select(i)}>Route {i + 1}</button>)}
+              {prepared.proposals.map((r, i) => <button key={r.id} className="chip" aria-pressed={i === view.selected} onClick={() => session!.select(i)}>Course {i + 1}</button>)}
             </div>
           )}
           {stage !== "preparing" && ok && proposal && (
             <>
-              <div className="stat"><span>{isAB ? "Straight line" : "Distance"}</span><b>{fmtKm(isAB && abA && abB ? haversineM(abA, abB) : proposal.lengthM)}</b></div>
-              <div className="stat"><span>Estimated time</span><b>about {estimatedMinutes(proposal.lengthM, p)} min</b></div>
+              <div className="stat"><span>{isAB ? "Straight line" : "Distance (straight lines)"}</span><b>{fmtKm(isAB && abA && abB ? haversineM(abA, abB) : proposal.lengthM)}</b></div>
+              <div className="stat"><span>Estimated time</span><b>about {estimatedMinutes(proposal.lengthM * (p.mode === "mission" ? COURSE_DETOUR_FACTOR : 1), p)} min</b></div>
               <div className="stat"><span>Time limit</span><b>{fmtTime(matchDurationS(p, proposal))}</b></div>
               <div className="stat"><span>Goal</span><b>{p.mode === "escape" ? "Point B – any route" : `${proposal.waypoints.filter((w) => w.kind === "checkpoint").length} checkpoints + home`}</b></div>
               {proposal.quality.flags.length > 0 && <div className="muted">{proposal.quality.flags.join(" · ")}</div>}
@@ -116,9 +117,9 @@ export default function NewGame() {
             </div>
           )}
           {view.messages.map((m) => <div key={m} className="card warn">{m}</div>)}
-          <div className="muted">{isAB ? "Any route you like counts. The line is only a hint. Never cross a road or railway just because the game suggests it." : "The route is guidance, not a requirement. Never cross a road or railway just because the game suggests it."}</div>
+          <div className="muted">{isAB ? "Any route you like counts. The line is only a hint. Never cross a road or railway just because the game suggests it." : "Fetch the numbered checkpoints in order, then return home. Choose your own way. Never cross a road or railway just because the game suggests it."}</div>
           <div className="row">
-            {!isAB && <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "REFRESH" : "NEW ROUTE"}</button>}
+            {!isAB && <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "REFRESH" : "NEW COURSE"}</button>}
             <button className="btn" disabled={busy} onClick={() => session!.backToConfig()}>CHANGE</button>
           </div>
           <button
@@ -148,9 +149,8 @@ export default function NewGame() {
         </div>
       ) : p.mode === "mission" ? (
         <div className="field">
-          <label htmlFor="dist">Distance (loop): <b>{fmtKm(p.targetLengthM)}</b></label>
+          <label htmlFor="dist">Distance (straight lines between checkpoints): <b>{fmtKm(p.targetLengthM)}</b></label>
           <input id="dist" type="range" min={limit.min} max={limit.max} step={limit.step} value={p.targetLengthM} onChange={(e) => set({ targetLengthM: Number(e.target.value) })} />
-          <span className="muted">The time limit is calculated from the route at a calm pace. No bonus for being fast.</span>
         </div>
       ) : (
         <div className="field">
@@ -166,9 +166,6 @@ export default function NewGame() {
               onPick={(pt) => set({ pointB: pt })}
             />
           </div>
-          <span className="muted">
-            A is where you are now. Tap the map to set B, where you want to go. B should be near a trail or road. Any route between A and B counts; the straight line is only a hint (at most {Math.round(atoBMaxStraightM(p.activity) / 1000)} km apart).
-          </span>
         </div>
       )}
       <label className="muted" style={{ display: "flex", gap: 10, alignItems: "center", minHeight: 44 }}>
@@ -176,7 +173,7 @@ export default function NewGame() {
         Sound and vibration for events (no vibration on iPhone)
       </label>
       <button className="btn primary big" disabled={!canPrepare} onClick={() => run(async () => { unlockAudio(); await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) })); })}>
-        {p.mode === "survival" ? "SHOW AREA" : isAB && !p.pointB ? "PICK B ON THE MAP" : "SHOW ROUTE"}
+        {p.mode === "survival" ? "SHOW AREA" : isAB && !p.pointB ? "PICK B ON THE MAP" : isAB ? "SHOW ROUTE" : "SHOW COURSE"}
       </button>
       {!ctx && <div className="muted">Loading…</div>}
     </main>

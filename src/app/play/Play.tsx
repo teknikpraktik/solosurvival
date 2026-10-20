@@ -84,7 +84,7 @@ export default function Play() {
       tone: i < m.objectives!.index ? "done" : i === m.objectives!.index ? "next" : "todo",
     }));
   }, [m?.proposal, m?.objectives?.index]);
-  // A TO B: any route counts, so only a faint straight line from A to B is drawn.
+  // A TO B: any route counts, so only a faint straight line from A to B is drawn. Mission: no line at all.
   const route = useMemo(() => {
     const pr = m?.proposal;
     if (!pr) return [];
@@ -92,7 +92,7 @@ export default function Play() {
       const b = pr.waypoints[0];
       return [{ points: [pr.geometry[0], { lat: b.lat, lon: b.lon }], selected: false, faint: true }];
     }
-    return [{ points: pr.geometry, selected: true }];
+    return []; // Mission: no route is drawn, only the checkpoints (markers)
   }, [m?.proposal, m?.mode]);
   const zombies = useMemo(() => (m?.zombiesNear ?? []).map((z) => ({ id: z.id, edgeId: z.edgeId, distM: z.distM, speedMps: z.speedMps, chasing: z.state === "chase" || z.state === "intercept", sprinting: z.sprinting })), [m?.zombiesNear]);
   useEffect(() => { if (m && !m.paused) setPauseDismissed(false); }, [m?.paused]); // eslint-disable-line react-hooks/exhaustive-deps

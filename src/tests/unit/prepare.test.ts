@@ -6,6 +6,7 @@ import { prepareMatch } from "@/play/prepare";
 import { DISTANCE_LIMITS, clampParams, dataRadiusM, defaultParams, withActivity, type MatchParams } from "@/play/config";
 import { haversineM, type LatLon } from "@/geo/geometry";
 import type { Activity } from "@/config/activities";
+import { analyzeNetwork } from "@/routes/analysis";
 
 const root = path.join(import.meta.dirname, "..", "..", "..", "public", "data", "v1", "varmland");
 const fsFetch: Fetcher = async (url) => {
@@ -88,37 +89,38 @@ describe("matchinställningar", () => {
   });
 });
 
-describe("Mission: ett checkpoint per ca 500 m", () => {
-  it("checkpoints jämnt längs slingan i ordning, hem sist", async () => {
-    for (const len of [3000, 5000]) {
-      const r = await prepareMatch(store(), I2, { ...params({ mode: "mission", targetLengthM: len }), seed: 4 });
+describe("Mission: bara checkpoints, ingen rutt, avstånd fågelvägen", () => {
+  const cases: [string, LatLon, Activity, number][] = [
+    ["I2", I2, "walk", 2000], ["I2", I2, "walk", 3000], ["I2", I2, "walk", 6000], ["I2", I2, "mtb", 5000], ["I2", I2, "mtb", 10000], ["I2", I2, "mtb", 20000],
+    ["SKUT", SKUTBERGET, "walk", 2000], ["SKUT", SKUTBERGET, "walk", 5000], ["SKUT", SKUTBERGET, "mtb", 10000],
+  ];
+  for (const [name, A, act, len] of cases) {
+    it(`${name} ${act} ${len} m: kurs genereras alltid; checkpoints i huvudnätet, hem sist, summa av fågelvägen ≈ önskad`, async () => {
+      const r = await prepareMatch(store(), A, { ...params({ mode: "mission", targetLengthM: len }), activity: act, seed: 4 });
       expect(["ok", "alternative"]).toContain(r.status);
+      expect(r.proposals.length).toBeGreaterThanOrEqual(1);
+      const an = analyzeNetwork(r.graph!);
       for (const pr of r.proposals) {
         const cps = pr.waypoints.filter((w) => w.kind === "checkpoint");
         expect(pr.waypoints.at(-1)!.kind).toBe("home");
-        const expected = Math.floor((pr.lengthM - 250) / 500);
-        expect(cps.length).toBe(expected);
-        expect(cps.length).toBeGreaterThanOrEqual(Math.floor(len / 500) - 2);
-        // Ordnade längs geometrin: varje checkpoint ligger på rutten (≤ 5 m från en segmentpunkt), i körordning (matchas framåt).
-        const kx = Math.cos((pr.geometry[0].lat * Math.PI) / 180) * 111320, ky = 110540;
-        let along = 0, prevAlong = 0;
-        const segs = pr.geometry.slice(1).map((q, i) => { const p0 = pr.geometry[i]; const len = Math.hypot((q.lon - p0.lon) * kx, (q.lat - p0.lat) * ky); const start = along; along += len; return { p0, q, len, start }; });
-        for (const c of cps) {
-          let best = { d: Infinity, at: 0 };
-          for (const sg of segs) {
-            if (sg.start + sg.len < prevAlong - 1) continue;
-            const vx = (sg.q.lon - sg.p0.lon) * kx, vy = (sg.q.lat - sg.p0.lat) * ky;
-            const wx = (c.lon - sg.p0.lon) * kx, wy = (c.lat - sg.p0.lat) * ky;
-            const t = sg.len > 0 ? Math.max(0, Math.min(1, (vx * wx + vy * wy) / (sg.len * sg.len))) : 0;
-            const d = Math.hypot(wx - t * vx, wy - t * vy);
-            const at = sg.start + t * sg.len;
-            if (at >= prevAlong - 1 && d < best.d) best = { d, at };
-          }
-          expect(best.d).toBeLessThan(5);
-          prevAlong = best.at;
+        expect(pr.edgeIds).toEqual([]); // ingen rutt
+        expect(pr.path).toEqual([]);
+        const spacing = act === "mtb" ? 1000 : 500;
+        expect(cps.length).toBeGreaterThanOrEqual(Math.max(2, Math.round(len / spacing) - 2));
+        expect(cps.length).toBeLessThanOrEqual(Math.round(len / spacing) + 1);
+        // lengthM = sträckan start → checkpoints i ordning → start, fågelvägen
+        const pts = [A, ...cps, A];
+        let sum = 0;
+        for (let i = 1; i < pts.length; i++) sum += haversineM(pts[i - 1], pts[i]);
+        expect(Math.abs(sum - pr.lengthM)).toBeLessThan(1);
+        if (r.status === "ok") expect(Math.abs(pr.deviation)).toBeLessThanOrEqual(0.1);
+        for (const w of cps) {
+          expect(r.graph!.nodes.has(w.nodeId)).toBe(true);
+          expect(an.deadEndDepthM.get(w.nodeId) ?? 0).toBe(0);
+          expect(haversineM(w, A)).toBeGreaterThanOrEqual(150);
         }
         expect(new Set(cps.map((c) => c.id)).size).toBe(cps.length);
       }
-    }
-  });
+    });
+  }
 });

@@ -55,8 +55,8 @@ export function clampParams(p: MatchParams): MatchParams {
   };
 }
 
-/** Längsta fågelvägsavstånd A–B (m) för A TO B, per aktivitet (håller datamängden rimlig). */
-export const atoBMaxStraightM = (a: Activity): number => Math.round(DISTANCE_LIMITS[a].max * 0.7);
+/** Longest straight-line distance A–B (m) for A TO B: 20 km for every activity. */
+export const atoBMaxStraightM = (_a: Activity): number => 20000;
 export const A_TO_B_MIN_STRAIGHT_M = 300;
 
 /** Mittpunkt för kartdata: mitt mellan A och B i A TO B, annars start. */
