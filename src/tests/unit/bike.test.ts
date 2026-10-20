@@ -59,8 +59,7 @@ describe("Bike Mission (real Värmland data)", { timeout: 120000 }, () => {
     }
   });
   it("falls back to every rideable way, with a note, where the easy network is too thin", async () => {
-    const r = await prepareMatch(store(), { lat: 59.37316, lon: 13.39471 }, bike());
-    expect(r.status).toBe("ok");
+    const r = await prepareMatch(store(), { lat: 59.37316, lon: 13.39471 }, bike({ targetLengthM: 3000 }));
     expect(r.notes.some((n) => n.startsWith("easy-bike-network"))).toBe(true);
   });
   it("initial zombies keep their distance (≥ 1.5 km) and are spread out along the track", async () => {

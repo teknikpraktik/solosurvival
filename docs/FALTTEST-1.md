@@ -137,3 +137,9 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 ## Appikon
 - Ny logotyp: grön zombieskalle med glödande röda ögon i expanderande röda ringar på mörk botten (`scripts/make-icons.py`, Pillow; ersätter `make-icons.mjs`). Storlekar: 192, 512, maskable 512 (innehåll inom 80 % säkerhetszon) och apple-touch 180.
 - Ikon-URL:erna har `?v=2` (manifest och layout) så att service workern och webbläsaren hämtar de nya filerna. Redan installerade PWA:er byter ikon först när hemskärmsgenvägen läggs till igen (iOS) eller manifestet uppdateras av Android (kan ta ett dygn); snabbast är att ta bort genvägen och lägga till appen på nytt.
+
+## Mission-rutter: slingor utan återvändsgränder och utan upprepade gator
+- `generateMission` (src/routes/generate.ts) accepterar bara kandidater där `isCleanLoop` gäller: ingen kant används två gånger (ingen vändning), varje gata (OSM-way, `streetOf`) går bara i ett sammanhängande stycke, och alla checkpoints ligger i huvudnätet (aldrig i en återvändsgren). Använda kanter förbjuds (straff 1e5) när nästa ben planeras; övriga kanter av samma gata får lindrigt straff. Ut-och-tillbaka-varianten är borttagen.
+- Undantag: startkanten får användas två gånger i samma riktning (halvorna på var sida om startpunkten), och en återvändsgren som startpunkten själv ligger i (oundvikligt).
+- Finns ingen sådan slinga (glest eller trädformat nät, t.ex. Skutberget 5 km+) ges ingen rutt och NEW GAME säger det, i stället för en rutt med återvändsgränder. Mätvärde `reuseShare` räknas nu på den faktiskt gångna kantföljden (förut räknades kanten vid varje checkpoint-skarv dubbelt).
+- Gäller Mission (båda aktiviteterna); A TO B väljer spelaren själv väg. Tester: `src/tests/unit/clean-loops.test.ts`.

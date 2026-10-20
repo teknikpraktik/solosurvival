@@ -24,6 +24,59 @@ interface Ctx {
   junction: (n: string) => boolean;
 }
 
+/** Street key of an edge: the OSM way it belongs to (edge ids look like `wayId:idx` or `wayId.part:idx`). */
+export const streetOf = (edgeId: string): string => edgeId.split(":")[0].split(".")[0];
+
+/** Cost multiplier that effectively forbids an already used edge when planning the next leg. */
+const BAN_PENALTY = 1e5;
+/** Mild extra cost for other edges of an already used street, so the route prefers to leave a street for good. */
+const SAME_STREET_PENALTY = 3;
+
+/**
+ * Dead-end spurs the start itself lies in: the player has to walk them in and out whatever the route is, so reuse there cannot be avoided.
+ * Empty when the start is on the main network.
+ */
+function startSpur(c: Ctx): Set<string> {
+  const out = new Set<string>();
+  if (!c.an.deadEndEdges.has(c.start.edgeId)) return out;
+  const queue = [c.start.edgeId];
+  out.add(c.start.edgeId);
+  while (queue.length) {
+    const e = c.g.edges.get(queue.pop()!)!;
+    for (const n of [e.from, e.to]) for (const a of c.g.adj.get(n) ?? []) if (c.an.deadEndEdges.has(a.edgeId) && !out.has(a.edgeId)) { out.add(a.edgeId); queue.push(a.edgeId); }
+  }
+  return out;
+}
+
+/**
+ * A loop route is valid when it has no dead ends (no turning back) and never uses the same street twice:
+ * every edge is walked at most once, and every street (OSM way) is walked in one continuous stretch only.
+ * Exceptions: the start edge may be used twice in the same direction (the two halves either side of the start point),
+ * and a dead-end spur the start lies in (unavoidable).
+ */
+export function isCleanLoop(c: { g: TrailGraph; start: EdgePos; an: NetworkAnalysis }, path: { edgeId: string; dir: 1 | -1 }[], spur: Set<string>): boolean {
+  if (path.length === 0) return false;
+  const seen = new Map<string, 1 | -1>();
+  for (let i = 0; i < path.length; i++) {
+    const { edgeId, dir } = path[i];
+    if (spur.has(edgeId)) continue;
+    const prev = seen.get(edgeId);
+    if (prev !== undefined) {
+      const wrap = edgeId === c.start.edgeId && prev === dir && i === path.length - 1; // the start edge: first and last piece, same direction
+      if (!wrap) return false;
+    }
+    seen.set(edgeId, dir);
+  }
+  // Street runs (the path is a closed loop: the last run continues into the first).
+  const keys = path.filter((x) => !spur.has(x.edgeId)).map((x) => streetOf(x.edgeId));
+  const runs: string[] = [];
+  for (const k of keys) if (runs[runs.length - 1] !== k) runs.push(k);
+  if (runs.length > 1 && runs[0] === runs[runs.length - 1]) runs.pop();
+  const used = new Set<string>();
+  for (const k of runs) { if (used.has(k)) return false; used.add(k); }
+  return true;
+}
+
 const lengthOf = (g: TrailGraph, ids: string[]) => ids.reduce((s, id) => s + g.edges.get(id)!.lengthM, 0);
 
 /** Nod får bli målpunkt: inte virtuell, inte spets på återvändsgren och inte vid farlig korsning. */
@@ -38,7 +91,9 @@ function eligibleNode(c: Ctx, n: string, maxDepth: number): boolean {
 
 function metricsFor(c: Ctx, legs: Leg[], wps: Waypoint[], isPointToPoint: boolean): RouteMetrics {
   const { g } = c;
-  const all = legs.flatMap((l) => l.edgeIds);
+  // Edge sequence as walked (legs share their joining edge; the sequence counts it once).
+  const path = legs.flatMap((l, i) => legSteps(g, l, i === 0));
+  const all = path.map((x) => x.edgeId);
   const seen = new Set<string>();
   let reuse = 0, deadEnd = 0, total = 0, decisions = 0, hazards = 0;
   for (const id of all) {
@@ -47,6 +102,10 @@ function metricsFor(c: Ctx, legs: Leg[], wps: Waypoint[], isPointToPoint: boolea
     if (seen.has(id)) reuse += e.lengthM; else seen.add(id);
     if (c.an.deadEndEdges.has(id)) deadEnd += e.lengthM;
     for (const n of [e.from, e.to]) { if (c.hazard.has(n)) hazards += 0.5; }
+  }
+  // A loop that leaves along one half of the start edge and comes home along the other half does not repeat anything.
+  if (path.length > 1 && path[0].edgeId === c.start.edgeId && path.at(-1)!.edgeId === c.start.edgeId && path[0].dir === path.at(-1)!.dir && path.filter((x) => x.edgeId === c.start.edgeId).length === 2) {
+    reuse = Math.max(0, reuse - g.edges.get(c.start.edgeId)!.lengthM);
   }
   const nodes = new Set<string>();
   for (const id of seen) { const e = g.edges.get(id)!; nodes.add(e.from); nodes.add(e.to); }
@@ -209,7 +268,11 @@ function generateMission(c: Ctx, notes: string[]): { pool: RouteProposal[]; cand
   let evaluated = 0;
   const hi = L * 0.5;
   const lo = Math.min(150, L * 0.1);
-  for (const maxDepth of [PREFERRED_MAX_DEPTH_M, HARD_MAX_DEPTH_M]) {
+  const spur = startSpur(c);
+  const streets = new Map<string, string[]>();
+  for (const e of c.g.edges.values()) { const k = streetOf(e.id); (streets.get(k) ?? streets.set(k, []).get(k)!).push(e.id); }
+  // Checkpoints must lie on the main network: a checkpoint inside a dead end would force the player to turn back.
+  for (const maxDepth of [0]) {
     const elig = [...c.dist].filter(([n, d]) => d >= lo && d <= hi && eligibleNode(c, n, maxDepth) && haversineM(nodeLatLon(c.g, n), c.startLL) >= MIN_CHECKPOINT_FROM_START_M).map(([n]) => n);
     if (elig.length < 3) continue;
     for (const k of ks) {
@@ -223,7 +286,6 @@ function generateMission(c: Ctx, notes: string[]): { pool: RouteProposal[]; cand
         // Ordna runt startpunkten (moturs eller medurs) för att få slinga i stället för sicksack.
         const dir = rand(c.rng) < 0.5 ? 1 : -1;
         picked.sort((a, b) => dir * (bearingDeg(c.startLL, nodeLatLon(c.g, a)) - bearingDeg(c.startLL, nodeLatLon(c.g, b))));
-        const outAndBack = k === 1 && rand(c.rng) < 0.25;
         const pen = new Map<string, number>();
         const legs: Leg[] = [];
         let from = c.start, ok = true;
@@ -232,13 +294,20 @@ function generateMission(c: Ctx, notes: string[]): { pool: RouteProposal[]; cand
           const leg = legBetween(c.g, from, stops[i], pen);
           if (!leg) { ok = false; break; }
           legs.push(leg);
-          if (!outAndBack) addPenalty(pen, leg.edgeIds, i === stops.length - 2 ? 8 : 4);
+          // Used edges are (all but) forbidden for the next legs; the start edge stays open so the loop can come home on its other half.
+          for (const id of leg.edgeIds) {
+            if (spur.has(id)) continue;
+            if (id !== c.start.edgeId) pen.set(id, BAN_PENALTY);
+            for (const other of streets.get(streetOf(id)) ?? []) if (!pen.has(other)) pen.set(other, SAME_STREET_PENALTY);
+          }
           from = stops[i];
         }
         evaluated++;
         if (!ok) continue;
         const total = legs.reduce((a, l) => a + l.lengthM, 0);
         if (Math.abs(total - L) / L > 0.35) continue;
+        const path = legs.flatMap((l, i) => legSteps(c.g, l, i === 0));
+        if (!isCleanLoop(c, path, spur)) continue;
         const wps = [...picked.map((n, i) => mkWaypoint(c, `C${i + 1}`, "checkpoint", n)), { ...mkWaypoint(c, "A", "home", c.g.edges.get(c.start.edgeId)!.from), lat: c.startLL.lat, lon: c.startLL.lon }];
         const p = finish(c, legs, wps, "mission", pool.length);
         if (p) pool.push(p);
@@ -246,7 +315,7 @@ function generateMission(c: Ctx, notes: string[]): { pool: RouteProposal[]; cand
     }
     if (pool.some((p) => p.withinTolerance && p.quality.score >= 70)) break;
   }
-  if (!pool.some((p) => p.withinTolerance)) notes.push(`No loop within ±${((c.req.tolerance ?? 0.1) * 100).toFixed(0)} % found; showing closest alternatives.`);
+  if (!pool.some((p) => p.withinTolerance)) notes.push(pool.length ? `No loop within ±${((c.req.tolerance ?? 0.1) * 100).toFixed(0)} % found; showing closest alternatives.` : "No loop without dead ends or repeated streets found.");
   return { pool, candidates: pool.length, evaluated };
 }
 

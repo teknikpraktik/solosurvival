@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { TileStore, type Fetcher } from "@/data/store";
 import { prepareMatch } from "@/play/prepare";
 import { DISTANCE_LIMITS, clampParams, dataRadiusM, defaultParams, withActivity, type MatchParams } from "@/play/config";
-import type { LatLon } from "@/geo/geometry";
+import { haversineM, type LatLon } from "@/geo/geometry";
 import type { Activity } from "@/config/activities";
 
 const root = path.join(import.meta.dirname, "..", "..", "..", "public", "data", "v1", "varmland");
@@ -99,9 +99,24 @@ describe("Mission: ett checkpoint per ca 500 m", () => {
         const expected = Math.floor((pr.lengthM - 250) / 500);
         expect(cps.length).toBe(expected);
         expect(cps.length).toBeGreaterThanOrEqual(Math.floor(len / 500) - 2);
-        // Ordnade längs geometrin: avståndet längs rutten växer.
-        const along = cps.map((c) => { let best = 0, bd = Infinity; pr.geometry.forEach((p, i) => { const d = Math.hypot(p.lat - c.lat, p.lon - c.lon); if (d < bd) { bd = d; best = i; } }); return best; });
-        for (let i = 1; i < along.length; i++) expect(along[i]).toBeGreaterThanOrEqual(along[i - 1]);
+        // Ordnade längs geometrin: varje checkpoint ligger på rutten (≤ 5 m från en segmentpunkt), i körordning (matchas framåt).
+        const kx = Math.cos((pr.geometry[0].lat * Math.PI) / 180) * 111320, ky = 110540;
+        let along = 0, prevAlong = 0;
+        const segs = pr.geometry.slice(1).map((q, i) => { const p0 = pr.geometry[i]; const len = Math.hypot((q.lon - p0.lon) * kx, (q.lat - p0.lat) * ky); const start = along; along += len; return { p0, q, len, start }; });
+        for (const c of cps) {
+          let best = { d: Infinity, at: 0 };
+          for (const sg of segs) {
+            if (sg.start + sg.len < prevAlong - 1) continue;
+            const vx = (sg.q.lon - sg.p0.lon) * kx, vy = (sg.q.lat - sg.p0.lat) * ky;
+            const wx = (c.lon - sg.p0.lon) * kx, wy = (c.lat - sg.p0.lat) * ky;
+            const t = sg.len > 0 ? Math.max(0, Math.min(1, (vx * wx + vy * wy) / (sg.len * sg.len))) : 0;
+            const d = Math.hypot(wx - t * vx, wy - t * vy);
+            const at = sg.start + t * sg.len;
+            if (at >= prevAlong - 1 && d < best.d) best = { d, at };
+          }
+          expect(best.d).toBeLessThan(5);
+          prevAlong = best.at;
+        }
         expect(new Set(cps.map((c) => c.id)).size).toBe(cps.length);
       }
     }
