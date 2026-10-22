@@ -93,7 +93,8 @@ export class LiveGame {
    */
   static restore(g: TrailGraph, state: GameState, params: { activity: GameState["config"]["activity"]; mode: GameState["config"]["mode"]; difficulty: GameState["config"]["difficulty"] }, proposal: unknown, counters: FixCounters, lastFix: LastFix | null, fixSeq: number): LiveGame {
     void proposal;
-    const rules = resolveModeRules(params.mode ?? "survival", params.activity, params.difficulty, state.config.durationSeconds);
+    const dest = state.objectives?.targets.find((t) => t.kind === "destination");
+    const rules = resolveModeRules(params.mode ?? "survival", params.activity, params.difficulty, state.config.durationSeconds, undefined, dest && state.startPos ? haversineM(state.startPos, dest) : undefined);
     const live = new LiveGame(g, state, rules);
     live.counters = counters;
     live.lastFix = lastFix;

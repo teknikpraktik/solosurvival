@@ -1,3 +1,4 @@
+import { haversineM } from "@/geo/geometry";
 import { COURSE_DETOUR_FACTOR } from "@/routes/course";
 import { RULES_VERSION } from "@/config/game-rules";
 import { resolveModeRules } from "@/config/modes";
@@ -31,7 +32,8 @@ export function matchDurationS(p: MatchParams, proposal: RouteProposal | null): 
 export function createLiveMatch(s: MatchSetup): LiveGame {
   const { params: p } = s;
   const durationS = matchDurationS(p, s.proposal);
-  const rules = resolveModeRules(p.mode, p.activity, p.difficulty, durationS);
+  const dest = p.mode === "escape" ? s.proposal?.waypoints.find((w) => w.kind === "destination") : undefined;
+  const rules = resolveModeRules(p.mode, p.activity, p.difficulty, durationS, undefined, dest ? haversineM(s.start, dest) : undefined);
   const { state } = createGame({
     g: s.graph,
     config: {

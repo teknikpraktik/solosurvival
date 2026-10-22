@@ -161,3 +161,9 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 
 ## iPhone: blurrad statusrad, förhandsvisning
 - HUD-raden (`.hudbar`, används i förhandsvisning och spelläge) ligger nu 28 px under statusfältets säkra zon (`env(safe-area-inset-top)`): inga knappar eller info i översta, blurrade raden. BACK-knappen är borttagen; ✕ (större, röd, 52 px) går tillbaka till inställningarna (`backToConfig`).
+
+## A TO B: fler zombies, spridda och synliga längs hela vägen
+- Orsak till "inga/få zombies" på långa A TO B: populationen styrdes av tidsgränsen (som för A TO B är mycket lång, upp till flera timmar) och tillväxten blev därför försvinnande liten; startantalet var bara 6 (fot) / 10 (cykel).
+- Nu: antalet följer fågelvägen A–B (`AB_ZOMBIES_PER_KM`: 2,5/km till fots, 1,5/km på cykel, gånger svårighet 0,7 / 1 / 2; minst grundantalet), max 1,4 × startantalet. 5 km till fots på Normal: 13 zombies (Easy 9, Hard 25).
+- Startzombierna sprids jämnt längs hela sträckan (zombie i får i:te delen av vägen från startavståndet till B, inom korridoren). Alla zombies i A TO B visas på kartan (annars gäller 1 km-gränsen). Testat i `atob.test.ts` mot riktiga data.
+- "PREVIOUS GAMES" visas inte längre i rutan efter ett avbrutet parti (ABORTED).

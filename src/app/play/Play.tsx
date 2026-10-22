@@ -229,7 +229,7 @@ export default function Play() {
           actions={
             <>
               <Link className="btn primary" href="/" onClick={() => session.reset()}>HOME</Link>
-              <Link className="btn" href="/history" onClick={() => session.reset()}>PREVIOUS GAMES</Link>
+              {m.result !== "aborted" && <Link className="btn" href="/history" onClick={() => session.reset()}>PREVIOUS GAMES</Link>}
             </>
           }
         >
