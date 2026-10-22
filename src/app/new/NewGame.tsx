@@ -40,6 +40,8 @@ export default function NewGame() {
   const [p, setP] = useState<MatchParams>(() => defaultParams("walk"));
   const [cues, setCues] = useState(true);
   const [busy, setBusy] = useState(false);
+  // Pressing START: keep showing the preview until /play has taken over (otherwise the settings form flashes while the stage changes).
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => { setCues(cuesEnabled()); }, []);
   useEffect(() => {
@@ -78,7 +80,7 @@ export default function NewGame() {
   const markers: MapMarker[] = proposal ? proposal.waypoints.filter((w) => w.kind !== "home").map((w, i) => ({ id: w.id, label: w.kind === "destination" ? "B" : String(i + 1), lat: w.lat, lon: w.lon, tone: "todo" as const })) : [];
   if (proposal && isAB && view?.params?.pointA) markers.push({ id: "A", label: "A", lat: view.params.pointA.lat, lon: view.params.pointA.lon, tone: "done" });
 
-  if (preview && view) {
+  if ((preview || starting) && view) {
     const status = prepared?.status;
     const ok = status === "ok" || status === "alternative";
     return (
@@ -124,8 +126,8 @@ export default function NewGame() {
           </div>
           <button
             className="btn primary big"
-            disabled={!ok || stage === "preparing" || view.movedFromPreview || !session!.currentStart()}
-            onClick={() => run(async () => { unlockAudio(); if (await session!.startMatch()) router.push("/play"); })}
+            disabled={!ok || stage === "preparing" || view.movedFromPreview || !session!.currentStart() || starting}
+            onClick={() => run(async () => { unlockAudio(); setStarting(true); if (await session!.startMatch()) router.push("/play"); else setStarting(false); })}
           >
             START
           </button>
