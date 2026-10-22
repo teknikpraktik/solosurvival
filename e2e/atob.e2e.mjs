@@ -29,7 +29,7 @@ for (const [dx, dy] of [[90, -90], [-100, -80], [110, 60], [-60, 100], [0, -120]
   await page.screenshot({ path: `${OUT}/pick.png` });
   await page.getByRole("button", { name: "SHOW ROUTE" }).click();
   try { await page.getByText(/Distance|Straight line/).first().waitFor({ timeout: 40000 }); ok = true; break; }
-  catch { info = await page.locator(".sheet .card").first().innerText().catch(() => ""); await page.getByRole("button", { name: "CHANGE" }).click().catch(() => {}); await page.waitForTimeout(500); }
+  catch { info = await page.locator(".sheet .card").first().innerText().catch(() => ""); await page.getByRole("button", { name: "BACK" }).click().catch(() => {}); await page.waitForTimeout(500); }
 }
 check("B vald på kartan ger en rutt A→B", ok, info);
 if (ok) {
