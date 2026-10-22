@@ -152,3 +152,6 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 - Generator `src/routes/course.ts`: checkpoints är nätnoder i huvudnätet (aldrig i återvändsgrenar, aldrig vid farliga korsningar, ≥ 150 m från start) på en ring genom start som skalas tills summan stämmer; tre alternativa kurser. Ett "kurs" kan alltid skapas där startpunkten ligger på nätet (provkörning Karlstad/Skutberget, 2–20 km, millisekunder). Bike: checkpoints på lättcyklade vägar när det går, annars alla cyklingsbara (varning i NEW GAME).
 - Gamla rutt-generatorn (`generateRoutes`, `isCleanLoop`) finns kvar för Simulator/dev-vyn.
 - A TO B: upp till 20 km fågelväg (alla aktiviteter). NEW GAME: mer luft överst (iPhone-statusfältet), ny bakgrundsbild (Zombie gals, istolethetv, CC BY 2.0), borttagna förklarande texter.
+
+## Appikon v2 (renderad, inte vektorgrafik)
+- Ikonen är ett renderat raster-emblem: gradat närbildsfoto av zombiemasken (Sharpshotefx, CC BY 4.0) i en belyst, fasad röd ring med glöd, kornig film-look. Byggs av `scripts/make-icons.py <foto>` (Pillow + numpy; kräver källfotot, som inte ligger i repot). Storlekar: 192, 512, maskable 512 (82 % av ytan inom säkerhetszonen) och apple-touch 180. Ikon-URL:erna har `?v=3`; iOS kräver att genvägen läggs till igen för att byta ikon.

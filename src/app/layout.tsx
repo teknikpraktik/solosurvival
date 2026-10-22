@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: "GPS-based zombie survival game along real trails.",
   applicationName: "OUTBREAK – Solo Survival",
   manifest: "/manifest.webmanifest",
-  icons: { icon: [{ url: "/icons/icon-192.png?v=2", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png?v=2" },
+  icons: { icon: [{ url: "/icons/icon-192.png?v=3", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png?v=3" },
   appleWebApp: { capable: true, title: "OUTBREAK", statusBarStyle: "black-translucent" },
   formatDetection: { telephone: false },
 };

@@ -1,61 +1,75 @@
 #!/usr/bin/env python3
-"""Draws the OUTBREAK app icon (zombie skull with glowing red eyes inside spreading rings) and writes the PNG sizes in public/icons.
-Run: python3 -I scripts/make-icons.py   (needs Pillow and numpy)"""
+"""Builds the OUTBREAK app icon as a rendered (raster) emblem: a graded close-up photograph of a zombie face inside a lit,
+bevelled red ring with rim glow. Source photo: "Zombie Halloween Mask" by Sharpshotefx (CC BY 4.0, Wikimedia Commons).
+Run: python3 -I scripts/make-icons.py <path-to-mask-photo.jpg>   (needs Pillow and numpy). Writes the PNG sizes in public/icons."""
+import sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-S = 2048  # master size
-BG = (11, 15, 20)
-RED = (225, 40, 40)
-BONE = (190, 214, 150)       # sickly green bone
-SHADE = (112, 140, 90)
-DARK = (8, 10, 12)
+S = 2048
+SRC = sys.argv[1]
+yy, xx = np.mgrid[0:S, 0:S].astype(np.float32)
+cx = cy = S / 2
+rr = np.hypot(xx - cx, yy - cy)
+ang = np.arctan2(yy - cy, xx - cx)
 
 
-def master(k: float) -> Image.Image:
-    """k = skull size factor (maskable uses a smaller one to stay inside the central 80 % safe zone)."""
-    base = Image.new("RGB", (S, S), BG)
-    glow = Image.new("RGB", (S, S), (0, 0, 0))
-    ImageDraw.Draw(glow).ellipse((S * 0.18, S * 0.18, S * 0.82, S * 0.82), fill=(120, 14, 14))
-    glow = glow.filter(ImageFilter.GaussianBlur(S * 0.11))
-    im = Image.fromarray(np.clip(np.asarray(base).astype(int) + np.asarray(glow).astype(int), 0, 255).astype("uint8"))
-    d = ImageDraw.Draw(im)
-    c = S / 2
-    # Spreading rings: the outbreak
-    for r, w, col in ((0.455, 0.020, RED), (0.385, 0.012, (140, 28, 28))):
-        rr = r * S * k
-        d.ellipse((c - rr, c - rr, c + rr, c + rr), outline=col, width=max(2, int(w * S)))
-    # Skull
-    u = S * k
-    hw, hh = 0.285 * u, 0.26 * u             # cranium half-width / half-height
-    cy = c - 0.045 * u
-    d.ellipse((c - hw, cy - hh, c + hw, cy + hh), fill=BONE)
-    jw = hw * 0.60
-    jt, jb = cy + hh * 0.55, cy + hh * 1.30
-    d.rounded_rectangle((c - jw, jt, c + jw, jb), radius=int(jw * 0.30), fill=BONE)
-    for i in (-1, 0, 1):                       # teeth gaps, short so the jaw stays one solid shape
-        x = c + i * jw * 0.5
-        d.rectangle((x - jw * 0.05, jb - (jb - jt) * 0.55, x + jw * 0.05, jb + 2), fill=DARK)
-    # Eye sockets with glowing red pupils (same look as the zombie markers in the game)
-    er = hw * 0.31
-    for sx in (-1, 1):
-        ex, ey = c + sx * hw * 0.43, cy + hh * 0.08
-        d.ellipse((ex - er, ey - er * 1.12, ex + er, ey + er * 1.12), fill=DARK)
-        pr = er * 0.52
-        d.ellipse((ex - pr, ey - pr, ex + pr, ey + pr), fill=RED)
-        p2 = pr * 0.38
-        d.ellipse((ex - p2, ey - p2, ex + p2, ey + p2), fill=(255, 200, 180))
-    d.polygon([(c, cy + hh * 0.42), (c - hw * 0.09, cy + hh * 0.66), (c + hw * 0.09, cy + hh * 0.66)], fill=DARK)   # nose
-    d.line([(c + hw * 0.12, cy - hh), (c + hw * 0.03, cy - hh * 0.70), (c + hw * 0.17, cy - hh * 0.48)], fill=SHADE, width=int(S * 0.011))  # crack
-    return im
+def photo_disc(radius: float) -> np.ndarray:
+    """Face photo graded cold and contrasty, with a red rim light, vignette and film grain; RGB float 0..255 for the whole canvas."""
+    im = Image.open(SRC).convert("RGB").crop((520, 440, 1480, 1400)).resize((S, S), Image.LANCZOS).filter(ImageFilter.UnsharpMask(radius=6, percent=140, threshold=2))
+    a = np.asarray(im).astype(np.float32) / 255.0
+    g = a.mean(2, keepdims=True)
+    a = a * 0.82 + g * 0.18                                   # slightly desaturated
+    a = np.clip((a - 0.5) * 1.3 + 0.5 + 0.03, 0, 1) ** 0.92   # contrast, a little brighter
+    a[..., 0] *= 0.95; a[..., 2] *= 1.04                       # cold cast
+    r = np.clip(rr / radius, 0, 1.2)
+    vign = 1 - 0.62 * np.clip((r - 0.50) / 0.50, 0, 1) ** 1.8
+    a *= vign[..., None]
+    rim = np.clip((r - 0.78) / 0.22, 0, 1) ** 2.4             # red rim light toward the edge
+    a[..., 0] += rim * 0.40; a[..., 1] += rim * 0.03; a[..., 2] += rim * 0.02
+    rng = np.random.default_rng(7)
+    a += rng.normal(0, 0.012, a.shape).astype(np.float32)
+    return np.clip(a, 0, 1) * 255
+
+
+def emblem(k: float) -> Image.Image:
+    """k scales the whole emblem (maskable uses a smaller one to stay in the safe zone)."""
+    R_photo = 0.355 * S * k
+    R_in, R_out = 0.372 * S * k, 0.452 * S * k              # ring inner/outer radius
+    bg = np.zeros((S, S, 3), np.float32) + np.array([9, 12, 16], np.float32)
+    glow = np.exp(-((rr - 0.43 * S * k) / (0.10 * S * k)) ** 2)[..., None] * np.array([150, 18, 18], np.float32)
+    bg = bg + glow * 0.65
+    out = bg
+    # photo disc
+    ph = photo_disc(R_photo)
+    m = np.clip((R_photo - rr) / 3.0 + 0.5, 0, 1)[..., None]
+    out = out * (1 - m) + ph * m
+    # metallic red ring: light from the upper left, bevel across the ring width
+    t = np.clip((rr - R_in) / (R_out - R_in), 0, 1)
+    ring_m = np.clip(np.minimum(rr - R_in, R_out - rr) / 3.0 + 0.5, 0, 1)[..., None]
+    light = np.cos(ang - np.deg2rad(-135))                     # facing the light
+    bevel = np.sin(t * np.pi)                                  # 0 at the edges, 1 in the middle
+    base = np.array([150, 20, 24], np.float32)
+    shade = (0.55 + 0.45 * light)[..., None] * (0.45 + 0.75 * bevel)[..., None]
+    spec = (np.clip(light, 0, 1) ** 6 * bevel ** 2)[..., None] * np.array([230, 150, 140], np.float32) * 0.8
+    ring = base * shade + spec
+    # fine dark groove between photo and ring, and a thin bright outer edge
+    groove = np.clip(1 - np.abs(rr - R_in) / (0.006 * S * k), 0, 1)[..., None]
+    ring = ring * (1 - 0.7 * groove)
+    edge = np.clip(1 - np.abs(rr - R_out) / (0.0035 * S * k), 0, 1)[..., None]
+    ring = ring + edge * np.array([120, 40, 40], np.float32) * (0.4 + 0.6 * np.clip(light, 0, 1)[..., None])
+    out = out * (1 - ring_m) + ring * ring_m
+    # soft drop shadow under the emblem
+    img = Image.fromarray(np.clip(out, 0, 255).astype("uint8"))
+    return img
 
 
 def save(im: Image.Image, size: int, path: str) -> None:
     im.resize((size, size), Image.LANCZOS).save(path, optimize=True)
 
 
-any_icon = master(1.0)
-maskable = master(0.80)
+any_icon = emblem(1.0)
+maskable = emblem(0.82)
 save(any_icon, 192, "public/icons/icon-192.png")
 save(any_icon, 512, "public/icons/icon-512.png")
 save(maskable, 512, "public/icons/icon-maskable-512.png")
