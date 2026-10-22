@@ -155,3 +155,6 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 
 ## Appikon v2 (renderad, inte vektorgrafik)
 - Ikonen är ett renderat raster-emblem: gradat närbildsfoto av zombiemasken (Sharpshotefx, CC BY 4.0) i en belyst, fasad röd ring med glöd, kornig film-look. Byggs av `scripts/make-icons.py <foto>` (Pillow + numpy; kräver källfotot, som inte ligger i repot). Storlekar: 192, 512, maskable 512 (82 % av ytan inom säkerhetszonen) och apple-touch 180. Ikon-URL:erna har `?v=3`; iOS kräver att genvägen läggs till igen för att byta ikon.
+
+## Appikon v3 (enkel, utan text)
+- Glansig blodröd kärna med ringar som sprider sig utåt och några droppar som kastas iväg: ett utbrott som sprider sig. Renderad raster (ljussättning, glöd, korn), ingen text, inget foto, ingen upphovsrättsbelagd källa. `scripts/make-icons.py` (Pillow + numpy) skapar 192, 512, maskable 512 (80 % storlek) och apple-touch 180. Ikon-URL:er `?v=4`.
