@@ -56,8 +56,11 @@ try {
   check("nytt förslag", true);
 
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
+  // START must lead straight to the game: the settings form (a .page with an h1) must never be rendered in between.
+  await page.evaluate(() => { window.__flash = false; new MutationObserver(() => { if (document.querySelector(".page h1")) window.__flash = true; }).observe(document.body, { childList: true, subtree: true }); });
   await page.getByRole("button", { name: "START", exact: true }).click();
   await page.waitForURL("**/play");
+  check("START går direkt till spelet (inställningssidan blinkar inte till)", !(await page.evaluate(() => window.__flash)));
   await page.waitForSelector('[data-testid="map"][data-loaded="true"]', { timeout: 20000 });
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
   await page.getByRole("dialog").getByRole("button", { name: "START" }).click();
