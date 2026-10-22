@@ -120,7 +120,7 @@ export default function NewGame() {
           <div className="muted">{isAB ? "Any route you like counts. The line is only a hint. Never cross a road or railway just because the game suggests it." : "Fetch the numbered checkpoints in order, then return home. Choose your own way. Never cross a road or railway just because the game suggests it."}</div>
           <div className="row">
             {!isAB && <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "REFRESH" : "NEW COURSE"}</button>}
-            <button className="btn" disabled={busy} onClick={() => session!.backToConfig()}>CHANGE</button>
+            <button className="btn" disabled={busy} onClick={() => session!.backToConfig()}>BACK</button>
           </div>
           <button
             className="btn primary big"
