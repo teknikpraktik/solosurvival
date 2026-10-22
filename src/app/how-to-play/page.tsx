@@ -51,7 +51,7 @@ export default function HowToPlay() {
         <li>Start page: “Crazy zombie boy in the studio” by Heath Cajandig, <a href="https://commons.wikimedia.org/wiki/File:Crazy_zombie_boy_in_the_studio.jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>.</li>
         <li>Captured screen: “The Walking Dead Cosplay” by Ian Livesey, <a href="https://commons.wikimedia.org/wiki/File:The_Walking_Dead_Cosplay.jpg">Wikimedia Commons</a> (public domain).</li>
         <li>Settings-page backdrop: “Zombie gals” by istolethetv, <a href="https://commons.wikimedia.org/wiki/File:Zombie_gals_(3261797845).jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>.</li>
-        <li>App icon and jump scare: “Zombie Halloween Mask” by Sharpshotefx, <a href="https://commons.wikimedia.org/wiki/File:Zombie_Halloween_Mask.jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</li>
+        <li>Jump scare: “Zombie Halloween Mask” by Sharpshotefx, <a href="https://commons.wikimedia.org/wiki/File:Zombie_Halloween_Mask.jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</li>
       </ul>
       <p>The route shown is a suggestion. You may go anywhere you like – but zombies follow only the trails, and a goal counts only after you stand within 30 m for 5 seconds.</p>
 
