@@ -167,3 +167,6 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 - Nu: antalet följer fågelvägen A–B (`AB_ZOMBIES_PER_KM`: 2,5/km till fots, 1,5/km på cykel, gånger svårighet 0,7 / 1 / 2; minst grundantalet), max 1,4 × startantalet. 5 km till fots på Normal: 13 zombies (Easy 9, Hard 25).
 - Startzombierna sprids jämnt längs hela sträckan (zombie i får i:te delen av vägen från startavståndet till B, inom korridoren). Alla zombies i A TO B visas på kartan (annars gäller 1 km-gränsen). Testat i `atob.test.ts` mot riktiga data.
 - "PREVIOUS GAMES" visas inte längre i rutan efter ett avbrutet parti (ABORTED).
+
+## Mission: en kurs i taget
+- `prepareMatch` returnerar exakt en kurs (den som ligger närmast önskad distans); Course 1/2/3-knapparna är borta. NEW COURSE (`session.regenerate`) ger en ny med nytt frö, så många gånger man vill.

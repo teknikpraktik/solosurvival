@@ -122,9 +122,10 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
   const best = res.proposals.filter((x) => x.withinTolerance);
   if (!best.length) {
     const km = (m: number) => (m / 1000).toFixed(1);
-    return done({ status: "alternative", proposals: res.proposals, notes, message: `The map data here only allows a course of about ${km(res.proposals[0].lengthM)} km instead of ${km(p.targetLengthM)} km. Showing the closest.` }, graph);
+    return done({ status: "alternative", proposals: res.proposals.slice(0, 1), notes, message: `The map data here only allows a course of about ${km(res.proposals[0].lengthM)} km instead of ${km(p.targetLengthM)} km. Showing the closest.` }, graph);
   }
-  return done({ status: "ok", proposals: best, notes }, graph);
+  // One course only (the closest to the wanted distance); NEW COURSE makes another.
+  return done({ status: "ok", proposals: best.slice(0, 1), notes }, graph);
 }
 
 /** Uppskattad tid (s) för en rutt i lugn fart, för visning i förhandsgranskningen. */

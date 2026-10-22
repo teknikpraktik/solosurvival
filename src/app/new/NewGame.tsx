@@ -91,11 +91,6 @@ export default function NewGame() {
           {stage !== "preparing" && prepared && !ok && <div className="card bad">{prepared.message}</div>}
           {stage !== "preparing" && prepared?.status === "ok" && prepared.notes.some((n) => n.startsWith("easy-bike-network")) && <div className="card warn">Few easy gravel roads or bike lanes here, so the route may include rougher trails.</div>}
           {stage !== "preparing" && prepared?.status === "alternative" && <div className="card warn">{prepared.message}</div>}
-          {stage !== "preparing" && prepared && ok && p.mode === "mission" && prepared.proposals.length > 1 && (
-            <div className="chips" role="group" aria-label="Proposals">
-              {prepared.proposals.map((r, i) => <button key={r.id} className="chip" aria-pressed={i === view.selected} onClick={() => session!.select(i)}>Course {i + 1}</button>)}
-            </div>
-          )}
           {stage !== "preparing" && ok && proposal && (
             <>
               <div className="stat"><span>{isAB ? "Straight line" : "Distance (straight lines)"}</span><b>{fmtKm(isAB && abA && abB ? haversineM(abA, abB) : proposal.lengthM)}</b></div>
