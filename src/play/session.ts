@@ -636,7 +636,8 @@ export class PlaySession {
       elapsedS: s.elapsedSeconds,
       limitS: s.config.durationSeconds,
       distanceM: s.player.distanceM,
-      zombiesNear: zs.filter((z) => z.distanceM <= VISIBLE_RADIUS_M),
+      // A TO B: every zombie is shown along the whole way; otherwise only those within VISIBLE_RADIUS_M.
+      zombiesNear: s.config.mode === "escape" ? zs : zs.filter((z) => z.distanceM <= VISIBLE_RADIUS_M),
       proximityM: aware,
       headStartLeftS: s.phase === "head_start" ? Math.max(0, live.rules.headStartS - s.elapsedSeconds) : 0,
       zombieCount: zs.length,

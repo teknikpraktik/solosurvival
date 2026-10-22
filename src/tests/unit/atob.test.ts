@@ -145,3 +145,39 @@ describe("A TO B: zombier uppstår mellan A och B", () => {
     }
   });
 });
+
+describe("A TO B: antal zombies följer sträckan och sprids längs hela vägen (riktiga data)", () => {
+  for (const [act, expectedMin] of [["walk", 12], ["mtb", 10]] as const) {
+    it(`${act} ~5 km: tillräckligt många zombies (Normal), jämnt längs A–B`, async () => {
+      const p0 = params({ ...withActivity(defaultParams(act), act), mode: "escape", seed: 3, pointA: A, pointB: destinationPoint(A, 5000, 90) });
+      const pre = await prepareMatch(store(), A, p0);
+      const near = [...pre.graph!.nodes.values()].sort((a, b) => haversineM(a, p0.pointB!) - haversineM(b, p0.pointB!))[0];
+      const p = { ...p0, pointB: near as LatLon };
+      const r = await prepareMatch(store(), A, p);
+      expect(r.status).toBe("ok");
+      const live = createLiveMatch({ id: "ab5", params: p, start: A, proposal: r.proposals[0], graph: r.graph!, dataVersion: "t" });
+      const zs = live.state.zombies;
+      expect(zs.length).toBeGreaterThanOrEqual(expectedMin);
+      // A–B is about 5 km: 2.5 zombies/km on foot, 1.5/km by bike (at least the base population)
+      const bv = toLocal(A, near);
+      const len2 = bv.x * bv.x + bv.y * bv.y;
+      const ts = zs.map((z) => { const v = toLocal(A, zombieLatLon(live.g, z)); return (v.x * bv.x + v.y * bv.y) / len2; });
+      const bins = new Set(ts.map((t) => Math.min(4, Math.max(0, Math.floor(t * 5)))));
+      expect(bins.size).toBeGreaterThanOrEqual(4); // spread over (almost) every fifth of the way
+      for (const t of ts) { expect(t).toBeGreaterThan(0); expect(t).toBeLessThan(1); }
+    });
+  }
+  it("Hard har dubbelt så många som Normal på samma sträcka", async () => {
+    const p0 = params({ mode: "escape", seed: 3, pointA: A, pointB: destinationPoint(A, 5000, 90) });
+    const pre = await prepareMatch(store(), A, p0);
+    const near = [...pre.graph!.nodes.values()].sort((a, b) => haversineM(a, p0.pointB!) - haversineM(b, p0.pointB!))[0];
+    const count = async (difficulty: "easy" | "normal" | "hard") => {
+      const p = { ...p0, difficulty, pointB: near as LatLon };
+      const r = await prepareMatch(store(), A, p);
+      return createLiveMatch({ id: "d", params: p, start: A, proposal: r.proposals[0], graph: r.graph!, dataVersion: "t" }).state.zombies.length;
+    };
+    const [e, n, h] = [await count("easy"), await count("normal"), await count("hard")];
+    expect(e).toBeLessThan(n);
+    expect(h).toBeGreaterThanOrEqual(n * 1.8);
+  });
+});

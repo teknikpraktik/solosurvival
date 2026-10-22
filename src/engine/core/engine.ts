@@ -77,12 +77,13 @@ export function createGame({ g, config, rules, start, id, objectives }: CreateGa
   const cps = (objectives?.targets ?? []).filter((t) => t.kind !== "home" && haversineM(t, start) >= rules.startMinDistanceM);
   for (let i = 0; i < rules.initialZombies; i++) {
     const near = rules.spreadStart && cps.length && state.config.mode !== "escape" ? { p: cps[i % cps.length], minR: 100, maxR: 450 } : undefined;
-    if (!trySpawn(g, state, rules, snap, events, { initial: true, near })) break;
+    const band = state.config.mode === "escape" ? { i, n: rules.initialZombies } : undefined;
+    if (!trySpawn(g, state, rules, snap, events, { initial: true, near, band })) break;
   }
   return { state, events };
 }
 
-function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos, events: GameEvent[], opt: { initial?: boolean; near?: { p: LatLon; minR: number; maxR: number } } = {}): boolean {
+function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos, events: GameEvent[], opt: { initial?: boolean; near?: { p: LatLon; minR: number; maxR: number }; band?: { i: number; n: number } } = {}): boolean {
   const ctx = {
     player: s.player.position,
     playerPos,
@@ -101,7 +102,14 @@ function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos,
     const len2 = bv.x * bv.x + bv.y * bv.y;
     const tPlayer = len2 > 0 ? (pv.x * bv.x + pv.y * bv.y) / len2 : 0;
     const dAB = Math.sqrt(len2);
-    spawn = findSpawn(g, { ...ctx, minSpacingM: rules.spreadStart && opt.initial ? 200 : 50, corridor: { a, b: dest, halfWidthM: Math.max(250, 0.3 * dAB), minT: Math.min(0.9, Math.max(0.05, tPlayer)), maxT: 0.97 } }, s);
+    // Initial zombies are spread evenly over the whole way: zombie i of n gets the i-th slice of the stretch from the start distance to B.
+    if (opt.band && opt.initial) {
+      const tLo = Math.min(0.5, Math.max(0.05, rules.startMinDistanceM / Math.max(1, dAB)));
+      const tHi = 0.97;
+      const w = (tHi - tLo) / opt.band.n;
+      spawn = findSpawn(g, { ...ctx, minDistanceM: Math.min(ctx.minDistanceM, rules.spawnMinDistanceM), minSpacingM: 50, tries: 600, corridor: { a, b: dest, halfWidthM: Math.max(250, 0.3 * dAB), minT: tLo + opt.band.i * w, maxT: tLo + (opt.band.i + 1) * w } }, s);
+    }
+    if (!spawn) spawn = findSpawn(g, { ...ctx, minSpacingM: rules.spreadStart && opt.initial ? 200 : 50, corridor: { a, b: dest, halfWidthM: Math.max(250, 0.3 * dAB), minT: Math.min(0.9, Math.max(0.05, tPlayer)), maxT: 0.97 } }, s);
     if (!spawn && opt.initial && rules.startMinDistanceM > rules.spawnMinDistanceM) spawn = findSpawn(g, { ...ctx, minDistanceM: rules.spawnMinDistanceM, minSpacingM: 50, corridor: { a, b: dest, halfWidthM: Math.max(250, 0.3 * dAB), minT: Math.min(0.9, Math.max(0.05, tPlayer)), maxT: 0.97 } }, s);
   }
   // Spread start on a mission: next to a checkpoint far from the start.
