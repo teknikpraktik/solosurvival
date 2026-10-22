@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { PageHeader } from "../_client/Modal";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -86,7 +85,7 @@ export default function NewGame() {
     return (
       <div className="map-shell">
         <GameMap graph={prepared?.graph} routes={routes} markers={markers} start={session?.currentStart()} player={view.position} accuracyM={view.accuracyM} fit={isAB && abA && abB ? [abA, { lat: abB.lat, lon: abB.lon }] : proposal?.geometry ?? (view.position ? [view.position] : null)} />
-        <div className="hudbar"><div className="line"><span className="pill">{MODE_LABEL[p.mode]} · {ACTIVITY_LABEL[p.activity]}</span><Link className="pill" href="/">✕</Link></div></div>
+        <div className="hudbar"><div className="line"><span className="pill">{MODE_LABEL[p.mode]} · {ACTIVITY_LABEL[p.activity]}</span><button className="pill closebtn" aria-label="Close preview" disabled={busy || starting} onClick={() => session!.backToConfig()}>✕</button></div></div>
         <div className="sheet">
           {stage === "preparing" && <div className="card">Loading map data and planning…</div>}
           {stage !== "preparing" && prepared && !ok && <div className="card bad">{prepared.message}</div>}
@@ -122,7 +121,6 @@ export default function NewGame() {
           <div className="muted">{isAB ? "Any route you like counts. The line is only a hint. Never cross a road or railway just because the game suggests it." : "Fetch the numbered checkpoints in order, then return home. Choose your own way. Never cross a road or railway just because the game suggests it."}</div>
           <div className="row">
             {!isAB && <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "REFRESH" : "NEW COURSE"}</button>}
-            <button className="btn" disabled={busy} onClick={() => session!.backToConfig()}>BACK</button>
           </div>
           <button
             className="btn primary big"
