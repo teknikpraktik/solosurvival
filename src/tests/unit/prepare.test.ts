@@ -124,3 +124,13 @@ describe("Mission: bara checkpoints, ingen rutt, avstånd fågelvägen", () => {
     });
   }
 });
+
+describe("Mission: en kurs i taget", () => {
+  it("ger exakt en kurs; ett nytt frö (NEW COURSE) ger en annan", async () => {
+    const mk = (seed: number) => prepareMatch(store(), I2, { ...params({ mode: "mission", targetLengthM: 3000 }), seed });
+    const a = await mk(4), b = await mk(5);
+    expect(a.proposals).toHaveLength(1);
+    expect(b.proposals).toHaveLength(1);
+    expect(haversineM(a.proposals[0].waypoints[0], b.proposals[0].waypoints[0])).toBeGreaterThan(20);
+  });
+});
