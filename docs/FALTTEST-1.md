@@ -170,3 +170,6 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 
 ## Mission: en kurs i taget
 - `prepareMatch` returnerar exakt en kurs (den som ligger närmast önskad distans); Course 1/2/3-knapparna är borta. NEW COURSE (`session.regenerate`) ger en ny med nytt frö, så många gånger man vill.
+
+## En enda stäng-knapp
+- `CloseButton` (src/app/_client/Modal.tsx) + CSS `.xbtn`: stor röd rund knapp (52 px, vit ✕, ljus kant) används överallt: dialoger (Modal), sidhuvuden (PageHeader: inställningar, historik, HOW TO PLAY, testsidor) och kursförhandsvisningen. Fler stängknappar ska använda samma komponent.

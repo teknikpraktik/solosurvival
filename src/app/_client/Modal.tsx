@@ -19,7 +19,7 @@ export function Modal({ title, onClose, children, actions, tone }: { title: stri
       <div className={`modal${tone ? ` ${tone}` : ""}`}>
         <div className="modal-head">
           <h2>{title}</h2>
-          {onClose && <button className="xbtn" onClick={onClose} aria-label="Close">✕</button>}
+          {onClose && <CloseButton onClick={onClose} />}
         </div>
         {children && <div className="modal-body">{children}</div>}
         <div className="modal-actions">{actions}</div>
@@ -28,12 +28,18 @@ export function Modal({ title, onClose, children, actions, tone }: { title: stri
   );
 }
 
+/** The app's single close button (same look in dialogs, page headers and the course preview). Renders a link when `href` is given. */
+export function CloseButton({ onClick, href, disabled, label = "Close" }: { onClick?: () => void; href?: string; disabled?: boolean; label?: string }) {
+  if (href) return <a className="xbtn" href={href} aria-label={label}>✕</a>;
+  return <button className="xbtn" onClick={onClick} disabled={disabled} aria-label={label}>✕</button>;
+}
+
 /** Sidhuvud med rubrik och ✕ uppe till höger (stänger till startsidan). */
 export function PageHeader({ title, href = "/" }: { title: string; href?: string }) {
   return (
     <div className="topbar">
       <h1 style={{ flex: 1 }}>{title}</h1>
-      <a className="xbtn" href={href} aria-label="Close">✕</a>
+      <CloseButton href={href} />
     </div>
   );
 }
