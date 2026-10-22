@@ -158,3 +158,6 @@ Zombiefart km/h (`ZOMBIE_SPEED_KMH` i `src/config/game-rules.ts`): On foot easy 
 
 ## Appikon v3 (enkel, utan text)
 - Glansig blodröd kärna med ringar som sprider sig utåt och några droppar som kastas iväg: ett utbrott som sprider sig. Renderad raster (ljussättning, glöd, korn), ingen text, inget foto, ingen upphovsrättsbelagd källa. `scripts/make-icons.py` (Pillow + numpy) skapar 192, 512, maskable 512 (80 % storlek) och apple-touch 180. Ikon-URL:er `?v=4`.
+
+## iPhone: blurrad statusrad, förhandsvisning
+- HUD-raden (`.hudbar`, används i förhandsvisning och spelläge) ligger nu 28 px under statusfältets säkra zon (`env(safe-area-inset-top)`): inga knappar eller info i översta, blurrade raden. BACK-knappen är borttagen; ✕ (större, röd, 52 px) går tillbaka till inställningarna (`backToConfig`).
