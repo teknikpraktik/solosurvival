@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { PageHeader } from "../_client/Modal";
+import { CloseButton, PageHeader } from "../_client/Modal";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { Activity } from "@/config/activities";
@@ -85,7 +85,7 @@ export default function NewGame() {
     return (
       <div className="map-shell">
         <GameMap graph={prepared?.graph} routes={routes} markers={markers} start={session?.currentStart()} player={view.position} accuracyM={view.accuracyM} fit={isAB && abA && abB ? [abA, { lat: abB.lat, lon: abB.lon }] : proposal?.geometry ?? (view.position ? [view.position] : null)} />
-        <div className="hudbar"><div className="line"><span className="pill">{MODE_LABEL[p.mode]} · {ACTIVITY_LABEL[p.activity]}</span><button className="pill closebtn" aria-label="Close preview" disabled={busy || starting} onClick={() => session!.backToConfig()}>✕</button></div></div>
+        <div className="hudbar"><div className="line"><span className="pill">{MODE_LABEL[p.mode]} · {ACTIVITY_LABEL[p.activity]}</span><CloseButton label="Close preview" disabled={busy || starting} onClick={() => session!.backToConfig()} /></div></div>
         <div className="sheet">
           {stage === "preparing" && <div className="card">Loading map data and planning…</div>}
           {stage !== "preparing" && prepared && !ok && <div className="card bad">{prepared.message}</div>}

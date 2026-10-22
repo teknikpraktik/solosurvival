@@ -65,7 +65,6 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .hudbar { position: absolute; left: 0; right: 0; top: 0; z-index: 3; padding: calc(max(10px, env(safe-area-inset-top)) + 28px) 12px 10px; /* the top strip is blurred by the iPhone status bar: nothing is placed in it */ display: flex; flex-direction: column; gap: 6px; background: linear-gradient(#0b0f14ee, #0b0f1400); pointer-events: none; }
 .hudbar .line { display: flex; gap: 8px; justify-content: space-between; align-items: center; }
 .pill { font-size: 1rem; background: var(--panel); border: 1px solid #243040; border-radius: 999px; padding: 8px 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.hudbar .closebtn { pointer-events: auto; min-width: 52px; min-height: 52px; padding: 0; font-size: 1.7rem; line-height: 1; color: #fff; background: #991b1b; border: 2px solid #fca5a5; box-shadow: 0 2px 10px #000a; cursor: pointer; }
 .pill.bad { border-color: #ef4444; color: #fca5a5; }
 .pill.warn { border-color: #b45309; color: #fdba74; }
 .controls { position: absolute; left: 12px; right: 12px; bottom: max(14px, env(safe-area-inset-bottom)); z-index: 3; display: flex; gap: 10px; }
@@ -106,7 +105,9 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .modal-body { padding: 4px 16px 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 8px; }
 .modal-actions { padding: 10px 16px 16px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #243040; background: var(--panel); }
 .modal-actions .btn { width: 100%; }
-.xbtn { display: inline-flex; align-items: center; justify-content: center; min-width: 48px; min-height: 48px; border-radius: 12px; border: 1px solid #2d3b4d; background: #1b2430; color: var(--text); font-size: 1.2rem; text-decoration: none; cursor: pointer; }
+/* The one close button used everywhere (dialogs, page headers, course preview): large, red, white ✕. */
+.xbtn { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 52px; min-height: 52px; padding: 0; border-radius: 50%; border: 2px solid #fca5a5; background: #991b1b; color: #fff; font-size: 1.7rem; line-height: 1; text-decoration: none; box-shadow: 0 2px 10px #000a; cursor: pointer; pointer-events: auto; }
+.xbtn:active { background: #b91c1c; }
 .controls .iconbtn { flex: 0 0 48px; padding: 0; font-size: 1.2rem; }
 .controls .wide { flex: 2; }
 .controls { gap: 8px; }
