@@ -31,3 +31,17 @@ export const DOT_SVG = `<svg viewBox="0 0 40 40" width="40" height="40" xmlns="h
 
 /** Liten riktningstriangel som visas vid en rörlig zombie (roteras med CSS). */
 export const ZOMBIE_DIR_SVG = `<svg viewBox="0 0 14 14" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M7 1 L12.5 12 L7 9.2 L1.5 12 Z" fill="#ff4d4d" stroke="#0b0f14" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+
+/** Hem (start/hemkomst): hus i blå skiva. Skiljs tydligt från numrerade checkpoints (cirklar) och från extraction (flagga). */
+export const HOME_SVG = `<svg viewBox="0 0 40 40" width="42" height="42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<circle cx="20" cy="20" r="18" fill="#1d4ed8" stroke="#ffffff" stroke-width="2.6"/>
+<path d="M9.5 20.5 20 11l10.5 9.5" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M13 19.5V29h5.5v-6h3v6H27v-9.5L20 13.5z" fill="#ffffff"/>
+</svg>`;
+
+/** Extraction (Survival): flagga på mål-skiva i grönt, med texten EXIT i etiketten. */
+export const EXTRACTION_SVG = `<svg viewBox="0 0 40 40" width="42" height="42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<circle cx="20" cy="20" r="18" fill="#15803d" stroke="#ffffff" stroke-width="2.6"/>
+<path d="M14 30V10" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round"/>
+<path d="M14.5 11h13l-3.6 4.6 3.6 4.6h-13z" fill="#ffffff"/>
+</svg>`;

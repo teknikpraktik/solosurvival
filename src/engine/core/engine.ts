@@ -148,7 +148,14 @@ function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos,
   return true;
 }
 
+/**
+ * Terminal state. The first result wins and can never be changed: a finished match ignores later GPS, zombie or abort input.
+ * Order of evaluation within one engine step (STEP_S), which is the rule for events that happen at (almost) the same time:
+ *   1. capture (infection timer completes)  2. goal reached (last objective / extraction held)  3. time limit.
+ * A goal confirmed on the very step the time limit expires therefore counts as success; a capture completing on the same step as a goal wins.
+ */
 function finish(s: GameState, result: GameResult, events: GameEvent[]) {
+  if (s.phase === "finished") return;
   s.result = result;
   s.phase = "finished";
   events.push({ type: "finished", result });

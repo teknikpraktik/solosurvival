@@ -1,6 +1,7 @@
 import { RULES_VERSION } from "@/config/game-rules";
 import type { GameResult, GameState } from "@/engine/core/types";
 import type { LatLon } from "@/geo/geometry";
+import { objectiveProgress } from "@/engine/objectives/objectives";
 import { indexGraph, serializeGraph } from "@/geo/graph/graph";
 import type { SerializedGraph } from "@/geo/graph/types";
 import type { RouteProposal } from "@/routes/types";
@@ -85,7 +86,7 @@ export class MatchStorage {
       elapsedS: Math.round(s.elapsedSeconds),
       timeLimitS: Math.round(matchDurationS(params, proposal)),
       result,
-      checkpoints: o ? { reached: o.index, total: o.targets.length } : null,
+      checkpoints: o ? { reached: objectiveProgress(o).primaryReached, total: objectiveProgress(o).primaryTotal } : null,
     };
   }
 

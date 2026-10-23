@@ -1,6 +1,7 @@
 import type { Db } from "./idb";
 import { ACTIVITIES } from "@/config/activities";
 import type { GameEvent, Zombie } from "@/engine/core/types";
+import { objectiveProgress, type ObjectiveProgress } from "@/engine/objectives/objectives";
 import { zombieLatLon } from "@/engine/core/movement";
 import { haversineM, type LatLon } from "@/geo/geometry";
 import { GpsFilter, type FilterVerdict } from "@/gps/filters/filter";
@@ -115,7 +116,8 @@ export interface MatchView {
   /** Avstånd (m) till närmaste zombie oavsett radie, null om inga. */
   nearestZombieM: number | null;
   infection: number;
-  objectives: { index: number; total: number; holdS: number; next: { id: string; kind: string; lat: number; lon: number } | null } | null;
+  /** `index`/`total` räknar alla mål inklusive hemkomst; visa i stället `progress` (checkpoints räknas för sig, hem för sig). */
+  objectives: { index: number; total: number; holdS: number; next: { id: string; kind: string; lat: number; lon: number } | null; progress: ObjectiveProgress } | null;
   extraction: LatLon | null;
   gpsLost: boolean;
   gpsLostLong: boolean;
@@ -412,7 +414,7 @@ export class PlaySession {
     let finished = false;
     for (const e of events) {
       switch (e.type) {
-        case "objective_reached": this.cue("goal", e.index + 1 >= (live.state.objectives?.targets.length ?? 0) ? "Final objective reached" : "Checkpoint reached"); this.log?.add(t, "objective", { id: e.targetId, atS: Math.round(live.state.elapsedSeconds) }); break;
+        case "objective_reached": this.cue("goal", this.objectiveMessage(live, e.index)); this.log?.add(t, "objective", { id: e.targetId, atS: Math.round(live.state.elapsedSeconds) }); break;
         case "zombie_detected":
           // Med magnet-jakt upptäcker många zombier spelaren samtidigt: ett gemensamt larm, inte ett per zombie.
           if (t - this.lastDetectCueMs > 15_000) { this.lastDetectCueMs = t; this.cue("alert", "Zombies are hunting you"); }
@@ -473,6 +475,16 @@ export class PlaySession {
       this.lastSampleMs = t;
       this.log?.add(t, "zombie_sample", { n: s.zombies.length, nearest: Number.isFinite(nearest) ? Math.round(nearest) : null, inRange, radius, phase: s.phase, atS: Math.round(s.elapsedSeconds) });
     }
+  }
+
+  /** Text för ett nått mål. Sista checkpointet är inte en vinst när hemkomst återstår, och säger det. */
+  private objectiveMessage(live: LiveGame, index: number): string {
+    const o = live.state.objectives;
+    if (!o) return "Objective reached";
+    const target = o.targets[index];
+    const p = objectiveProgress(o);
+    if (target?.kind === "checkpoint") return p.stage === "home" ? "All checkpoints found – now head home!" : `Checkpoint ${p.primaryReached}/${p.primaryTotal}`;
+    return p.stage === "done" ? "Final objective reached" : "Objective reached";
   }
 
   private cue(c: Cue, text: string) {
@@ -643,7 +655,7 @@ export class PlaySession {
       zombieCount: zs.length,
       nearestZombieM: zs.length ? zs[0].distanceM : null,
       infection: s.infectionProgressSeconds,
-      objectives: o ? { index: o.index, total: o.targets.length, holdS: o.holdS, next: next ? { id: next.id, kind: next.kind, lat: next.lat, lon: next.lon } : null } : null,
+      objectives: o ? { index: o.index, total: o.targets.length, holdS: o.holdS, next: next ? { id: next.id, kind: next.kind, lat: next.lat, lon: next.lon } : null, progress: objectiveProgress(o) } : null,
       extraction: s.extractionNodeId ? (live.g.nodes.get(s.extractionNodeId) ?? null) : null,
       gpsLost: st.quality === "unavailable" || st.quality === "warning",
       gpsLostLong: s.gpsLostLong,

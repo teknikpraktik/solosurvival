@@ -9,7 +9,7 @@ import type { TrailGraph } from "@/geo/graph/types";
 import { unwrapToward } from "@/play/heading";
 import { ZombieAnimator, type ZombieTarget } from "@/play/zombie-anim";
 import { MAP_ATTRIBUTION, MAP_STYLE } from "./mapStyle";
-import { ARROW_SVG, DOT_SVG, ZOMBIE_DIR_SVG, ZOMBIE_SVG } from "./symbols";
+import { ARROW_SVG, DOT_SVG, EXTRACTION_SVG, HOME_SVG, ZOMBIE_DIR_SVG, ZOMBIE_SVG } from "./symbols";
 
 const fc = (features: GeoJSON.Feature[] = []): GeoJSON.FeatureCollection => ({ type: "FeatureCollection", features });
 const pt = (p: LatLon, props: Record<string, unknown> = {}): GeoJSON.Feature => ({ type: "Feature", properties: props, geometry: { type: "Point", coordinates: [p.lon, p.lat] } });
@@ -33,6 +33,8 @@ export interface MapMarker {
   lon: number;
   /** "next" = aktivt mål, "done" = klarat, "todo" = kommande. */
   tone: "next" | "done" | "todo";
+  /** "home" = hemkomst (hus). Utan ikon ritas en numrerad cirkel (checkpoint) eller B. */
+  icon?: "home";
 }
 
 export interface GameMapProps {
@@ -101,8 +103,7 @@ export default function GameMap(props: GameMapProps) {
       map.addLayer({ id: "routes", type: "line", source: "routes", filter: ["!=", ["get", "faint"], true], paint: { "line-color": ["case", ["get", "sel"], "#22d3ee", "#64748b"], "line-width": ["case", ["get", "sel"], 5, 2.5], "line-opacity": ["case", ["get", "sel"], 0.95, 0.5] } });
       map.addSource("acc", { type: "geojson", data: fc() });
       map.addLayer({ id: "acc", type: "fill", source: "acc", paint: { "fill-color": "#3b82f6", "fill-opacity": 0.15 } });
-      for (const id of ["extraction", "start"]) map.addSource(id, { type: "geojson", data: fc() });
-      map.addLayer({ id: "extraction", type: "circle", source: "extraction", paint: { "circle-radius": 11, "circle-color": "#22d3ee", "circle-opacity": 0.85, "circle-stroke-color": "#fff", "circle-stroke-width": 2 } });
+      map.addSource("start", { type: "geojson", data: fc() });
       map.addLayer({ id: "start", type: "circle", source: "start", paint: { "circle-radius": 7, "circle-color": "#0b0f14", "circle-stroke-color": "#e6edf3", "circle-stroke-width": 2.5 } });
       setLoaded(true);
     });
@@ -115,7 +116,22 @@ export default function GameMap(props: GameMapProps) {
   useEffect(() => { if (loaded) src("net", fc(graph ? [...graph.edges.values()].map((e) => line(e.geometry)) : [])); }, [loaded, graph]);
   useEffect(() => { if (loaded) src("routes", fc((routes ?? []).map((r) => line(r.points, { sel: r.selected, faint: !!r.faint })))); }, [loaded, routes]);
   useEffect(() => { if (loaded) src("start", fc(start ? [pt(start)] : [])); }, [loaded, start]);
-  useEffect(() => { if (loaded) src("extraction", fc(extraction ? [pt(extraction)] : [])); }, [loaded, extraction]);
+  // Extraction: egen flaggikon (inte samma som hem eller checkpoint).
+  const extractionMarker = useRef<Marker | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!loaded || !map) return;
+    extractionMarker.current?.remove();
+    extractionMarker.current = null;
+    if (!extraction) return;
+    const d = document.createElement("div");
+    d.className = "goalmark";
+    d.setAttribute("role", "img");
+    d.setAttribute("aria-label", "Extraction point");
+    d.innerHTML = `${EXTRACTION_SVG}<span class="goallabel">EXIT</span>`;
+    extractionMarker.current = new Marker({ element: d }).setLngLat([extraction.lon, extraction.lat]).addTo(map);
+    return () => { extractionMarker.current?.remove(); extractionMarker.current = null; };
+  }, [loaded, extraction]);
   // --- Spelarmarkör (riktningspil) och Track Up ---
   const playerEl = useRef<HTMLDivElement | null>(null);
   const playerMarker = useRef<Marker | null>(null);
@@ -268,6 +284,13 @@ export default function GameMap(props: GameMapProps) {
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = (markers ?? []).map((m) => {
       const d = document.createElement("div");
+      if (m.icon === "home") {
+        d.className = `goalmark home ${m.tone}`;
+        d.setAttribute("role", "img");
+        d.setAttribute("aria-label", "Home");
+        d.innerHTML = `${HOME_SVG}<span class="goallabel">HOME</span>`;
+        return new Marker({ element: d }).setLngLat([m.lon, m.lat]).addTo(map);
+      }
       d.textContent = m.label;
       d.setAttribute("aria-label", `Objective ${m.label}`);
       d.style.cssText = `width:28px;height:28px;border-radius:50%;background:${TONE[m.tone]};color:#fff;font:700 14px system-ui;display:flex;align-items:center;justify-content:center;border:2px solid #fff;${m.tone === "next" ? "box-shadow:0 0 0 4px #16a34a66;" : ""}`;

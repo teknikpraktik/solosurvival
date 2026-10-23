@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { errorText } from "@/gps/provider/provider";
-import { RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
+import { RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime, objectiveLabel } from "../_client/format";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio } from "../_client/cues";
 import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, VIEW_RETURN_S, nextApproaching, nextClose, viewProfile } from "@/play/camera-view";
@@ -100,8 +100,9 @@ export default function Play() {
   const markers = useMemo<MapMarker[]>(() => {
     const o = m?.proposal;
     if (!o || !m?.objectives) return [];
-    return o.waypoints.filter((w) => w.kind !== "home").map((w, i) => ({
-      id: w.id, label: w.kind === "destination" ? "B" : String(i + 1), lat: w.lat, lon: w.lon,
+    return o.waypoints.map((w, i): MapMarker => ({
+      id: w.id, label: w.kind === "destination" ? "B" : w.kind === "home" ? "" : String(i + 1), lat: w.lat, lon: w.lon,
+      icon: w.kind === "home" ? "home" : undefined,
       tone: i < m.objectives!.index ? "done" : i === m.objectives!.index ? "next" : "todo",
     }));
   }, [m?.proposal, m?.objectives?.index]);
@@ -166,7 +167,7 @@ export default function Play() {
         </div>
         <div className="line">
           {m.objectives ? (
-            <span className="pill">Goal {Math.min(m.objectives.index + 1, m.objectives.total)}/{m.objectives.total}{dHome !== null ? ` · ${dHome} m` : ""}{m.objectives.holdS > 0 ? ` · ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
+            <span className="pill">{objectiveLabel(m.objectives.progress)}{dHome !== null ? ` · ${dHome} m` : ""}{m.objectives.holdS > 0 ? ` · ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
           ) : (
             <span className="pill">{m.extraction ? "Extraction open" : m.phase === "head_start" ? `Head start ${fmtTime(m.headStartLeftS)}` : "Survive"}</span>
           )}
@@ -257,7 +258,9 @@ export default function Play() {
           {m.result === "infected" && <div className="stat"><span>Result</span><b>Captured</b></div>}
           <div className="stat"><span>Match time</span><b>{fmtTime(m.elapsedS)}</b></div>
           <div className="stat"><span>Distance moved</span><b>{fmtKm(m.distanceM)}</b></div>
-          {m.objectives && <div className="stat"><span>Goals</span><b>{m.objectives.index}/{m.objectives.total}</b></div>}
+          {m.objectives && m.mode === "mission" && <div className="stat"><span>Checkpoints</span><b>{m.objectives.progress.primaryReached}/{m.objectives.progress.primaryTotal}</b></div>}
+          {m.objectives && m.objectives.progress.hasHome && <div className="stat"><span>Back home</span><b>{m.objectives.progress.homeReached ? "Yes" : "No"}</b></div>}
+          {m.objectives && m.mode === "escape" && <div className="stat"><span>Destination B</span><b>{m.objectives.progress.primaryReached >= m.objectives.progress.primaryTotal ? "Reached" : "Not reached"}</b></div>}
           {view.storageWarning && <div className="muted">The result could not be saved locally.</div>}
         </Modal>
       )}

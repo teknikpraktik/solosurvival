@@ -84,3 +84,29 @@ export function updateObjectives(o: ObjectiveSet, pos: LatLon, quality: GpsQuali
   o.reachedAtS.push(nowS);
   return { reached: t, completed: o.index >= o.targets.length };
 }
+
+/**
+ * Enda källan för hur långt spelaren har kommit, så att HUD, resultatdialog och historik alltid visar samma tal.
+ * - "Primära" mål är checkpoints (Mission) eller destinationen (A TO B). Hemkomsten räknas aldrig som ett checkpoint.
+ * - `stage` är vad spelaren ska göra nu: nästa checkpoint, nå destinationen, ta sig hem, eller klart.
+ */
+export interface ObjectiveProgress {
+  primaryReached: number;
+  primaryTotal: number;
+  stage: "checkpoint" | "destination" | "home" | "done";
+  homeReached: boolean;
+  hasHome: boolean;
+}
+
+export function objectiveProgress(o: ObjectiveSet): ObjectiveProgress {
+  const primaryTotal = o.targets.filter((t) => t.kind !== "home").length;
+  const reached = o.targets.slice(0, Math.min(o.index, o.targets.length));
+  const next = o.targets[o.index];
+  return {
+    primaryReached: reached.filter((t) => t.kind !== "home").length,
+    primaryTotal,
+    stage: !next ? "done" : next.kind === "home" ? "home" : next.kind === "destination" ? "destination" : "checkpoint",
+    homeReached: reached.some((t) => t.kind === "home"),
+    hasHome: o.targets.some((t) => t.kind === "home"),
+  };
+}
