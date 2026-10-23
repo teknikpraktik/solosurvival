@@ -83,7 +83,10 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
           : `The nearest trail for ${label} is about ${Math.round(region.startSnapM)} m away. Move to a trail or road nearby and try again.`,
     });
   }
-  const graph = indexGraph(region.graph);
+  // Two networks: routes and checkpoints are laid out on the strict one (never across a major road); the game itself (zombies, spawns,
+  // infection) runs on the play network, where mapped pedestrian crossings are connected so that zombies can follow the player across a road.
+  const routeGraph = indexGraph(region.graph);
+  const graph = indexGraph({ ...region.play.graph, crossingNodes: [...region.play.crossingNodes] });
   if (p.mode === "survival") {
     if (region.stats.componentKm < 3) {
       return done({ ...base, status: "sparse", message: "Not enough connected trail here for Survival (at least 3 km needed)." }, graph);
@@ -92,7 +95,7 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
   }
   if (atob) {
     const t5 = performance.now();
-    const ab = generateAtoB(graph, start, p.pointB!, region.hazardNodes, A_TO_B_MIN_STRAIGHT_M);
+    const ab = generateAtoB(routeGraph, start, p.pointB!, region.hazardNodes, A_TO_B_MIN_STRAIGHT_M);
     timing.routeMs = performance.now() - t5;
     const msg: Record<string, string> = {
       b_off: "B is too far from a trail connected to A. Pick a point closer to a trail or road.",
@@ -107,7 +110,7 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
   // Bike: checkpoints on easy-to-ride ways (paved/gravel roads, bike lanes, good tracks) when that network can make a fitting course; zombies still use every way.
   const t4 = performance.now();
   const req = { start, activity: p.activity, targetLengthM: p.targetLengthM, seed: p.seed, count: 3, hazardNodes: region.hazardNodes };
-  let res = generateCourse(graph, req);
+  let res = generateCourse(routeGraph, req);
   if (p.activity === "mtb") {
     const easyEdges = region.graph.edges.filter((e) => e.easy);
     const easy = easyEdges.length ? generateCourse(indexGraph({ ...region.graph, edges: easyEdges }), req) : null;

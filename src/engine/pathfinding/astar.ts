@@ -143,7 +143,7 @@ export function planRoute(g: TrailGraph, from: EdgePos, to: EdgePos, speedMps: n
 }
 
 /** Närmaste nätavstånd (meter) från en position till alla noder, med valfri begränsning. */
-export function networkDistances(g: TrailGraph, from: EdgePos, maxM = Infinity): Map<string, number> {
+export function networkDistances(g: TrailGraph, from: EdgePos, maxM = Infinity, skipEdge?: (e: GraphEdge) => boolean): Map<string, number> {
   const e0 = g.edges.get(from.edgeId)!;
   const dist = new Map<string, number>();
   const open = new MinHeap<string>();
@@ -162,7 +162,10 @@ export function networkDistances(g: TrailGraph, from: EdgePos, maxM = Infinity):
     done.add(n);
     const dn = dist.get(n)!;
     if (dn > maxM) continue;
-    for (const a of g.adj.get(n) ?? []) seed(a.to, dn + a.lengthM);
+    for (const a of g.adj.get(n) ?? []) {
+      if (skipEdge && skipEdge(g.edges.get(a.edgeId)!)) continue;
+      seed(a.to, dn + a.lengthM);
+    }
   }
   return dist;
 }

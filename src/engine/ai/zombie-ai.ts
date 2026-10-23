@@ -1,5 +1,5 @@
 import { haversineM, type LatLon } from "@/geo/geometry";
-import { posAtNode, snapToGraph } from "@/geo/graph/graph";
+import { posAtNode, snapToGraphNear } from "@/geo/graph/graph";
 import type { Dir, EdgePos, TrailGraph } from "@/geo/graph/types";
 import { planRoute, type Route } from "../pathfinding/astar";
 import { rand, type RngHolder } from "../core/rng";
@@ -63,8 +63,8 @@ function observe(z: Zombie, o: Observation) {
 }
 
 /** Skapar en observation av spelaren (snappad på nätet) vid tiden `timeS`. */
-export function makeObservation(g: TrailGraph, p: LatLon, timeS: number, component?: number): Observation | null {
-  const s = snapToGraph(g, p, component);
+export function makeObservation(g: TrailGraph, p: LatLon, timeS: number, component?: number, prev?: Pick<Observation, "edgeId" | "edgeDistM"> | null): Observation | null {
+  const s = snapToGraphNear(g, p, component, prev ? { edgeId: prev.edgeId, distM: prev.edgeDistM } : null);
   if (!s) return null;
   return { lat: p.lat, lon: p.lon, observedAtS: timeS, edgeId: s.edgeId, edgeDistM: s.distM };
 }
@@ -172,7 +172,7 @@ export function updateZombieAI(ctx: AiContext, z: Zombie, arrived: boolean): voi
   const magnet = !!ctx.magnetObservation && inRange;
   const inContact = magnet || (ctx.detectionEnabled && dist <= rules.detectionRadiusM);
   if (inContact) {
-    const obs = (magnet ? ctx.magnetObservation : null) ?? makeObservation(ctx.g, ctx.playerPos, timeS);
+    const obs = (magnet ? ctx.magnetObservation : null) ?? makeObservation(ctx.g, ctx.playerPos, timeS, undefined, z.lastKnownEdge ? { edgeId: z.lastKnownEdge.edgeId, edgeDistM: z.lastKnownEdge.distM } : null);
     if (obs) {
       observe(z, obs);
       z.contactLostS = 0;

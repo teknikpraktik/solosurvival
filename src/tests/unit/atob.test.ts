@@ -151,7 +151,7 @@ describe("A TO B: antal zombies följer sträckan och sprids längs hela vägen 
     it(`${act} ~5 km: tillräckligt många zombies (Normal), jämnt längs A–B`, async () => {
       const p0 = params({ ...withActivity(defaultParams(act), act), mode: "escape", seed: 3, pointA: A, pointB: destinationPoint(A, 5000, 90) });
       const pre = await prepareMatch(store(), A, p0);
-      const near = [...pre.graph!.nodes.values()].sort((a, b) => haversineM(a, p0.pointB!) - haversineM(b, p0.pointB!))[0];
+      const near = [...pre.region!.graph.nodes].sort((a, b) => haversineM(a, p0.pointB!) - haversineM(b, p0.pointB!))[0];
       const p = { ...p0, pointB: near as LatLon };
       const r = await prepareMatch(store(), A, p);
       expect(r.status).toBe("ok");
@@ -170,7 +170,7 @@ describe("A TO B: antal zombies följer sträckan och sprids längs hela vägen 
   it("Hard har dubbelt så många som Normal på samma sträcka", async () => {
     const p0 = params({ mode: "escape", seed: 3, pointA: A, pointB: destinationPoint(A, 5000, 90) });
     const pre = await prepareMatch(store(), A, p0);
-    const near = [...pre.graph!.nodes.values()].sort((a, b) => haversineM(a, p0.pointB!) - haversineM(b, p0.pointB!))[0];
+    const near = [...pre.region!.graph.nodes].sort((a, b) => haversineM(a, p0.pointB!) - haversineM(b, p0.pointB!))[0];
     const count = async (difficulty: "easy" | "normal" | "hard") => {
       const p = { ...p0, difficulty, pointB: near as LatLon };
       const r = await prepareMatch(store(), A, p);

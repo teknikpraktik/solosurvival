@@ -23,14 +23,15 @@ const REACH_SAFETY = 0.6;
  */
 export function chooseExtraction(g: TrailGraph, ctx: ExtractionContext, rng: RngHolder): string | null {
   const reachM = ctx.playerPaceMps * ctx.remainingS * REACH_SAFETY;
-  const dists = networkDistances(g, ctx.playerPos, reachM);
+  // Extraction is never placed across a major road: edges at mapped crossings do not count as reachable.
+  const dists = networkDistances(g, ctx.playerPos, reachM, (e) => !!e.crossing);
   const exclusion = ctx.zombieExclusionM ?? 80;
 
   const score = (id: string, strict: boolean) => {
     const d = dists.get(id);
     if (d === undefined || d > reachM || d < 60) return null;
     const node = g.nodes.get(id)!;
-    if (degreeOf(g, id) < 2) return null;
+    if (degreeOf(g, id) < 2 || g.crossingNodes.has(id)) return null;
     const nearestZ = ctx.zombiePositions.reduce((m, z) => Math.min(m, haversineM(z, node)), Infinity);
     if (strict && nearestZ < exclusion) return null;
     // Föredra mellanstora avstånd (spelaren måste röra sig men inte maxa) och långt från zombier.

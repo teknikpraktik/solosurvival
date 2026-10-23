@@ -9,8 +9,20 @@ import type { TileWay } from "./tile-format";
 /** Start längre bort än så från närmaste tillåtna stig räknas som "utanför nätet" (samma gräns som ruttgeneratorn). */
 export const MAX_START_SNAP_M = 150;
 
+/** Gångpassager (stig-/gångvägar) som får användas av zombier för att följa spelaren över en större väg eller järnväg. */
+const PEDESTRIAN_HIGHWAYS = new Set(["footway", "path", "cycleway", "pedestrian"]);
+
 export interface RegionGraph {
+  /**
+   * Strikt nät för att lägga ut rutter/checkpoints: klippt vid varje delad nod med större väg/järnväg/vattendrag, så ingen
+   * föreslagen sträcka korsar en större väg.
+   */
   graph: SerializedGraph;
+  /**
+   * Spelnät för motorn (zombier, spawn, infektion): som `graph`, men kartlagda gångpassager över större väg/järnväg är
+   * sammankopplade. Utan dem kan zombier aldrig följa spelaren över en väg (nätet delas i separata öar).
+   */
+  play: { graph: SerializedGraph; crossingNodes: Set<string>; components: number; componentKm: number };
   /** Privata ändnoder vid vägar/järnväg/vattendrag: stigen tar slut där, korsning är inte möjlig och inget mål placeras där. */
   hazardNodes: Set<string>;
   /** Avstånd från start till närmaste tillåtna stig (m), eller null om nätet är tomt. */
@@ -43,16 +55,60 @@ function pathType(h: string): PathType {
  * - Nätet klipps till cirkeln och begränsas till den komponent som startpunkten ligger närmast.
  */
 export function buildRegionGraph(ways: TileWay[], activity: Activity, center: LatLon, radiusM: number, anchor: LatLon = center): RegionGraph {
+  const strict = assemble(ways, activity, center, radiusM, anchor, false);
+  const play = assemble(ways, activity, center, radiusM, anchor, true);
+  return {
+    graph: strict.graph,
+    play: { graph: play.graph, crossingNodes: play.crossingNodes, components: play.components, componentKm: play.componentKm },
+    hazardNodes: strict.hazardNodes,
+    startSnapM: strict.startSnapM,
+    nearestAccess: strict.nearestAccess,
+    stats: strict.stats,
+  };
+}
+
+interface Assembled {
+  graph: SerializedGraph;
+  hazardNodes: Set<string>;
+  crossingNodes: Set<string>;
+  startSnapM: number | null;
+  nearestAccess: LatLon | null;
+  components: number;
+  componentKm: number;
+  stats: RegionGraph["stats"];
+}
+
+/**
+ * `bridge` = false: strikt nät (varje delad nod med större väg/järnväg/vattendrag blir en privat ändnod).
+ * `bridge` = true: en gång-/cykelväg som delar nod med större väg/järnväg räknas som en kartlagd passage och behåller sin förbindelse:
+ * - nod mitt på vägen (stigen fortsätter över): ingen klippning;
+ * - nod i vägens ände: bara om minst två gångvägar möts där (en passage mappad som två halvor); en ensam stig som tar slut vid vägen förblir en återvändsgränd.
+ * Broar och tunnlar delar aldrig nod med vägen de korsar och blir därför aldrig falskt förbundna.
+ */
+function assemble(ways: TileWay[], activity: Activity, center: LatLon, radiusM: number, anchor: LatLon, bridge: boolean): Assembled {
   const excluded: Record<string, number> = {};
   const raw: RawWay[] = [];
   const hazardNodes = new Set<string>();
-  let used = 0;
+  const crossingNodes = new Set<string>();
+  const decided: { w: TileWay; d: Extract<ReturnType<typeof decideWay>, { ok: true }> }[] = [];
   for (const w of ways) {
     const d = decideWay(w.tags, activity);
     if (!d.ok) {
       excluded[d.reason] = (excluded[d.reason] ?? 0) + 1;
       continue;
     }
+    decided.push({ w, d });
+  }
+  // Hur många gångvägar som delar varje hazardnod (för passager som är mappade som två halvor).
+  const pedUse = new Map<string, number>();
+  if (bridge) {
+    for (const { w } of decided) {
+      if (!PEDESTRIAN_HIGHWAYS.has(w.tags.highway)) continue;
+      for (const i of new Set(w.hazard)) pedUse.set(w.nodes[i].id, (pedUse.get(w.nodes[i].id) ?? 0) + 1);
+    }
+  }
+  let used = 0;
+  for (const { w, d } of decided) {
     used++;
     let nodes = w.nodes;
     let hz = w.hazard;
@@ -60,10 +116,18 @@ export function buildRegionGraph(ways: TileWay[], activity: Activity, center: La
       nodes = [...nodes].reverse();
       hz = hz.map((i) => nodes.length - 1 - i);
     }
+    if (bridge && PEDESTRIAN_HIGHWAYS.has(w.tags.highway)) {
+      hz = hz.filter((i) => {
+        const crossing = (i > 0 && i < nodes.length - 1) || (pedUse.get(nodes[i].id) ?? 0) >= 2;
+        if (crossing) crossingNodes.add(nodes[i].id);
+        return !crossing; // en ensam stig som tar slut vid vägen förblir en återvändsgränd
+      });
+    }
     const cuts = [0, ...[...new Set(hz)].filter((i) => i > 0 && i < nodes.length - 1).sort((a, b) => a - b), nodes.length - 1];
     const hazardSet = new Set(hz);
     const type = pathType(w.tags.highway);
     const easy = activity === "mtb" ? isEasyBikeWay(w.tags) : undefined;
+    const grade = w.tags.tunnel && w.tags.tunnel !== "no" ? "tunnel" : w.tags.bridge && w.tags.bridge !== "no" ? "bridge" : undefined;
     for (let k = 0; k + 1 < cuts.length; k++) {
       const part = nodes.slice(cuts[k], cuts[k + 1] + 1).map((n) => ({ ...n }));
       if (part.length < 2) continue;
@@ -75,10 +139,10 @@ export function buildRegionGraph(ways: TileWay[], activity: Activity, center: La
       };
       mkPrivate("first", cuts[k]);
       mkPrivate("last", cuts[k + 1]);
-      raw.push({ id: cuts.length > 2 ? `${w.id}.${k}` : w.id, nodes: part, type, oneway: d.oneway, easy });
+      raw.push({ id: cuts.length > 2 ? `${w.id}.${k}` : w.id, nodes: part, type, oneway: d.oneway, easy, grade });
     }
   }
-  const all = buildGraph(raw, "openstreetmap");
+  const all = buildGraph(raw, "openstreetmap", crossingNodes);
   const keep = all.edges.filter((e) => haversineM(center, e.geometry[Math.floor(e.geometry.length / 2)]) <= radiusM);
   const ids = new Set(keep.flatMap((e) => [e.from, e.to]));
   const clipped: SerializedGraph = { ...all, nodes: all.nodes.filter((n) => ids.has(n.id)), edges: keep };
@@ -111,8 +175,11 @@ export function buildRegionGraph(ways: TileWay[], activity: Activity, center: La
   return {
     graph,
     hazardNodes: new Set([...hazardNodes].filter((id) => gnodes.has(id))),
+    crossingNodes: new Set([...crossingNodes].filter((id) => gnodes.has(id))),
     startSnapM: best ? best.distM : null,
     nearestAccess: near,
+    components: idx.components.length,
+    componentKm,
     stats: { waysIn: ways.length, waysUsed: used, excluded, edges: graph.edges.length, networkKm, componentKm, hazardStubs: hazardNodes.size, components: idx.components.length },
   };
 }

@@ -74,7 +74,7 @@ export function indexGraph(g: SerializedGraph): TrailGraph {
     c.nodeIds.push(id);
     if ((degree.get(id) ?? 0) >= 3) c.junctionCount++;
   }
-  return { nodes, edges, adj, components };
+  return { nodes, edges, adj, components, crossingNodes: new Set(g.crossingNodes ?? []) };
 }
 
 export function serializeGraph(g: TrailGraph, source = "synthetic"): SerializedGraph {
@@ -82,14 +82,18 @@ export function serializeGraph(g: TrailGraph, source = "synthetic"): SerializedG
     graphVersion: GRAPH_VERSION,
     source,
     nodes: [...g.nodes.values()],
-    edges: [...g.edges.values()].map(({ id, from, to, geometry, type, oneway }) => ({
+    edges: [...g.edges.values()].map(({ id, from, to, geometry, type, oneway, easy, grade, crossing }) => ({
       id,
       from,
       to,
       geometry,
       type,
       oneway,
+      easy,
+      grade,
+      crossing,
     })),
+    crossingNodes: g.crossingNodes.size ? [...g.crossingNodes] : undefined,
   };
 }
 
@@ -120,6 +124,32 @@ export function snapToGraph(g: TrailGraph, p: LatLon, component?: number): Snap 
       best = { edgeId: e.id, distM: pr.distAlongM, offNetworkM: pr.distanceM };
     }
   }
+  return best;
+}
+
+/** Within this much of the closest edge, the one continuing from the previous position wins (see snapToGraphNear). */
+export const SNAP_CONTINUITY_M = 8;
+
+/**
+ * Like snapToGraph, but keeps the player on the way they were already on. Where two ways lie almost on top of each other
+ * (a bridge over a road, a road above a tunnel, parallel sidewalks) the plain nearest edge flips with GPS noise and can put the player
+ * on the wrong level. With a previous position, an edge that is the previous edge or touches it wins if it is within
+ * SNAP_CONTINUITY_M of the closest one.
+ */
+export function snapToGraphNear(g: TrailGraph, p: LatLon, component?: number, prev?: EdgePos | null): Snap | null {
+  const prevEdge = prev ? g.edges.get(prev.edgeId) : undefined;
+  let best: Snap | null = null;
+  let kept: Snap | null = null;
+  for (const e of g.edges.values()) {
+    if (component !== undefined && e.component !== component) continue;
+    const pr = projectToPolyline(e.geometry, e.cumM, p);
+    const cand: Snap = { edgeId: e.id, distM: pr.distAlongM, offNetworkM: pr.distanceM };
+    if (!best || pr.distanceM < best.offNetworkM) best = cand;
+    if (prevEdge && (e.id === prevEdge.id || e.from === prevEdge.from || e.from === prevEdge.to || e.to === prevEdge.from || e.to === prevEdge.to)) {
+      if (!kept || pr.distanceM < kept.offNetworkM) kept = cand;
+    }
+  }
+  if (best && kept && kept.offNetworkM <= best.offNetworkM + SNAP_CONTINUITY_M) return kept;
   return best;
 }
 

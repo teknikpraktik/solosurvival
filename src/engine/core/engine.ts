@@ -12,6 +12,7 @@ import type { EdgePos, TrailGraph } from "@/geo/graph/types";
 import type { GpsQuality } from "@/gps/types";
 import { makeObservation, updateZombieAI } from "../ai/zombie-ai";
 import { chooseExtraction } from "../extraction/extraction";
+import { CONTACT_CHECK_M, infectionContactM } from "../infection/contact";
 import { updateInfection } from "../infection/infection";
 import { findSpawn } from "../spawning/spawn";
 import { advanceZombie, zombieLatLon } from "./movement";
@@ -217,7 +218,7 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   if (hunting && t >= s.nextRevealAtS) {
     reveal = true;
     s.nextRevealAtS += rules.revealIntervalS;
-    s.player.lastObservation = makeObservation(g, input.position, t, s.component) ?? s.player.lastObservation;
+    s.player.lastObservation = makeObservation(g, input.position, t, s.component, s.player.magnetObservation ?? s.player.lastObservation) ?? s.player.lastObservation;
     events.push({ type: "reveal" });
   }
 
@@ -235,7 +236,7 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   // Magnet-jakt: en gemensam, ungefär sekundfärsk observation av spelaren som alla zombier jagar mot.
   if (hunting && rules.magnetic && detection) {
     const m = s.player.magnetObservation;
-    if (!m || t - m.observedAtS >= 1) s.player.magnetObservation = makeObservation(g, input.position, t, s.component) ?? m;
+    if (!m || t - m.observedAtS >= 1) s.player.magnetObservation = makeObservation(g, input.position, t, s.component, m ?? s.player.lastObservation) ?? m;
   }
 
   // Zombier.
@@ -282,6 +283,12 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   if (hunting) {
     let nearest = Infinity;
     for (const z of s.zombies) nearest = Math.min(nearest, haversineM(zombieLatLon(g, z), input.position));
+    // A zombie only infects if it can actually reach the player along the network (not across a road, railway or building).
+    if (nearest <= CONTACT_CHECK_M) {
+      const m = s.player.magnetObservation;
+      const snap = m && t - m.observedAtS <= 2 ? { edgeId: m.edgeId, distM: m.edgeDistM } : snapToGraph(g, input.position, s.component);
+      nearest = infectionContactM(g, input.position, snap, s.zombies);
+    }
     const before = s.infectionProgressSeconds;
     const r = updateInfection(before, {
       dtS: STEP_S,
