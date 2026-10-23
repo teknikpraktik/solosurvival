@@ -1,4 +1,4 @@
-// Game camera (ACTIVITY=bike|foot): player centred, zoom fitted to 1 km ahead/behind, zooming to 300 m when a zombie is within 200 m, Track Up kept, drag holds the map ~6 s then returns. GPS is MOCKED (Playwright).
+// Game camera (ACTIVITY=bike|foot): player centred, zoom fitted to 1 km ahead/behind (bike: zooming to 300 m when a zombie is within 200 m; on foot the zoom never changes by itself), Track Up kept, drag + zoom hold the map for ~15 s, then the position returns but the user's zoom is kept until the centre button is tapped. GPS is MOCKED (Playwright).
 import { chromium } from "playwright-core";
 const FOOT = process.env.ACTIVITY === "foot";
 const AHEAD = FOOT ? 400 : 1000, CLOSE_AHEAD = FOOT ? 150 : 300, NEAR_M = FOOT ? 60 : 120, FAR_M = FOOT ? 500 : 700;
@@ -49,23 +49,31 @@ await placeZombie(NEAR_M);
 for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(700); }
 const zClose = await zoom();
 const closeM = (844 / 2) * mpp(zClose);
-check("zombie within 200 m: zoomed in to the close distance", Math.abs(closeM - CLOSE_AHEAD) < CLOSE_AHEAD * 0.07, `zoom ${zClose}, ${closeM.toFixed(0)} m`);
+if (FOOT) check("on foot: a close zombie does NOT change the zoom", Math.abs(zClose - z0) < 0.05, `zoom ${zClose} (was ${z0})`);
+else check("zombie within 200 m: zoomed in to the close distance", Math.abs(closeM - CLOSE_AHEAD) < CLOSE_AHEAD * 0.07, `zoom ${zClose}, ${closeM.toFixed(0)} m`);
 const boxClose = await page.locator(".pmark").first().boundingBox();
 check("player still in the middle when zoomed in", boxClose && Math.abs(boxClose.y + boxClose.height / 2 - 422) < 30);
 await page.screenshot({ path: `${OUT}/close.png` });
 await placeZombie(FAR_M);
 for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(700); }
 check("zombie far away again: back to the normal view", Math.abs((await zoom()) - z0) < 0.1, `zoom ${await zoom()}`);
-// Drag the map: it must stay put and then return after about 6 s.
+// Drag and zoom out by hand: the map must stay put; after ~15 s the position returns, the zoom the user chose stays until "centre" is tapped.
 await page.mouse.move(200, 400); await page.mouse.down(); await page.mouse.move(200, 650, { steps: 8 }); await page.mouse.up();
-await page.mouse.wheel(0, -400).catch(() => {});
+await page.mouse.move(195, 300); await page.mouse.wheel(0, 500);
 await page.waitForTimeout(2500); await tick(2);
+const zUser = await zoom();
+check("manual zoom out changed the zoom", zUser < z0 - 0.3, `zoom ${zUser} (auto ${z0})`);
 const dragged = await page.locator(".pmark").first().boundingBox();
 check("map stays where the user left it", dragged && Math.abs(dragged.y + dragged.height / 2 - 422) > 60, dragged ? `y=${Math.round(dragged.y + dragged.height / 2)}` : "");
 await page.screenshot({ path: `${OUT}/dragged.png` });
+for (let i = 0; i < 8; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(1000); }
+const still = await page.locator(".pmark").first().boundingBox();
+check("still held after 8 s (not the old 6 s)", still && Math.abs(still.y + still.height / 2 - 422) > 60);
 for (let i = 0; i < 12; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(1000); }
 const back = await page.locator(".pmark").first().boundingBox();
-check("returns to the player in the middle after ~6 s", back && Math.abs(back.y + back.height / 2 - 422) < 30);
-check("zoom returns to the bike zoom", Math.abs((await zoom()) - z0) < 0.1, `zoom ${await zoom()}`);
+check("returns to the player in the middle after ~15 s", back && Math.abs(back.y + back.height / 2 - 422) < 30);
+check("the zoom the user chose is kept (no automatic reset)", Math.abs((await zoom()) - zUser) < 0.1, `zoom ${await zoom()} (user ${zUser}, auto ${z0})`);
+await page.getByRole("button", { name: "Center on me" }).click(); await page.waitForTimeout(1200); await tick(2);
+check("centre button restores the automatic zoom", Math.abs((await zoom()) - z0) < 0.1, `zoom ${await zoom()}`);
 await browser.close();
 process.exit(res.every(Boolean) ? 0 : 1);

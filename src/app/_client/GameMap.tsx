@@ -97,8 +97,15 @@ export default function GameMap(props: GameMapProps) {
     map.on("dragstart", () => propsRef.current.onUserMove?.());
     // Bike view: also pinch/scroll zoom and the whole drag count as user interaction (resets the return-to-follow timer).
     map.on("move", (e) => { if (propsRef.current.viewAheadM !== undefined && (e as { originalEvent?: unknown }).originalEvent) propsRef.current.onUserMove?.(); });
-    // Manuell zoom (har originalEvent; kartans egna animeringar har det inte) respekteras tills användaren centrerar.
-    map.on("zoomend", (e) => { if ((e as { originalEvent?: unknown }).originalEvent && propsRef.current.viewAheadM !== undefined) userZoom.current = map.getZoom(); });
+    // Manuell zoom respekteras tills användaren centrerar. Kartmotorn märker inte sina egna zoomhändelser med originalEvent, så en användargest känns i stället igen
+    // på att pekar-/hjulhändelser nyss gått till kartan (kartans egna animeringar sker utan sådana).
+    let lastInputMs = -Infinity;
+    const markInput = () => { lastInputMs = performance.now(); };
+    const canvas = map.getCanvasContainer();
+    for (const ev of ["wheel", "touchstart", "touchmove", "touchend", "mousedown", "dblclick", "keydown"]) canvas.addEventListener(ev, markInput, { passive: true, capture: true });
+    const rememberZoom = () => { if (propsRef.current.viewAheadM !== undefined && performance.now() - lastInputMs < 1500) userZoom.current = map.getZoom(); };
+    map.on("zoom", rememberZoom);
+    map.on("zoomend", rememberZoom);
     map.on("click", (e) => propsRef.current.onPick?.({ lat: e.lngLat.lat, lon: e.lngLat.lng }));
     let tileErrors = 0;
     map.on("error", (e) => {

@@ -141,7 +141,8 @@ await cd.getByRole("button", { name: "QUIT", exact: true }).click();
 const fd = page.getByRole("dialog", { name: "ABORTED" });
 await fd.waitFor();
 check("Match slut: inget X (obligatoriskt beslut)", (await fd.getByRole("button", { name: "Close" }).count()) === 0);
-for (const name of ["HOME", "PREVIOUS GAMES"]) { r = await reachable(fd.getByText(name, { exact: true })); check(`Match slut: ${name} nåbar`, r.inside && r.hit); }
+// En avbruten match har inget "PREVIOUS GAMES" (bara HOME): det är avsiktligt i Play.tsx.
+for (const name of ["HOME"]) { r = await reachable(fd.getByText(name, { exact: true })); check(`Match slut: ${name} nåbar`, r.inside && r.hit); }
 await page.screenshot({ path: `${OUT}/dialog-end.png` });
 
 // Sidor: X uppe till höger

@@ -251,3 +251,38 @@ describe("riktiga Värmlandsdata: centrala Karlstad", () => {
     expect(crossed).toBeGreaterThan(0); // zombierna rör sig över passager i riktig data
   }, 120000);
 });
+
+describe("spelare utanför nätet", () => {
+  const r = build([sidewalkW, sidewalkE, zebra]);
+  const g = indexGraph({ ...r.play.graph, crossingNodes: [...r.play.crossingNodes] });
+  const rules = { ...resolveRules("walk", "normal", 3000), headStartS: 0, initialZombies: 1, maxZombies: 1 };
+  const setup = (player: P, zombie: P) => {
+    const { state } = createGame({ g, config: { activity: "walk", difficulty: "normal", durationSeconds: 3000, areaId: "t", seed: 5, rulesVersion: RULES_VERSION }, rules, start: ll([-8, 100]) });
+    state.zombies = [zombieOn(g, zombie)];
+    state.player.position = ll(player);
+    return state;
+  };
+
+  it("zombien går till närmaste punkt på nätet, står inte kvar långt bort, och smittar inte på 60 m avstånd", () => {
+    const player = ll([-68, 100]); // 60 m väster om västra trottoaren
+    const state = setup([-68, 100], [8, 180]);
+    const target = ll([-8, 100]);
+    let dist = Infinity;
+    for (let i = 0; i < 240 / STEP_S; i++) {
+      stepGame(g, state, rules, { position: player, quality: "ok", accuracyM: 5 });
+      dist = haversineM(zombieLatLon(g, state.zombies[0]), target);
+    }
+    expect(state.result).toBeUndefined();
+    expect(dist).toBeLessThan(25); // framme vid (eller strax intill) närmaste nätpunkt, inte kvar på andra sidan vägen
+    expect(["chase", "intercept"]).toContain(state.zombies[0].state);
+    expect(haversineM(zombieLatLon(g, state.zombies[0]), player)).toBeGreaterThan(40);
+  });
+
+  it("kliver spelaren tillbaka på nätet fortsätter jakten och smittan fungerar igen", () => {
+    const state = setup([-68, 100], [-8, 160]);
+    for (let i = 0; i < 120 / STEP_S; i++) stepGame(g, state, rules, { position: ll([-68, 100]), quality: "ok", accuracyM: 5 });
+    expect(state.result).toBeUndefined();
+    for (let i = 0; i < 60 / STEP_S && state.result === undefined; i++) stepGame(g, state, rules, { position: ll([-8, 100]), quality: "ok", accuracyM: 5 });
+    expect(state.result).toBe("infected");
+  });
+});

@@ -11,6 +11,10 @@ GPS-baserat överlevnadsspel (PWA) där zombier jagar spelaren längs verkliga s
 | 2 | Zombie-AI, spawn, infektion, extraction, determinism | Klar och testad i simulering |
 | 3–5 | Fullständigt matchflöde, UX/lagring, balansering, release | Ej påbörjad |
 
+## v2.2 (stabilisering efter fälttest)
+
+Se `docs/V2.2-ANALYS.md` (grundorsaker) och `docs/V2.2-RAPPORT.md` (åtgärder, tester, simuleringar, GO/NO-GO). Balansmätning på riktig data: `npm run balance -- 10 karlstad survival v21,v22`.
+
 ## Kommandon
 
 ```bash
