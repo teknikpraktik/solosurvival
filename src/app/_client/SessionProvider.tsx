@@ -6,7 +6,7 @@ import { tryOpenDb } from "@/play/idb";
 import { PlaySession } from "@/play/session";
 import { IdbTileCache } from "@/play/tile-cache";
 import type { Db } from "@/play/idb";
-import { playCue } from "./cues";
+import { playCue, speak } from "./cues";
 
 interface Ctx {
   session: PlaySession;
@@ -37,7 +37,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         userAgent: navigator.userAgent,
         traceEnabled,
         jumpScares: () => true, // hidden feature: always on (never on Bike, decided by the session)
-        onCue: (c) => playCue(c),
+        onCue: (c) => { playCue(c); if (c === "sprint") setTimeout(() => speak("Run!"), 250); }, // zombie sprint: shriek plus a spoken "Run!"
         wakeLock: "wakeLock" in navigator ? { request: () => (navigator as Navigator & { wakeLock: { request(t: "screen"): Promise<{ release(): Promise<void> }> } }).wakeLock.request("screen") } : undefined,
       });
       // Ny datauppsättning på servern rensar gamla tiles i cachen.

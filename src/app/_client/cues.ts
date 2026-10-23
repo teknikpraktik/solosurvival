@@ -11,7 +11,7 @@ export function setCuesEnabled(on: boolean): void {
 }
 
 /** Spoken lines: the phone's own speech synthesis, so nothing is downloaded and it works the same on Android, iOS and desktop. */
-export type Line = "Game on" | "Captured" | "Zombies approaching";
+export type Line = "Game on" | "Captured" | "Zombies approaching" | "Run!";
 
 /** Android's speech engine drops an utterance nothing refers to; these keep them alive until they end. */
 const speaking = new Set<SpeechSynthesisUtterance>();
@@ -63,10 +63,11 @@ const PATTERN: Record<Cue, { f: number[]; vib: number[] }> = {
   captured: { f: [900, 1400, 700, 1600], vib: [300, 80, 300, 80, 500] },
   jump: { f: [1300, 900], vib: [200, 60, 120] },
   tension: { f: [90, 95, 233], vib: [80, 120, 80] },
+  sprint: { f: [300, 500, 900, 1400], vib: [150, 60, 150, 60, 400] },
 };
 
 /** Lokal ljudfil (cachas av service workern); avkodas en gång. Faller tillbaka på syntetiskt ljud om den saknas. */
-const SAMPLES: Partial<Record<Cue, string>> = { zombie: "/audio/zombie-near.wav", captured: "/audio/captured-scream.wav", jump: "/audio/jump-scream.wav", tension: "/audio/tension.wav", goal: "/audio/checkpoint.wav" };
+const SAMPLES: Partial<Record<Cue, string>> = { zombie: "/audio/zombie-near.wav", captured: "/audio/captured-scream.wav", jump: "/audio/jump-scream.wav", tension: "/audio/tension.wav", sprint: "/audio/sprint-shriek.wav", goal: "/audio/checkpoint.wav" };
 const buffers = new Map<Cue, AudioBuffer>();
 const loading = new Set<Cue>();
 
@@ -86,7 +87,7 @@ export async function preloadCues(): Promise<void> {
 }
 
 /** Only these cues make sound ("goal" = the rewarding chime when a checkpoint is reached); the others (alerts, extraction, match over) are silent so the game is not noisy. */
-const AUDIBLE = new Set<Cue>(["zombie", "captured", "jump", "tension", "goal"]);
+const AUDIBLE = new Set<Cue>(["zombie", "captured", "jump", "tension", "goal", "sprint"]);
 
 /** Ljud och vibration så att spelaren inte behöver titta på skärmen (särskilt viktigt på cykel). Vibration saknas på iPhone. */
 export function playCue(cue: Cue): void {
@@ -100,7 +101,7 @@ export function playCue(cue: Cue): void {
     if (buf) {
       const src = ctx.createBufferSource();
       const gain = ctx.createGain();
-      gain.gain.value = cue === "captured" || cue === "jump" || cue === "goal" ? 1 : 0.7;
+      gain.gain.value = cue === "captured" || cue === "jump" || cue === "goal" || cue === "sprint" ? 1 : 0.7;
       src.buffer = buf;
       src.connect(gain).connect(ctx.destination);
       src.start();
