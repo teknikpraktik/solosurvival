@@ -6,15 +6,17 @@ export interface ViewProfile {
   aheadM: number;
   /** Zoomed-in view (zombies close): metres ahead of and behind the player. */
   closeAheadM: number;
+  /** Whether the map zooms in to `closeAheadM` when a zombie is close (the "close" state still drives the tension sound either way). */
+  autoZoom: boolean;
   /** Zoom in when the nearest zombie is within this distance (m)… */
   enterM: number;
   /** …and zoom out again only when it is farther than this (hysteresis, avoids flicker). */
   exitM: number;
 }
 
-/** On foot is slower than Bike, so it needs fewer metres of view. */
-const FOOT: ViewProfile = { aheadM: 400, closeAheadM: 150, enterM: 100, exitM: 130 };
-const BIKE: ViewProfile = { aheadM: 1000, closeAheadM: 300, enterM: 200, exitM: 260 };
+/** On foot is slower than Bike, so it needs fewer metres of view. On foot the view never zooms in automatically. */
+const FOOT: ViewProfile = { aheadM: 400, closeAheadM: 150, autoZoom: false, enterM: 100, exitM: 130 };
+const BIKE: ViewProfile = { aheadM: 1000, closeAheadM: 300, autoZoom: true, enterM: 200, exitM: 260 };
 
 export const viewProfile = (a: Activity): ViewProfile => (a === "mtb" ? BIKE : FOOT);
 

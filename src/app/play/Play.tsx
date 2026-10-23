@@ -64,7 +64,7 @@ export default function Play() {
 
   const m = view?.match ?? null;
   const vp = viewProfile(m?.activity ?? "walk");
-  // Zoom in when a zombie is close (Bike 200 m, on foot 100 m; back out beyond 260 / 130 m) and play an uneasy sound on zooming in (with a cooldown).
+  // Close state: zombie within 200 m (Bike) / 100 m (on foot); back out beyond 260 / 130 m. Bike zooms the map in; both play an uneasy sound on entering (with a cooldown).
   const [viewClose, setViewClose] = useState(false);
   const lastTension = useRef(-Infinity);
   const nearestM = m && !m.paused && m.phase !== "finished" ? m.nearestZombieM : null;
@@ -155,7 +155,7 @@ export default function Play() {
         follow={follow}
         viewAheadM={vp.aheadM}
         viewCloseAheadM={vp.closeAheadM}
-        viewClose={viewClose}
+        viewClose={viewClose && vp.autoZoom}
         onUserMove={onUserMove}
         onError={(w) => session.fieldLog?.renderProblem(Date.now(), w)}
       />
