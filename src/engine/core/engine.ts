@@ -4,6 +4,8 @@ import {
   GPS_LOST_LONG_S,
   RESUME_NEUTRAL_S,
   STEP_S,
+  sprintFactorAt,
+  sprintTotalS,
   type Rules,
 } from "@/config/game-rules";
 import { haversineM, toLocal, type LatLon } from "@/geo/geometry";
@@ -30,6 +32,13 @@ export interface StepInput {
 }
 
 export class GameSetupError extends Error {}
+
+/** Aktuell fartfaktor för en zombie (1 utanför spurt). Äldre sparade matcher saknar `sprintStartS`: då antas en spurt utan ramp/avtagande. */
+export function zombieSpeedFactor(rules: Rules, z: Pick<Zombie, "sprintUntilS" | "sprintStartS">, t: number): number {
+  if (z.sprintUntilS === undefined) return 1;
+  const start = z.sprintStartS ?? z.sprintUntilS - rules.sprintDurationS;
+  return sprintFactorAt(rules, t - start);
+}
 
 export interface CreateGameOptions {
   g: TrailGraph;
@@ -250,9 +259,10 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   if (hunting) {
     const aiEvents: { type: "zombie_detected"; zombieId: string }[] = [];
     for (const z of s.zombies) {
-      // Spurt: en jagande zombie nära spelaren dubblar farten i en kort stund och måste sedan återhämta sig.
+      // Spurt: en jagande zombie nära spelaren accelererar, håller toppfart, tappar den gradvis och måste sedan återhämta sig.
       if (z.sprintUntilS !== undefined && t >= z.sprintUntilS) {
         z.sprintUntilS = undefined;
+        z.sprintStartS = undefined;
         z.sprintReadyAtS = t + rules.sprintCooldownS;
       }
       if (
@@ -261,10 +271,11 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
         t >= (z.sprintReadyAtS ?? 0) &&
         haversineM(zombieLatLon(g, z), input.position) <= rules.sprintRadiusM
       ) {
-        z.sprintUntilS = t + rules.sprintDurationS;
+        z.sprintStartS = t;
+        z.sprintUntilS = t + sprintTotalS(rules);
         events.push({ type: "zombie_sprint", zombieId: z.id });
       }
-      const speed = z.speedMps * (z.sprintUntilS !== undefined ? rules.sprintSpeedFactor : 1);
+      const speed = z.speedMps * zombieSpeedFactor(rules, z, t);
       const arrived = advanceZombie(g, z, speed * STEP_S, s);
       updateZombieAI(
         {

@@ -29,7 +29,7 @@ export default function HowToPlay() {
       <p>On foot and Bike use different trail networks, speeds and time limits. Difficulty changes how many zombies there are, how fast they are, and how generous the time limit is. There is no bonus for being fast.</p>
 
       <h2>Zombies</h2>
-      <p>Zombies hunt you from the first second, always heading for you along the trails. When a zombie gets within 100 m it can sprint at 1.5× its speed for 30 seconds, then it must recover. Shake them off by taking another path, or keep moving.</p>
+      <p>Zombies hunt you from the first second, always heading for you along the trails. When a zombie gets within 100 m it can sprint: it speeds up (up to 1.25× its speed on Easy, 1.4× on Normal, 1.5× on Hard), then slowly loses that speed again and has to rest before it can sprint again. Shake them off by taking another path, or keep moving.</p>
 
       <h2>Capture</h2>
       <p>If a zombie stays within 20 m for a few seconds you are captured and the match is over. With uncertain location accuracy this takes longer or is paused. The game never captures you from an old or guessed position.</p>
@@ -59,7 +59,7 @@ export default function HowToPlay() {
       <p>On foot and Bike use different trail networks, speeds and time limits. Difficulty changes how many zombies there are, how fast they are, and how generous the time limit is. There is no bonus for being fast.</p>
 
       <h2>Zombies</h2>
-      <p>Zombies hunt you from the first second, always heading for you along the trails. When a zombie gets within 100 m it can sprint at 1.5× its speed for 30 seconds, then it must recover. Shake them off by taking another path, or keep moving.</p>
+      <p>Zombies hunt you from the first second, always heading for you along the trails. When a zombie gets within 100 m it can sprint: it speeds up (up to 1.25× its speed on Easy, 1.4× on Normal, 1.5× on Hard), then slowly loses that speed again and has to rest before it can sprint again. Shake them off by taking another path, or keep moving.</p>
 
       <h2>Capture</h2>
       <p>If a zombie stays within 20 m for a few seconds you are captured and the match is over. With uncertain location accuracy this takes longer or is paused. The game never captures you from an old or guessed position.</p>

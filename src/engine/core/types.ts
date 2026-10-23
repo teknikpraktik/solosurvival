@@ -53,6 +53,8 @@ export interface Zombie {
   canIntercept: boolean;
   /** Spurt: spelklocka (s) då pågående spurt slutar. Saknas när zombien inte spurtar. */
   sprintUntilS?: number;
+  /** Spurt: spelklocka (s) då pågående spurt började (för ramp/avtagande). Saknas i äldre sparade matcher. */
+  sprintStartS?: number;
   /** Tidigast tid (s) för nästa spurt (återhämtning). */
   sprintReadyAtS?: number;
 }

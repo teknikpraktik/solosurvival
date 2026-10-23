@@ -3,6 +3,7 @@ import { ACTIVITIES } from "@/config/activities";
 import type { GameEvent, Zombie } from "@/engine/core/types";
 import { objectiveProgress, type ObjectiveProgress } from "@/engine/objectives/objectives";
 import { zombieLatLon } from "@/engine/core/movement";
+import { zombieSpeedFactor } from "@/engine/core/engine";
 import { haversineM, type LatLon } from "@/geo/geometry";
 import { GpsFilter, type FilterVerdict } from "@/gps/filters/filter";
 import { GpsProvider, type GeoLike, type GpsErrorCode, type GpsEvent } from "@/gps/provider/provider";
@@ -719,7 +720,7 @@ export class PlaySession {
     const zs: ZombieView[] = s.zombies
       .map((z) => {
         const ll = zombieLatLon(live.g, z);
-        return { id: z.id, edgeId: z.edgeId, distM: z.distanceAlongEdgeM, dir: z.dir, speedMps: z.speedMps * (z.sprintUntilS !== undefined ? live.rules.sprintSpeedFactor : 1), sprinting: z.sprintUntilS !== undefined, lat: ll.lat, lon: ll.lon, distanceM: haversineM(ll, pos), state: z.state };
+        return { id: z.id, edgeId: z.edgeId, distM: z.distanceAlongEdgeM, dir: z.dir, speedMps: z.speedMps * zombieSpeedFactor(live.rules, z, s.elapsedSeconds), sprinting: z.sprintUntilS !== undefined, lat: ll.lat, lon: ll.lon, distanceM: haversineM(ll, pos), state: z.state };
       })
       .sort((a, b) => a.distanceM - b.distanceM);
     const o = s.objectives;
