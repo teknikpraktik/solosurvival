@@ -11,7 +11,8 @@ import type { TileStore } from "@/data/store";
 import type { RouteProposal } from "@/routes/types";
 import { proximityRadiusM, VISIBLE_RADIUS_M, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
 import { FieldLog } from "./fieldlog";
-import { HeadingTracker } from "./heading";
+import { HeadingFusion, HeadingTracker, type HeadingSource } from "./heading";
+import type { CompassSource, CompassStatus } from "./compass";
 import { SpeedTracker } from "./speed";
 import { LiveGame } from "./live-game";
 import { createLiveMatch, matchDurationS } from "./match";
@@ -53,6 +54,8 @@ export interface SessionDeps {
   jumpScares?: () => boolean;
   random?: () => number;
   onCue?: (cue: Cue, text: string) => void;
+  /** Kompass (webbläsarens rörelsesensorer). Utelämnad = bara GPS-riktning. */
+  compass?: CompassSource;
 }
 
 export type Stage = "idle" | "locating" | "preparing" | "preview" | "playing" | "finished";
@@ -75,8 +78,12 @@ export interface SessionView {
   stage: Stage;
   gpsError: { code: GpsErrorCode; message: string } | null;
   position: LatLon | null;
-  /** Stabil färdriktning (0–360, 0 = norr) eller null; ren presentation. */
+  /** Stabil riktning (0–360, 0 = norr) eller null när den inte går att fastställa; ren presentation. */
   heading: number | null;
+  /** Varifrån riktningen kommer: GPS (i rörelse), kompass (stilla), senast gångna ("held") eller ingen. */
+  headingSource: HeadingSource;
+  /** Kompassens tillstånd: av, på, nekad (rörelsesensorer) eller saknas. */
+  compass: CompassStatus;
   /** Smoothed player speed (m/s) for display, or null when unknown. */
   speedMps: number | null;
   accuracyM: number | null;
@@ -160,6 +167,8 @@ export class PlaySession {
   history: HistoryRecord | null = null;
   private readonly speed = new SpeedTracker();
   private readonly heading = new HeadingTracker();
+  private readonly fusion = new HeadingFusion();
+  private compassStatus: CompassStatus = "off";
   /** Zombier som redan har gett närhetsljud (en gång per zombie per match, även om den lämnar och återkommer). */
   private alerted = new Set<string>();
   private pendingZombieSound = false;
@@ -220,8 +229,31 @@ export class PlaySession {
       if (verdict === "reacquired") { this.heading.rebase(); this.speed.reset(); }
       if (pos) this.speed.push(pos, t, e.fix.speedMps);
       if (pos) this.heading.update({ pos, accuracyM: e.fix.accuracyM, gpsHeadingDeg: e.fix.headingDeg, gpsSpeedMps: e.fix.speedMps, tMs: e.fix.timestampMs });
+      this.fusion.pushGps(this.heading.heading, this.speed.speedAt(t), t);
     }
     this.emit();
+  }
+
+  /**
+   * Slår på kompassen. Måste anropas från en användargest (iOS frågar då om tillstånd för rörelsesensorer). Ofarlig att anropa flera gånger.
+   * Utan kompass fungerar Track Up ändå med GPS-riktningen när man rör sig.
+   */
+  async enableCompass(): Promise<CompassStatus> {
+    if (this.compassStatus === "on") return "on";
+    if (!this.d.compass) { this.compassStatus = "unsupported"; this.emit(); return this.compassStatus; }
+    try {
+      const r = await this.d.compass.start((s) => this.fusion.pushCompass(s.headingDeg, this.now()));
+      this.compassStatus = r === "granted" ? "on" : r;
+    } catch {
+      this.compassStatus = "denied";
+    }
+    this.emit();
+    return this.compassStatus;
+  }
+
+  /** Aktuell riktning utan att vänta på nästa vy-uppdatering (kartan läser den varje bildruta). */
+  liveHeading(): { deg: number | null; source: HeadingSource } {
+    return this.fusion.get(this.now());
   }
 
   /** Aktuell startposition för förhandsvisning: filtrerad position med tillräcklig noggrannhet. */
@@ -584,11 +616,13 @@ export class PlaySession {
     this.stage = this.provider.running ? "locating" : "idle";
     this.pre = new GpsFilter({ maxPlausibleSpeedMps: ACTIVITIES.mtb.maxPlausibleSpeedMps });
     this.heading.reset();
+    this.fusion.reset();
     this.speed.reset();
     this.emit();
   }
 
   dispose(): void {
+    this.d.compass?.stop();
     this.stopTicker();
     this.provider.stop();
     void this.releaseWakeLock();
@@ -608,7 +642,9 @@ export class PlaySession {
       stage: this.stage,
       gpsError: this.gpsError,
       position: pos,
-      heading: this.heading.heading,
+      heading: this.fusion.get(t).deg,
+      headingSource: this.fusion.get(t).source,
+      compass: this.compassStatus,
       speedMps: this.speed.speedAt(t),
       accuracyM: this.lastAccuracy,
       quality,

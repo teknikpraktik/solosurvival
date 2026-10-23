@@ -22,8 +22,8 @@ export const viewProfile = (a: Activity): ViewProfile => (a === "mtb" ? BIKE : F
 
 /** Minimum seconds between two "tension" sounds. */
 export const TENSION_COOLDOWN_S = 45;
-/** Seconds the map stays where the user left it before it returns to the player. */
-export const VIEW_RETURN_S = 6;
+/** Seconds the map stays where the user left it before it returns to the player (position only: a zoom the user set is kept until they tap centre). */
+export const VIEW_RETURN_S = 15;
 
 /** "Zombies approaching" is spoken when the nearest zombie comes within this distance (m)… */
 export const APPROACH_ENTER_M = 200;

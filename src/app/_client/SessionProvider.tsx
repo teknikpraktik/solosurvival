@@ -7,6 +7,7 @@ import { PlaySession } from "@/play/session";
 import { IdbTileCache } from "@/play/tile-cache";
 import type { Db } from "@/play/idb";
 import { playCue, speak } from "./cues";
+import { createBrowserCompass } from "./compass";
 
 interface Ctx {
   session: PlaySession;
@@ -35,6 +36,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         db,
         store,
         userAgent: navigator.userAgent,
+        compass: createBrowserCompass(),
         traceEnabled,
         jumpScares: () => true, // hidden feature: always on (never on Bike, decided by the session)
         onCue: (c) => { playCue(c); if (c === "sprint") setTimeout(() => speak("Run!"), 250); }, // zombie sprint: shriek plus a spoken "Run!"

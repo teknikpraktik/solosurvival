@@ -87,7 +87,7 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .sheet { padding-bottom: calc(max(14px, env(safe-area-inset-bottom)) + 12px); }
 /* Kartsymboler */
 .pmark { width: 40px; height: 40px; pointer-events: none; }
-.pmark .arrow, .pmark .dot { position: absolute; inset: 0; transition: transform .8s linear, opacity .3s; will-change: transform; }
+.pmark .arrow, .pmark .dot { position: absolute; inset: 0; transition: opacity .3s; will-change: transform; } /* pilens vinkel sätts varje bildruta (mjukad i JS): ingen CSS-fördröjning */
 .pmark .dot { opacity: 1; } .pmark.has-heading .dot { opacity: 0; } .pmark:not(.has-heading) .arrow { opacity: 0; }
 .zmark { width: 34px; height: 34px; pointer-events: none; filter: drop-shadow(0 0 3px #000c); }
 .zmark .zring { transition: stroke .3s; }
@@ -155,3 +155,6 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .goalmark.home.todo { opacity: .75; }
 .goalmark.home.next { filter: drop-shadow(0 0 6px #60a5fa); }
 .goalmark.home.done { opacity: .9; }
+
+/* Centrera-knappen lyser när kartan inte följer spelaren. */
+.iconbtn.attn { background: #1d4ed8; border-color: #93c5fd; color: #fff; box-shadow: 0 0 0 3px #3b82f680; }

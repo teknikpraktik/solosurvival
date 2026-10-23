@@ -27,6 +27,7 @@ export default function Play() {
   const [tried, setTried] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [trackUp, setTrackUp] = useState(true);
+  const [recenterNonce, setRecenterNonce] = useState(0);
   // After the user has moved/zoomed the map, it returns to the player after VIEW_RETURN_S seconds without interaction.
   const returnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onUserMove = useCallback(() => {
@@ -150,7 +151,9 @@ export default function Play() {
         zombies={zombies}
         frozen={m.paused || finished}
         heading={view.heading}
+        getHeading={() => session.liveHeading()}
         trackUp={trackUp}
+        recenterNonce={recenterNonce}
         zoom={16}
         extraction={m.extraction}
         follow={follow}
@@ -178,18 +181,21 @@ export default function Play() {
             {m.activity === "mtb" && <span className="pill" aria-label="Your speed">{view.speedMps === null ? "– km/h" : `${(view.speedMps * 3.6).toFixed(1)} km/h`}</span>}
           </div>
         )}
+        {!finished && !m.paused && trackUp && view.heading == null && (
+          <div className="line"><span className="pill warn" aria-live="polite">{view.compass === "denied" ? "Direction unknown · allow motion sensors for a compass" : "Direction unknown · walk a few steps"}</span></div>
+        )}
         {m.infection > 0 && <div className="infect" aria-label="Smittrisk"><div style={{ width: `${Math.min(100, (m.infection / 3) * 100)}%` }} /></div>}
       </div>
 
       {!finished && (
         <div className="controls">
           {m.paused ? (
-            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{ready ? "START" : "CONTINUE"}</button>
+            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{ready ? "START" : "CONTINUE"}</button>
           ) : (
             <button className="wide" onClick={() => session.pause("manual")}>PAUSE</button>
           )}
-          <button className="iconbtn" onClick={() => setFollow(true)} aria-label="Center on me">⌖</button>
-          <button className="iconbtn compass" onClick={() => { setTrackUp((t) => !t); setFollow(true); }} aria-label={trackUp ? "Track Up (tap for North Up)" : "North Up (tap for Track Up)"} aria-pressed={trackUp}>
+          <button className={`iconbtn${follow ? "" : " attn"}`} onClick={() => { setFollow(true); setRecenterNonce((n) => n + 1); }} aria-label="Center on me">⌖</button>
+          <button className="iconbtn compass" onClick={() => { void session.enableCompass(); setTrackUp((t) => !t); setFollow(true); }} aria-label={trackUp ? "Track Up (tap for North Up)" : "North Up (tap for Track Up)"} aria-pressed={trackUp}>
             <svg viewBox="0 0 26 26" style={{ transform: trackUp && view.heading != null ? `rotate(${-view.heading}deg)` : "none" }} aria-hidden="true">
               <path d="M13 2l5 11h-10z" fill="#ef4444" /><path d="M13 24l-5-11h10z" fill="#8b98a5" /><circle cx="13" cy="13" r="1.8" fill="#0b0f14" />
             </svg>
@@ -205,7 +211,7 @@ export default function Play() {
           onClose={() => setPauseDismissed(true)}
           actions={
             <>
-              <button className="btn primary big" disabled={!canResume} onClick={() => { unlockAudio(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{canResume ? (ready ? "START" : "CONTINUE") : "WAITING FOR LOCATION…"}</button>
+              <button className="btn primary big" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{canResume ? (ready ? "START" : "CONTINUE") : "WAITING FOR LOCATION…"}</button>
               <button className="btn" onClick={() => setConfirmEnd(true)}>QUIT</button>
             </>
           }
