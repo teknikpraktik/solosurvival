@@ -117,7 +117,21 @@ export default function GameMap(props: GameMapProps) {
       map.addLayer({ id: "start", type: "circle", source: "start", paint: { "circle-radius": 7, "circle-color": "#0b0f14", "circle-stroke-color": "#e6edf3", "circle-stroke-width": 2.5 } });
       setLoaded(true);
     });
-    return () => { markersRef.current.forEach((m) => m.remove()); map.remove(); mapRef.current = null; setLoaded(false); };
+    // Svart karta: iOS kan tappa ritytan när appen varit i bakgrunden eller när behållaren hade storlek 0 vid start. Rita om vid återkomst och vid storleksändring,
+    // och försök läsa in kartstilen igen om den inte kommit inom 8 s (nätverkshack vid start).
+    const repaint = () => { if (!document.hidden) { map.resize(); map.triggerRepaint(); } };
+    document.addEventListener("visibilitychange", repaint);
+    const ro = typeof ResizeObserver !== "undefined" && el.current ? new ResizeObserver(() => map.resize()) : null;
+    if (ro && el.current) ro.observe(el.current);
+    let retries = 0;
+    const watchdog = setInterval(() => {
+      if (map.isStyleLoaded() || retries >= 2) { clearInterval(watchdog); return; }
+      retries++;
+      propsRef.current.onError?.("map style timeout, retrying");
+      map.setStyle(MAP_STYLE);
+    }, 8000);
+    map.on("load", () => clearInterval(watchdog));
+    return () => { clearInterval(watchdog); ro?.disconnect(); document.removeEventListener("visibilitychange", repaint); markersRef.current.forEach((m) => m.remove()); map.remove(); mapRef.current = null; setLoaded(false); };
   }, []);
 
   const src = (id: string, data: GeoJSON.FeatureCollection) => (mapRef.current?.getSource(id) as GeoJSONSource | undefined)?.setData(data);

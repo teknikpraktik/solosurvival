@@ -149,6 +149,15 @@ export class MatchStorage {
     if (!rec || !graph) return interrupt("The saved match has no data.");
     if (rec.schema !== SNAPSHOT_SCHEMA || rec.rulesVersion !== RULES_VERSION) return interrupt("The match was saved with another version of the game and cannot be resumed.");
     const s = rec.state;
+    if (s && s.phase === "finished" && s.result) {
+      // Matchen hann avslutas men städningen avbröts (t.ex. appen stängdes): slutför den i historiken i stället för att kalla den skadad.
+      const h = await this.history.get(id);
+      if (h) await this.history.put(id, { ...h, result: s.result, endedAt: h.endedAt ?? Date.now() });
+      await this.matches.delete(id);
+      await this.matches.delete(`${id}:graph`);
+      await this.meta.delete(ACTIVE_KEY);
+      return null;
+    }
     if (!s || s.phase === "finished" || !Number.isFinite(s.elapsedSeconds) || !Array.isArray(s.zombies)) return interrupt("The saved match is damaged.");
     const g = indexGraph(graph);
     for (const z of s.zombies) if (!g.edges.has(z.edgeId)) return interrupt("The saved match does not fit the map data.");

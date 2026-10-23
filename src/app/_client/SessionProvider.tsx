@@ -50,9 +50,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setCtx({ session, db, ready: true });
     })();
     const vis = () => session?.onVisibility(document.hidden);
+    const hide = () => session?.onPageHide();
     document.addEventListener("visibilitychange", vis);
-    window.addEventListener("pagehide", vis);
-    return () => { cancelled = true; document.removeEventListener("visibilitychange", vis); window.removeEventListener("pagehide", vis); };
+    window.addEventListener("pagehide", hide);
+    return () => { cancelled = true; document.removeEventListener("visibilitychange", vis); window.removeEventListener("pagehide", hide); };
   }, []);
   const value = useMemo(() => ctx, [ctx]);
   return <C.Provider value={value}>{children}</C.Provider>;

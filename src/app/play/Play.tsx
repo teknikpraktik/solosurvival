@@ -190,7 +190,7 @@ export default function Play() {
       {!finished && (
         <div className="controls">
           {m.paused ? (
-            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{ready ? "START" : "CONTINUE"}</button>
+            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{!canResume ? "WAITING FOR LOCATION…" : ready ? "START" : "CONTINUE"}</button>
           ) : (
             <button className="wide" onClick={() => session.pause("manual")}>PAUSE</button>
           )}

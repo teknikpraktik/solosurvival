@@ -182,6 +182,8 @@ export class PlaySession {
   private lastDetectCueMs = -Infinity;
   private lastSprintCueMs = -Infinity;
   private cueMsgs: { text: string; until: number }[] = [];
+  /** Alla skrivningar till lagringen går i kö, så en pågående sparning aldrig kan skriva efter att matchen avslutats (och lämna en föräldralös post). */
+  private io: Promise<void> = Promise.resolve();
 
   constructor(private readonly d: SessionDeps) {
     this.now = d.now ?? Date.now;
@@ -394,15 +396,46 @@ export class PlaySession {
     this.emit();
   }
 
-  /** Anropas från document.visibilitychange. Bakgrundsläge kan inte ge pålitlig GPS, så spelet pausas alltid. */
+  /**
+   * Anropas från document.visibilitychange. Ett appbyte pausar inte spelet: se BACKGROUND_GRACE_MS. Mobilwebbläsare kan strypa eller stoppa
+   * både GPS och timers i bakgrunden, så ingenting antas köra där; vid återkomst simuleras den bortavarande tiden (eller spelet pausas om
+   * frånvaron var lång) och GPS-bevakningen startas om, eftersom iOS ibland tappar den.
+   */
   onVisibility(hidden: boolean): void {
+    const t = this.now();
+    const live = this.live;
     if (hidden) {
-      this.pause("hidden");
       void this.releaseWakeLock();
-    } else if (this.live && !this.live.finished) {
-      this.messages = ["The game paused when the app left the foreground. Tap Continue."];
-      this.emit();
+      if (live && !live.finished && !live.state.paused) {
+        live.enterBackground(t);
+        this.log?.add(t, "background");
+        void this.persist(); // om webbläsaren avslutar sidan i bakgrunden kan matchen återställas
+      }
+      return;
     }
+    this.refreshGps();
+    if (!live || live.finished) return;
+    const r = live.leaveBackground(t);
+    if (r.paused) {
+      this.log?.add(t, "pause", { reason: "background_long", awayS: Math.round(r.awayMs / 1000) });
+      this.messages = [`You were away for ${Math.round(r.awayMs / 1000)} s and the game paused. Tap Continue.`];
+      void this.persist();
+    } else if (r.awayMs > 0) {
+      this.log?.add(t, "background_return", { awayS: Math.round(r.awayMs / 1000) });
+      if (r.events.length) this.endMatch(r.events);
+      if (!live.finished && !live.state.paused) void this.acquireWakeLock();
+    }
+    this.emit();
+  }
+
+  /** Startar om GPS-bevakningen (efter bakgrundsläge eller återställning) utan att röra spelet. */
+  refreshGps(): void {
+    if (this.provider.running) this.provider.start((e) => this.onGps(e));
+  }
+
+  /** Sidan göms eller stängs: spara ögonblicksbilden så att matchen kan återställas. */
+  onPageHide(): void {
+    void this.persist();
   }
 
   async abort(): Promise<void> {
@@ -532,30 +565,46 @@ export class PlaySession {
     this.stage = "finished";
     try {
       if (this.storage && this.params) {
-        await this.storage.finish(live, this.params, this.proposal);
-        const h = (await this.storage.listHistory()).find((x) => x.id === live.state.id) ?? null;
-        this.history = h;
-        if (h && this.log && this.d.db) {
-          this.log.finalize(h, live.counters, { routeGenerationMs: Math.round(this.routeGenMs), dataVersion: this.dataVersion });
-          await this.log.save(this.d.db);
-        }
+        const storage = this.storage, params = this.params, proposal = this.proposal;
+        await this.enqueue(async () => {
+          await storage.finish(live, params, proposal);
+          const h = (await storage.listHistory()).find((x) => x.id === live.state.id) ?? null;
+          if (this.live === live) this.history = h; // inte om spelaren redan gått vidare (reset)
+          if (h && this.log && this.d.db && this.live === live) {
+            this.log.finalize(h, live.counters, { routeGenerationMs: Math.round(this.routeGenMs), dataVersion: this.dataVersion });
+            await this.log.save(this.d.db);
+          }
+        });
       }
     } catch {
       this.storageWarning = true;
     }
+    if (this.live !== live) return; // återställd medan vi sparade
     if (live.state.result === "infected") this.cue("captured", "You were captured!");
     else this.cue("end", "Match over");
     this.emit();
   }
 
+  /** Kör lagringsarbete i tur och ordning. Ett fel i ett steg stoppar inte nästa. */
+  private enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.io.then(fn, fn);
+    this.io = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
   private async persist(first = false): Promise<void> {
     const live = this.live;
     if (!live || !this.storage || !this.params || live.finished) return;
+    const storage = this.storage, params = this.params, proposal = this.proposal;
+    const start = this.previewStart ?? live.state.player.position, dataVersion = this.dataVersion, startedAt = this.startedAt;
     this.lastSaveMs = this.now();
     try {
-      if (first) await this.storage.begin(live, this.params, this.proposal, this.previewStart ?? live.state.player.position, this.dataVersion, this.startedAt);
-      else await this.storage.save(live, this.params, this.proposal, this.previewStart ?? live.state.player.position, this.dataVersion);
-      if (this.log && this.d.db) await this.log.save(this.d.db);
+      await this.enqueue(async () => {
+        if (live.finished || this.live !== live) return; // matchen hann avslutas innan det blev vår tur
+        if (first) await storage.begin(live, params, proposal, start, dataVersion, startedAt);
+        else await storage.save(live, params, proposal, start, dataVersion);
+        if (this.log && this.d.db) await this.log.save(this.d.db);
+      });
     } catch {
       this.storageWarning = true;
       this.emit();
@@ -618,6 +667,8 @@ export class PlaySession {
     this.heading.reset();
     this.fusion.reset();
     this.speed.reset();
+    // Nytt förfilter har ingen position, och en stillastående iPhone skickar inga nya fixar av sig själv: be om en direkt.
+    this.refreshGps();
     this.emit();
   }
 
