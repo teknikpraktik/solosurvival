@@ -17,7 +17,7 @@ import { createLiveMatch, matchDurationS } from "./match";
 import { prepareMatch, type Prepared } from "./prepare";
 import { MatchStorage, type HistoryRecord } from "./storage";
 
-export type Cue = "danger" | "alert" | "goal" | "info" | "end" | "zombie" | "captured" | "jump" | "tension";
+export type Cue = "danger" | "alert" | "goal" | "info" | "end" | "zombie" | "captured" | "jump" | "tension" | "sprint";
 
 /**
  * Planerar slumpade skrämmor för en match: en första efter 90–420 s speltid och (50 %) en andra 240–480 s senare.
@@ -421,7 +421,7 @@ export class PlaySession {
         case "zombie_spawned": this.log?.add(t, "zombie_spawned", { id: e.zombieId, n: live.state.zombies.length }); break;
         case "zombie_sprint":
           this.log?.add(t, "zombie_sprint", { id: e.zombieId });
-          if (t - this.lastSprintCueMs > 8_000) { this.lastSprintCueMs = t; this.cue("danger", "Zombie sprinting!"); }
+          if (t - this.lastSprintCueMs > 8_000) { this.lastSprintCueMs = t; this.cue("sprint", "Zombie sprinting!"); }
           break;
         case "spawn_relaxed": this.log?.add(t, "spawn_relaxed", { n: live.state.zombies.length }); break;
         case "spawn_skipped": this.log?.add(t, "spawn_skipped", { n: live.state.zombies.length, atS: Math.round(live.state.elapsedSeconds) }); break;
