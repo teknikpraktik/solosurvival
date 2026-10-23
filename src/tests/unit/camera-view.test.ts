@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextClose, viewProfile, viewZoom } from "@/play/camera-view";
+import { nextApproaching, nextClose, viewProfile, viewZoom } from "@/play/camera-view";
 
 const BIKE = viewProfile("mtb"), FOOT = viewProfile("walk");
 
@@ -42,5 +42,15 @@ describe("viewZoom", () => {
     expect(nextClose(false, 100, FOOT)).toBe(true);
     expect(nextClose(true, 130, FOOT)).toBe(true);
     expect(nextClose(true, 131, FOOT)).toBe(false);
+  });
+});
+
+describe("nextApproaching (spoken warning)", () => {
+  it("arms at 200 m, holds until 260 m, and is off with no zombies", () => {
+    expect(nextApproaching(false, 201)).toBe(false);
+    expect(nextApproaching(false, 200)).toBe(true);
+    expect(nextApproaching(true, 260)).toBe(true);
+    expect(nextApproaching(true, 261)).toBe(false);
+    expect(nextApproaching(true, null)).toBe(false);
   });
 });

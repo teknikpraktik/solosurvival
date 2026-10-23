@@ -7,8 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { errorText } from "@/gps/provider/provider";
 import { RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
-import { cuesEnabled, playCue, setCuesEnabled, unlockAudio } from "../_client/cues";
-import { TENSION_COOLDOWN_S, VIEW_RETURN_S, nextClose, viewProfile } from "@/play/camera-view";
+import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio } from "../_client/cues";
+import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, VIEW_RETURN_S, nextApproaching, nextClose, viewProfile } from "@/play/camera-view";
 import { Modal } from "../_client/Modal";
 import { Scare } from "../_client/Scare";
 import { JumpScare } from "../_client/JumpScare";
@@ -75,6 +75,27 @@ export default function Play() {
     const now = Date.now();
     if (wantClose && now - lastTension.current >= TENSION_COOLDOWN_S * 1000) { lastTension.current = now; playCue("tension"); }
   }, [wantClose, viewClose]);
+  // "Zombies approaching": spoken once when the nearest zombie comes within 200 m, armed again after it has been beyond 260 m (and not more often than the cooldown).
+  const [approaching, setApproaching] = useState(false);
+  const lastApproach = useRef(-Infinity);
+  const wantApproaching = nextApproaching(approaching, nearestM);
+  useEffect(() => {
+    if (wantApproaching === approaching) return;
+    setApproaching(wantApproaching);
+    const now = Date.now();
+    if (wantApproaching && now - lastApproach.current >= APPROACH_COOLDOWN_S * 1000) {
+      lastApproach.current = now;
+      playCue("alert"); // vibration; "alert" makes no sound of its own
+      speak("Zombies approaching");
+    }
+  }, [wantApproaching, approaching]);
+  // Captured: spoken a moment after the scream starts, when the scare screen opens.
+  const capturedNow = m?.phase === "finished" && m.result === "infected";
+  useEffect(() => {
+    if (!capturedNow) return;
+    const t = setTimeout(() => speak("Captured"), 700);
+    return () => clearTimeout(t);
+  }, [capturedNow]);
   const live = session?.live ?? null;
   const markers = useMemo<MapMarker[]>(() => {
     const o = m?.proposal;
@@ -162,7 +183,7 @@ export default function Play() {
       {!finished && (
         <div className="controls">
           {m.paused ? (
-            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); session.resume(); setFollow(true); }}>{ready ? "START" : "CONTINUE"}</button>
+            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{ready ? "START" : "CONTINUE"}</button>
           ) : (
             <button className="wide" onClick={() => session.pause("manual")}>PAUSE</button>
           )}
@@ -183,7 +204,7 @@ export default function Play() {
           onClose={() => setPauseDismissed(true)}
           actions={
             <>
-              <button className="btn primary big" disabled={!canResume} onClick={() => { unlockAudio(); session.resume(); setFollow(true); }}>{canResume ? (ready ? "START" : "CONTINUE") : "WAITING FOR LOCATION…"}</button>
+              <button className="btn primary big" disabled={!canResume} onClick={() => { unlockAudio(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{canResume ? (ready ? "START" : "CONTINUE") : "WAITING FOR LOCATION…"}</button>
               <button className="btn" onClick={() => setConfirmEnd(true)}>QUIT</button>
             </>
           }

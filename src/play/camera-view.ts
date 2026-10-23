@@ -23,6 +23,19 @@ export const TENSION_COOLDOWN_S = 45;
 /** Seconds the map stays where the user left it before it returns to the player. */
 export const VIEW_RETURN_S = 6;
 
+/** "Zombies approaching" is spoken when the nearest zombie comes within this distance (m)… */
+export const APPROACH_ENTER_M = 200;
+/** …and is armed again only after it has been farther away than this (hysteresis), plus the cooldown below. */
+export const APPROACH_EXIT_M = 260;
+/** Minimum seconds between two spoken warnings. */
+export const APPROACH_COOLDOWN_S = 30;
+
+/** Next "a zombie is within warning range" state given the nearest zombie distance (null = no zombies). */
+export function nextApproaching(prev: boolean, nearestM: number | null): boolean {
+  if (nearestM === null) return false;
+  return prev ? nearestM <= APPROACH_EXIT_M : nearestM <= APPROACH_ENTER_M;
+}
+
 /** Next zoomed-in state given the nearest zombie distance (null = no zombies). */
 export function nextClose(prev: boolean, nearestM: number | null, v: ViewProfile): boolean {
   if (nearestM === null) return false;
