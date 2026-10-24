@@ -21,6 +21,8 @@ export interface RawEdge {
   grade?: "bridge" | "tunnel";
   /** Edge ends at a mapped crossing of a major road/railway (zombies may use it; Survival extraction and player routes avoid it). */
   crossing?: boolean;
+  /** Syntetisk terrängkant (A TO B till fots): ingen stig. Zombier går här långsammare (`Rules.offTrailFactor`), kanten ritas aldrig och föreslås aldrig. */
+  offtrail?: boolean;
 }
 
 export interface SerializedGraph {
@@ -61,6 +63,8 @@ export interface TrailGraph {
   adj: Map<string, Adjacent[]>;
   components: ComponentInfo[];
   crossingNodes: Set<string>;
+  /** Sant om grafen innehåller terrängkanter (då används rumsindex och stigar går före terräng vid snappning). */
+  hasOfftrail?: boolean;
 }
 
 export interface EdgePos {

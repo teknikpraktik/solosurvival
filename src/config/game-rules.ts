@@ -1,7 +1,7 @@
 import { ACTIVITIES, type Activity } from "./activities";
 import { DIFFICULTIES, type Difficulty } from "./difficulty";
 
-export const RULES_VERSION = "2.3.0";
+export const RULES_VERSION = "2.4.0";
 
 /** Fast simuleringssteg (PRD 8.4): 5 Hz. */
 export const STEP_S = 0.2;
@@ -41,6 +41,12 @@ export const GPS_LOST_LONG_S = 60;
 
 export const GPS_ACCURACY = { okM: 10, verifyM: 20, infectionPausedM: 35 } as const;
 
+/**
+ * Zombiers fart (km/h) utanför stigar i terrängläget (A TO B till fots), samma absoluta värde oavsett aktivitet.
+ * Preliminära värden från docs/OFFTRAIL-BIKE-ADDENDUM.md; används bara på terrängkanter (`GraphEdge.offtrail`), som bara finns i terrängläget.
+ */
+export const OFF_TRAIL_KMH: Record<Difficulty, number> = { easy: 2.5, normal: 3.5, hard: 4.5 };
+
 export interface Rules {
   rulesVersion: string;
   activity: Activity;
@@ -63,6 +69,8 @@ export interface Rules {
   magnetic: boolean;
   /** Cykel: en spelare som varaktigt är utanför nätet blir exponerad när budgeten är slut (engine/offnetwork.ts). */
   offNetworkExposure: boolean;
+  /** Fartfaktor på terrängkanter (1 = ingen skillnad). Bara terrängläget har sådana kanter; cykel är alltid vägbunden. */
+  offTrailFactor: number;
   sprintRadiusM: number;
   /** Sekunder på toppfart. Hela spurten är ramp + duration + decay. */
   sprintDurationS: number;
@@ -114,6 +122,7 @@ export function resolveRules(
     magnetRangeM: a.magnetRangeM,
     magnetic: true,
     offNetworkExposure: activity === "mtb",
+    offTrailFactor: activity === "mtb" ? 1 : Math.min(1, OFF_TRAIL_KMH[difficulty] / 3.6 / ((ZOMBIE_SPEED_KMH[activity]?.[difficulty] ?? a.zombieSpeedKmh * d.speedMultiplier) / 3.6)),
     sprintRadiusM: SPRINT_RADIUS_M,
     sprintDurationS: d.sprint.holdS,
     sprintSpeedFactor: d.sprint.peakFactor,

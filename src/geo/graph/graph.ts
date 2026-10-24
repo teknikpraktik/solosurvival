@@ -74,7 +74,8 @@ export function indexGraph(g: SerializedGraph): TrailGraph {
     c.nodeIds.push(id);
     if ((degree.get(id) ?? 0) >= 3) c.junctionCount++;
   }
-  return { nodes, edges, adj, components, crossingNodes: new Set(g.crossingNodes ?? []) };
+  const hasOfftrail = g.edges.some((e) => e.offtrail);
+  return { nodes, edges, adj, components, crossingNodes: new Set(g.crossingNodes ?? []), ...(hasOfftrail ? { hasOfftrail: true } : {}) };
 }
 
 export function serializeGraph(g: TrailGraph, source = "synthetic"): SerializedGraph {
@@ -82,7 +83,7 @@ export function serializeGraph(g: TrailGraph, source = "synthetic"): SerializedG
     graphVersion: GRAPH_VERSION,
     source,
     nodes: [...g.nodes.values()],
-    edges: [...g.edges.values()].map(({ id, from, to, geometry, type, oneway, easy, grade, crossing }) => ({
+    edges: [...g.edges.values()].map(({ id, from, to, geometry, type, oneway, easy, grade, crossing, offtrail }) => ({
       id,
       from,
       to,
@@ -92,6 +93,7 @@ export function serializeGraph(g: TrailGraph, source = "synthetic"): SerializedG
       easy,
       grade,
       crossing,
+      offtrail,
     })),
     crossingNodes: g.crossingNodes.size ? [...g.crossingNodes] : undefined,
   };
@@ -114,14 +116,59 @@ export interface Snap extends EdgePos {
   offNetworkM: number;
 }
 
-/** Närmaste punkt på nätet. Linjär svepning räcker för spelområden av v1-storlek. */
+/** I en graf med terrängkanter vinner en stig om den ligger inom så här många meter från den närmaste terrängkanten. */
+export const OFFTRAIL_SNAP_PENALTY_M = 4;
+
+const CELL_DEG = 0.001;
+const GRID_SAMPLE_M = 40;
+const gridCache = new WeakMap<TrailGraph, { cells: Map<string, string[]>; cosLat: number }>();
+
+/** Rumsindex för grafer med terrängkanter (tusentals kanter): kantid per cell om ca 110 m, med kanter inlagda i varje cell de passerar. */
+function gridFor(g: TrailGraph) {
+  let hit = gridCache.get(g);
+  if (hit) return hit;
+  const first = g.nodes.values().next().value as GraphNode | undefined;
+  const cosLat = Math.cos(((first?.lat ?? 59) * Math.PI) / 180);
+  const cells = new Map<string, string[]>();
+  const key = (lat: number, lon: number) => `${Math.floor(lat / CELL_DEG)}_${Math.floor(lon / (CELL_DEG / cosLat))}`;
+  for (const e of g.edges.values()) {
+    const seen = new Set<string>();
+    const add = (pt: LatLon) => { const k = key(pt.lat, pt.lon); if (!seen.has(k)) { seen.add(k); (cells.get(k) ?? cells.set(k, []).get(k)!).push(e.id); } };
+    for (let i = 0; i + 1 < e.geometry.length; i++) {
+      const a = e.geometry[i], b = e.geometry[i + 1];
+      const n = Math.max(1, Math.ceil(haversineM(a, b) / GRID_SAMPLE_M));
+      for (let k = 0; k <= n; k++) add({ lat: a.lat + ((b.lat - a.lat) * k) / n, lon: a.lon + ((b.lon - a.lon) * k) / n });
+    }
+  }
+  hit = { cells, cosLat };
+  gridCache.set(g, hit);
+  return hit;
+}
+
+/** Kantkandidater nära `p`. Utan terrängkanter alla kanter (oförändrat beteende); annars kanter i 5 × 5 celler, och alla om inget hittas. */
+function candidateEdges(g: TrailGraph, p: LatLon): Iterable<GraphEdge> {
+  if (!g.hasOfftrail) return g.edges.values();
+  const { cells, cosLat } = gridFor(g);
+  const cy = Math.floor(p.lat / CELL_DEG), cx = Math.floor(p.lon / (CELL_DEG / cosLat));
+  const ids = new Set<string>();
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) for (const id of cells.get(`${cy + dy}_${cx + dx}`) ?? []) ids.add(id);
+  if (!ids.size) return g.edges.values();
+  return [...ids].map((id) => g.edges.get(id)!);
+}
+
+const rank = (g: TrailGraph, e: GraphEdge, distanceM: number): number => (g.hasOfftrail && e.offtrail ? distanceM + OFFTRAIL_SNAP_PENALTY_M : distanceM);
+
+/** Närmaste punkt på nätet. Linjär svepning räcker för spelområden av v1-storlek; med terrängkanter används ett rumsindex. */
 export function snapToGraph(g: TrailGraph, p: LatLon, component?: number): Snap | null {
   let best: Snap | null = null;
-  for (const e of g.edges.values()) {
+  let bestRank = Infinity;
+  for (const e of candidateEdges(g, p)) {
     if (component !== undefined && e.component !== component) continue;
     const pr = projectToPolyline(e.geometry, e.cumM, p);
-    if (!best || pr.distanceM < best.offNetworkM) {
+    const r = rank(g, e, pr.distanceM);
+    if (!best || r < bestRank) {
       best = { edgeId: e.id, distM: pr.distAlongM, offNetworkM: pr.distanceM };
+      bestRank = r;
     }
   }
   return best;
@@ -138,18 +185,19 @@ export const SNAP_CONTINUITY_M = 8;
  */
 export function snapToGraphNear(g: TrailGraph, p: LatLon, component?: number, prev?: EdgePos | null): Snap | null {
   const prevEdge = prev ? g.edges.get(prev.edgeId) : undefined;
-  let best: Snap | null = null;
-  let kept: Snap | null = null;
-  for (const e of g.edges.values()) {
+  let best: Snap | null = null, bestRank = Infinity;
+  let kept: Snap | null = null, keptRank = Infinity;
+  for (const e of candidateEdges(g, p)) {
     if (component !== undefined && e.component !== component) continue;
     const pr = projectToPolyline(e.geometry, e.cumM, p);
     const cand: Snap = { edgeId: e.id, distM: pr.distAlongM, offNetworkM: pr.distanceM };
-    if (!best || pr.distanceM < best.offNetworkM) best = cand;
+    const r = rank(g, e, pr.distanceM);
+    if (!best || r < bestRank) { best = cand; bestRank = r; }
     if (prevEdge && (e.id === prevEdge.id || e.from === prevEdge.from || e.from === prevEdge.to || e.to === prevEdge.from || e.to === prevEdge.to)) {
-      if (!kept || pr.distanceM < kept.offNetworkM) kept = cand;
+      if (!kept || r < keptRank) { kept = cand; keptRank = r; }
     }
   }
-  if (best && kept && kept.offNetworkM <= best.offNetworkM + SNAP_CONTINUITY_M) return kept;
+  if (best && kept && keptRank <= bestRank + SNAP_CONTINUITY_M) return kept;
   return best;
 }
 

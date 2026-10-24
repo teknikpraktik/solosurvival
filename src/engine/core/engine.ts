@@ -152,7 +152,7 @@ function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos,
     replanAtS: 0,
     tacticalAtS: s.elapsedSeconds + 20 + rand(s) * 10,
     contactLostS: 0,
-    canIntercept: rand(s) < rules.interceptShare,
+    canIntercept: rand(s) < rules.interceptShare && !g.hasOfftrail, // genskjutning är odefinierad i öppen terräng
   };
   s.zombies.push(z);
   s.peakZombies = Math.max(s.peakZombies, s.zombies.length);
@@ -278,7 +278,9 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
         z.sprintUntilS = t + sprintTotalS(rules);
         events.push({ type: "zombie_sprint", zombieId: z.id });
       }
-      const speed = z.speedMps * zombieSpeedFactor(rules, z, t);
+      // Terrängkant: zombien går långsammare. Hastigheten avgörs av kanten den står på i stegets början (högst ett steg fel vid kantbyte).
+      const offTrail = g.hasOfftrail && g.edges.get(z.edgeId)?.offtrail;
+      const speed = z.speedMps * zombieSpeedFactor(rules, z, t) * (offTrail ? rules.offTrailFactor : 1);
       const arrived = advanceZombie(g, z, speed * STEP_S, s);
       updateZombieAI(
         {

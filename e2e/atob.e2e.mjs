@@ -36,6 +36,7 @@ if (ok) {
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${OUT}/preview.png` });
   check("förhandsvisning visar A och B-markörer", (await page.locator('[aria-label="Objective A"]').count()) === 1 && (await page.locator('[aria-label="Objective B"]').count()) === 1);
+  check("terrängläge: förklaringen visas", (await page.getByText(/Walk any way you like to B/).count()) === 1);
   check("ingen 'nytt förslag' i A TO B", (await page.getByRole("button", { name: "NEW COURSE" }).count()) === 0);
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
   await page.getByRole("button", { name: "START", exact: true }).click();

@@ -104,7 +104,7 @@ export default function NewGame() {
           {stage !== "preparing" && ok && proposal && (
             <>
               <div className="stat"><span>{isAB ? "Straight line" : "Distance (straight lines)"}</span><b>{fmtKm(isAB && abA && abB ? haversineM(abA, abB) : proposal.lengthM)}</b></div>
-              <div className="stat"><span>Estimated time</span><b>about {estimatedMinutes(proposal.lengthM * (p.mode === "mission" ? COURSE_DETOUR_FACTOR : 1), p)} min</b></div>
+              <div className="stat"><span>Estimated time</span><b>about {estimatedMinutes(proposal.lengthM * (p.mode === "mission" || proposal.terrain ? COURSE_DETOUR_FACTOR : 1), p)} min</b></div>
               <div className="stat"><span>Time limit</span><b>{fmtTime(matchDurationS(p, proposal))}</b></div>
               <div className="stat"><span>Goal</span><b>{p.mode === "escape" ? "Point B – any route" : `${proposal.waypoints.filter((w) => w.kind === "checkpoint").length} checkpoints + home`}</b></div>
               {proposal.quality.flags.length > 0 && <div className="muted">{proposal.quality.flags.join(" · ")}</div>}
@@ -123,7 +123,7 @@ export default function NewGame() {
             </div>
           )}
           {view.messages.map((m) => <div key={m} className="card warn">{m}</div>)}
-          <div className="muted">{isAB ? "Any route you like counts. The line is only a hint. Never cross a road or railway just because the game suggests it." : "Fetch the numbered checkpoints in order, then return home. Choose your own way. Never cross a road or railway just because the game suggests it."}</div>
+          <div className="muted">{isAB ? (proposal?.terrain ? "Walk any way you like to B, on trails or across country. The line is only a hint. Zombies run on trails and walk slowly across country. The game does not know about roads, railways, water or private land: never cross them just because the game suggests it." : "Any route you like counts. The line is only a hint. Never cross a road or railway just because the game suggests it.") : "Fetch the numbered checkpoints in order, then return home. Choose your own way. Never cross a road or railway just because the game suggests it."}</div>
           <div className="row">
             {!isAB && <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "REFRESH" : "NEW COURSE"}</button>}
           </div>
