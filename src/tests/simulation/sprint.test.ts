@@ -119,13 +119,15 @@ describe("svårigheterna skiljer sig tydligt och Lätt går att spela gående", 
     expect(n).toBeLessThan(old * 0.6);
   });
 
-  it("Lätt till fots ligger under gångfart även i spurt-toppen när spelaren går i nominell fart, Normal och Svår gör det inte", () => {
-    const pace = 1.3; // ACTIVITIES.walk.playerPaceMps
+  it("Lätt till fots ligger under gångfart och Normal under joggingfart; Svår är snabbare än en löpare", () => {
+    const walk = 1.3, jog = 2.2, run = 3.0; // m/s: ACTIVITIES.walk.playerPaceMps, 7,9 km/h, 10,8 km/h
     const easy = resolveRules("walk", "easy", 3000), normal = resolveRules("walk", "normal", 3000), hard = resolveRules("walk", "hard", 3000);
-    expect(easy.zombieSpeedMps).toBeLessThan(pace);
-    expect(easy.zombieSpeedMps * easy.sprintSpeedFactor).toBeLessThan(pace * 1.25); // toppen är kort och knappt snabbare än en rask gång
-    expect(normal.zombieSpeedMps).toBeGreaterThan(pace * 2);
-    expect(hard.zombieSpeedMps).toBeGreaterThan(normal.zombieSpeedMps * 1.25);
+    expect(easy.zombieSpeedMps).toBeLessThan(walk);
+    expect(easy.zombieSpeedMps * easy.sprintSpeedFactor).toBeLessThan(walk * 1.25); // toppen är kort och knappt snabbare än en rask gång
+    expect(normal.zombieSpeedMps).toBeGreaterThan(walk); // en gående spelare hinns upp: Normal är inte för promenad
+    expect(normal.zombieSpeedMps).toBeLessThan(jog); // men en joggare är snabbare än grundfarten
+    expect(hard.zombieSpeedMps).toBeGreaterThan(run);
+    expect(hard.zombieSpeedMps).toBeGreaterThan(normal.zombieSpeedMps * 1.5);
     // Svårigheterna skiljer sig i fart, spurt och återhämtning.
     expect(DIFFICULTIES.easy.sprint.cooldownS).toBeGreaterThan(DIFFICULTIES.normal.sprint.cooldownS);
     expect(DIFFICULTIES.normal.sprint.cooldownS).toBeGreaterThan(DIFFICULTIES.hard.sprint.cooldownS);

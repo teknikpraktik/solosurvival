@@ -47,11 +47,12 @@ describe("spelbalans (simulerat, syntetiskt nät, gående spelare)", () => {
     expect(now.meanT).toBeGreaterThan(old.meanT * 1.15);
   }, 120000);
 
-  it("Normal och Svår är inte lättare än tidigare (sprintändringen mjukar upp formen, inte svårighetsgraden)", () => {
-    for (const d of ["normal", "hard"] as const) {
-      const a = run(d, 1, v21(d)), b = run(d, 1);
-      expect(b.meanT).toBeGreaterThan(a.meanT * 0.8);
-      expect(b.meanT).toBeLessThan(a.meanT * 1.5);
-    }
+  it("Normal (7 km/h) är lättare än v2.1 (10 km/h) för en joggare men fortfarande svårare än Lätt; Svår ändras inte i fart (bara sprintens form)", () => {
+    const jogOld = run("normal", 1.7, v21("normal")), jogNew = run("normal", 1.7);
+    expect(jogNew.meanT).toBeGreaterThan(jogOld.meanT * 1.4);
+    expect(run("easy", 1.7).meanT).toBeGreaterThan(jogNew.meanT);
+    const a = run("hard", 1, v21("hard")), b = run("hard", 1);
+    expect(b.meanT).toBeGreaterThan(a.meanT * 0.8);
+    expect(b.meanT).toBeLessThan(a.meanT * 1.5);
   }, 120000);
 });
