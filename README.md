@@ -13,7 +13,13 @@ GPS-baserat överlevnadsspel (PWA) där zombier jagar spelaren längs verkliga s
 
 ## v2.2 (stabilisering efter fälttest)
 
-Se `docs/V2.2-ANALYS.md` (grundorsaker) och `docs/V2.2-RAPPORT.md` (åtgärder, tester, simuleringar, GO/NO-GO). Balansmätning på riktig data: `npm run balance -- 10 karlstad survival v21,v22`.
+Se `docs/V2.2-ANALYS.md` (grundorsaker, avsnitt 5 = slutlig kvalitetssäkring) och `docs/V2.2-RAPPORT.md` (åtgärder, tester, simuleringar, GO/NO-GO; avsnitt 11 = kvalitetssäkringen).
+
+Verktyg för balans och granskning (alla använder samma motor som spelet):
+- `npm run balance -- 10 karlstad survival v21,v22` – enkel jämförelse av modeller på riktig data.
+- `npx tsx scripts/balance-qa.ts <område> <läge> <modell> <strategier> <svårigheter> <tempon> <N> <ut.jsonl>` + `scripts/balance-qa-report.ts` / `balance-qa-summary.ts` – många matcher, flera spelarstrategier, Wilson-intervall, fångstorsak.
+- `scripts/infection-noise.ts` (GPS-brus mot infektionsregeln), `scripts/background-exploit.ts` (regler för frånvaro), `scripts/graph-audit.ts` / `graph-audit-karlstad.ts` (passager mot facit).
+- `npm run lint` – `tsc` med `noUnusedLocals/Parameters` (ESLint stöder ännu inte TypeScript 7).
 
 ## Kommandon
 

@@ -197,6 +197,29 @@ describe("LiveGame: GPS → motor", () => {
     expect(live.state.phase).not.toBe("finished");
   });
 
+  it("zombier rör sig i SPELTID: ca 2,8 m/s medan fixar kommer, och står medvetet helt stilla under en GPS-lucka (förklarar e2e-felet 'zombier rör sig' vid belastad testmaskin)", () => {
+    const { live } = newLive("mission");
+    let t = 7_000_000;
+    live.pushFix(fixAt(START, 5, t), t);
+    live.resume(t);
+    t = stand(live, START, 5, t, 5);
+    const z0 = live.state.zombies.map((z) => zombieLatLon(live.g, z));
+    const e0 = live.state.elapsedSeconds;
+    t = stand(live, START, 5, t, 10); // 10 s med en färsk fix varje sekund
+    const z1 = live.state.zombies.map((z) => zombieLatLon(live.g, z));
+    const movedFast = z0.map((p, i) => haversineM(p, z1[i]));
+    expect(live.state.elapsedSeconds - e0).toBeGreaterThan(9.5);
+    expect(Math.max(...movedFast)).toBeGreaterThan(20); // 2,8 m/s × 10 s, med marginal för kantbyten
+    // 8 s utan en enda fix (t.ex. en testmaskin som inte hinner leverera positioner): klockan och alla zombier står stilla.
+    const e1 = live.state.elapsedSeconds;
+    for (let k = 0; k < 40; k++) { t += 200; live.tick(t); }
+    const z2 = live.state.zombies.map((z) => zombieLatLon(live.g, z));
+    expect(live.state.elapsedSeconds - e1).toBeLessThan(6);
+    const movedGap = z1.map((p, i) => haversineM(p, z2[i]));
+    // De första ~5 s av luckan går i vanlig takt (färsk position < 5 s gammal), resten står stilla: en lucka på 8 s ger klart mindre rörelse än 8 s i drift.
+    expect(Math.max(...movedGap)).toBeLessThan(2.78 * 6.2);
+  });
+
   it("fryst app (>5 s mellan tick) pausar och går inte att fortsätta utan färsk position", () => {
     const { live } = newLive("mission");
     clearZombies(live);
