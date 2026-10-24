@@ -94,7 +94,7 @@ async function scenario(diff: Difficulty): Promise<Scenario> {
   const base = { ...withActivity(defaultParams("walk"), "walk"), difficulty: diff, mode: mode as "survival" | "mission" | "escape", seed: 11 };
   let p = base;
   if (mode === "escape") {
-    const probe = await prepareMatch(store, START, { ...base, mode: "survival" });
+    const probe = await prepareMatch(store, START, { ...base, mode: "mission" }); // strikt nät (B ska gå att nå utan att korsa en större väg)
     const b = [...probe.region!.graph.nodes].sort((x, y) => haversineM(x, { lat: START.lat, lon: START.lon + 0.0225 }) - haversineM(y, { lat: START.lat, lon: START.lon + 0.0225 }))[0];
     p = { ...base, pointA: START, pointB: { lat: b.lat, lon: b.lon } };
   }

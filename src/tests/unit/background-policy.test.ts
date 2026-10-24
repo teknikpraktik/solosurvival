@@ -59,12 +59,33 @@ describe("bakgrundsläge: rättvist utan att straffa normala avbrott", () => {
     expect(s.state.result).toBe("infected");
   });
 
-  it("zombie nära men frånvaron kort (8 s): ingen hinner fram, och 5 s neutral period efter återkomst", () => {
+  it("zombie nära men frånvaron kort (8 s): ingen hinner fram, men ingen skyddad neutral period heller (spelet gäller som vanligt vid återkomst)", () => {
     const s = setup(80);
     const r = away(s, 8_000);
     expect(r.shielded).toBe(false);
     expect(s.state.result).toBeUndefined();
-    expect(s.state.neutralUntilS).toBeGreaterThan(s.state.elapsedSeconds);
+    expect(s.state.neutralUntilS).toBeLessThanOrEqual(s.state.elapsedSeconds);
+  });
+
+  it("skyddad frånvaro ger 5 s neutral period efter återkomst", () => {
+    const s = setup(600, true);
+    const r = away(s, 10_000);
+    expect(r.shielded).toBe(true);
+    expect(s.state.neutralUntilS).toBeGreaterThan(s.state.elapsedSeconds + 4);
+  });
+
+  it("att dölja och visa appen var 4:e sekund ger inte permanent immunitet: budgeten tar slut och en jagande zombie smittar den stillastående spelaren", () => {
+    const s = setup(400);
+    s.state.zombies[0].speedMps = s.rules.zombieSpeedMps;
+    let shieldedCount = 0;
+    for (let cycle = 0; cycle < 90 && s.state.result === undefined; cycle++) {
+      const r = away(s, 500);
+      if (r.shielded) shieldedCount++;
+      for (let k = 0; k < 4 && s.state.result === undefined; k++) { s.advance(1000); s.live.pushFix(fix(s.now()), s.now()); s.live.tick(s.now()); }
+    }
+    expect(s.state.result).toBe("infected");
+    // 60 s budget / (0,5 s + 5 s neutral) ≈ 10 skyddade växlar, därefter inget skydd.
+    expect(shieldedCount).toBeLessThanOrEqual(11);
   });
 
   it("frånvaro över gränsen (60 s): paus, ingen tid räknas, ingen smitta, fortsätt kräver ny fix", () => {
@@ -85,7 +106,7 @@ describe("bakgrundsläge: rättvist utan att straffa normala avbrott", () => {
       results.push(away(s, 25_000).shielded);
       for (let k = 0; k < 10; k++) { s.advance(1000); s.live.pushFix(fix(s.now()), s.now()); s.live.tick(s.now()); }
     }
-    // 25 + 25 = 50 s ryms i budgeten (60 s), den tredje (75 s) gör det inte.
+    // (25 + 5 neutral) × 2 = 60 s ryms i budgeten, den tredje gör det inte.
     expect(results).toEqual([true, true, false, false]);
     expect(SHIELD_BUDGET_MS).toBe(60_000);
   });

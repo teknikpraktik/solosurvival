@@ -226,15 +226,18 @@ export class LiveGame {
     // Skydd: inga zombier nära när appen lämnades, och budgeten inte slut. Annars gäller spelaren som stillastående och sårbar på senast kända plats.
     this.shieldUse = this.shieldUse.filter((u) => nowMs - u.atMs < SHIELD_WINDOW_MS);
     const used = this.shieldUse.reduce((a, u) => a + u.ms, 0);
-    const shielded = (this.nearestAtDepartureM === null || this.nearestAtDepartureM > SHIELD_DANGER_M) && used + awayMs <= SHIELD_BUDGET_MS;
-    if (shielded) this.shieldUse.push({ atMs: nowMs, ms: awayMs });
+    // Den neutrala perioden efter återkomst ger också immunitet, så den räknas in i budgeten; annars skulle "dölj och visa appen var 4:e sekund" ge permanent skydd.
+    const shieldCostMs = awayMs + RESUME_NEUTRAL_S * 1000;
+    const shielded = (this.nearestAtDepartureM === null || this.nearestAtDepartureM > SHIELD_DANGER_M) && used + shieldCostMs <= SHIELD_BUDGET_MS;
+    if (shielded) this.shieldUse.push({ atMs: nowMs, ms: shieldCostMs });
     const events: GameEvent[] = [];
     const acc = this.lastFix?.accuracyM ?? 99;
     const steps = Math.floor(awayMs / 1000 / STEP_S);
     for (let i = 0; i < steps && !this.finished; i++) {
       events.push(...stepGame(this.g, s, this.rules, { position: pos, quality: shielded ? "infection_paused" : "ok", accuracyM: shielded ? acc : Math.min(acc, 8), fixSeq: this.fixSeq }));
     }
-    if (!this.finished) s.neutralUntilS = Math.max(s.neutralUntilS, s.elapsedSeconds + RESUME_NEUTRAL_S);
+    // Neutral period (5 s utan smitta) bara när frånvaron var skyddad; annars gäller spelet som vanligt direkt vid återkomst.
+    if (!this.finished && shielded) s.neutralUntilS = Math.max(s.neutralUntilS, s.elapsedSeconds + RESUME_NEUTRAL_S);
     this.lastTickMs = nowMs;
     this.accS = 0;
     return { awayMs, paused: false, shielded, events };
