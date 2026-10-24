@@ -9,6 +9,47 @@ import type { TileWay } from "./tile-format";
 /** Start längre bort än så från närmaste tillåtna stig räknas som "utanför nätet" (samma gräns som ruttgeneratorn). */
 export const MAX_START_SNAP_M = 150;
 
+/**
+ * Hur startkomponenten väljs bland nätets sammanhängande delar (se `pickComponent`). `nearest` är v2.2:s regel.
+ */
+export type ComponentPolicy = "nearest" | "largest150" | "largest300" | "largest500" | "scored" | "scored150";
+
+/** Delar kortare än så väljs bara om inget större nät finns. */
+export const MIN_COMPONENT_M = 1500;
+
+/** Standardregel; ändras bara när mätningarna på riktiga data motiverar det (docs/BIKE-NETWORK-IMPROVEMENTS.md). */
+export const DEFAULT_COMPONENT_POLICY: ComponentPolicy = "nearest";
+
+export interface ComponentCandidate {
+  id: number;
+  /** Närmaste kant till ankaret och avståndet dit (m). */
+  edgeId: string;
+  distM: number;
+  /** Komponentens sammanlagda längd (m). */
+  len: number;
+}
+
+/**
+ * Väljer vilken sammanhängande del av nätet som spelet använder. Ren och deterministisk: samma kandidater ger alltid samma val.
+ * - nearest: närmaste del på minst 1,5 km (v2.2); finns ingen sådan, närmaste del överhuvudtaget.
+ * - largestN: den längsta delen på minst 1,5 km inom N m från ankaret; finns ingen, som `nearest`.
+ * - scored: delar på minst 1,5 km inom 500 m; poäng = min(längd, 30 km) / (1 + (avstånd / 150 m)²); finns ingen, som `nearest`.
+ */
+export function pickComponent(cands: ComponentCandidate[], policy: ComponentPolicy): ComponentCandidate | null {
+  const byDist = (a: ComponentCandidate, b: ComponentCandidate) => a.distM - b.distM || b.len - a.len || a.id - b.id;
+  const usable = cands.filter((c) => c.len >= MIN_COMPONENT_M);
+  const nearest = [...(usable.length ? usable : cands)].sort(byDist)[0] ?? null;
+  if (policy === "nearest") return nearest;
+  const within = (m: number) => usable.filter((c) => c.distM <= m);
+  if (policy === "largest150" || policy === "largest300" || policy === "largest500") {
+    const pool = within(policy === "largest150" ? 150 : policy === "largest300" ? 300 : 500);
+    return pool.length ? [...pool].sort((a, b) => b.len - a.len || byDist(a, b))[0] : nearest;
+  }
+  const pool = within(policy === "scored150" ? 150 : 500);
+  const score = (c: ComponentCandidate) => Math.min(c.len / 1000, 30) / (1 + (c.distM / 150) ** 2);
+  return pool.length ? [...pool].sort((a, b) => score(b) - score(a) || byDist(a, b))[0] : nearest;
+}
+
 /** Gångpassager (stig-/gångvägar) som får användas av zombier för att följa spelaren över en större väg eller järnväg. */
 const PEDESTRIAN_HIGHWAYS = new Set(["footway", "path", "cycleway", "pedestrian"]);
 
@@ -38,6 +79,8 @@ export interface RegionGraph {
     componentKm: number;
     hazardStubs: number;
     components: number;
+    /** De närmaste delarna av nätet (avstånd m, längd m) och vilken som valdes, för mätning och felsökning. */
+    candidates?: { distM: number; lenM: number; chosen: boolean }[];
   };
 }
 
@@ -54,10 +97,20 @@ function pathType(h: string): PathType {
  *   aldrig förbinder två sidor av en väg (spelet föreslår aldrig en vägkorsning).
  * - Nätet klipps till cirkeln och begränsas till den komponent som startpunkten ligger närmast.
  */
-export function buildRegionGraph(ways: TileWay[], activity: Activity, center: LatLon, radiusM: number, anchor: LatLon = center, opts: { strict?: boolean } = {}): RegionGraph {
-  const play = assemble(ways, activity, center, radiusM, anchor, true);
+/**
+ * För mätning (scripts/gap-link-analysis.ts): nätets alla sammanhängande delar inom cirkeln, före val av startdel, samt hindernoderna.
+ * Används inte av spelet.
+ */
+export function networkPieces(ways: TileWay[], activity: Activity, center: LatLon, radiusM: number): { graph: SerializedGraph; hazardNodes: Set<string> } {
+  const a = assemble(ways, activity, center, radiusM, center, true, "nearest");
+  return { graph: a.all, hazardNodes: a.allHazardNodes };
+}
+
+export function buildRegionGraph(ways: TileWay[], activity: Activity, center: LatLon, radiusM: number, anchor: LatLon = center, opts: { strict?: boolean; component?: ComponentPolicy } = {}): RegionGraph {
+  const policy = opts.component ?? DEFAULT_COMPONENT_POLICY;
+  const play = assemble(ways, activity, center, radiusM, anchor, true, policy);
   // Survival lägger inga rutter eller checkpoints, så det strikta nätet behövs inte där (sparar ungefär halva byggtiden på en telefon).
-  const strict = opts.strict === false ? play : assemble(ways, activity, center, radiusM, anchor, false);
+  const strict = opts.strict === false ? play : assemble(ways, activity, center, radiusM, anchor, false, policy);
   return {
     graph: strict.graph,
     play: { graph: play.graph, crossingNodes: play.crossingNodes, components: play.components, componentKm: play.componentKm },
@@ -69,6 +122,9 @@ export function buildRegionGraph(ways: TileWay[], activity: Activity, center: La
 }
 
 interface Assembled {
+  /** Hela nätet inom cirkeln och alla hindernoder (före val av startdel), bara för `networkPieces`. */
+  all: SerializedGraph;
+  allHazardNodes: Set<string>;
   graph: SerializedGraph;
   hazardNodes: Set<string>;
   crossingNodes: Set<string>;
@@ -86,7 +142,7 @@ interface Assembled {
  * - nod i vägens ände: bara om minst två gångvägar möts där (en passage mappad som två halvor); en ensam stig som tar slut vid vägen förblir en återvändsgränd.
  * Broar och tunnlar delar aldrig nod med vägen de korsar och blir därför aldrig falskt förbundna.
  */
-function assemble(ways: TileWay[], activity: Activity, center: LatLon, radiusM: number, anchor: LatLon, bridge: boolean): Assembled {
+function assemble(ways: TileWay[], activity: Activity, center: LatLon, radiusM: number, anchor: LatLon, bridge: boolean, policy: ComponentPolicy): Assembled {
   const excluded: Record<string, number> = {};
   const raw: RawWay[] = [];
   const hazardNodes = new Set<string>();
@@ -156,18 +212,15 @@ function assemble(ways: TileWay[], activity: Activity, center: LatLon, radiusM: 
   const clipped: SerializedGraph = { ...all, nodes: all.nodes.filter((n) => ids.has(n.id)), edges: keep };
   const idx = indexGraph(clipped);
   const networkKm = idx.components.reduce((s, c) => s + c.lengthM, 0) / 1000;
-  // Närmaste "användbara" komponent: små isolerade fragment (< 1,5 km) väljs bara om inget större nät finns.
-  const MIN_COMPONENT_M = 1500;
+  // Vilken del av nätet som används avgörs av `pickComponent` (se där för reglerna).
   const bestPer = new Map<number, { edgeId: string; distM: number }>();
   for (const e of idx.edges.values()) {
     const pr = projectToPolyline(e.geometry, e.cumM, anchor);
     const cur = bestPer.get(e.component);
     if (!cur || pr.distanceM < cur.distM) bestPer.set(e.component, { edgeId: e.id, distM: pr.distanceM });
   }
-  const candidates = [...bestPer.entries()].map(([id, b]) => ({ id, ...b, len: idx.components.find((c) => c.id === id)!.lengthM }));
-  const usable = candidates.filter((c) => c.len >= MIN_COMPONENT_M);
-  const pool = usable.length ? usable : candidates;
-  const best = pool.sort((a, b) => a.distM - b.distM)[0] ?? null;
+  const candidates: ComponentCandidate[] = [...bestPer.entries()].map(([id, b]) => ({ id, ...b, len: idx.components.find((c) => c.id === id)!.lengthM }));
+  const best = pickComponent(candidates, policy);
   let graph = clipped;
   let componentKm = 0;
   let near: LatLon | null = null;
@@ -181,6 +234,8 @@ function assemble(ways: TileWay[], activity: Activity, center: LatLon, radiusM: 
   }
   const gnodes = new Set(graph.nodes.map((n) => n.id));
   return {
+    all: clipped,
+    allHazardNodes: hazardNodes,
     graph,
     hazardNodes: new Set([...hazardNodes].filter((id) => gnodes.has(id))),
     crossingNodes: new Set([...crossingNodes].filter((id) => gnodes.has(id))),
@@ -188,7 +243,7 @@ function assemble(ways: TileWay[], activity: Activity, center: LatLon, radiusM: 
     nearestAccess: near,
     components: idx.components.length,
     componentKm,
-    stats: { waysIn: ways.length, waysUsed: used, excluded, edges: graph.edges.length, networkKm, componentKm, hazardStubs: hazardNodes.size, components: idx.components.length },
+    stats: { waysIn: ways.length, waysUsed: used, excluded, edges: graph.edges.length, networkKm, componentKm, hazardStubs: hazardNodes.size, components: idx.components.length, candidates: candidates.sort((a, b) => a.distM - b.distM).slice(0, 8).map((c) => ({ distM: Math.round(c.distM), lenM: Math.round(c.len), chosen: !!best && c.id === best.id })) },
   };
 }
 
