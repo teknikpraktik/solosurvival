@@ -1,7 +1,7 @@
 import { haversineM, type LatLon } from "@/geo/geometry";
 import { posAtNode, snapToGraphNear } from "@/geo/graph/graph";
 import type { Dir, EdgePos, TrailGraph } from "@/geo/graph/types";
-import { planRoute, type Route } from "../pathfinding/astar";
+import { buildTargetTree, planRoute, type PlanOptions, type Route, type TargetTree } from "../pathfinding/astar";
 import { rand, type RngHolder } from "../core/rng";
 import type { Observation, Zombie, ZombieState } from "../core/types";
 import { zombieLatLon } from "../core/movement";
@@ -34,6 +34,13 @@ const CONTACT_LOSS_S = 10;
 const INVESTIGATE_TIMEOUT_S = 90;
 const INTERCEPT_HORIZON_M = 900;
 const INTERCEPT_MARGIN_S = 4;
+
+/** Planeringsalternativ: på terrängkanter går zombien långsammare (kostnad = längd / fart), så den väljer stigen när den är snabbare. Utan terrängkanter inga alternativ (oförändrad planering). */
+function planOpts(g: TrailGraph, rules: Rules, speedMps: number): PlanOptions {
+  if (!g.hasOfftrail || rules.offTrailFactor >= 1) return {};
+  const slow = speedMps * rules.offTrailFactor;
+  return { speed: (e) => (e.offtrail ? slow : speedMps), vMax: speedMps };
+}
 
 function setState(z: Zombie, s: ZombieState, timeS: number) {
   if (z.state !== s) {
@@ -70,7 +77,7 @@ export function makeObservation(g: TrailGraph, p: LatLon, timeS: number, compone
 }
 
 /** Riktning på spelarens kant uppskattad enbart från zombiens egna observationer. */
-function estimateHeading(g: TrailGraph, z: Zombie, speedMps: number): { edge: EdgePos; dir: Dir } | null {
+function estimateHeading(g: TrailGraph, rules: Rules, z: Zombie, speedMps: number): { edge: EdgePos; dir: Dir } | null {
   const last = z.lastKnownEdge;
   const prev = z.prevKnownEdge;
   if (!last || !prev || !z.lastKnownPlayerPosition) return null;
@@ -80,7 +87,7 @@ function estimateHeading(g: TrailGraph, z: Zombie, speedMps: number): { edge: Ed
     if (Math.abs(last.distM - prev.distM) < 8) return null;
     return { edge: last, dir: last.distM > prev.distM ? 1 : -1 };
   }
-  const r = planRoute(g, { edgeId: prev.edgeId, distM: prev.distM }, last, speedMps);
+  const r = planRoute(g, { edgeId: prev.edgeId, distM: prev.distM }, last, speedMps, planOpts(g, rules, speedMps));
   const lastStep = r?.steps.at(-1);
   if (!r || !lastStep || lastStep.edgeId !== last.edgeId) return null;
   return { edge: last, dir: lastStep.dir };
@@ -95,7 +102,7 @@ function findIntercept(
   z: Zombie,
 ): { nodeId: string; route: Route } | null {
   const { g, rules } = ctx;
-  const heading = estimateHeading(g, z, rules.playerPaceMps);
+  const heading = estimateHeading(g, rules, z, rules.playerPaceMps);
   if (!heading || !z.lastKnownPlayerPosition) return null;
   const ageS = Math.max(0, ctx.timeS - z.lastKnownPlayerPosition.observedAtMs / 1000);
   const e0 = g.edges.get(heading.edge.edgeId)!;
@@ -133,7 +140,7 @@ function findIntercept(
     if (playerEta < 0) continue; // spelaren har troligen redan passerat
     const target = posAtNode(g, c.id);
     if (!target) continue;
-    const route = planRoute(g, zPos, target, z.speedMps);
+    const route = planRoute(g, zPos, target, z.speedMps, planOpts(g, rules, z.speedMps));
     if (!route) continue;
     if (route.etaS + INTERCEPT_MARGIN_S <= playerEta && (!best || playerEta < best.playerEta)) {
       best = { nodeId: c.id, route, playerEta };
@@ -142,9 +149,34 @@ function findIntercept(
   return best ? { nodeId: best.nodeId, route: best.route } : null;
 }
 
+/** Delat kortaste-tid-träd per graf och mål (terrängnät): alla zombier som jagar samma observation använder samma träd. */
+const treeCache = new WeakMap<TrailGraph, Map<string, TargetTree | null>>();
+const TREE_CACHE_SIZE = 4;
+/** Målets läge längs kanten avrundas så här (m): zombier som jagar samma punkt några meter isär delar träd. */
+const TREE_TARGET_STEP_M = 15;
+
 function planToLastKnown(ctx: AiContext, z: Zombie): boolean {
   if (!z.lastKnownEdge) return false;
-  const r = planRoute(ctx.g, { edgeId: z.edgeId, distM: z.distanceAlongEdgeM }, z.lastKnownEdge, z.speedMps);
+  if (ctx.g.hasOfftrail) {
+    const k = z.lastKnownEdge;
+    const q = Math.round(k.distM / TREE_TARGET_STEP_M);
+    const key = `${k.edgeId}@${q}|${z.speedMps.toFixed(3)}|${ctx.rules.offTrailFactor}`;
+    let cache = treeCache.get(ctx.g);
+    if (!cache) treeCache.set(ctx.g, (cache = new Map()));
+    if (!cache.has(key)) {
+      const o = planOpts(ctx.g, ctx.rules, z.speedMps);
+      const speed = o.speed ?? (() => z.speedMps);
+      if (cache.size >= TREE_CACHE_SIZE) cache.delete(cache.keys().next().value!);
+      cache.set(key, buildTargetTree(ctx.g, { edgeId: k.edgeId, distM: Math.min(ctx.g.edges.get(k.edgeId)?.lengthM ?? k.distM, q * TREE_TARGET_STEP_M) }, speed));
+    }
+    const hit = { tree: cache.get(key) };
+    const r = hit.tree?.routeFrom({ edgeId: z.edgeId, distM: z.distanceAlongEdgeM });
+    if (r) {
+      applyRoute(z, r);
+      return true;
+    }
+  }
+  const r = planRoute(ctx.g, { edgeId: z.edgeId, distM: z.distanceAlongEdgeM }, z.lastKnownEdge, z.speedMps, planOpts(ctx.g, ctx.rules, z.speedMps));
   if (!r) return false;
   applyRoute(z, r);
   return true;

@@ -87,6 +87,8 @@ export interface PlanOptions {
   speed?: SpeedFn;
   /** Om satt får färden inte vända: bara denna riktning på startkanten är tillåten. */
   heading?: Dir;
+  /** Största kantfart; anges den hoppar planeringen över genomgången av alla kanter (stora terränggrafer). */
+  vMax?: number;
 }
 
 /** Planerar kortaste färdväg (i tid) mellan två positioner på nätet. */
@@ -123,8 +125,8 @@ export function planRoute(g: TrailGraph, from: EdgePos, to: EdgePos, speedMps: n
   if (!e1.oneway) {
     goalOpts.push({ dir: -1, node: e1.to, cost: (e1.lengthM - to.distM) / speed(e1), len: e1.lengthM - to.distM });
   }
-  let vMax = 0.001;
-  for (const e of g.edges.values()) vMax = Math.max(vMax, speed(e));
+  let vMax = opts.vMax ?? 0.001;
+  if (opts.vMax === undefined) for (const e of g.edges.values()) vMax = Math.max(vMax, speed(e));
 
   for (const go of goalOpts) {
     const res = astar(g, srcOpts.map((s) => ({ node: s.node, g0: s.g0 })), go.node, speed, vMax);
@@ -181,3 +183,83 @@ export function distanceToPos(g: TrailGraph, from: EdgePos, dists: Map<string, n
   return d;
 }
 
+
+/**
+ * Kortaste-tid-träd mot ett mål: en enda Dijkstra från målet ger rutter för alla zombier som jagar samma punkt (magnet-jakt). I stora terrängnät
+ * (tusentals noder) är en A*-sökning per zombie och omplanering för dyr; trädet byggs en gång per observation och delas.
+ * Samma kostnadsmodell som `planRoute` (längd / fart per kant). Bara för grafer utan enkelriktade kanter (`null` annars; då gäller `planRoute`).
+ */
+export interface TargetTree {
+  routeFrom(from: EdgePos): Route | null;
+}
+
+export function buildTargetTree(g: TrailGraph, to: EdgePos, speed: SpeedFn): TargetTree | null {
+  const e1 = g.edges.get(to.edgeId);
+  if (!e1) return null;
+  for (const e of g.edges.values()) if (e.oneway) return null;
+  const cost = new Map<string, number>();
+  /** Steg från noden mot målet; `goal` = noden är en målkants ände. */
+  const next = new Map<string, { step: RouteStep; node: string } | { goal: Dir }>();
+  const heap = new MinHeap<string>();
+  const seed = (node: string, c: number, goalDir: Dir) => {
+    if (c < (cost.get(node) ?? Infinity)) {
+      cost.set(node, c);
+      next.set(node, { goal: goalDir });
+      heap.push(c, node);
+    }
+  };
+  seed(e1.from, to.distM / speed(e1), 1);
+  seed(e1.to, (e1.lengthM - to.distM) / speed(e1), -1);
+  const done = new Set<string>();
+  while (heap.size) {
+    const { v: m } = heap.pop()!;
+    if (done.has(m)) continue;
+    done.add(m);
+    const cm = cost.get(m)!;
+    for (const a of g.adj.get(m) ?? []) {
+      const c = cm + a.lengthM / speed(g.edges.get(a.edgeId)!);
+      if (c < (cost.get(a.to) ?? Infinity)) {
+        cost.set(a.to, c);
+        next.set(a.to, { step: { edgeId: a.edgeId, dir: (-a.dir) as Dir }, node: m });
+        heap.push(c, a.to);
+      }
+    }
+  }
+  const stepsFrom = (node: string): RouteStep[] | null => {
+    const steps: RouteStep[] = [];
+    let cur = node;
+    for (let guard = 0; guard < 100000; guard++) {
+      const n = next.get(cur);
+      if (!n) return null;
+      if ("goal" in n) {
+        steps.push({ edgeId: e1.id, dir: n.goal });
+        return steps;
+      }
+      steps.push(n.step);
+      cur = n.node;
+    }
+    return null;
+  };
+  return {
+    routeFrom(from: EdgePos): Route | null {
+      const e0 = g.edges.get(from.edgeId);
+      if (!e0) return null;
+      let best: Route | null = null;
+      if (e0.id === e1.id) {
+        const dir: Dir = to.distM >= from.distM ? 1 : -1;
+        const len = Math.abs(to.distM - from.distM);
+        best = { firstDir: dir, steps: [], stopAtM: to.distM, etaS: len / speed(e0), lengthM: len };
+      }
+      for (const [dir, node, len] of [[1, e0.to, e0.lengthM - from.distM], [-1, e0.from, from.distM]] as [Dir, string, number][]) {
+        const c = cost.get(node);
+        if (c === undefined) continue;
+        const eta = len / speed(e0) + c;
+        if (best && best.etaS <= eta) continue;
+        const steps = stepsFrom(node);
+        if (!steps) continue;
+        best = { firstDir: dir, steps, stopAtM: to.distM, etaS: eta, lengthM: len + steps.reduce((s, st) => s + g.edges.get(st.edgeId)!.lengthM, 0) };
+      }
+      return best;
+    },
+  };
+}
