@@ -47,6 +47,8 @@ export interface RouteProposal {
   metrics: RouteMetrics;
   /** Enkel riskbedömning utan kännedom om zombierörelser: 0–100 (högre = bättre uppdragsdesign). */
   quality: { score: number; flags: string[] };
+  /** A TO B i terräng: ingen rutt, bara A, exakt valt B och fågelvägen som hjälplinje. */
+  terrain?: boolean;
 }
 
 export interface RouteRequest {

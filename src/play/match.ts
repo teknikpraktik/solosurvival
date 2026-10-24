@@ -24,7 +24,8 @@ export interface MatchSetup {
 export function matchDurationS(p: MatchParams, proposal: RouteProposal | null): number {
   if (p.mode === "survival" || !proposal) return p.durationS;
   // Mission distances are straight lines between checkpoints; the way actually walked is longer.
-  const lengthM = p.mode === "mission" ? proposal.lengthM * COURSE_DETOUR_FACTOR : proposal.lengthM;
+  // Mission and terrain A TO B give straight-line lengths; the way actually walked is longer.
+  const lengthM = p.mode === "mission" || proposal.terrain ? proposal.lengthM * COURSE_DETOUR_FACTOR : proposal.lengthM;
   return estimateTimeLimitS(lengthM, p.activity, p.difficulty, proposal.waypoints.length);
 }
 

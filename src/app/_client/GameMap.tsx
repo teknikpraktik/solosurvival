@@ -144,7 +144,7 @@ export default function GameMap(props: GameMapProps) {
   const src = (id: string, data: GeoJSON.FeatureCollection) => (mapRef.current?.getSource(id) as GeoJSONSource | undefined)?.setData(data);
 
   const { graph, routes, markers, player, accuracyM, start, zombies, extraction, follow, fit, frozen, viewAheadM, viewCloseAheadM, viewClose, recenterNonce } = props;
-  useEffect(() => { if (loaded) src("net", fc(graph ? [...graph.edges.values()].map((e) => line(e.geometry)) : [])); }, [loaded, graph]);
+  useEffect(() => { if (loaded) src("net", fc(graph ? [...graph.edges.values()].filter((e) => !e.offtrail).map((e) => line(e.geometry)) : [])); }, [loaded, graph]);
   useEffect(() => { if (loaded) src("routes", fc((routes ?? []).map((r) => line(r.points, { sel: r.selected, faint: !!r.faint })))); }, [loaded, routes]);
   useEffect(() => { if (loaded) src("start", fc(start ? [pt(start)] : [])); }, [loaded, start]);
   // Extraction: egen flaggikon (inte samma som hem eller checkpoint).

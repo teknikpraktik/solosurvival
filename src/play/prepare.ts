@@ -1,5 +1,6 @@
 import { ACTIVITIES } from "@/config/activities";
-import { buildRegionGraph, MAX_START_SNAP_M, type ComponentPolicy, type RegionGraph } from "@/data/region-graph";
+import { buildRegionGraph, MAX_START_SNAP_M, networkPieces, type ComponentPolicy, type RegionGraph } from "@/data/region-graph";
+import { buildTerrainMesh, MESH_HALF_WIDTH_M, MESH_MARGIN_M } from "@/geo/graph/terrain-mesh";
 import type { LoadStats, TileStore } from "@/data/store";
 import type { LatLon } from "@/geo/geometry";
 import { indexGraph } from "@/geo/graph/graph";
@@ -44,7 +45,9 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
   const t0 = performance.now();
   const base = { proposals: [], notes: [] as string[], timing: { ...emptyTiming } };
   const manifest = await store.loadManifest();
-  if (!store.covers(start)) {
+  // A TO B till fots är terrängläge: A och B får ligga var som helst, utan stigar. Stigar används där de finns (och kartdata där den finns).
+  const terrain = p.mode === "escape" && !!p.pointB && p.activity !== "mtb";
+  if (!terrain && !store.covers(start)) {
     return { ...base, status: "outside_region", message: "You are outside the area the game has map data for (Värmland, Sweden).", dataVersion: manifest.dataVersion };
   }
   const atob = p.mode === "escape" && !!p.pointB;
@@ -56,10 +59,11 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
     if (straight < A_TO_B_MIN_STRAIGHT_M) {
       return { ...base, status: "no_route", message: `A and B are too close together (at least ${A_TO_B_MIN_STRAIGHT_M} m). Pick a B further away.`, dataVersion: manifest.dataVersion };
     }
-    if (!store.covers(p.pointB!)) {
+    if (!terrain && !store.covers(p.pointB!)) {
       return { ...base, status: "outside_region", message: "B is outside the area the game has map data for (Värmland, Sweden).", dataVersion: manifest.dataVersion };
     }
   }
+  if (terrain) return prepareTerrainAtoB(store, start, p.pointB!, p, base, manifest.dataVersion, t0);
   const radius = dataRadiusM(p);
   const center = dataCenter(p, start);
   const t1 = performance.now();
@@ -129,6 +133,34 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
   }
   // One course only (the closest to the wanted distance); NEW COURSE makes another.
   return done({ status: "ok", proposals: best.slice(0, 1), notes }, graph);
+}
+
+/**
+ * A TO B i terräng (till fots): grafen är ett terrängnät längs A–B (se geo/graph/terrain-mesh.ts) plus alla stigar i korridoren.
+ * Ingen rutt läggs ut: målet är exakt den punkt spelaren valde (inte snappad till en stig), och linjen A–B är bara en hjälplinje.
+ * Fungerar var som helst (stigar tas bara från kartdata där det finns); en tom karta ger ett rent terrängnät.
+ */
+async function prepareTerrainAtoB(store: TileStore, start: LatLon, b: LatLon, p: MatchParams, base: { proposals: RouteProposal[]; notes: string[]; timing: Prepared["timing"] }, dataVersion: string, t0: number): Promise<Prepared> {
+  const dist = haversineM(start, b);
+  const center = { lat: (start.lat + b.lat) / 2, lon: (start.lon + b.lon) / 2 };
+  const radius = dist / 2 + MESH_HALF_WIDTH_M + MESH_MARGIN_M + 300;
+  const t1 = performance.now();
+  const { ways, stats } = await store.loadAround(center, radius);
+  const t2 = performance.now();
+  const trails = ways.length ? networkPieces(ways, p.activity, center, radius).graph : null;
+  const mesh = buildTerrainMesh(trails, { a: start, b });
+  const graph = indexGraph(mesh.graph);
+  const t3 = performance.now();
+  const dest = { id: "B", kind: "destination" as const, nodeId: "", lat: b.lat, lon: b.lon };
+  const proposal: RouteProposal = {
+    id: "terrain-0", mode: "escape", type: "point-to-point", waypoints: [dest], lengthM: dist, deviation: 0, withinTolerance: true,
+    geometry: [start, b], edgeIds: [], path: [],
+    metrics: { reuseShare: 0, deadEndShare: 0, maxWaypointDeadEndDepthM: 0, decisionPoints: 0, hazardCrossings: 0, minWaypointExits: 2, alternativeRatio: null, directness: 1 },
+    quality: { score: 100, flags: [] }, terrain: true,
+  };
+  const notes = [...base.notes, `terrain-mesh: ${mesh.meshNodes} nodes, spacing ${mesh.spacingM.toFixed(0)} m, ${mesh.trailEdges} trail edges, ${mesh.links} links`];
+  const timing = { loadMs: t2 - t1, graphMs: t3 - t2, routeMs: 0, totalMs: performance.now() - t0 };
+  return { status: "ok", proposals: [proposal], notes, graph, load: stats, timing, dataVersion };
 }
 
 /**
