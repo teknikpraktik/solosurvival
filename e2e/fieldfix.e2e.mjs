@@ -63,14 +63,27 @@ await ctrl.click();
 let p = { latitude: START.latitude, longitude: START.longitude };
 const map = page.locator('[data-testid="map"]');
 const bearings = [];
-const leg = async (bearing, secs, speed = 4) => { for (let i = 0; i < secs; i++) { p = destPoint(p, speed, bearing); await ctx.setGeolocation({ ...p, accuracy: 6 }); await page.waitForTimeout(1000); } bearings.push(Number(await map.getAttribute("data-bearing"))); };
+const near = (a, b, tol) => Math.abs(((a - b + 540) % 360) - 180) <= tol;
+// Mockad GPS ger bara positioner (ingen kurs/fart), så riktningen räknas ur förflyttning, som är långsammare än enhetens GPS-kurs (se heading.test.ts).
+// Därför mäts hur lång tid kartan behöver på sig att vända (högst 50 s per sträcka) i stället för att anta en fast tid; mätvärdena skrivs ut.
+const latencies = [];
+const leg = async (bearing, secs, speed = 4) => {
+  let converged = null;
+  for (let i = 0; i < secs + 25; i++) {
+    if (i >= secs && converged !== null) break;
+    p = destPoint(p, speed, bearing); await ctx.setGeolocation({ ...p, accuracy: 6 }); await page.waitForTimeout(1000);
+    if (converged === null && near(Number(await map.getAttribute("data-bearing")), bearing, 25)) converged = i + 1;
+  }
+  latencies.push(converged);
+  bearings.push(Number(await map.getAttribute("data-bearing")));
+};
 const t0 = Date.now(); const reqBefore = reqs.length;
 await leg(90, 25);
 await page.screenshot({ path: `${OUT}/trackup-east.png` });
 await leg(0, 25);
 await leg(180, 25);
-const near = (a, b, tol) => Math.abs(((a - b + 540) % 360) - 180) <= tol;
-check("Track Up: kartan roterar mot färdriktningen (öst, norr, söder)", near(bearings[0], 90, 25) && near(bearings[1], 0, 25) && near(bearings[2], 180, 25), JSON.stringify(bearings));
+console.log("Track Up: sekunder tills kartan vänt inom 25° (öst, norr, söder):", JSON.stringify(latencies));
+check("Track Up: kartan roterar mot färdriktningen (öst, norr, söder)", latencies.every((x) => x !== null) && near(bearings[0], 90, 25) && near(bearings[1], 0, 25) && near(bearings[2], 180, 25), `${JSON.stringify(bearings)} efter ${JSON.stringify(latencies)} s`);
 check("pilen visas (har riktning)", (await page.locator(".pmark.has-heading").count()) === 1);
 const minutes = (Date.now() - t0) / 60000;
 const mine = reqs.slice(reqBefore);
@@ -84,11 +97,22 @@ console.log(`NÄT per minut under gång (${minutes.toFixed(2)} min): egen server
 const snap = () => page.evaluate(() => Object.fromEntries(window.__outbreak.getView().match.zombiesNear.map((z) => [z.id, [z.lat, z.lon]])));
 const hav = (a, b) => { const r = Math.PI / 180, dLa = (b[0] - a[0]) * r, dLo = (b[1] - a[1]) * r; const h = Math.sin(dLa / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLo / 2) ** 2; return 2 * 6371000 * Math.asin(Math.sqrt(h)); };
 const z0 = await snap();
-for (let i = 0; i < 10; i++) { p = destPoint(p, 1.3, 180); await ctx.setGeolocation({ ...p, accuracy: 6 }); await page.waitForTimeout(1000); }
+// Mät i SPELTID, inte väggtid: spelets klocka och zombier står medvetet stilla när GPS-fixar uteblir i mer än 5 s (se ETAPP-3). Om testmaskinen är så belastad att
+// inga fixar hinner levereras ska testet inte felaktigt skylla på zombierna; det väntar tills minst 8 s speltid gått (högst 45 s väggtid) och räknar rörelse per speltidssekund.
+const gameT = () => page.evaluate(() => window.__outbreak.getView().match.elapsedS);
+const g0 = await gameT();
+let wall = 0;
+for (; wall < 45; wall++) { p = destPoint(p, 1.3, 180); await ctx.setGeolocation({ ...p, accuracy: 6 }); await page.waitForTimeout(1000); if ((await gameT()) - g0 >= 8) break; }
 const z1 = await snap();
+const gameDt = (await gameT()) - g0;
 const moved = Object.keys(z0).filter((id) => z1[id]).map((id) => hav(z0[id], z1[id]));
-console.log("zombier flyttade (m på 10 s):", moved.map((m) => m.toFixed(1)).join(","));
-check("zombier rör sig mot spelaren efter försprånget", moved.length > 0 && Math.max(...moved) >= 4, `${moved.length} zombier`);
+console.log(`zombier flyttade (m): ${moved.map((m) => m.toFixed(1)).join(",")} på ${gameDt.toFixed(1)} s speltid (${wall + 1} s väggtid)`);
+const perGameSecond = moved.length ? Math.max(...moved) / Math.max(0.1, gameDt) : 0;
+// Diagnostik som skrivs ut vid fel (felet ska kunna förklaras, inte döljas): spelets tillstånd och GPS/tick-räknare.
+const diag = await page.evaluate(() => { const v = window.__outbreak.getView(); const m = v.match; const l = window.__outbreak.live; return { paused: m?.paused, frozen: m?.frozen, gpsLost: m?.gpsLost, needsFix: m?.needsFix, quality: v.quality, phase: m?.phase, result: m?.result, elapsedS: Math.round(m?.elapsedS ?? 0), freezes: l?.counters.freezes, stale: l?.counters.stale, jumps: l?.counters.jumps, invalid: l?.counters.invalid, fixAgeMs: v.fixAgeMs, nearestM: m?.nearestZombieM }; });
+const moving = moved.length > 0 && gameDt >= 8 && perGameSecond >= 1;
+if (!moving) console.log("DIAGNOSTIK vid fel:", JSON.stringify({ ...diag, gameDt, wall, perGameSecond }));
+check("zombier rör sig mot spelaren efter försprånget (per speltidssekund)", moving, `${moved.length} zombier, ${perGameSecond.toFixed(1)} m/s speltid`);
 // Tvinga fram en zombie 300 m bort på en kant (via felsökningshaket) och kontrollera markör + mjuk rörelse.
 const placed = await page.evaluate(() => {
   const s = window.__outbreak; const live = s.live; const pos = live.filter.position;
@@ -141,7 +165,8 @@ await cd.getByRole("button", { name: "QUIT", exact: true }).click();
 const fd = page.getByRole("dialog", { name: "ABORTED" });
 await fd.waitFor();
 check("Match slut: inget X (obligatoriskt beslut)", (await fd.getByRole("button", { name: "Close" }).count()) === 0);
-for (const name of ["HOME", "PREVIOUS GAMES"]) { r = await reachable(fd.getByText(name, { exact: true })); check(`Match slut: ${name} nåbar`, r.inside && r.hit); }
+// En avbruten match har inget "PREVIOUS GAMES" (bara HOME): det är avsiktligt i Play.tsx.
+for (const name of ["HOME"]) { r = await reachable(fd.getByText(name, { exact: true })); check(`Match slut: ${name} nåbar`, r.inside && r.hit); }
 await page.screenshot({ path: `${OUT}/dialog-end.png` });
 
 // Sidor: X uppe till höger

@@ -16,7 +16,9 @@
     "predev": "node scripts/stamp-build.mjs",
     "prebuild": "node scripts/stamp-build.mjs",
     "tiles": "python3 -I experiments/data/build_tiles.py",
-    "e2e": "node e2e/play.e2e.mjs"
+    "e2e": "node e2e/play.e2e.mjs",
+    "balance": "tsx scripts/balance-v22.ts",
+    "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters"
   },
   "dependencies": {
     "maplibre-gl": "^6.14.0",

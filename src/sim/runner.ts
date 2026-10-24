@@ -22,6 +22,18 @@ export interface PlayerCtx {
   /** Valmöjligheter vid noden: [edgeId, dir, nodeAtEnd]. */
   options: { edgeId: string; dir: Dir; to: string }[];
   rng: RngHolder;
+  /** Spelarens verkliga fart (m/s) i denna simulering, inklusive `paceFactor`. */
+  speedMps: number;
+}
+
+/** Läge mitt på en kant (används för att kunna vända om utan att vänta på nästa korsning, som en riktig spelare kan). */
+export interface MidEdgeCtx {
+  g: TrailGraph;
+  state: GameState;
+  rules: Rules;
+  pos: EdgePos;
+  dir: Dir;
+  speedMps: number;
 }
 
 /** Spelarstrategier för balanseringssimulering (PRD 14.3). Väljer vägval vid varje nod. */
@@ -84,6 +96,11 @@ export interface SimOptions {
   objectives?: ObjectiveSet;
   /** Egen vägvalsstrategi (ersätter `strategy`). Returnerar index i `ctx.options`. */
   strategyFn?: (ctx: PlayerCtx) => number;
+  /**
+   * Anropas ungefär varje sekund när spelaren är mitt på en kant. Returnerar sant om spelaren ska vända om.
+   * Utan den kan en simulerad spelare bara välja väg i korsningar, vilket är en mycket sämre flykt än en riktig människas.
+   */
+  midEdge?: (ctx: MidEdgeCtx) => boolean;
   /** Startriktning på startkanten (annars slumpad eller mot första målet). */
   initialDir?: Dir;
   /** Justerar reglerna (t.ex. zombietäthet) för experiment. */
@@ -114,6 +131,7 @@ export class SimSession {
   readonly pos: EdgePos;
   private dir: Dir;
   private readonly speed: number;
+  private nextMidCheckS = 0;
   private readonly simRng: RngHolder;
   private readonly noiseRng: RngHolder;
 
@@ -160,6 +178,10 @@ export class SimSession {
     if (o.initialDir) this.dir = o.initialDir;
   }
 
+  get speedMps() {
+    return this.speed;
+  }
+
   private gauss() {
     const u = Math.max(1e-9, rand(this.noiseRng));
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand(this.noiseRng));
@@ -172,7 +194,25 @@ export class SimSession {
   /** Ett motorsteg (STEP_S). Returnerar de händelser som uppstod. */
   step(): GameEvent[] {
     const { g, o, state, pos } = this;
-    let remaining = this.speed * STEP_S;
+    // Mitt på kanten: strategin får vända om (ungefär en gång per sekund).
+    if (o.midEdge && state.elapsedSeconds >= this.nextMidCheckS) {
+      this.nextMidCheckS = state.elapsedSeconds + 1;
+      const e0 = g.edges.get(pos.edgeId)!;
+      const canReverse = this.dir === 1 ? !e0.oneway : !e0.oneway;
+      if (canReverse && o.midEdge({ g, state, rules: this.rules, pos: { ...pos }, dir: this.dir, speedMps: this.speed })) this.dir = (-this.dir) as Dir;
+    }
+    this.movePlayer(this.speed * STEP_S);
+    return this.engineStep();
+  }
+
+  /** Spelaren rör sig `seconds` sekunder utan att motorn stegas (appen är dold: ingen ny position når spelet). */
+  moveOnly(seconds: number): void {
+    for (let t = 0; t < seconds; t += STEP_S) this.movePlayer(this.speed * STEP_S);
+  }
+
+  private movePlayer(distM: number): void {
+    const { g, o, state, pos } = this;
+    let remaining = distM;
     while (remaining > 0) {
       const e = g.edges.get(pos.edgeId)!;
       const toEnd = this.dir === 1 ? e.lengthM - pos.distM : pos.distM;
@@ -191,12 +231,16 @@ export class SimSession {
         this.dir = (-this.dir) as Dir;
         continue;
       }
-      const pick = pool[(o.strategyFn ?? strategies[o.strategy])({ g, state, rules: this.rules, options: pool, rng: this.simRng })];
+      const pick = pool[(o.strategyFn ?? strategies[o.strategy])({ g, state, rules: this.rules, options: pool, rng: this.simRng, speedMps: this.speed })];
       pos.edgeId = pick.edgeId;
       this.dir = pick.dir;
       pos.distM = this.dir === 1 ? 0 : g.edges.get(pick.edgeId)!.lengthM;
     }
 
+  }
+
+  private engineStep(): GameEvent[] {
+    const { g, o, state, pos } = this;
     const t = state.elapsedSeconds;
     const out = o.gpsOutages?.some(([a, b]) => t >= a && t < b) ?? false;
     const real = edgeLatLon(g, pos);

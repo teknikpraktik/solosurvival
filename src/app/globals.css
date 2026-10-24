@@ -87,7 +87,7 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .sheet { padding-bottom: calc(max(14px, env(safe-area-inset-bottom)) + 12px); }
 /* Kartsymboler */
 .pmark { width: 40px; height: 40px; pointer-events: none; }
-.pmark .arrow, .pmark .dot { position: absolute; inset: 0; transition: transform .8s linear, opacity .3s; will-change: transform; }
+.pmark .arrow, .pmark .dot { position: absolute; inset: 0; transition: opacity .3s; will-change: transform; } /* pilens vinkel sätts varje bildruta (mjukad i JS): ingen CSS-fördröjning */
 .pmark .dot { opacity: 1; } .pmark.has-heading .dot { opacity: 0; } .pmark:not(.has-heading) .arrow { opacity: 0; }
 .zmark { width: 34px; height: 34px; pointer-events: none; filter: drop-shadow(0 0 3px #000c); }
 .zmark .zring { transition: stroke .3s; }
@@ -148,3 +148,13 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .jump img { width: 100%; height: 100%; object-fit: cover; animation: scare-shake .09s linear infinite; }
 @keyframes jump-in { 0% { opacity: 0; } 6% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .jump img { animation: none; } }
+
+/* Hem och extraction: egen ikon + etikett, så att de inte förväxlas med numrerade checkpoints. */
+.goalmark { width: 42px; height: 42px; pointer-events: none; }
+.goalmark .goallabel { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 1px; font: 800 10px system-ui; letter-spacing: .06em; color: #fff; background: #0b0f14cc; border-radius: 6px; padding: 1px 5px; }
+.goalmark.home.todo { opacity: .75; }
+.goalmark.home.next { filter: drop-shadow(0 0 6px #60a5fa); }
+.goalmark.home.done { opacity: .9; }
+
+/* Centrera-knappen lyser när kartan inte följer spelaren. */
+.iconbtn.attn { background: #1d4ed8; border-color: #93c5fd; color: #fff; box-shadow: 0 0 0 3px #3b82f680; }

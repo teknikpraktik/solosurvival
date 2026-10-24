@@ -10,7 +10,7 @@ import { createLiveMatch } from "@/play/match";
 import type { LiveGame } from "@/play/live-game";
 import { openDb } from "@/play/idb";
 import { PlaySession, ZOMBIE_SOUND_COOLDOWN_MS } from "@/play/session";
-import { cumulativeLengths, haversineM, pointAlong, type LatLon } from "@/geo/geometry";
+import { haversineM, pointAlong, type LatLon } from "@/geo/geometry";
 import { zombieLatLon } from "@/engine/core/movement";
 import { stepGame } from "@/engine/core/engine";
 import { snapToGraph } from "@/geo/graph/graph";
@@ -247,11 +247,11 @@ describe("Testfall D: närhetsljud", () => {
 
 describe("svårighetsgrader: fart och antal", () => {
   it("fart per aktivitet och svårighetsgrad (km/h) och antal per nivå", async () => {
-    const { resolveRules, SPRINT_SPEED_FACTOR } = await import("@/config/game-rules");
+    const { resolveRules } = await import("@/config/game-rules");
     const kmh = (a: "walk" | "mtb", d: "easy" | "normal" | "hard") => resolveRules(a, d, 3000).zombieSpeedMps * 3.6;
-    expect([kmh("walk", "easy"), kmh("walk", "normal"), kmh("walk", "hard")]).toEqual([6, 10, 13].map((x) => expect.closeTo(x, 5)));
+    expect([kmh("walk", "easy"), kmh("walk", "normal"), kmh("walk", "hard")]).toEqual([4.5, 7, 13].map((x) => expect.closeTo(x, 5)));
     expect([kmh("mtb", "easy"), kmh("mtb", "normal"), kmh("mtb", "hard")]).toEqual([14, 17, 24].map((x) => expect.closeTo(x, 5)));
-    expect(SPRINT_SPEED_FACTOR).toBe(1.5);
+    expect([resolveRules("walk", "easy", 3000).sprintSpeedFactor, resolveRules("walk", "normal", 3000).sprintSpeedFactor, resolveRules("walk", "hard", 3000).sprintSpeedFactor]).toEqual([1.25, 1.4, 1.5]);
     for (const a of ["walk", "mtb"] as const) {
       const e = resolveRules(a, "easy", 3000), n = resolveRules(a, "normal", 3000), h = resolveRules(a, "hard", 3000);
       expect(h.initialZombies).toBeGreaterThanOrEqual(n.initialZombies * 1.9);

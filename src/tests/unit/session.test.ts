@@ -9,7 +9,7 @@ import { defaultParams } from "@/play/config";
 import { openDb } from "@/play/idb";
 import { PlaySession } from "@/play/session";
 import { MatchStorage } from "@/play/storage";
-import { cumulativeLengths, haversineM, pointAlong, type LatLon } from "@/geo/geometry";
+import { haversineM, type LatLon } from "@/geo/geometry";
 
 const root = path.join(import.meta.dirname, "..", "..", "..", "public", "data", "v1", "varmland");
 const fsFetch: Fetcher = async (url) => {
@@ -80,13 +80,18 @@ describe("PlaySession: hela flödet med falsk GPS (simulerat, inte fältbevis)",
     expect(session.resume()).toBe(true);
     for (let i = 0; i < 30; i++) { g.fix(START, 6, now()); advance(1000); }
     expect(session.getView().match!.elapsedS).toBeGreaterThan(20);
-    // Appen går till bakgrunden.
+    // Appen går till bakgrunden en kort stund: spelet pausas inte, tiden går (se background.test.ts för detaljer).
     session.onVisibility(true);
-    expect(session.getView().match!.paused).toBe(true);
+    expect(session.getView().match!.paused).toBe(false);
     const e = session.getView().match!.elapsedS;
-    advance(10_000);
+    advance(10_000, 10_000); // inga tick i bakgrunden
     expect(session.getView().match!.elapsedS).toBe(e);
     session.onVisibility(false);
+    expect(session.getView().match!.paused).toBe(false);
+    expect(session.getView().match!.elapsedS).toBeGreaterThan(e + 9);
+    // Manuell paus och fortsätt fungerar som förut.
+    session.pause("manual");
+    expect(session.getView().match!.paused).toBe(true);
     g.fix(START, 6, now());
     expect(session.resume()).toBe(true);
     // Historik/aktiv match finns i IndexedDB.

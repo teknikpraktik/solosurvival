@@ -33,7 +33,9 @@ describe("viewZoom", () => {
     expect(nextClose(true, 261, BIKE)).toBe(false);
     expect(nextClose(true, null, BIKE)).toBe(false);
   });
-  it("on foot: 400 m normal view, 150 m when a zombie is within 100 m (out again beyond 130 m)", () => {
+  it("on foot: 400 m normal view and no automatic zoom", () => {
+    expect(FOOT.autoZoom).toBe(false);
+    expect(BIKE.autoZoom).toBe(true);
     expect(FOOT.aheadM).toBeLessThan(BIKE.aheadM);
     expect(422 * mpp(viewZoom(59.4, 844, FOOT.aheadM), 59.4)).toBeCloseTo(400, 0);
     expect(422 * mpp(viewZoom(59.4, 844, FOOT.closeAheadM), 59.4)).toBeCloseTo(150, 0);

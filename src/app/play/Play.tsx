@@ -4,8 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { errorText } from "@/gps/provider/provider";
-import { RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
+import { RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime, objectiveLabel } from "../_client/format";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio } from "../_client/cues";
 import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, VIEW_RETURN_S, nextApproaching, nextClose, viewProfile } from "@/play/camera-view";
@@ -27,6 +26,7 @@ export default function Play() {
   const [tried, setTried] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [trackUp, setTrackUp] = useState(true);
+  const [recenterNonce, setRecenterNonce] = useState(0);
   // After the user has moved/zoomed the map, it returns to the player after VIEW_RETURN_S seconds without interaction.
   const returnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onUserMove = useCallback(() => {
@@ -64,7 +64,7 @@ export default function Play() {
 
   const m = view?.match ?? null;
   const vp = viewProfile(m?.activity ?? "walk");
-  // Zoom in when a zombie is close (Bike 200 m, on foot 100 m; back out beyond 260 / 130 m) and play an uneasy sound on zooming in (with a cooldown).
+  // Close state: zombie within 200 m (Bike) / 100 m (on foot); back out beyond 260 / 130 m. Bike zooms the map in; both play an uneasy sound on entering (with a cooldown).
   const [viewClose, setViewClose] = useState(false);
   const lastTension = useRef(-Infinity);
   const nearestM = m && !m.paused && m.phase !== "finished" ? m.nearestZombieM : null;
@@ -100,8 +100,9 @@ export default function Play() {
   const markers = useMemo<MapMarker[]>(() => {
     const o = m?.proposal;
     if (!o || !m?.objectives) return [];
-    return o.waypoints.filter((w) => w.kind !== "home").map((w, i) => ({
-      id: w.id, label: w.kind === "destination" ? "B" : String(i + 1), lat: w.lat, lon: w.lon,
+    return o.waypoints.map((w, i): MapMarker => ({
+      id: w.id, label: w.kind === "destination" ? "B" : w.kind === "home" ? "" : String(i + 1), lat: w.lat, lon: w.lon,
+      icon: w.kind === "home" ? "home" : undefined,
       tone: i < m.objectives!.index ? "done" : i === m.objectives!.index ? "next" : "todo",
     }));
   }, [m?.proposal, m?.objectives?.index]);
@@ -149,13 +150,15 @@ export default function Play() {
         zombies={zombies}
         frozen={m.paused || finished}
         heading={view.heading}
+        getHeading={() => session.liveHeading()}
         trackUp={trackUp}
+        recenterNonce={recenterNonce}
         zoom={16}
         extraction={m.extraction}
         follow={follow}
         viewAheadM={vp.aheadM}
         viewCloseAheadM={vp.closeAheadM}
-        viewClose={viewClose}
+        viewClose={viewClose && vp.autoZoom}
         onUserMove={onUserMove}
         onError={(w) => session.fieldLog?.renderProblem(Date.now(), w)}
       />
@@ -166,7 +169,7 @@ export default function Play() {
         </div>
         <div className="line">
           {m.objectives ? (
-            <span className="pill">Goal {Math.min(m.objectives.index + 1, m.objectives.total)}/{m.objectives.total}{dHome !== null ? ` · ${dHome} m` : ""}{m.objectives.holdS > 0 ? ` · ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
+            <span className="pill">{objectiveLabel(m.objectives.progress)}{dHome !== null ? ` · ${dHome} m` : ""}{m.objectives.holdS > 0 ? ` · ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
           ) : (
             <span className="pill">{m.extraction ? "Extraction open" : m.phase === "head_start" ? `Head start ${fmtTime(m.headStartLeftS)}` : "Survive"}</span>
           )}
@@ -177,18 +180,21 @@ export default function Play() {
             {m.activity === "mtb" && <span className="pill" aria-label="Your speed">{view.speedMps === null ? "– km/h" : `${(view.speedMps * 3.6).toFixed(1)} km/h`}</span>}
           </div>
         )}
+        {!finished && !m.paused && trackUp && view.heading == null && (
+          <div className="line"><span className="pill warn" aria-live="polite">{view.compass === "denied" ? "Direction unknown · allow motion sensors for a compass" : "Direction unknown · walk a few steps"}</span></div>
+        )}
         {m.infection > 0 && <div className="infect" aria-label="Smittrisk"><div style={{ width: `${Math.min(100, (m.infection / 3) * 100)}%` }} /></div>}
       </div>
 
       {!finished && (
         <div className="controls">
           {m.paused ? (
-            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{ready ? "START" : "CONTINUE"}</button>
+            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{!canResume ? "WAITING FOR LOCATION…" : ready ? "START" : "CONTINUE"}</button>
           ) : (
             <button className="wide" onClick={() => session.pause("manual")}>PAUSE</button>
           )}
-          <button className="iconbtn" onClick={() => setFollow(true)} aria-label="Center on me">⌖</button>
-          <button className="iconbtn compass" onClick={() => { setTrackUp((t) => !t); setFollow(true); }} aria-label={trackUp ? "Track Up (tap for North Up)" : "North Up (tap for Track Up)"} aria-pressed={trackUp}>
+          <button className={`iconbtn${follow ? "" : " attn"}`} onClick={() => { setFollow(true); setRecenterNonce((n) => n + 1); }} aria-label="Center on me">⌖</button>
+          <button className="iconbtn compass" onClick={() => { void session.enableCompass(); setTrackUp((t) => !t); setFollow(true); }} aria-label={trackUp ? "Track Up (tap for North Up)" : "North Up (tap for Track Up)"} aria-pressed={trackUp}>
             <svg viewBox="0 0 26 26" style={{ transform: trackUp && view.heading != null ? `rotate(${-view.heading}deg)` : "none" }} aria-hidden="true">
               <path d="M13 2l5 11h-10z" fill="#ef4444" /><path d="M13 24l-5-11h10z" fill="#8b98a5" /><circle cx="13" cy="13" r="1.8" fill="#0b0f14" />
             </svg>
@@ -204,7 +210,7 @@ export default function Play() {
           onClose={() => setPauseDismissed(true)}
           actions={
             <>
-              <button className="btn primary big" disabled={!canResume} onClick={() => { unlockAudio(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{canResume ? (ready ? "START" : "CONTINUE") : "WAITING FOR LOCATION…"}</button>
+              <button className="btn primary big" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{canResume ? (ready ? "START" : "CONTINUE") : "WAITING FOR LOCATION…"}</button>
               <button className="btn" onClick={() => setConfirmEnd(true)}>QUIT</button>
             </>
           }
@@ -257,7 +263,9 @@ export default function Play() {
           {m.result === "infected" && <div className="stat"><span>Result</span><b>Captured</b></div>}
           <div className="stat"><span>Match time</span><b>{fmtTime(m.elapsedS)}</b></div>
           <div className="stat"><span>Distance moved</span><b>{fmtKm(m.distanceM)}</b></div>
-          {m.objectives && <div className="stat"><span>Goals</span><b>{m.objectives.index}/{m.objectives.total}</b></div>}
+          {m.objectives && m.mode === "mission" && <div className="stat"><span>Checkpoints</span><b>{m.objectives.progress.primaryReached}/{m.objectives.progress.primaryTotal}</b></div>}
+          {m.objectives && m.objectives.progress.hasHome && <div className="stat"><span>Back home</span><b>{m.objectives.progress.homeReached ? "Yes" : "No"}</b></div>}
+          {m.objectives && m.mode === "escape" && <div className="stat"><span>Destination B</span><b>{m.objectives.progress.primaryReached >= m.objectives.progress.primaryTotal ? "Reached" : "Not reached"}</b></div>}
           {view.storageWarning && <div className="muted">The result could not be saved locally.</div>}
         </Modal>
       )}

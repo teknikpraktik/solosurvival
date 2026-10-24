@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
 import type { GameMode } from "@/engine/objectives/objectives";
-import { DISTANCE_LIMITS, DURATION_LIMITS, atoBMaxStraightM, START_MAX_ACCURACY_M, clampParams, defaultParams, withActivity, type MatchParams } from "@/play/config";
+import { DISTANCE_LIMITS, DURATION_LIMITS, START_MAX_ACCURACY_M, clampParams, defaultParams, withActivity, type MatchParams } from "@/play/config";
 import { estimatedMinutes } from "@/play/prepare";
 import { COURSE_DETOUR_FACTOR } from "@/routes/course";
 import { haversineM } from "@/geo/geometry";

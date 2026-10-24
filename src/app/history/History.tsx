@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { PageHeader } from "../_client/Modal";
 import { useCallback, useEffect, useState } from "react";
 import { MatchStorage, type HistoryRecord } from "@/play/storage";
@@ -27,7 +26,7 @@ export default function History() {
             <div className={`res ${h.result}`}>{RESULT_LABEL[h.result] ?? h.result}</div>
             <div className="muted">{fmtDate(h.startedAt)}</div>
             <div className="muted" style={{ textAlign: "right" }}>{fmtTime(h.elapsedS)} · {fmtKm(h.measuredDistanceM)}</div>
-            <div className="muted">{h.plannedLengthM ? `Route ${fmtKm(h.plannedLengthM)}` : "No route"}{h.checkpoints ? ` · goals ${h.checkpoints.reached}/${h.checkpoints.total}` : ""}</div>
+            <div className="muted">{h.plannedLengthM ? `Route ${fmtKm(h.plannedLengthM)}` : "No route"}{h.checkpoints ? (h.mode === "escape" ? ` · B ${h.checkpoints.reached >= h.checkpoints.total ? "reached" : "not reached"}` : ` · checkpoints ${h.checkpoints.reached}/${h.checkpoints.total}`) : ""}</div>
             <div style={{ textAlign: "right" }}>
               <button className="link" onClick={async () => { if (st && confirm("Delete this match from the device?")) { await st.deleteMatch(h.id); await load(); } }}>Delete</button>
             </div>

@@ -1,4 +1,4 @@
-import type { GameMode } from "@/engine/objectives/objectives";
+import type { GameMode, ObjectiveProgress } from "@/engine/objectives/objectives";
 import type { Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
 
@@ -23,3 +23,13 @@ export const fmtTime = (s: number): string => {
 };
 export const fmtKm = (m: number): string => `${(m / 1000).toFixed(m < 10_000 ? 2 : 1)} km`;
 export const fmtDate = (ms: number): string => new Date(ms).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" });
+
+/** Texten i HUD för det aktiva målet. Hemkomst räknas inte som checkpoint. */
+export function objectiveLabel(p: ObjectiveProgress): string {
+  switch (p.stage) {
+    case "checkpoint": return `Checkpoint ${p.primaryReached + 1}/${p.primaryTotal}`;
+    case "destination": return "Get to B";
+    case "home": return p.primaryTotal ? `Head home · ${p.primaryReached}/${p.primaryTotal} checkpoints` : "Head home";
+    default: return "Done";
+  }
+}

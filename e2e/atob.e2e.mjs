@@ -43,7 +43,7 @@ if (ok) {
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
   await page.getByRole("dialog").getByRole("button", { name: "START" }).click();
   await page.waitForTimeout(1500);
-  check("A TO B-match går, mål 1/1", (await page.getByText(/Goal 1\/1/).count()) === 1);
+  check("A TO B-match går, målet visas som \"Get to B\"", (await page.getByText(/Get to B/).count()) === 1);
   await page.screenshot({ path: `${OUT}/play.png` });
 }
 check("inga JS-fel", errs.filter((e) => !/WebGL|swiftshader/i.test(e)).length === 0, errs.slice(0, 2).join(" | "));

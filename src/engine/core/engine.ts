@@ -4,6 +4,8 @@ import {
   GPS_LOST_LONG_S,
   RESUME_NEUTRAL_S,
   STEP_S,
+  sprintFactorAt,
+  sprintTotalS,
   type Rules,
 } from "@/config/game-rules";
 import { haversineM, toLocal, type LatLon } from "@/geo/geometry";
@@ -12,6 +14,7 @@ import type { EdgePos, TrailGraph } from "@/geo/graph/types";
 import type { GpsQuality } from "@/gps/types";
 import { makeObservation, updateZombieAI } from "../ai/zombie-ai";
 import { chooseExtraction } from "../extraction/extraction";
+import { CONTACT_CHECK_M, infectionContactM } from "../infection/contact";
 import { updateInfection } from "../infection/infection";
 import { findSpawn } from "../spawning/spawn";
 import { advanceZombie, zombieLatLon } from "./movement";
@@ -29,6 +32,13 @@ export interface StepInput {
 }
 
 export class GameSetupError extends Error {}
+
+/** Aktuell fartfaktor för en zombie (1 utanför spurt). Äldre sparade matcher saknar `sprintStartS`: då antas en spurt utan ramp/avtagande. */
+export function zombieSpeedFactor(rules: Rules, z: Pick<Zombie, "sprintUntilS" | "sprintStartS">, t: number): number {
+  if (z.sprintUntilS === undefined) return 1;
+  const start = z.sprintStartS ?? z.sprintUntilS - rules.sprintDurationS;
+  return sprintFactorAt(rules, t - start);
+}
 
 export interface CreateGameOptions {
   g: TrailGraph;
@@ -147,7 +157,14 @@ function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos,
   return true;
 }
 
+/**
+ * Terminal state. The first result wins and can never be changed: a finished match ignores later GPS, zombie or abort input.
+ * Order of evaluation within one engine step (STEP_S), which is the rule for events that happen at (almost) the same time:
+ *   1. capture (infection timer completes)  2. goal reached (last objective / extraction held)  3. time limit.
+ * A goal confirmed on the very step the time limit expires therefore counts as success; a capture completing on the same step as a goal wins.
+ */
 function finish(s: GameState, result: GameResult, events: GameEvent[]) {
+  if (s.phase === "finished") return;
   s.result = result;
   s.phase = "finished";
   events.push({ type: "finished", result });
@@ -217,7 +234,7 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   if (hunting && t >= s.nextRevealAtS) {
     reveal = true;
     s.nextRevealAtS += rules.revealIntervalS;
-    s.player.lastObservation = makeObservation(g, input.position, t, s.component) ?? s.player.lastObservation;
+    s.player.lastObservation = makeObservation(g, input.position, t, s.component, s.player.magnetObservation ?? s.player.lastObservation) ?? s.player.lastObservation;
     events.push({ type: "reveal" });
   }
 
@@ -235,16 +252,17 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   // Magnet-jakt: en gemensam, ungefär sekundfärsk observation av spelaren som alla zombier jagar mot.
   if (hunting && rules.magnetic && detection) {
     const m = s.player.magnetObservation;
-    if (!m || t - m.observedAtS >= 1) s.player.magnetObservation = makeObservation(g, input.position, t, s.component) ?? m;
+    if (!m || t - m.observedAtS >= 1) s.player.magnetObservation = makeObservation(g, input.position, t, s.component, m ?? s.player.lastObservation) ?? m;
   }
 
   // Zombier.
   if (hunting) {
     const aiEvents: { type: "zombie_detected"; zombieId: string }[] = [];
     for (const z of s.zombies) {
-      // Spurt: en jagande zombie nära spelaren dubblar farten i en kort stund och måste sedan återhämta sig.
+      // Spurt: en jagande zombie nära spelaren accelererar, håller toppfart, tappar den gradvis och måste sedan återhämta sig.
       if (z.sprintUntilS !== undefined && t >= z.sprintUntilS) {
         z.sprintUntilS = undefined;
+        z.sprintStartS = undefined;
         z.sprintReadyAtS = t + rules.sprintCooldownS;
       }
       if (
@@ -253,10 +271,11 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
         t >= (z.sprintReadyAtS ?? 0) &&
         haversineM(zombieLatLon(g, z), input.position) <= rules.sprintRadiusM
       ) {
-        z.sprintUntilS = t + rules.sprintDurationS;
+        z.sprintStartS = t;
+        z.sprintUntilS = t + sprintTotalS(rules);
         events.push({ type: "zombie_sprint", zombieId: z.id });
       }
-      const speed = z.speedMps * (z.sprintUntilS !== undefined ? rules.sprintSpeedFactor : 1);
+      const speed = z.speedMps * zombieSpeedFactor(rules, z, t);
       const arrived = advanceZombie(g, z, speed * STEP_S, s);
       updateZombieAI(
         {
@@ -282,6 +301,12 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   if (hunting) {
     let nearest = Infinity;
     for (const z of s.zombies) nearest = Math.min(nearest, haversineM(zombieLatLon(g, z), input.position));
+    // A zombie only infects if it can actually reach the player along the network (not across a road, railway or building).
+    if (nearest <= CONTACT_CHECK_M) {
+      const m = s.player.magnetObservation;
+      const snap = m && t - m.observedAtS <= 2 ? { edgeId: m.edgeId, distM: m.edgeDistM } : snapToGraph(g, input.position, s.component);
+      nearest = infectionContactM(g, input.position, snap, s.zombies);
+    }
     const before = s.infectionProgressSeconds;
     const r = updateInfection(before, {
       dtS: STEP_S,

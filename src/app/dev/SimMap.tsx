@@ -9,7 +9,7 @@ import { zombieLatLon } from "@/engine/core/movement";
 import { STEP_S } from "@/config/game-rules";
 import { edgeLatLon, nodeLatLon } from "@/geo/graph/graph";
 import { SimSession, type StrategyName } from "@/sim/runner";
-import { gridGraph, ORIGIN } from "@/sim/test-graphs";
+import { gridGraph } from "@/sim/test-graphs";
 
 // Utan karttjänst: mörk bakgrund + själva stignätet. En riktig kartleverantör kan anges via NEXT_PUBLIC_MAP_STYLE.
 const BLANK_STYLE: StyleSpecification = {

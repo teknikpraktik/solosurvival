@@ -6,7 +6,8 @@ import { tryOpenDb } from "@/play/idb";
 import { PlaySession } from "@/play/session";
 import { IdbTileCache } from "@/play/tile-cache";
 import type { Db } from "@/play/idb";
-import { playCue } from "./cues";
+import { playCue, speak } from "./cues";
+import { createBrowserCompass } from "./compass";
 
 interface Ctx {
   session: PlaySession;
@@ -35,9 +36,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         db,
         store,
         userAgent: navigator.userAgent,
+        compass: createBrowserCompass(),
         traceEnabled,
         jumpScares: () => true, // hidden feature: always on (never on Bike, decided by the session)
-        onCue: (c) => playCue(c),
+        onCue: (c) => { playCue(c); if (c === "sprint") setTimeout(() => speak("Run!"), 250); }, // zombie sprint: shriek plus a spoken "Run!"
         wakeLock: "wakeLock" in navigator ? { request: () => (navigator as Navigator & { wakeLock: { request(t: "screen"): Promise<{ release(): Promise<void> }> } }).wakeLock.request("screen") } : undefined,
       });
       // Ny datauppsättning på servern rensar gamla tiles i cachen.
@@ -48,9 +50,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setCtx({ session, db, ready: true });
     })();
     const vis = () => session?.onVisibility(document.hidden);
+    const hide = () => session?.onPageHide();
     document.addEventListener("visibilitychange", vis);
-    window.addEventListener("pagehide", vis);
-    return () => { cancelled = true; document.removeEventListener("visibilitychange", vis); window.removeEventListener("pagehide", vis); };
+    window.addEventListener("pagehide", hide);
+    return () => { cancelled = true; document.removeEventListener("visibilitychange", vis); window.removeEventListener("pagehide", hide); };
   }, []);
   const value = useMemo(() => ctx, [ctx]);
   return <C.Provider value={value}>{children}</C.Provider>;

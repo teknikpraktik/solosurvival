@@ -1,7 +1,9 @@
 import type { Db } from "./idb";
 import { ACTIVITIES } from "@/config/activities";
 import type { GameEvent, Zombie } from "@/engine/core/types";
+import { objectiveProgress, type ObjectiveProgress } from "@/engine/objectives/objectives";
 import { zombieLatLon } from "@/engine/core/movement";
+import { zombieSpeedFactor } from "@/engine/core/engine";
 import { haversineM, type LatLon } from "@/geo/geometry";
 import { GpsFilter, type FilterVerdict } from "@/gps/filters/filter";
 import { GpsProvider, type GeoLike, type GpsErrorCode, type GpsEvent } from "@/gps/provider/provider";
@@ -10,14 +12,15 @@ import type { TileStore } from "@/data/store";
 import type { RouteProposal } from "@/routes/types";
 import { proximityRadiusM, VISIBLE_RADIUS_M, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
 import { FieldLog } from "./fieldlog";
-import { HeadingTracker } from "./heading";
+import { HeadingFusion, HeadingTracker, type HeadingSource } from "./heading";
+import type { CompassSource, CompassStatus } from "./compass";
 import { SpeedTracker } from "./speed";
 import { LiveGame } from "./live-game";
 import { createLiveMatch, matchDurationS } from "./match";
 import { prepareMatch, type Prepared } from "./prepare";
 import { MatchStorage, type HistoryRecord } from "./storage";
 
-export type Cue = "danger" | "alert" | "goal" | "info" | "end" | "zombie" | "captured" | "jump" | "tension";
+export type Cue = "danger" | "alert" | "goal" | "info" | "end" | "zombie" | "captured" | "jump" | "tension" | "sprint";
 
 /**
  * Planerar slumpade skrämmor för en match: en första efter 90–420 s speltid och (50 %) en andra 240–480 s senare.
@@ -30,6 +33,8 @@ export function planScares(random: () => number): number[] {
   return times;
 }
 export const SCARE_TRIGGER_DISTANCE_M = 200;
+/** Skriket + rösten "Run!" vid zombiespurt ljuder högst så här ofta. Med många zombier spurtar någon nästan hela tiden; utan gräns blir det ett konstant skrik. */
+export const SPRINT_CUE_COOLDOWN_MS = 25_000;
 
 /** Minsta tid (ms) mellan två närhetsljud; nya zombier som dyker upp under tiden grupperas till ett ljud. */
 export const ZOMBIE_SOUND_COOLDOWN_MS = 12_000;
@@ -52,6 +57,8 @@ export interface SessionDeps {
   jumpScares?: () => boolean;
   random?: () => number;
   onCue?: (cue: Cue, text: string) => void;
+  /** Kompass (webbläsarens rörelsesensorer). Utelämnad = bara GPS-riktning. */
+  compass?: CompassSource;
 }
 
 export type Stage = "idle" | "locating" | "preparing" | "preview" | "playing" | "finished";
@@ -74,8 +81,12 @@ export interface SessionView {
   stage: Stage;
   gpsError: { code: GpsErrorCode; message: string } | null;
   position: LatLon | null;
-  /** Stabil färdriktning (0–360, 0 = norr) eller null; ren presentation. */
+  /** Stabil riktning (0–360, 0 = norr) eller null när den inte går att fastställa; ren presentation. */
   heading: number | null;
+  /** Varifrån riktningen kommer: GPS (i rörelse), kompass (stilla), senast gångna ("held") eller ingen. */
+  headingSource: HeadingSource;
+  /** Kompassens tillstånd: av, på, nekad (rörelsesensorer) eller saknas. */
+  compass: CompassStatus;
   /** Smoothed player speed (m/s) for display, or null when unknown. */
   speedMps: number | null;
   accuracyM: number | null;
@@ -115,7 +126,8 @@ export interface MatchView {
   /** Avstånd (m) till närmaste zombie oavsett radie, null om inga. */
   nearestZombieM: number | null;
   infection: number;
-  objectives: { index: number; total: number; holdS: number; next: { id: string; kind: string; lat: number; lon: number } | null } | null;
+  /** `index`/`total` räknar alla mål inklusive hemkomst; visa i stället `progress` (checkpoints räknas för sig, hem för sig). */
+  objectives: { index: number; total: number; holdS: number; next: { id: string; kind: string; lat: number; lon: number } | null; progress: ObjectiveProgress } | null;
   extraction: LatLon | null;
   gpsLost: boolean;
   gpsLostLong: boolean;
@@ -158,6 +170,8 @@ export class PlaySession {
   history: HistoryRecord | null = null;
   private readonly speed = new SpeedTracker();
   private readonly heading = new HeadingTracker();
+  private readonly fusion = new HeadingFusion();
+  private compassStatus: CompassStatus = "off";
   /** Zombier som redan har gett närhetsljud (en gång per zombie per match, även om den lämnar och återkommer). */
   private alerted = new Set<string>();
   private pendingZombieSound = false;
@@ -171,6 +185,8 @@ export class PlaySession {
   private lastDetectCueMs = -Infinity;
   private lastSprintCueMs = -Infinity;
   private cueMsgs: { text: string; until: number }[] = [];
+  /** Alla skrivningar till lagringen går i kö, så en pågående sparning aldrig kan skriva efter att matchen avslutats (och lämna en föräldralös post). */
+  private io: Promise<void> = Promise.resolve();
 
   constructor(private readonly d: SessionDeps) {
     this.now = d.now ?? Date.now;
@@ -218,8 +234,31 @@ export class PlaySession {
       if (verdict === "reacquired") { this.heading.rebase(); this.speed.reset(); }
       if (pos) this.speed.push(pos, t, e.fix.speedMps);
       if (pos) this.heading.update({ pos, accuracyM: e.fix.accuracyM, gpsHeadingDeg: e.fix.headingDeg, gpsSpeedMps: e.fix.speedMps, tMs: e.fix.timestampMs });
+      this.fusion.pushGps(this.heading.heading, this.speed.speedAt(t), t);
     }
     this.emit();
+  }
+
+  /**
+   * Slår på kompassen. Måste anropas från en användargest (iOS frågar då om tillstånd för rörelsesensorer). Ofarlig att anropa flera gånger.
+   * Utan kompass fungerar Track Up ändå med GPS-riktningen när man rör sig.
+   */
+  async enableCompass(): Promise<CompassStatus> {
+    if (this.compassStatus === "on") return "on";
+    if (!this.d.compass) { this.compassStatus = "unsupported"; this.emit(); return this.compassStatus; }
+    try {
+      const r = await this.d.compass.start((s) => this.fusion.pushCompass(s.headingDeg, this.now()));
+      this.compassStatus = r === "granted" ? "on" : r;
+    } catch {
+      this.compassStatus = "denied";
+    }
+    this.emit();
+    return this.compassStatus;
+  }
+
+  /** Aktuell riktning utan att vänta på nästa vy-uppdatering (kartan läser den varje bildruta). */
+  liveHeading(): { deg: number | null; source: HeadingSource } {
+    return this.fusion.get(this.now());
   }
 
   /** Aktuell startposition för förhandsvisning: filtrerad position med tillräcklig noggrannhet. */
@@ -360,15 +399,46 @@ export class PlaySession {
     this.emit();
   }
 
-  /** Anropas från document.visibilitychange. Bakgrundsläge kan inte ge pålitlig GPS, så spelet pausas alltid. */
+  /**
+   * Anropas från document.visibilitychange. Ett appbyte pausar inte spelet: se BACKGROUND_GRACE_MS. Mobilwebbläsare kan strypa eller stoppa
+   * både GPS och timers i bakgrunden, så ingenting antas köra där; vid återkomst simuleras den bortavarande tiden (eller spelet pausas om
+   * frånvaron var lång) och GPS-bevakningen startas om, eftersom iOS ibland tappar den.
+   */
   onVisibility(hidden: boolean): void {
+    const t = this.now();
+    const live = this.live;
     if (hidden) {
-      this.pause("hidden");
       void this.releaseWakeLock();
-    } else if (this.live && !this.live.finished) {
-      this.messages = ["The game paused when the app left the foreground. Tap Continue."];
-      this.emit();
+      if (live && !live.finished && !live.state.paused) {
+        live.enterBackground(t);
+        this.log?.add(t, "background");
+        void this.persist(); // om webbläsaren avslutar sidan i bakgrunden kan matchen återställas
+      }
+      return;
     }
+    this.refreshGps();
+    if (!live || live.finished) return;
+    const r = live.leaveBackground(t);
+    if (r.paused) {
+      this.log?.add(t, "pause", { reason: "background_long", awayS: Math.round(r.awayMs / 1000) });
+      this.messages = [`You were away for ${Math.round(r.awayMs / 1000)} s and the game paused. Tap Continue.`];
+      void this.persist();
+    } else if (r.awayMs > 0) {
+      this.log?.add(t, "background_return", { awayS: Math.round(r.awayMs / 1000), shielded: r.shielded });
+      if (r.events.length) this.endMatch(r.events);
+      if (!live.finished && !live.state.paused) void this.acquireWakeLock();
+    }
+    this.emit();
+  }
+
+  /** Startar om GPS-bevakningen (efter bakgrundsläge eller återställning) utan att röra spelet. */
+  refreshGps(): void {
+    if (this.provider.running) this.provider.start((e) => this.onGps(e));
+  }
+
+  /** Sidan göms eller stängs: spara ögonblicksbilden så att matchen kan återställas. */
+  onPageHide(): void {
+    void this.persist();
   }
 
   async abort(): Promise<void> {
@@ -412,7 +482,7 @@ export class PlaySession {
     let finished = false;
     for (const e of events) {
       switch (e.type) {
-        case "objective_reached": this.cue("goal", e.index + 1 >= (live.state.objectives?.targets.length ?? 0) ? "Final objective reached" : "Checkpoint reached"); this.log?.add(t, "objective", { id: e.targetId, atS: Math.round(live.state.elapsedSeconds) }); break;
+        case "objective_reached": this.cue("goal", this.objectiveMessage(live, e.index)); this.log?.add(t, "objective", { id: e.targetId, atS: Math.round(live.state.elapsedSeconds) }); break;
         case "zombie_detected":
           // Med magnet-jakt upptäcker många zombier spelaren samtidigt: ett gemensamt larm, inte ett per zombie.
           if (t - this.lastDetectCueMs > 15_000) { this.lastDetectCueMs = t; this.cue("alert", "Zombies are hunting you"); }
@@ -421,7 +491,7 @@ export class PlaySession {
         case "zombie_spawned": this.log?.add(t, "zombie_spawned", { id: e.zombieId, n: live.state.zombies.length }); break;
         case "zombie_sprint":
           this.log?.add(t, "zombie_sprint", { id: e.zombieId });
-          if (t - this.lastSprintCueMs > 8_000) { this.lastSprintCueMs = t; this.cue("danger", "Zombie sprinting!"); }
+          if (t - this.lastSprintCueMs > SPRINT_CUE_COOLDOWN_MS) { this.lastSprintCueMs = t; this.cue("sprint", "Zombie sprinting!"); }
           break;
         case "spawn_relaxed": this.log?.add(t, "spawn_relaxed", { n: live.state.zombies.length }); break;
         case "spawn_skipped": this.log?.add(t, "spawn_skipped", { n: live.state.zombies.length, atS: Math.round(live.state.elapsedSeconds) }); break;
@@ -475,6 +545,16 @@ export class PlaySession {
     }
   }
 
+  /** Text för ett nått mål. Sista checkpointet är inte en vinst när hemkomst återstår, och säger det. */
+  private objectiveMessage(live: LiveGame, index: number): string {
+    const o = live.state.objectives;
+    if (!o) return "Objective reached";
+    const target = o.targets[index];
+    const p = objectiveProgress(o);
+    if (target?.kind === "checkpoint") return p.stage === "home" ? "All checkpoints found – now head home!" : `Checkpoint ${p.primaryReached}/${p.primaryTotal}`;
+    return p.stage === "done" ? "Final objective reached" : "Objective reached";
+  }
+
   private cue(c: Cue, text: string) {
     this.d.onCue?.(c, text);
     // Händelsemeddelanden (t.ex. "Zombie nära") visas en kort stund och försvinner sedan av sig själva.
@@ -488,30 +568,46 @@ export class PlaySession {
     this.stage = "finished";
     try {
       if (this.storage && this.params) {
-        await this.storage.finish(live, this.params, this.proposal);
-        const h = (await this.storage.listHistory()).find((x) => x.id === live.state.id) ?? null;
-        this.history = h;
-        if (h && this.log && this.d.db) {
-          this.log.finalize(h, live.counters, { routeGenerationMs: Math.round(this.routeGenMs), dataVersion: this.dataVersion });
-          await this.log.save(this.d.db);
-        }
+        const storage = this.storage, params = this.params, proposal = this.proposal;
+        await this.enqueue(async () => {
+          await storage.finish(live, params, proposal);
+          const h = (await storage.listHistory()).find((x) => x.id === live.state.id) ?? null;
+          if (this.live === live) this.history = h; // inte om spelaren redan gått vidare (reset)
+          if (h && this.log && this.d.db && this.live === live) {
+            this.log.finalize(h, live.counters, { routeGenerationMs: Math.round(this.routeGenMs), dataVersion: this.dataVersion });
+            await this.log.save(this.d.db);
+          }
+        });
       }
     } catch {
       this.storageWarning = true;
     }
+    if (this.live !== live) return; // återställd medan vi sparade
     if (live.state.result === "infected") this.cue("captured", "You were captured!");
     else this.cue("end", "Match over");
     this.emit();
   }
 
+  /** Kör lagringsarbete i tur och ordning. Ett fel i ett steg stoppar inte nästa. */
+  private enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.io.then(fn, fn);
+    this.io = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
   private async persist(first = false): Promise<void> {
     const live = this.live;
     if (!live || !this.storage || !this.params || live.finished) return;
+    const storage = this.storage, params = this.params, proposal = this.proposal;
+    const start = this.previewStart ?? live.state.player.position, dataVersion = this.dataVersion, startedAt = this.startedAt;
     this.lastSaveMs = this.now();
     try {
-      if (first) await this.storage.begin(live, this.params, this.proposal, this.previewStart ?? live.state.player.position, this.dataVersion, this.startedAt);
-      else await this.storage.save(live, this.params, this.proposal, this.previewStart ?? live.state.player.position, this.dataVersion);
-      if (this.log && this.d.db) await this.log.save(this.d.db);
+      await this.enqueue(async () => {
+        if (live.finished || this.live !== live) return; // matchen hann avslutas innan det blev vår tur
+        if (first) await storage.begin(live, params, proposal, start, dataVersion, startedAt);
+        else await storage.save(live, params, proposal, start, dataVersion);
+        if (this.log && this.d.db) await this.log.save(this.d.db);
+      });
     } catch {
       this.storageWarning = true;
       this.emit();
@@ -572,11 +668,15 @@ export class PlaySession {
     this.stage = this.provider.running ? "locating" : "idle";
     this.pre = new GpsFilter({ maxPlausibleSpeedMps: ACTIVITIES.mtb.maxPlausibleSpeedMps });
     this.heading.reset();
+    this.fusion.reset();
     this.speed.reset();
+    // Nytt förfilter har ingen position, och en stillastående iPhone skickar inga nya fixar av sig själv: be om en direkt.
+    this.refreshGps();
     this.emit();
   }
 
   dispose(): void {
+    this.d.compass?.stop();
     this.stopTicker();
     this.provider.stop();
     void this.releaseWakeLock();
@@ -596,7 +696,9 @@ export class PlaySession {
       stage: this.stage,
       gpsError: this.gpsError,
       position: pos,
-      heading: this.heading.heading,
+      heading: this.fusion.get(t).deg,
+      headingSource: this.fusion.get(t).source,
+      compass: this.compassStatus,
       speedMps: this.speed.speedAt(t),
       accuracyM: this.lastAccuracy,
       quality,
@@ -620,7 +722,7 @@ export class PlaySession {
     const zs: ZombieView[] = s.zombies
       .map((z) => {
         const ll = zombieLatLon(live.g, z);
-        return { id: z.id, edgeId: z.edgeId, distM: z.distanceAlongEdgeM, dir: z.dir, speedMps: z.speedMps * (z.sprintUntilS !== undefined ? live.rules.sprintSpeedFactor : 1), sprinting: z.sprintUntilS !== undefined, lat: ll.lat, lon: ll.lon, distanceM: haversineM(ll, pos), state: z.state };
+        return { id: z.id, edgeId: z.edgeId, distM: z.distanceAlongEdgeM, dir: z.dir, speedMps: z.speedMps * zombieSpeedFactor(live.rules, z, s.elapsedSeconds), sprinting: z.sprintUntilS !== undefined, lat: ll.lat, lon: ll.lon, distanceM: haversineM(ll, pos), state: z.state };
       })
       .sort((a, b) => a.distanceM - b.distanceM);
     const o = s.objectives;
@@ -643,7 +745,7 @@ export class PlaySession {
       zombieCount: zs.length,
       nearestZombieM: zs.length ? zs[0].distanceM : null,
       infection: s.infectionProgressSeconds,
-      objectives: o ? { index: o.index, total: o.targets.length, holdS: o.holdS, next: next ? { id: next.id, kind: next.kind, lat: next.lat, lon: next.lon } : null } : null,
+      objectives: o ? { index: o.index, total: o.targets.length, holdS: o.holdS, next: next ? { id: next.id, kind: next.kind, lat: next.lat, lon: next.lon } : null, progress: objectiveProgress(o) } : null,
       extraction: s.extractionNodeId ? (live.g.nodes.get(s.extractionNodeId) ?? null) : null,
       gpsLost: st.quality === "unavailable" || st.quality === "warning",
       gpsLostLong: s.gpsLostLong,

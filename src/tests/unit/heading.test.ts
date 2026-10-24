@@ -82,3 +82,27 @@ describe("HeadingTracker (Testfall B)", () => {
     expect(unwrapToward(10, 350)).toBe(-10);
   });
 });
+
+describe("HeadingTracker: hur snabbt en sväng slår igenom (karaktärisering, mätt)", () => {
+  /** Sekunder tills riktningen är inom 25° av den nya kursen efter en sväng, 1 fix/s, brusfritt. */
+  function secondsToFollow(speed: number, turn: number, gps: boolean): number | null {
+    const t = new HeadingTracker();
+    let p = O, ms = 0;
+    for (let i = 0; i < 40; i++) { p = destinationPoint(p, speed, 90); ms += 1000; t.update({ pos: p, accuracyM: 6, gpsHeadingDeg: gps ? 90 : null, gpsSpeedMps: gps ? speed : null, tMs: ms }); }
+    const target = (90 + turn + 360) % 360;
+    for (let i = 1; i <= 60; i++) {
+      p = destinationPoint(p, speed, target); ms += 1000;
+      const h = t.update({ pos: p, accuracyM: 6, gpsHeadingDeg: gps ? target : null, gpsSpeedMps: gps ? speed : null, tMs: ms });
+      if (h !== null && Math.abs(wrap180(h - target)) <= 25) return i;
+    }
+    return null;
+  }
+  it("med enhetens GPS-kurs följer en 90°- eller 180°-sväng inom 5 s, i gång- och löpfart", () => {
+    for (const speed of [1.3, 2.5, 4]) for (const turn of [90, 180]) expect(secondsToFollow(speed, turn, true)).toBeLessThanOrEqual(5);
+  });
+  it("utan GPS-kurs (bara förflyttning) går det tiotals sekunder; i gångfart hinner en kort promenad inte vända alls (därför används kompass stilla och GPS-kurs i rörelse)", () => {
+    expect(secondsToFollow(4, 90, false)).toBeLessThanOrEqual(20);
+    expect(secondsToFollow(4, 180, false)).toBeLessThanOrEqual(30);
+    expect(secondsToFollow(1.3, 90, false)).toBeGreaterThan(30);
+  });
+});

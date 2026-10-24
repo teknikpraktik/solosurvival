@@ -97,3 +97,63 @@ export class HeadingTracker {
 export function unwrapToward(current: number, target: number): number {
   return current + wrap180(target - current);
 }
+
+export type HeadingSource = "gps" | "compass" | "held" | "none";
+
+/** GPS-kursen litas på över denna (utjämnade) fart; under den används kompassen om den finns. */
+export const FUSION_MOVING_MPS = 1.2;
+/** En kompassmätning äldre än så här (ms) räknas som bortfall. */
+export const COMPASS_MAX_AGE_MS = 2_000;
+/** Hur länge (ms) den senast gångna riktningen visas efter att man stannat utan kompass; därefter är riktningen okänd. */
+export const HELD_MAX_AGE_MS = 30_000;
+/** Tidskonstant (s) för kompassens utjämning (sensorn brusar och skakar när man går). */
+const COMPASS_TAU_S = 0.25;
+/** Kompassen får ändra den visade kursen först när den skiljer sig minst så här mycket (grader): hindrar darrning. */
+const COMPASS_DEADBAND_DEG = 1.5;
+
+/**
+ * Slår ihop GPS-färdriktning och kompass till en enda riktning för pil och Track Up. Ren presentationslogik.
+ * - I rörelse (fart ≥ 1,2 m/s) gäller GPS-kursen: den följer faktisk färdriktning även om telefonen ligger i fickan.
+ * - Stillastående eller långsamt används kompassen (om den är tillåten och färsk), så pilen och kartan följer hur man vänder sig.
+ * - Utan kompass behålls senast gångna riktning i högst 30 s ("held"); sedan är riktningen okänd (`none`) i stället för gammal och missvisande.
+ */
+export class HeadingFusion {
+  private compass: { deg: number; tMs: number } | null = null;
+  private gps: { deg: number; tMs: number } | null = null;
+  private lastMovingMs = -Infinity;
+  private shown: { deg: number; source: HeadingSource } | null = null;
+
+  pushCompass(deg: number | null, tMs: number): void {
+    if (deg === null) return; // bortfall märks av att mätningen blir gammal
+    if (!this.compass || tMs - this.compass.tMs > COMPASS_MAX_AGE_MS) { this.compass = { deg: wrap360(deg), tMs }; return; }
+    const dt = Math.max(0, (tMs - this.compass.tMs) / 1000);
+    const k = 1 - Math.exp(-dt / COMPASS_TAU_S);
+    this.compass = { deg: wrap360(this.compass.deg + wrap180(deg - this.compass.deg) * k), tMs };
+  }
+
+  /** Senaste GPS-baserade riktning (från HeadingTracker) och utjämnad fart; anropas vid varje GPS-fix. */
+  pushGps(deg: number | null, speedMps: number | null, tMs: number): void {
+    if (deg !== null) this.gps = { deg, tMs };
+    if (speedMps !== null && speedMps >= FUSION_MOVING_MPS && deg !== null) this.lastMovingMs = tMs;
+  }
+
+  reset(): void {
+    this.compass = null;
+    this.gps = null;
+    this.lastMovingMs = -Infinity;
+    this.shown = null;
+  }
+
+  /** Aktuell riktning och varifrån den kommer. */
+  get(tMs: number): { deg: number | null; source: HeadingSource } {
+    const moving = tMs - this.lastMovingMs < 3_000 && this.gps !== null;
+    let next: { deg: number; source: HeadingSource } | null = null;
+    if (moving) next = { deg: this.gps!.deg, source: "gps" };
+    else if (this.compass && tMs - this.compass.tMs <= COMPASS_MAX_AGE_MS) next = { deg: this.compass.deg, source: "compass" };
+    else if (this.gps && tMs - this.lastMovingMs <= HELD_MAX_AGE_MS) next = { deg: this.gps.deg, source: "held" };
+    if (!next) { this.shown = null; return { deg: null, source: "none" }; }
+    if (this.shown && this.shown.source === next.source && next.source === "compass" && Math.abs(wrap180(next.deg - this.shown.deg)) < COMPASS_DEADBAND_DEG) return this.shown;
+    this.shown = next;
+    return next;
+  }
+}

@@ -1,7 +1,7 @@
 import { ACTIVITIES, type Activity } from "./activities";
 import { DIFFICULTIES, type Difficulty } from "./difficulty";
 
-export const RULES_VERSION = "1.0.0-proto";
+export const RULES_VERSION = "2.2.0";
 
 /** Fast simuleringssteg (PRD 8.4): 5 Hz. */
 export const STEP_S = 0.2;
@@ -15,17 +15,24 @@ export const EXTRACTION_OPEN_FRACTION = 0.8;
 export const EXTRACTION_RADIUS_M = 30;
 export const EXTRACTION_HOLD_S = 5;
 
-/** Zombie-spurt: jagande zombie inom radien spurtar en stund med högre fart, och måste sedan återhämta sig. */
+/**
+ * Zombie-spurt: en jagande zombie inom radien accelererar (ramp) till toppfarten, håller den (hold), tappar sedan gradvis farten tillbaka
+ * till grundfarten (decay) och måste därefter återhämta sig (cooldown) innan nästa spurt. Toppfaktor och tider beror på svårighet
+ * (`DIFFICULTIES[d].sprint`). v2.1 hade 1,5 × i 30 s direkt, utan acceleration eller avtagande, och 30 s återhämtning för alla svårigheter.
+ */
 export const SPRINT_RADIUS_M = 100;
-export const SPRINT_DURATION_S = 30;
-export const SPRINT_SPEED_FACTOR = 1.5;
 
 /** Zombie speed (km/h) per activity and difficulty. Run is not selectable in the app and falls back to base speed × difficulty multiplier. */
 export const ZOMBIE_SPEED_KMH: Partial<Record<Activity, Record<Difficulty, number>>> = {
-  walk: { easy: 6, normal: 10, hard: 13 },
+  // Zombierna känner spelarens position hela tiden och är snabbare än en spelare som går eller joggar ⇒ då går jakten inte att undkomma, oavsett vägval (se
+  // docs/V2.2-ANALYS.md avsnitt 5.1). Farten sätts därför nära den spelargrupp nivån är avsedd för:
+  //   Easy   4,5 km/h  strax under promenadfart (4,7 km/h); v2.1 hade 6 km/h, vilket hinner upp en gående spelare.
+  //   Normal 7 km/h    lugn joggingfart (jogg ≈ 7,9 km/h, förhållande ≈ 1,1); v2.1 hade 10 km/h, vilket bara en löpare (10,8 km/h) kunde hålla jämna steg med.
+  //   Hard   13 km/h   oförändrad. Svår är dessutom 2 × antal zombier: i simulering klarar ingen testad strategi den ens i 14–19 km/h (se rapporten); en omarbetning
+  //                    av Svår (antal/tillväxt) är ett produktbeslut och ingår inte i denna justering.
+  walk: { easy: 4.5, normal: 7, hard: 13 },
   mtb: { easy: 14, normal: 17, hard: 24 },
 };
-export const SPRINT_COOLDOWN_S = 30;
 
 /** Neutral återstartsperiod efter paus, utan infektion (PRD 7.2). */
 export const RESUME_NEUTRAL_S = 5;
@@ -55,9 +62,16 @@ export interface Rules {
   /** Magnet-jakt: zombier känner alltid spelarens (giltiga) position och jagar kontinuerligt, utan upptäcktsradie. */
   magnetic: boolean;
   sprintRadiusM: number;
+  /** Sekunder på toppfart. Hela spurten är ramp + duration + decay. */
   sprintDurationS: number;
+  /** Toppfart som faktor av grundfarten. */
   sprintSpeedFactor: number;
+  /** Återhämtning efter spurtens slut innan en ny kan starta. */
   sprintCooldownS: number;
+  /** Sekunder med linjär acceleration från grundfart till toppfart. */
+  sprintRampS: number;
+  /** Sekunder med linjärt avtagande fart från toppfart tillbaka till grundfart. */
+  sprintDecayS: number;
   revealIntervalS: number;
   detectionRadiusM: number;
   interceptShare: number;
@@ -98,9 +112,11 @@ export function resolveRules(
     magnetRangeM: a.magnetRangeM,
     magnetic: true,
     sprintRadiusM: SPRINT_RADIUS_M,
-    sprintDurationS: SPRINT_DURATION_S,
-    sprintSpeedFactor: SPRINT_SPEED_FACTOR,
-    sprintCooldownS: SPRINT_COOLDOWN_S,
+    sprintDurationS: d.sprint.holdS,
+    sprintSpeedFactor: d.sprint.peakFactor,
+    sprintCooldownS: d.sprint.cooldownS,
+    sprintRampS: d.sprint.rampS,
+    sprintDecayS: d.sprint.decayS,
     revealIntervalS: d.revealIntervalS,
     detectionRadiusM: d.detectionRadiusM,
     interceptShare: d.interceptShare,
@@ -109,4 +125,18 @@ export function resolveRules(
     maxPlausibleSpeedMps: a.maxPlausibleSpeedMps,
     spawnCapacity,
   };
+}
+
+/** Spurtens totala längd (ramp + topp + avtagande). */
+export const sprintTotalS = (r: Pick<Rules, "sprintRampS" | "sprintDurationS" | "sprintDecayS">): number => r.sprintRampS + r.sprintDurationS + r.sprintDecayS;
+
+/** Fartfaktor (≥ 1) `sinceStartS` sekunder in i en spurt: linjär acceleration, topp, linjärt avtagande. */
+export function sprintFactorAt(r: Pick<Rules, "sprintRampS" | "sprintDurationS" | "sprintDecayS" | "sprintSpeedFactor">, sinceStartS: number): number {
+  const extra = r.sprintSpeedFactor - 1;
+  if (sinceStartS < 0) return 1;
+  if (sinceStartS < r.sprintRampS) return 1 + extra * (sinceStartS / r.sprintRampS);
+  if (sinceStartS < r.sprintRampS + r.sprintDurationS) return r.sprintSpeedFactor;
+  const d = sinceStartS - r.sprintRampS - r.sprintDurationS;
+  if (d < r.sprintDecayS) return 1 + extra * (1 - d / r.sprintDecayS);
+  return 1;
 }

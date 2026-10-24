@@ -15,13 +15,15 @@ export interface RawWay {
   oneway?: boolean;
   /** Bike: easy to ride (see isEasyBikeWay). */
   easy?: boolean;
+  grade?: "bridge" | "tunnel";
 }
 
 /**
  * Bygger en graf av råa linjer. Noder delas bara mellan linjer som faktiskt refererar till samma nod-id,
  * så geometriska korsningar utan förbindelse (broar, tunnlar) blir aldrig falska korsningar (PRD 4.3).
+ * `crossingNodes` är noder där en gångpassage över större väg/järnväg är kartlagd: kanter delas där och kanterna närmast noden märks `crossing`.
  */
-export function buildGraph(ways: RawWay[], source = "openstreetmap"): SerializedGraph {
+export function buildGraph(ways: RawWay[], source = "openstreetmap", crossingNodes?: ReadonlySet<string>): SerializedGraph {
   const uses = new Map<string, number>();
   for (const w of ways) {
     const seen = new Set<string>();
@@ -40,7 +42,7 @@ export function buildGraph(ways: RawWay[], source = "openstreetmap"): Serialized
     let start = 0;
     let idx = 0;
     for (let i = 1; i < w.nodes.length; i++) {
-      const isSplit = i === w.nodes.length - 1 || (uses.get(w.nodes[i].id) ?? 0) >= 2;
+      const isSplit = i === w.nodes.length - 1 || (uses.get(w.nodes[i].id) ?? 0) >= 2 || !!crossingNodes?.has(w.nodes[i].id);
       if (!isSplit) continue;
       const slice = w.nodes.slice(start, i + 1);
       const geometry = slice.map((n) => ({ lat: n.lat, lon: n.lon }));
@@ -57,6 +59,8 @@ export function buildGraph(ways: RawWay[], source = "openstreetmap"): Serialized
           type: w.type,
           oneway: w.oneway || undefined,
           easy: w.easy || undefined,
+          grade: w.grade,
+          crossing: crossingNodes && (crossingNodes.has(slice[0].id) || crossingNodes.has(slice[slice.length - 1].id)) ? true : undefined,
         });
         idx++;
       }
