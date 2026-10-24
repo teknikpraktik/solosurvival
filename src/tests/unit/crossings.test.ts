@@ -101,6 +101,26 @@ describe("gångpassager över större väg (spelnät mot rutt-nät)", () => {
   });
 });
 
+describe("hindertyp i tiles (hazardKinds) begränsar vilka passager som kopplas", () => {
+  const withKind = (kind: string) => build([sidewalkW, sidewalkE, { ...zebra, hazardKinds: [kind] }]);
+  it("secondary/tertiary (t) kopplas, motorväg/trunk/primary (T), järnväg (r) och vattendrag (w) kopplas inte", () => {
+    expect(withKind("t").play.crossingNodes.has("R")).toBe(true);
+    for (const k of ["T", "r", "w"]) expect(withKind(k).play.crossingNodes.size).toBe(0);
+  });
+  it("två halvor över en trunk-länk förblir klippta, över tertiary kopplas de", () => {
+    const halves = (k: string) => build([sidewalkW, sidewalkE, { ...way("hw", "footway", [["wc", [-8, 0]], ["R", [0, 0]]], { hazard: [1] }), hazardKinds: [k] }, { ...way("he", "footway", [["R", [0, 0]], ["ec", [8, 0]]], { hazard: [0] }), hazardKinds: [k] }]);
+    expect(halves("t").play.crossingNodes.has("R")).toBe(true);
+    expect(halves("T").play.crossingNodes.size).toBe(0);
+  });
+  it("utan hindertyp (äldre tiles) gäller strukturregeln som förut", () => {
+    expect(build([sidewalkW, sidewalkE, zebra]).play.crossingNodes.has("R")).toBe(true);
+  });
+  it("hindertypen följer med när en enkelriktad cykelstig vänds (reverse)", () => {
+    const z = { ...way("zr", "footway", [["wc", [-8, 0]], ["R", [0, 0]], ["ec", [8, 0]]], { hazard: [1] }), hazardKinds: ["T"] };
+    expect(build([sidewalkW, sidewalkE, z], "mtb").play.crossingNodes.size).toBe(0);
+  });
+});
+
 describe("infektion kräver att zombien kan nå spelaren", () => {
   const r = build([sidewalkW, sidewalkE, zebra]);
   const g = indexGraph({ ...r.play.graph, crossingNodes: [...r.play.crossingNodes] });

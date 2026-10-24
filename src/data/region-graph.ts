@@ -117,7 +117,14 @@ function assemble(ways: TileWay[], activity: Activity, center: LatLon, radiusM: 
       hz = hz.map((i) => nodes.length - 1 - i);
     }
     if (bridge && PEDESTRIAN_HIGHWAYS.has(w.tags.highway)) {
+      // Med nya tiles (`hazardKinds`) kopplas bara passager över secondary/tertiary (kind "t"); motorväg/trunk/primary, järnväg och vattendrag förblir klippta.
+      // Äldre tiles saknar uppgiften: då gäller strukturregeln nedan för alla hinder (se docs/V2.2-ANALYS.md).
+      const kindAt = new Map<number, string>();
+      if (w.hazardKinds && !d.reverse) w.hazard.forEach((hi, k) => kindAt.set(hi, w.hazardKinds![k]));
+      else if (w.hazardKinds) w.hazard.forEach((hi, k) => kindAt.set(w.nodes.length - 1 - hi, w.hazardKinds![k]));
       hz = hz.filter((i) => {
+        const kind = kindAt.get(i);
+        if (kind !== undefined && kind !== "t") return true; // inte en passage vi kopplar: förblir en hazard-ändnod
         const crossing = (i > 0 && i < nodes.length - 1) || (pedUse.get(nodes[i].id) ?? 0) >= 2;
         if (crossing) crossingNodes.add(nodes[i].id);
         return !crossing; // en ensam stig som tar slut vid vägen förblir en återvändsgränd

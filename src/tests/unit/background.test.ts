@@ -81,23 +81,35 @@ describe("bakgrundsläge: appbyte pausar inte spelet, men tiden går och ingen s
     expect(t.session.getView().match!.paused).toBe(false);
   });
 
-  it("ingen kan smittas av att vara borta: zombie ovanpå spelaren när appen kommer tillbaka ger ingen infektion", async () => {
+  it("zombie långt borta när appen lämnas: ingen smitta under frånvaron och 5 s neutral period efteråt", async () => {
     const t = await make();
     await t.begin();
     const live = t.session.live!;
     const z = live.state.zombies[0];
+    // Flytta zombien till en kant ≥ 300 m från spelaren.
     const here = live.filter.position!;
-    // Lägg en zombie exakt vid spelaren på nätet.
-    const snap = (await import("@/geo/graph/graph")).snapToGraph(live.g, here)!;
-    z.edgeId = snap.edgeId; z.distanceAlongEdgeM = snap.distM; z.route = []; z.stopAtM = undefined; z.state = "chase";
+    const far = [...live.g.edges.values()].find((e) => haversineM(e.geometry[0], here) > 400 && haversineM(e.geometry[0], here) < 700)!;
+    z.edgeId = far.id; z.distanceAlongEdgeM = 1; z.route = []; z.stopAtM = undefined; z.state = "chase";
+    for (const o of live.state.zombies.slice(1)) { o.edgeId = far.id; o.distanceAlongEdgeM = 2; o.route = []; }
     t.session.onVisibility(true);
     t.jump(30_000);
     t.session.onVisibility(false);
     expect(live.state.result).toBeUndefined();
-    expect(live.state.infectionProgressSeconds).toBe(0);
-    // Först när färska fixar finns och den neutrala perioden (5 s) gått kan smitta ske.
-    t.fix(); t.advance(1000);
-    expect(live.state.result).toBeUndefined();
+    expect(live.state.neutralUntilS).toBeGreaterThan(live.state.elapsedSeconds);
+  });
+
+  it("zombie på spelaren när appen lämnas: inget skydd, spelaren gäller som stillastående och smittas (att titta bort räddar inte)", async () => {
+    const t = await make();
+    await t.begin();
+    const live = t.session.live!;
+    const here = live.filter.position!;
+    const snap = (await import("@/geo/graph/graph")).snapToGraph(live.g, here)!;
+    for (const z of live.state.zombies) { z.edgeId = snap.edgeId; z.distanceAlongEdgeM = snap.distM; z.route = []; z.stopAtM = undefined; z.state = "chase"; }
+    live.state.neutralUntilS = 0;
+    t.session.onVisibility(true);
+    t.jump(30_000);
+    t.session.onVisibility(false);
+    expect(live.state.result).toBe("infected");
   });
 
   it("en pausad match förblir pausad och oförändrad vid appbyte", async () => {

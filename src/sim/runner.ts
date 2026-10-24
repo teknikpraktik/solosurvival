@@ -201,7 +201,18 @@ export class SimSession {
       const canReverse = this.dir === 1 ? !e0.oneway : !e0.oneway;
       if (canReverse && o.midEdge({ g, state, rules: this.rules, pos: { ...pos }, dir: this.dir, speedMps: this.speed })) this.dir = (-this.dir) as Dir;
     }
-    let remaining = this.speed * STEP_S;
+    this.movePlayer(this.speed * STEP_S);
+    return this.engineStep();
+  }
+
+  /** Spelaren rör sig `seconds` sekunder utan att motorn stegas (appen är dold: ingen ny position når spelet). */
+  moveOnly(seconds: number): void {
+    for (let t = 0; t < seconds; t += STEP_S) this.movePlayer(this.speed * STEP_S);
+  }
+
+  private movePlayer(distM: number): void {
+    const { g, o, state, pos } = this;
+    let remaining = distM;
     while (remaining > 0) {
       const e = g.edges.get(pos.edgeId)!;
       const toEnd = this.dir === 1 ? e.lengthM - pos.distM : pos.distM;
@@ -226,6 +237,10 @@ export class SimSession {
       pos.distM = this.dir === 1 ? 0 : g.edges.get(pick.edgeId)!.lengthM;
     }
 
+  }
+
+  private engineStep(): GameEvent[] {
+    const { g, o, state, pos } = this;
     const t = state.elapsedSeconds;
     const out = o.gpsOutages?.some(([a, b]) => t >= a && t < b) ?? false;
     const real = edgeLatLon(g, pos);

@@ -88,6 +88,9 @@ for (let i = 0; i < 10; i++) { p = destPoint(p, 1.3, 180); await ctx.setGeolocat
 const z1 = await snap();
 const moved = Object.keys(z0).filter((id) => z1[id]).map((id) => hav(z0[id], z1[id]));
 console.log("zombier flyttade (m på 10 s):", moved.map((m) => m.toFixed(1)).join(","));
+// Diagnostik som skrivs ut vid fel (felet ska kunna förklaras, inte döljas): spelets tillstånd och GPS/tick-räknare.
+const diag = await page.evaluate(() => { const v = window.__outbreak.getView(); const m = v.match; const l = window.__outbreak.live; return { paused: m?.paused, frozen: m?.frozen, gpsLost: m?.gpsLost, needsFix: m?.needsFix, quality: v.quality, phase: m?.phase, result: m?.result, elapsedS: Math.round(m?.elapsedS ?? 0), freezes: l?.counters.freezes, stale: l?.counters.stale, jumps: l?.counters.jumps, invalid: l?.counters.invalid, fixAgeMs: v.fixAgeMs, nearestM: m?.nearestZombieM }; });
+if (!(moved.length > 0 && Math.max(...moved) >= 4)) console.log("DIAGNOSTIK vid fel:", JSON.stringify(diag));
 check("zombier rör sig mot spelaren efter försprånget", moved.length > 0 && Math.max(...moved) >= 4, `${moved.length} zombier`);
 // Tvinga fram en zombie 300 m bort på en kant (via felsökningshaket) och kontrollera markör + mjuk rörelse.
 const placed = await page.evaluate(() => {

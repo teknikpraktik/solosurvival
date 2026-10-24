@@ -28,6 +28,8 @@ export interface TileFile {
     y: number[];
     x: number[];
     h?: number[];
+    /** Hindrets typ för varje index i `h` (ett tecken vardera): t = secondary/tertiary (+ länkar), T = motorway/trunk/primary (+ länkar), r = järnväg, w = vattendrag. Saknas i äldre tiles. */
+    k?: string;
   }[];
 }
 
@@ -37,6 +39,8 @@ export interface TileWay {
   nodes: { id: string; lat: number; lon: number }[];
   /** Index i `nodes` där vägen delar nod med större väg, järnväg eller vattendrag. */
   hazard: number[];
+  /** Hindrets typ per index i `hazard` (se TileFile.k). Utelämnad när tilesen saknar uppgiften. */
+  hazardKinds?: string[];
 }
 
 function undelta(d: number[]): number[] {
@@ -55,6 +59,7 @@ export function decodeTile(tile: TileFile, unitDeg = 1e-6): TileWay[] {
       tags: w.t,
       nodes: ids.map((id, k) => ({ id: String(id), lat: la[k] * unitDeg, lon: lo[k] * unitDeg })),
       hazard: w.h ?? [],
+      hazardKinds: w.k && w.h && w.k.length === w.h.length ? [...w.k] : undefined,
     };
   });
 }

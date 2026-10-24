@@ -422,7 +422,7 @@ export class PlaySession {
       this.messages = [`You were away for ${Math.round(r.awayMs / 1000)} s and the game paused. Tap Continue.`];
       void this.persist();
     } else if (r.awayMs > 0) {
-      this.log?.add(t, "background_return", { awayS: Math.round(r.awayMs / 1000) });
+      this.log?.add(t, "background_return", { awayS: Math.round(r.awayMs / 1000), shielded: r.shielded });
       if (r.events.length) this.endMatch(r.events);
       if (!live.finished && !live.state.paused) void this.acquireWakeLock();
     }

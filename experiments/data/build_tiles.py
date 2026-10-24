@@ -17,7 +17,6 @@ Designval:
 - Koordinater i mikrograder (heltal), deltakodade. Ingen personlig data; endast OSM (ODbL).
 """
 import gzip, hashlib, json, math, os, sys, time
-import osmium
 
 LAT_STEP_U = 50_000    # 0,05°
 LON_STEP_U = 100_000   # 0,10°
@@ -30,6 +29,27 @@ WATERWAYS = {"river", "stream", "canal"}
 KEEP_TAGS = ("highway", "access", "foot", "bicycle", "mtb:scale", "oneway", "oneway:bicycle", "service", "area", "indoor",
              "bridge", "tunnel", "ford", "sac_scale", "trail_visibility", "surface", "tracktype", "motor_vehicle", "maxspeed",
              "railway", "lit", "segregated")
+
+
+# Hindrets typ (ett tecken per hazardindex, fält "k" i tilen). Klienten kopplar bara passager över "t" (v2.2): gång över secondary/tertiary är en vanlig övergång,
+# medan motorväg/trunk/primary ("T"), järnväg ("r") och vattendrag ("w") förblir hinder. Äldre tiles saknar "k" och tolkas med en strukturregel.
+TERTIARY_LIKE = {"secondary", "tertiary", "secondary_link", "tertiary_link"}
+SEVERITY = {"T": 3, "r": 2, "w": 1, "t": 0}
+
+
+def hazard_kind(tags):
+    """Tecken för ett hinder-way: 't' secondary/tertiary(+länk), 'T' övriga större vägar, 'r' järnväg, 'w' vattendrag."""
+    hw = tags.get("highway")
+    if tags.get("railway") in RAILWAYS:
+        return "r"
+    if tags.get("waterway") in WATERWAYS:
+        return "w"
+    return "t" if hw in TERTIARY_LIKE else "T"
+
+
+def worst(a, b):
+    """Den allvarligaste av två hindertyper (en nod kan delas av flera hinder)."""
+    return a if SEVERITY[a] >= SEVERITY[b] else b
 
 
 def tiles_of(pts):
@@ -52,8 +72,9 @@ def delta(vals):
 
 
 def main(pbf, outdir, bbox=None, source="", md5=""):
+    import osmium  # sent import så att hazard_kind kan enhetstestas utan osmium
     t0 = time.time()
-    hazard = set()
+    hazard = {}
     paths = []
     n_all = 0
     fp = osmium.FileProcessor(pbf).with_locations()
@@ -72,7 +93,9 @@ def main(pbf, outdir, bbox=None, source="", md5=""):
         except osmium.InvalidLocationError:
             continue
         if is_hazard and not is_path:
-            hazard.update(n[0] for n in nodes)
+            kind = hazard_kind(tags)
+            for nid, _, _ in nodes:
+                hazard[nid] = worst(hazard[nid], kind) if nid in hazard else kind
             continue
         if len(nodes) < 2:
             continue
@@ -93,6 +116,7 @@ def main(pbf, outdir, bbox=None, source="", md5=""):
         h = [i for i, x in enumerate(nodes) if x[0] in hazard]
         if h:
             rec["h"] = h
+            rec["k"] = "".join(hazard[nodes[i][0]] for i in h)
         for key in tiles_of(pts):
             buckets.setdefault(key, []).append(rec)
             s, w, n, e = (min(s, key[0] * LAT_STEP_U), min(w, key[1] * LON_STEP_U), max(n, (key[0] + 1) * LAT_STEP_U), max(e, (key[1] + 1) * LON_STEP_U)) if not bbox else (s, w, n, e)
