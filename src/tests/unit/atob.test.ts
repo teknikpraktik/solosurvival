@@ -24,25 +24,31 @@ beforeAll(async () => {
 }, 60000);
 
 describe("A TO B (egen A och B, ingen sträcka)", () => {
-  it("rutt från A till B: ingen önskad sträcka, B som destination, rimlig längd, upp till tre alternativ", async () => {
+  it("till fots är A TO B terräng: inga spärrar, målet exakt där spelaren valde, fågelvägen som hjälplinje", async () => {
     const p = params({ pointA: A, pointB: B, targetLengthM: 99999 }); // targetLengthM ska ignoreras
     const r = await prepareMatch(store(), A, p);
     expect(r.status).toBe("ok");
-    expect(r.proposals.length).toBeGreaterThanOrEqual(1);
-    expect(r.proposals.length).toBeLessThanOrEqual(3);
-    const straight = haversineM(A, B);
-    for (const pr of r.proposals) {
-      expect(pr.lengthM).toBeGreaterThan(straight * 0.95);
-      expect(pr.lengthM).toBeLessThan(straight * 5);
-      expect(pr.lengthM).toBeLessThanOrEqual(r.proposals[0].lengthM * 1.6 + 1);
-      expect(pr.waypoints).toHaveLength(1);
-      expect(pr.waypoints[0].kind).toBe("destination");
-      expect(haversineM(pr.waypoints[0], B)).toBeLessThan(150);
-      expect(haversineM(pr.geometry[0], A)).toBeLessThan(150);
-      expect(haversineM(pr.geometry.at(-1)!, pr.waypoints[0])).toBeLessThan(2);
+    expect(r.proposals).toHaveLength(1);
+    const pr = r.proposals[0];
+    expect(pr.terrain).toBe(true);
+    expect(pr.waypoints).toHaveLength(1);
+    expect(pr.waypoints[0].kind).toBe("destination");
+    expect(haversineM(pr.waypoints[0], B)).toBeLessThan(0.01); // inte snappad till en stig
+    expect(pr.lengthM).toBeCloseTo(haversineM(A, B), 0);
+    expect(haversineM(pr.geometry[0], A)).toBeLessThan(0.01);
+    expect(haversineM(pr.geometry.at(-1)!, B)).toBeLessThan(0.01);
+    expect(r.graph!.hasOfftrail).toBe(true);
+  });
+
+  it("till fots fungerar A→B mitt ute i terrängen, i en sjö och utanför kartdata (tomt nät, bara terrängnät)", async () => {
+    for (const [a, b] of [[A, destinationPoint(A, 2500, 200)], [{ lat: 59.2, lon: 13.2 }, { lat: 59.22, lon: 13.25 }], [{ lat: 55.6, lon: 13.0 }, { lat: 55.62, lon: 13.02 }]] as [LatLon, LatLon][]) {
+      const r = await prepareMatch(store(), a, params({ pointA: a, pointB: b }));
+      expect(r.status).toBe("ok");
+      expect(haversineM(r.proposals[0].waypoints[0], b)).toBeLessThan(0.01);
+      const live = createLiveMatch({ id: "t", params: params({ pointA: a, pointB: b }), start: a, proposal: r.proposals[0], graph: r.graph!, dataVersion: "t" });
+      expect(live.state.zombies.length).toBeGreaterThanOrEqual(3);
+      expect(live.state.zombies.every((z) => !z.canIntercept)).toBe(true);
     }
-    // Kortaste först.
-    for (let i = 1; i < r.proposals.length; i++) expect(r.proposals[i].lengthM).toBeGreaterThanOrEqual(r.proposals[0].lengthM - 1);
   });
 
   it("matchen skapas med B som enda mål och tidsgräns från ruttens längd", async () => {
@@ -61,9 +67,9 @@ describe("A TO B (egen A och B, ingen sträcka)", () => {
     expect(r.load!.tiles).toBeLessThanOrEqual(9);
   });
 
-  it("B ute i skogen/sjön utan stig i närheten avslås med förklaring", async () => {
+  it("cykel: B ute i skogen/sjön utan väg i närheten avslås med förklaring (cykel är vägbunden)", async () => {
     const lake = destinationPoint(A, 900, 200); // slumpad punkt: kontrollera avståndet till nätet i testet
-    const r = await prepareMatch(store(), A, params({ pointA: A, pointB: { lat: 59.2, lon: 13.2 } })); // Vänern
+    const r = await prepareMatch(store(), A, { ...withActivity(params({ pointA: A, pointB: { lat: 59.2, lon: 13.2 } }), "mtb"), mode: "escape", pointA: A, pointB: { lat: 59.2, lon: 13.2 } }); // Vänern, cykel är fortfarande vägbunden
     expect(["no_route", "off_network", "sparse"]).toContain(r.status);
     expect(r.message).toBeTruthy();
     expect(r.proposals).toHaveLength(0);
@@ -79,8 +85,8 @@ describe("A TO B (egen A och B, ingen sträcka)", () => {
     expect(far.message).toMatch(/too far/);
   });
 
-  it("A utanför regionen avslås; pointA/pointB överlever clampParams", async () => {
-    const out = await prepareMatch(store(), { lat: 55.6, lon: 13.0 }, params({ pointA: { lat: 55.6, lon: 13.0 }, pointB: A }));
+  it("cykel: A utanför regionen avslås (till fots går det, se ovan); pointA/pointB överlever clampParams", async () => {
+    const out = await prepareMatch(store(), { lat: 55.6, lon: 13.0 }, { ...withActivity(params({ pointA: { lat: 55.6, lon: 13.0 }, pointB: A }), "mtb"), mode: "escape", pointA: { lat: 55.6, lon: 13.0 }, pointB: A });
     expect(out.status).toBe("outside_region");
     const c = clampParams(params({ pointA: A, pointB: B }));
     expect(c.pointA).toEqual(A);
@@ -151,7 +157,7 @@ describe("A TO B: antal zombies följer sträckan och sprids längs hela vägen 
     it(`${act} ~5 km: tillräckligt många zombies (Normal), jämnt längs A–B`, async () => {
       const p0 = params({ ...withActivity(defaultParams(act), act), mode: "escape", seed: 3, pointA: A, pointB: destinationPoint(A, 5000, 90) });
       const pre = await prepareMatch(store(), A, p0);
-      const near = [...pre.region!.graph.nodes].sort((a, b) => haversineM(a, p0.pointB!) - haversineM(b, p0.pointB!))[0];
+      const near = act === "walk" ? p0.pointB! : [...pre.region!.graph.nodes].sort((a, b) => haversineM(a, p0.pointB!) - haversineM(b, p0.pointB!))[0];
       const p = { ...p0, pointB: near as LatLon };
       const r = await prepareMatch(store(), A, p);
       expect(r.status).toBe("ok");
@@ -169,8 +175,7 @@ describe("A TO B: antal zombies följer sträckan och sprids längs hela vägen 
   }
   it("Hard har dubbelt så många som Normal på samma sträcka", async () => {
     const p0 = params({ mode: "escape", seed: 3, pointA: A, pointB: destinationPoint(A, 5000, 90) });
-    const pre = await prepareMatch(store(), A, p0);
-    const near = [...pre.region!.graph.nodes].sort((a, b) => haversineM(a, p0.pointB!) - haversineM(b, p0.pointB!))[0];
+    const near = p0.pointB!; // till fots: terräng, B exakt där spelaren valde
     const count = async (difficulty: "easy" | "normal" | "hard") => {
       const p = { ...p0, difficulty, pointB: near as LatLon };
       const r = await prepareMatch(store(), A, p);
