@@ -78,9 +78,10 @@ describe("bakgrundsläge: rättvist utan att straffa normala avbrott", () => {
     const s = setup(400);
     s.state.zombies[0].speedMps = s.rules.zombieSpeedMps;
     let shieldedCount = 0;
-    for (let cycle = 0; cycle < 90 && s.state.result === undefined; cycle++) {
+    const t0 = s.now();
+    for (let cycle = 0; cycle < 200 && s.state.result === undefined; cycle++) {
       const r = away(s, 500);
-      if (r.shielded) shieldedCount++;
+      if (r.shielded && s.now() - t0 < 290_000) shieldedCount++; // budgeten förnyas först efter 5 min
       for (let k = 0; k < 4 && s.state.result === undefined; k++) { s.advance(1000); s.live.pushFix(fix(s.now()), s.now()); s.live.tick(s.now()); }
     }
     expect(s.state.result).toBe("infected");
