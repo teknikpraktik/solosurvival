@@ -43,7 +43,7 @@ const SAFE_MARGIN_S = 20;
 const DEAD_END_PENALTY_S = 60;
 
 /** Målposition för boten: aktivt mål (Escape/Mission) eller extraction (Survival). */
-function targetPos(c: PlayerCtx): EdgePos | null {
+export function targetPos(c: PlayerCtx): EdgePos | null {
   const t = c.state.objectives ? activeTarget(c.state.objectives) : undefined;
   if (t) {
     const s = snapToGraph(c.g, t, c.state.component);
@@ -69,7 +69,8 @@ export function makeGoalBot(kind: "follower" | "planner", stats: BotStats, path?
   const cache = new WeakMap<object, { key: string; d: Map<string, number> }>();
   return (c: PlayerCtx): number => {
     const { g, state } = c;
-    const pace = ACTIVITIES[state.config.activity].playerPaceMps;
+    // Spelarens verkliga fart i simuleringen (v2.1-versionen använde alltid nominell fart, vilket gav en felplanerande bot vid annat tempo).
+    const pace = c.speedMps ?? ACTIVITIES[state.config.activity].playerPaceMps;
     const tp = targetPos(c);
     const distMap = tp ? (() => {
       const key = `${tp.edgeId}@${tp.distM.toFixed(1)}`;

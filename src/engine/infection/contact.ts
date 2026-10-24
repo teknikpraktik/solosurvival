@@ -34,7 +34,11 @@ export function infectionContactM(g: TrailGraph, player: LatLon, snap: EdgePos |
       dists = networkDistances(g, snap, NETWORK_SEARCH_M);
       offsetM = haversineM(player, edgeLatLon(g, snap));
     }
-    const net = distanceToPos(g, snap, dists, { edgeId: z.edgeId, distM: z.distanceAlongEdgeM }) + offsetM;
+    const zPos = { edgeId: z.edgeId, distM: z.distanceAlongEdgeM };
+    // Närhet är symmetrisk, men enkelriktade stigar (cykel) är det inte: räkna kortaste vägen i båda riktningarna (spelaren → zombien, zombien → spelaren).
+    const toZombie = distanceToPos(g, snap, dists, zPos);
+    const toPlayer = distanceToPos(g, zPos, networkDistances(g, zPos, NETWORK_SEARCH_M), snap);
+    const net = Math.min(toZombie, toPlayer) + offsetM;
     if (net <= CONTACT_DETOUR_FACTOR * d + CONTACT_SLACK_M) best = d;
   }
   return best;
