@@ -64,7 +64,7 @@ Läsning [sim]:
 
 ## 4. Begränsningar och risker
 
-1. **Terrängnätet vet inget om vatten, vägar, järnvägar eller byggnader.** Zombier går över dem (och kan stå i en sjö). Spelaren väljer själv sin väg; spelet föreslår aldrig en. Texten i förhandsvisningen varnar, men den som väljer ett B på andra sidan en motorväg får ingen varning. Ett billigt skydd som inte är infört: fråga kartan (som redan visar vatten, byggnader och vägar) vad som ligger under den tryckta punkten och avvisa B om det är vatten eller byggnad. **Inte prövat.**
+1. **Terrängnätet vet inget om vatten, vägar, järnvägar eller byggnader.** Zombier går över dem (och kan stå i en sjö). Spelaren väljer själv sin väg; spelet föreslår aldrig en. Texten i förhandsvisningen varnar, men den som väljer ett B på andra sidan en motorväg får ingen varning. B-valet kontrolleras mot kartans vatten, byggnader, större vägar och järnväg (avsnitt 5), men sträckan dit och zombiernas rörelse kontrolleras inte.
 2. **Zombierna kan gå över större vägar** via gittret; v2.2:s regel att zombier inte korsar större vägar utan kartlagd passage gäller bara stignätet, inte terrängnätet.
 3. **Balansen är inte avstämd** (stor skillnad mellan stig och terräng; Svår ospelbar). Det är ett produktbeslut.
 4. **Stora grafer:** 5,4 MB sparas i IndexedDB vid matchstart (en gång). Prestanda och minne på äldre telefoner är **[telefon]** inte mätt.
@@ -72,8 +72,17 @@ Läsning [sim]:
 6. **Sparade matcher** från före 2.4.0 återupptas inte.
 7. **Spelare utanför gittret** (mer än ca 20 m från en kant) kan inte uppstå i korridoren, men en spelare som rör sig mer än 700 m från linjen A–B lämnar nätet. Då snappas spelaren till närmaste kant och zombierna väntar vid den, som för cykel före 2.3 (ingen exponeringsregel för gång).
 
-## 5. Rekommendation
+## 5. Validering av B mot kartan (tillägg)
 
-**Villkorat GO för merge** (efter #43), **NO-GO för produktion**: terrängläget är automatiskt verifierat, och spelmekaniken är oförändrad där inget ändrats (fingeravtryck). Telefonprov av prestanda och upplevelse saknas, B-validering mot vatten/byggnad saknas, och balansen är inte avstämd (särskilt Svår).
+När spelaren trycker ut B på kartan till fots kontrolleras punkten mot kartans egna skikt (OpenMapTiles via OpenFreeMap, som redan visas): **vatten, byggnad, större väg (motorväg till tertiary, inom 12 m) och järnväg (inom 12 m)** avvisas med ett kort meddelande ("B is in water. Pick a spot on land." m.fl.), och det tidigare valda B ligger kvar. Tunnlar räknas inte; broar gör det. Små vägar, stigar och övrig mark är fria. Saknas kartdata för platsen (offline, rutor ej inlästa) godkänns punkten, eftersom spelet inte ska blockeras av en bakgrundskarta. Kontrollen gäller inte cykel (vägbunden) och inte A (spelarens egen position).
 
-Förslag på nästa steg, i ordning: (1) validera B mot kartans vatten/byggnader/vägar; (2) mät mesh-sparning och steg på en telefon; (3) balanssvep per svårighet med fler matcher och en bättre "människoliknande" bot; (4) därefter Mission och Survival i terräng, som kräver att checkpoints och extraction placeras på säker mark.
+- **Kod:** `src/geo/point-check.ts` (ren funktion på GeoJSON-liknande objekt), `GameMap` (`validatePick`, `onPickRejected`, frågar `map.querySourceFeatures` för `water`, `building`, `transportation`), `NewGame` (visar texten).
+- **Testat [fakta]:** 5 enhetstester (vatten, byggnad, hål/ö, multipolygon, väg/järnväg på och utanför 12 m, små vägar, tunnel/bro, inga kartdata); `tsc`, lint, 366 tester, bygge och e2e `atob` 8/8, `play` 16/16 gröna.
+- **Inte testat:** själva kartfrågan i en webbläsare med riktiga kartrutor (testmiljön har inget nätverk till kartservern; e2e verifierar bara att en punkt utan kartdata godkänns), och på telefon. **[telefon]**
+- **Begränsning:** kontrollen ser bara punkten B, inte vägen dit; den hindrar inte att spelaren själv går över en väg, och den säger ingenting om privat mark eller områden som inte finns på kartan.
+
+## 6. Rekommendation
+
+**Villkorat GO för merge** (efter #43), **NO-GO för produktion**: terrängläget är automatiskt verifierat, och spelmekaniken är oförändrad där inget ändrats (fingeravtryck). Telefonprov av prestanda och upplevelse saknas, B-validering mot vatten/byggnad är införd men inte provad med riktiga kartrutor, och balansen är inte avstämd (särskilt Svår).
+
+Förslag på nästa steg, i ordning: (1) ~~validera B mot kartans vatten/byggnader/vägar~~ (gjort, avsnitt 5; ej provat med riktiga kartrutor); (2) mät mesh-sparning och steg på en telefon; (3) balanssvep per svårighet med fler matcher och en bättre "människoliknande" bot; (4) därefter Mission och Survival i terräng, som kräver att checkpoints och extraction placeras på säker mark.

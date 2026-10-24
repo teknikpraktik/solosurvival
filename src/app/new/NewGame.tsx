@@ -41,6 +41,8 @@ export default function NewGame() {
   const [busy, setBusy] = useState(false);
   // Pressing START: keep showing the preview until /play has taken over (otherwise the settings form flashes while the stage changes).
   const [starting, setStarting] = useState(false);
+  // A TO B på terräng: varför senaste tryckta B avvisades (vatten, byggnad, större väg, järnväg).
+  const [pickProblem, setPickProblem] = useState<string | null>(null);
 
   useEffect(() => { setCues(cuesEnabled()); }, []);
   useEffect(() => {
@@ -168,9 +170,12 @@ export default function NewGame() {
               accuracyM={view?.accuracyM}
               fit={view?.position && p.pointB ? [view.position, p.pointB] : null}
               markers={[...(view?.position ? [{ id: "A", label: "A", lat: view.position.lat, lon: view.position.lon, tone: "done" as const }] : []), ...(p.pointB ? [{ id: "B", label: "B", lat: p.pointB.lat, lon: p.pointB.lon, tone: "next" as const }] : [])]}
-              onPick={(pt) => set({ pointB: pt })}
+              validatePick={p.activity !== "mtb"}
+              onPickRejected={setPickProblem}
+              onPick={(pt) => { setPickProblem(null); set({ pointB: pt }); }}
             />
           </div>
+          {pickProblem && <div className="card warn" role="status">{pickProblem}</div>}
         </div>
       )}
       <label className="muted" style={{ display: "flex", gap: 10, alignItems: "center", minHeight: 44 }}>
