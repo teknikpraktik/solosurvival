@@ -1,3 +1,4 @@
+import type { OffNetworkState } from "../offnetwork";
 import type { Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
 import type { LatLon } from "@/geo/geometry";
@@ -99,6 +100,8 @@ export interface GameState {
   startPos?: LatLon;
   /** Mål för Escape/Mission. Saknas i Survival (där extraction gäller). */
   objectives?: ObjectiveSet;
+  /** Cykel: läge och budget för spelare utanför nätet. Saknas i matcher sparade före 2.3. */
+  offNetwork?: OffNetworkState;
 }
 
 export type GameEvent =
@@ -114,4 +117,5 @@ export type GameEvent =
   | { type: "extraction_unavailable" }
   | { type: "objective_reached"; targetId: string; index: number }
   | { type: "gps_lost_long" }
+  | { type: "off_network"; change: "entered" | "left" | "exposed" }
   | { type: "finished"; result: GameResult };

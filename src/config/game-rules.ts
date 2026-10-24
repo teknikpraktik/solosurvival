@@ -1,7 +1,7 @@
 import { ACTIVITIES, type Activity } from "./activities";
 import { DIFFICULTIES, type Difficulty } from "./difficulty";
 
-export const RULES_VERSION = "2.2.0";
+export const RULES_VERSION = "2.3.0";
 
 /** Fast simuleringssteg (PRD 8.4): 5 Hz. */
 export const STEP_S = 0.2;
@@ -61,6 +61,8 @@ export interface Rules {
   magnetRangeM: number;
   /** Magnet-jakt: zombier känner alltid spelarens (giltiga) position och jagar kontinuerligt, utan upptäcktsradie. */
   magnetic: boolean;
+  /** Cykel: en spelare som varaktigt är utanför nätet blir exponerad när budgeten är slut (engine/offnetwork.ts). */
+  offNetworkExposure: boolean;
   sprintRadiusM: number;
   /** Sekunder på toppfart. Hela spurten är ramp + duration + decay. */
   sprintDurationS: number;
@@ -111,6 +113,7 @@ export function resolveRules(
     spreadStart: a.spreadStart,
     magnetRangeM: a.magnetRangeM,
     magnetic: true,
+    offNetworkExposure: activity === "mtb",
     sprintRadiusM: SPRINT_RADIUS_M,
     sprintDurationS: d.sprint.holdS,
     sprintSpeedFactor: d.sprint.peakFactor,
