@@ -86,7 +86,7 @@ Simulator, planner bot, 30 matches per row, lattice 40 m, no obstacles **[sim]**
 | same | slow walker 3.8 km/h | 90 % (74–97) | 100 % (89–100) |
 | Hard 13 km/h × 0.5 = 6.5 km/h | walker 4.7 km/h | 0 % (0–11) | 13 % (5–30) |
 | same | slow walker 3.8 km/h | 0 % (0–11) | 10 % (3–26) |
-| Normal 3.5 km/h | runner 8 km/h | n/a here: 60 % at zombies 7 km/h (full speed) | 93 % |
+| Reference, no off-trail factor: Normal 7 km/h | jogger 8 km/h | 60 % (42–75) | 93 % (79–98) |
 
 Reading: because the outcome is driven by the speed **ratio** (the v2.2 finding), a flat 50 % puts Normal firmly on the player's side (open terrain is too easy) while Hard stays on the zombies' side (a walker is still slower than 6.5 km/h). One factor will not serve all three difficulties; the off-trail factor must be a per-difficulty parameter, and it should be tuned with the same method as v2.2 (a bot sweep before changing anything). Open terrain also gives the player something trails don't: the zombies can be outwalked in any direction, whereas on trails they come head-on along the only way. That is likely why the walker wins so often, and an obstacle mask would lower it **[assumption, untested]**.
 
