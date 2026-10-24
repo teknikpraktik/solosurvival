@@ -2,6 +2,7 @@ import {
   EXTRACTION_HOLD_S,
   EXTRACTION_RADIUS_M,
   GPS_LOST_LONG_S,
+  INFECTION_RADIUS_M,
   RESUME_NEUTRAL_S,
   STEP_S,
   sprintFactorAt,
@@ -9,13 +10,14 @@ import {
   type Rules,
 } from "@/config/game-rules";
 import { haversineM, toLocal, type LatLon } from "@/geo/geometry";
-import { nodeLatLon, snapToGraph } from "@/geo/graph/graph";
+import { edgeLatLon, nodeLatLon, snapToGraph } from "@/geo/graph/graph";
 import type { EdgePos, TrailGraph } from "@/geo/graph/types";
 import type { GpsQuality } from "@/gps/types";
 import { makeObservation, updateZombieAI } from "../ai/zombie-ai";
 import { chooseExtraction } from "../extraction/extraction";
 import { CONTACT_CHECK_M, infectionContactM } from "../infection/contact";
 import { updateInfection } from "../infection/infection";
+import { OFF_WAIT_M, initialOffNetwork, isExposed, updateOffNetwork } from "../offnetwork";
 import { findSpawn } from "../spawning/spawn";
 import { advanceZombie, zombieLatLon } from "./movement";
 import { rand } from "./rng";
@@ -80,6 +82,7 @@ export function createGame({ g, config, rules, start, id, objectives }: CreateGa
     component,
     objectives,
     startPos: start,
+    offNetwork: rules.offNetworkExposure ? initialOffNetwork() : undefined,
   };
   const events: GameEvent[] = [{ type: "phase", phase: "head_start" }];
   // Initial zombies keep their distance (time to look around) and, when rules.spreadStart is set (Bike), are spread out:
@@ -297,6 +300,17 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
     events.push(...aiEvents);
   }
 
+  // Spelare utanför nätet (cykel): klassificering med hysteres och budget; exponerad spelare kan smittas av zombier som väntar vid närmaste nätpunkt.
+  let exposedAt: EdgePos | null = null;
+  if (hunting && rules.offNetworkExposure) {
+    const st = (s.offNetwork ??= initialOffNetwork());
+    const o = s.player.magnetObservation ?? s.player.lastObservation;
+    const rawOffset = o ? haversineM(input.position, edgeLatLon(g, { edgeId: o.edgeId, distM: o.edgeDistM })) : null;
+    const change = updateOffNetwork(st, STEP_S, rawOffset, input.accuracyM);
+    if (change) events.push({ type: "off_network", change });
+    if (o && isExposed(st)) exposedAt = { edgeId: o.edgeId, distM: o.edgeDistM };
+  }
+
   // Infektion.
   if (hunting) {
     let nearest = Infinity;
@@ -306,6 +320,11 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
       const m = s.player.magnetObservation;
       const snap = m && t - m.observedAtS <= 2 ? { edgeId: m.edgeId, distM: m.edgeDistM } : snapToGraph(g, input.position, s.component);
       nearest = infectionContactM(g, input.position, snap, s.zombies);
+    }
+    if (exposedAt) {
+      // Samma nätkontroll som för en spelare på nätet: en zombie på andra sidan en barriär (ingen väg mellan) räknas inte som väntande.
+      const waiting = infectionContactM(g, edgeLatLon(g, exposedAt), exposedAt, s.zombies);
+      if (waiting <= OFF_WAIT_M) nearest = Math.min(nearest, INFECTION_RADIUS_M);
     }
     const before = s.infectionProgressSeconds;
     const r = updateInfection(before, {

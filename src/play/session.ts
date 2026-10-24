@@ -131,6 +131,8 @@ export interface MatchView {
   extraction: LatLon | null;
   gpsLost: boolean;
   gpsLostLong: boolean;
+  /** Cykel: spelaren är varaktigt utanför det kartlagda nätet. `exposed` = budgeten är slut och zombier som väntar vid vägen kan smitta. */
+  offNetwork: { active: boolean; exposed: boolean; budgetLeftS: number } | null;
   frozen: boolean;
   needsFix: boolean;
   proposal: RouteProposal | null;
@@ -497,6 +499,11 @@ export class PlaySession {
         case "spawn_skipped": this.log?.add(t, "spawn_skipped", { n: live.state.zombies.length, atS: Math.round(live.state.elapsedSeconds) }); break;
         case "extraction_opened": this.cue("info", "Extraction open"); this.log?.add(t, "extraction_opened"); break;
         case "gps_lost_long": this.cue("alert", "Location lost for a while"); this.log?.add(t, "gps_lost_long"); break;
+        case "off_network":
+          this.log?.add(t, "off_network", { change: e.change, budgetS: Math.round(live.state.offNetwork?.budgetS ?? 0), offsetM: Math.round(live.state.offNetwork?.offsetM ?? 0) });
+          if (e.change === "entered") this.cue("alert", "You are off the road network. Zombies are closing in on the nearest road.");
+          else if (e.change === "exposed") this.cue("danger", "Zombies have found you. Get back to the road!");
+          break;
         case "phase": this.log?.add(t, "phase", { phase: e.phase }); break;
         case "finished": finished = true; this.log?.add(t, "finished", { result: e.result }); break;
         default: break;
@@ -749,6 +756,7 @@ export class PlaySession {
       extraction: s.extractionNodeId ? (live.g.nodes.get(s.extractionNodeId) ?? null) : null,
       gpsLost: st.quality === "unavailable" || st.quality === "warning",
       gpsLostLong: s.gpsLostLong,
+      offNetwork: s.offNetwork && live.rules.offNetworkExposure ? { active: s.offNetwork.active, exposed: s.offNetwork.active && s.offNetwork.budgetS <= 0, budgetLeftS: Math.ceil(s.offNetwork.budgetS) } : null,
       frozen: live.frozen,
       needsFix: !live.filter.position,
       proposal: this.proposal,

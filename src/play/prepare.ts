@@ -1,5 +1,5 @@
 import { ACTIVITIES } from "@/config/activities";
-import { buildRegionGraph, MAX_START_SNAP_M, type RegionGraph } from "@/data/region-graph";
+import { buildRegionGraph, MAX_START_SNAP_M, type ComponentPolicy, type RegionGraph } from "@/data/region-graph";
 import type { LoadStats, TileStore } from "@/data/store";
 import type { LatLon } from "@/geo/geometry";
 import { indexGraph } from "@/geo/graph/graph";
@@ -29,6 +29,8 @@ export interface Prepared {
   load?: LoadStats;
   timing: { loadMs: number; graphMs: number; routeMs: number; totalMs: number };
   dataVersion?: string;
+  /** Förslag som spelaren kan välja (spelet byter aldrig läge själv): vid cykel utan tillräckligt cykelbart nät "walk". */
+  alternatives?: "walk"[];
 }
 
 const emptyTiming = { loadMs: 0, graphMs: 0, routeMs: 0, totalMs: 0 };
@@ -38,7 +40,7 @@ const emptyTiming = { loadMs: 0, graphMs: 0, routeMs: 0, totalMs: 0 };
  * Hämtar regionala tiles, bygger aktivitetens stignät och genererar ruttförslag från den verkliga startpositionen.
  * Hellre ett tydligt avslag med förklaring än en dålig rutt (säkerhetsprincip).
  */
-export async function prepareMatch(store: TileStore, start: LatLon, p: MatchParams): Promise<Prepared> {
+export async function prepareMatch(store: TileStore, start: LatLon, p: MatchParams, opts: { component?: ComponentPolicy } = {}): Promise<Prepared> {
   const t0 = performance.now();
   const base = { proposals: [], notes: [] as string[], timing: { ...emptyTiming } };
   const manifest = await store.loadManifest();
@@ -63,12 +65,12 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
   const t1 = performance.now();
   const { ways, stats } = await store.loadAround(center, radius);
   const t2 = performance.now();
-  const region = buildRegionGraph(ways, p.activity, center, radius, start, { strict: p.mode !== "survival" });
+  const region = buildRegionGraph(ways, p.activity, center, radius, start, { strict: p.mode !== "survival", component: opts.component });
   const t3 = performance.now();
   const timing = { loadMs: t2 - t1, graphMs: t3 - t2, routeMs: 0, totalMs: 0 };
   const done = (r: Omit<Prepared, "timing" | "dataVersion" | "region" | "load">, graph?: TrailGraph): Prepared => {
     timing.totalMs = performance.now() - t0;
-    return { ...r, graph, region, load: stats, timing, dataVersion: manifest.dataVersion };
+    return { ...bikeNetworkAdvice(r, p.activity, region), graph, region, load: stats, timing, dataVersion: manifest.dataVersion };
   };
   const label = p.activity === "mtb" ? "biking" : "walking and running";
   if (region.startSnapM === null || region.startSnapM > MAX_START_SNAP_M) {
@@ -127,6 +129,17 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
   }
   // One course only (the closest to the wanted distance); NEW COURSE makes another.
   return done({ status: "ok", proposals: best.slice(0, 1), notes }, graph);
+}
+
+/**
+ * Cykel utan tillräckligt cykelbart nät: ett begripligt meddelande och förslaget att välja annan startplats eller gå över till gångläge.
+ * Läget byts aldrig automatiskt; knappen i förhandsvisningen kräver ett val av spelaren.
+ */
+export function bikeNetworkAdvice<T extends { status: PrepareStatus; message?: string; alternatives?: "walk"[] }>(r: T, activity: MatchParams["activity"], region: RegionGraph): T & { alternatives?: "walk"[] } {
+  if (activity !== "mtb" || (r.status !== "off_network" && r.status !== "sparse" && r.status !== "no_route")) return r;
+  const near = region.startSnapM !== null && region.startSnapM > MAX_START_SNAP_M ? ` The nearest connected network is about ${Math.round(region.startSnapM)} m away.` : "";
+  const km = region.stats.componentKm > 0 && region.stats.componentKm < 3 ? ` Only about ${region.stats.componentKm.toFixed(1)} km of connected road is within reach.` : "";
+  return { ...r, message: `There are not enough rideable roads here for a bike match.${near}${km} Choose another start, or switch to walking.`, alternatives: ["walk"] };
 }
 
 /** Uppskattad tid (s) för en rutt i lugn fart, för visning i förhandsgranskningen. */

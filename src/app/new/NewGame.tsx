@@ -88,7 +88,17 @@ export default function NewGame() {
         <div className="hudbar"><div className="line"><span className="pill">{MODE_LABEL[p.mode]} · {ACTIVITY_LABEL[p.activity]}</span><CloseButton label="Close preview" disabled={busy || starting} onClick={() => session!.backToConfig()} /></div></div>
         <div className="sheet">
           {stage === "preparing" && <div className="card">Loading map data and planning…</div>}
-          {stage !== "preparing" && prepared && !ok && <div className="card bad">{prepared.message}</div>}
+          {stage !== "preparing" && prepared && !ok && (
+            <div className="card bad">
+              {prepared.message}
+              {prepared.alternatives?.includes("walk") && (
+                <div className="row" style={{ marginTop: 8 }}>
+                  <button className="btn" disabled={busy} onClick={() => run(() => session!.regenerate())}>TRY FROM MY POSITION</button>
+                  <button className="btn" disabled={busy} onClick={() => { const next = withActivity(view.params ?? p, "walk"); setP(next); void run(() => session!.prepare(next)); }}>SWITCH TO WALKING</button>
+                </div>
+              )}
+            </div>
+          )}
           {stage !== "preparing" && prepared?.status === "ok" && prepared.notes.some((n) => n.startsWith("easy-bike-network")) && <div className="card warn">Few easy gravel roads or bike lanes here, so the route may include rougher trails.</div>}
           {stage !== "preparing" && prepared?.status === "alternative" && <div className="card warn">{prepared.message}</div>}
           {stage !== "preparing" && ok && proposal && (
