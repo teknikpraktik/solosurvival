@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { viewZoom } from "@/play/camera-view";
 import { bearingDeg, haversineM, type LatLon } from "@/geo/geometry";
 import type { TrailGraph } from "@/geo/graph/types";
+import { checkPickPoint, type MapFeature } from "@/geo/point-check";
 import { BearingSmoother } from "@/play/bearing";
 import { wrap180, type HeadingSource } from "@/play/heading";
 import { ZombieAnimator, type ZombieTarget } from "@/play/zombie-anim";
@@ -71,6 +72,10 @@ export interface GameMapProps {
   onUserMove?: () => void;
   /** Tryck på kartan (t.ex. för att välja A/B). */
   onPick?: (p: LatLon) => void;
+  /** Kontrollera tryckta punkter mot kartans vatten, byggnader, större vägar och järnväg innan `onPick` anropas (se geo/point-check.ts). */
+  validatePick?: boolean;
+  /** En tryckt punkt avvisades av kontrollen (texten kan visas för spelaren). `onPick` anropas inte. */
+  onPickRejected?: (message: string) => void;
   onError?: (what: string) => void;
 }
 
@@ -106,7 +111,16 @@ export default function GameMap(props: GameMapProps) {
     const rememberZoom = () => { if (propsRef.current.viewAheadM !== undefined && performance.now() - lastInputMs < 1500) userZoom.current = map.getZoom(); };
     map.on("zoom", rememberZoom);
     map.on("zoomend", rememberZoom);
-    map.on("click", (e) => propsRef.current.onPick?.({ lat: e.lngLat.lat, lon: e.lngLat.lng }));
+    map.on("click", (e) => {
+      const p = { lat: e.lngLat.lat, lon: e.lngLat.lng };
+      if (propsRef.current.validatePick) {
+        // Bara inlästa kartrutor finns att fråga; saknas de (offline) godkänns punkten.
+        const feats = (["water", "building", "transportation"] as const).flatMap((sourceLayer) => map.querySourceFeatures("omt", { sourceLayer }) as unknown as MapFeature[]);
+        const problem = checkPickPoint(feats, p);
+        if (problem) { propsRef.current.onPickRejected?.(problem.message); return; }
+      }
+      propsRef.current.onPick?.(p);
+    });
     let tileErrors = 0;
     map.on("error", (e) => {
       // Kartbilden är en bonus: tappas tiles (offline/begränsning) fortsätter spelet på det egna nätet. Logga bara de första felen.
