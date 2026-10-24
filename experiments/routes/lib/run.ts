@@ -1,10 +1,8 @@
 import { type Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
 import { STEP_S } from "@/config/game-rules";
-import { rand, type RngHolder } from "@/engine/core/rng";
 import type { GameMode } from "@/engine/objectives/objectives";
-import { edgeLatLon, indexGraph } from "@/geo/graph/graph";
-import type { LatLon } from "@/geo/geometry";
+import { indexGraph } from "@/geo/graph/graph";
 import type { TrailGraph } from "@/geo/graph/types";
 import { generateRoutes } from "@/routes/generate";
 import { objectivesFromProposal } from "@/routes/objectives";

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { PageHeader } from "../_client/Modal";
 import { useCallback, useEffect, useState } from "react";
 import { MatchStorage, type HistoryRecord } from "@/play/storage";

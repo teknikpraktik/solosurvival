@@ -54,9 +54,10 @@ function pathType(h: string): PathType {
  *   aldrig förbinder två sidor av en väg (spelet föreslår aldrig en vägkorsning).
  * - Nätet klipps till cirkeln och begränsas till den komponent som startpunkten ligger närmast.
  */
-export function buildRegionGraph(ways: TileWay[], activity: Activity, center: LatLon, radiusM: number, anchor: LatLon = center): RegionGraph {
-  const strict = assemble(ways, activity, center, radiusM, anchor, false);
+export function buildRegionGraph(ways: TileWay[], activity: Activity, center: LatLon, radiusM: number, anchor: LatLon = center, opts: { strict?: boolean } = {}): RegionGraph {
   const play = assemble(ways, activity, center, radiusM, anchor, true);
+  // Survival lägger inga rutter eller checkpoints, så det strikta nätet behövs inte där (sparar ungefär halva byggtiden på en telefon).
+  const strict = opts.strict === false ? play : assemble(ways, activity, center, radiusM, anchor, false);
   return {
     graph: strict.graph,
     play: { graph: play.graph, crossingNodes: play.crossingNodes, components: play.components, componentKm: play.componentKm },

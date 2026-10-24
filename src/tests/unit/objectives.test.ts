@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { STEP_S, resolveRules } from "@/config/game-rules";
 import { resolveModeRules } from "@/config/modes";
-import { createGame, stepGame } from "@/engine/core/engine";
+import { createGame } from "@/engine/core/engine";
 import { createObjectives, updateObjectives } from "@/engine/objectives/objectives";
 import { edgeLatLon } from "@/geo/graph/graph";
 import { fromLocal } from "@/geo/geometry";

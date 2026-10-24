@@ -10,7 +10,7 @@ import { createLiveMatch } from "@/play/match";
 import type { LiveGame } from "@/play/live-game";
 import { openDb } from "@/play/idb";
 import { PlaySession, ZOMBIE_SOUND_COOLDOWN_MS } from "@/play/session";
-import { cumulativeLengths, haversineM, pointAlong, type LatLon } from "@/geo/geometry";
+import { haversineM, pointAlong, type LatLon } from "@/geo/geometry";
 import { zombieLatLon } from "@/engine/core/movement";
 import { stepGame } from "@/engine/core/engine";
 import { snapToGraph } from "@/geo/graph/graph";

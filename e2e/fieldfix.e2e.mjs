@@ -63,14 +63,27 @@ await ctrl.click();
 let p = { latitude: START.latitude, longitude: START.longitude };
 const map = page.locator('[data-testid="map"]');
 const bearings = [];
-const leg = async (bearing, secs, speed = 4) => { for (let i = 0; i < secs; i++) { p = destPoint(p, speed, bearing); await ctx.setGeolocation({ ...p, accuracy: 6 }); await page.waitForTimeout(1000); } bearings.push(Number(await map.getAttribute("data-bearing"))); };
+const near = (a, b, tol) => Math.abs(((a - b + 540) % 360) - 180) <= tol;
+// Mockad GPS ger bara positioner (ingen kurs/fart), så riktningen räknas ur förflyttning, som är långsammare än enhetens GPS-kurs (se heading.test.ts).
+// Därför mäts hur lång tid kartan behöver på sig att vända (högst 50 s per sträcka) i stället för att anta en fast tid; mätvärdena skrivs ut.
+const latencies = [];
+const leg = async (bearing, secs, speed = 4) => {
+  let converged = null;
+  for (let i = 0; i < secs + 25; i++) {
+    if (i >= secs && converged !== null) break;
+    p = destPoint(p, speed, bearing); await ctx.setGeolocation({ ...p, accuracy: 6 }); await page.waitForTimeout(1000);
+    if (converged === null && near(Number(await map.getAttribute("data-bearing")), bearing, 25)) converged = i + 1;
+  }
+  latencies.push(converged);
+  bearings.push(Number(await map.getAttribute("data-bearing")));
+};
 const t0 = Date.now(); const reqBefore = reqs.length;
 await leg(90, 25);
 await page.screenshot({ path: `${OUT}/trackup-east.png` });
 await leg(0, 25);
 await leg(180, 25);
-const near = (a, b, tol) => Math.abs(((a - b + 540) % 360) - 180) <= tol;
-check("Track Up: kartan roterar mot färdriktningen (öst, norr, söder)", near(bearings[0], 90, 25) && near(bearings[1], 0, 25) && near(bearings[2], 180, 25), JSON.stringify(bearings));
+console.log("Track Up: sekunder tills kartan vänt inom 25° (öst, norr, söder):", JSON.stringify(latencies));
+check("Track Up: kartan roterar mot färdriktningen (öst, norr, söder)", latencies.every((x) => x !== null) && near(bearings[0], 90, 25) && near(bearings[1], 0, 25) && near(bearings[2], 180, 25), `${JSON.stringify(bearings)} efter ${JSON.stringify(latencies)} s`);
 check("pilen visas (har riktning)", (await page.locator(".pmark.has-heading").count()) === 1);
 const minutes = (Date.now() - t0) / 60000;
 const mine = reqs.slice(reqBefore);

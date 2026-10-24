@@ -6,7 +6,7 @@ import { prepareMatch, type Prepared } from "@/play/prepare";
 import { defaultParams, withActivity, type MatchParams } from "@/play/config";
 import { createLiveMatch } from "@/play/match";
 import { FIX_FRESH_MS, type LiveGame } from "@/play/live-game";
-import { haversineM, pointAlong, cumulativeLengths, fromLocal, toLocal, type LatLon } from "@/geo/geometry";
+import { haversineM, pointAlong, fromLocal, type LatLon } from "@/geo/geometry";
 import { rand } from "@/engine/core/rng";
 import type { GPSFix } from "@/gps/types";
 import { zombieLatLon } from "@/engine/core/movement";

@@ -2,7 +2,7 @@ import { ACTIVITIES } from "@/config/activities";
 import { buildRegionGraph, MAX_START_SNAP_M, type RegionGraph } from "@/data/region-graph";
 import type { LoadStats, TileStore } from "@/data/store";
 import type { LatLon } from "@/geo/geometry";
-import { indexGraph, snapToGraph } from "@/geo/graph/graph";
+import { indexGraph } from "@/geo/graph/graph";
 import type { TrailGraph } from "@/geo/graph/types";
 import { generateCourse } from "@/routes/course";
 import type { RouteProposal } from "@/routes/types";
@@ -33,8 +33,6 @@ export interface Prepared {
 
 const emptyTiming = { loadMs: 0, graphMs: 0, routeMs: 0, totalMs: 0 };
 
-/** Minsta nätlängd (m) relativt önskad sträcka för att rimliga alternativ ska kunna finnas. */
-const MIN_NETWORK_FACTOR = 1.5;
 
 /**
  * Hämtar regionala tiles, bygger aktivitetens stignät och genererar ruttförslag från den verkliga startpositionen.
@@ -65,7 +63,7 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
   const t1 = performance.now();
   const { ways, stats } = await store.loadAround(center, radius);
   const t2 = performance.now();
-  const region = buildRegionGraph(ways, p.activity, center, radius, start);
+  const region = buildRegionGraph(ways, p.activity, center, radius, start, { strict: p.mode !== "survival" });
   const t3 = performance.now();
   const timing = { loadMs: t2 - t1, graphMs: t3 - t2, routeMs: 0, totalMs: 0 };
   const done = (r: Omit<Prepared, "timing" | "dataVersion" | "region" | "load">, graph?: TrailGraph): Prepared => {
@@ -85,8 +83,8 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
   }
   // Two networks: routes and checkpoints are laid out on the strict one (never across a major road); the game itself (zombies, spawns,
   // infection) runs on the play network, where mapped pedestrian crossings are connected so that zombies can follow the player across a road.
-  const routeGraph = indexGraph(region.graph);
   const graph = indexGraph({ ...region.play.graph, crossingNodes: [...region.play.crossingNodes] });
+  const routeGraph = p.mode === "survival" ? graph : indexGraph(region.graph);
   if (p.mode === "survival") {
     if (region.stats.componentKm < 3) {
       return done({ ...base, status: "sparse", message: "Not enough connected trail here for Survival (at least 3 km needed)." }, graph);

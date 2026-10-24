@@ -33,6 +33,8 @@ export function planScares(random: () => number): number[] {
   return times;
 }
 export const SCARE_TRIGGER_DISTANCE_M = 200;
+/** Skriket + rösten "Run!" vid zombiespurt ljuder högst så här ofta. Med många zombier spurtar någon nästan hela tiden; utan gräns blir det ett konstant skrik. */
+export const SPRINT_CUE_COOLDOWN_MS = 25_000;
 
 /** Minsta tid (ms) mellan två närhetsljud; nya zombier som dyker upp under tiden grupperas till ett ljud. */
 export const ZOMBIE_SOUND_COOLDOWN_MS = 12_000;
@@ -489,7 +491,7 @@ export class PlaySession {
         case "zombie_spawned": this.log?.add(t, "zombie_spawned", { id: e.zombieId, n: live.state.zombies.length }); break;
         case "zombie_sprint":
           this.log?.add(t, "zombie_sprint", { id: e.zombieId });
-          if (t - this.lastSprintCueMs > 8_000) { this.lastSprintCueMs = t; this.cue("sprint", "Zombie sprinting!"); }
+          if (t - this.lastSprintCueMs > SPRINT_CUE_COOLDOWN_MS) { this.lastSprintCueMs = t; this.cue("sprint", "Zombie sprinting!"); }
           break;
         case "spawn_relaxed": this.log?.add(t, "spawn_relaxed", { n: live.state.zombies.length }); break;
         case "spawn_skipped": this.log?.add(t, "spawn_skipped", { n: live.state.zombies.length, atS: Math.round(live.state.elapsedSeconds) }); break;

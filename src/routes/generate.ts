@@ -77,8 +77,6 @@ export function isCleanLoop(c: { g: TrailGraph; start: EdgePos; an: NetworkAnaly
   return true;
 }
 
-const lengthOf = (g: TrailGraph, ids: string[]) => ids.reduce((s, id) => s + g.edges.get(id)!.lengthM, 0);
-
 /** Nod får bli målpunkt: inte virtuell, inte spets på återvändsgren och inte vid farlig korsning. */
 function eligibleNode(c: Ctx, n: string, maxDepth: number): boolean {
   const node = c.g.nodes.get(n);

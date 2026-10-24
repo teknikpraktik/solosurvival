@@ -9,7 +9,7 @@ import { defaultParams } from "@/play/config";
 import { openDb } from "@/play/idb";
 import { PlaySession } from "@/play/session";
 import { MatchStorage } from "@/play/storage";
-import { cumulativeLengths, haversineM, pointAlong, type LatLon } from "@/geo/geometry";
+import { haversineM, type LatLon } from "@/geo/geometry";
 
 const root = path.join(import.meta.dirname, "..", "..", "..", "public", "data", "v1", "varmland");
 const fsFetch: Fetcher = async (url) => {

@@ -25,7 +25,8 @@ async function make() {
   const db = await openDb(new IDBFactory());
   let clock = 50_000_000;
   const timers: (() => void)[] = [];
-  const session = new PlaySession({ geo, db, store: new TileStore("/data/v1/varmland", fsFetch), now: () => clock, setInterval: (fn) => { timers.push(fn); return timers.length; }, clearInterval: () => { timers.length = 0; } });
+  const cues: string[] = [];
+  const session = new PlaySession({ geo, db, store: new TileStore("/data/v1/varmland", fsFetch), now: () => clock, setInterval: (fn) => { timers.push(fn); return timers.length; }, clearInterval: () => { timers.length = 0; }, onCue: (c) => cues.push(c) });
   const fix = () => ok?.({ coords: { latitude: START.lat, longitude: START.lon, accuracy: 6, speed: null, heading: null }, timestamp: clock });
   const advance = (ms: number, step = 200) => { for (let i = 0; i < ms; i += step) { clock += step; timers.forEach((t) => t()); } };
   const jump = (ms: number) => { clock += ms; };
@@ -40,7 +41,7 @@ async function make() {
     expect(session.resume()).toBe(true);
     tickFixes(20);
   }
-  return { session, db, begin, fix, advance, jump, tickFixes, watches: () => watches, now: () => clock };
+  return { session, db, begin, fix, advance, jump, tickFixes, cues, watches: () => watches, now: () => clock };
 }
 
 describe("bakgrundsläge: appbyte pausar inte spelet, men tiden går och ingen smittas", () => {
@@ -202,5 +203,19 @@ describe("speltid mot verklig tid", () => {
     expect(t.session.getView().match!.paused).toBe(true);
     expect(t.session.getView().match!.elapsedS).toBe(before);
     expect(STEP_S).toBe(0.2);
+  });
+});
+
+describe("skrik och \"Run!\" vid zombiespurt", () => {
+  it("ljuder högst en gång per 25 s även om många zombier spurtar hela tiden", async () => {
+    const t = await make();
+    await t.begin();
+    const before = t.cues.filter((c) => c === "sprint").length;
+    const emit = () => (t.session as unknown as { endMatch(e: unknown[]): void }).endMatch([{ type: "zombie_sprint", zombieId: "z1" }, { type: "zombie_sprint", zombieId: "z2" }]);
+    // 90 s med två spurtande zombier varannan sekund: 0, 25, 50, 75 s => högst 4 signaler.
+    for (let s = 0; s < 90; s++) { if (s % 2 === 0) emit(); t.jump(1000); }
+    const n = t.cues.filter((c) => c === "sprint").length - before;
+    expect(n).toBeGreaterThanOrEqual(3);
+    expect(n).toBeLessThanOrEqual(4);
   });
 });
