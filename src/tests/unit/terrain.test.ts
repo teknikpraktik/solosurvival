@@ -151,8 +151,8 @@ describe("zombier i terräng", () => {
 });
 
 describe("terrängläget är bara för A TO B till fots", () => {
-  it("regelversionen är 2.4.0", () => {
-    expect(RULES_VERSION).toBe("2.4.0");
+  it("regelversionen är 2.5.0", () => {
+    expect(RULES_VERSION).toBe("2.5.0");
   });
   it("prestanda: ett 20 km långt terrängnät byggs och indexeras på rimlig tid och med rimligt antal kanter", () => {
     const t0 = performance.now();

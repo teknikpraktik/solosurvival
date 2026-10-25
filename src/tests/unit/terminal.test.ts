@@ -129,3 +129,19 @@ describe("alla tre spellägen: exakt ett slutresultat, mål registreras högst e
     });
   }
 });
+
+import { extractionOpensAtS } from "@/config/game-rules";
+describe("Survival: extraction öppnar på en jämn tid nära slutet", () => {
+  it("cirka 80 % avrundat nedåt till hela 5 minuter, alltid i sista halvan och minst 5 minuter före slutet", () => {
+    const min = (m: number) => extractionOpensAtS(m * 60) / 60;
+    expect([15, 20, 25, 30, 45, 60, 90].map(min)).toEqual([10, 15, 20, 20, 35, 45, 70]);
+    for (let m = 15; m <= 90; m += 5) {
+      const at = min(m);
+      expect(at % 5).toBe(0);
+      expect(at).toBeGreaterThanOrEqual(m / 2);
+      expect(m - at).toBeGreaterThanOrEqual(5);
+    }
+    expect(resolveRules("walk", "normal", 1800).extractionOpensAtS).toBe(1200);
+    expect(extractionOpensAtS(100)).toBe(80); // mycket korta matcher (tester): vanliga 80 %
+  });
+});
