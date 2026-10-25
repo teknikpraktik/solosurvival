@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
 import type { GameMode } from "@/engine/objectives/objectives";
+import { extractionOpensAtS } from "@/config/game-rules";
 import { DISTANCE_LIMITS, DURATION_LIMITS, START_MAX_ACCURACY_M, clampParams, defaultParams, withActivity, type MatchParams } from "@/play/config";
 import { estimatedMinutes } from "@/play/prepare";
 import { COURSE_DETOUR_FACTOR } from "@/routes/course";
@@ -115,7 +116,7 @@ export default function NewGame() {
           {stage !== "preparing" && ok && p.mode === "survival" && (
             <>
               <div className="stat"><span>Match length</span><b>{fmtTime(p.durationS)}</b></div>
-              <div className="muted">Survival has no route. Move freely along the trails. Extraction opens at 80 % of the time.</div>
+              <div className="muted">Survival has no route. Move freely along the trails. Extraction opens after {Math.round(extractionOpensAtS(p.durationS) / 60)} min; reach it before the time runs out.</div>
             </>
           )}
           {view.movedFromPreview && (
@@ -125,7 +126,7 @@ export default function NewGame() {
             </div>
           )}
           {view.messages.map((m) => <div key={m} className="card warn">{m}</div>)}
-          <div className="muted">{isAB ? (proposal?.terrain ? "Walk any way you like to B, on trails or across country. The line is only a hint. Zombies run on trails and walk slowly across country. The game does not know about roads, railways, water or private land: never cross them just because the game suggests it." : "Any route you like counts. The line is only a hint. Never cross a road or railway just because the game suggests it.") : "Fetch the numbered checkpoints in order, then return home. Choose your own way. Never cross a road or railway just because the game suggests it."}</div>
+          <div className="muted">{isAB ? (proposal?.terrain ? "Walk any way you like to B, on trails or across country. The line is only a hint. Zombies run on trails and walk slowly across country. The game does not know about roads, railways, water or private land: never cross them just because the game suggests it." : "Any route you like counts. The line is only a hint. Never cross a road or railway just because the game suggests it.") : p.mode === "mission" ? "Fetch the numbered checkpoints in order, then return home. Choose your own way. Never cross a road or railway just because the game suggests it." : "Never cross a road or railway just because the game suggests it."}</div>
           <div className="row">
             {!isAB && <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "REFRESH" : "NEW COURSE"}</button>}
           </div>
@@ -146,7 +147,7 @@ export default function NewGame() {
       <PageHeader title="NEW GAME" />
       {gps && <div className={`card ${gps.tone}`} role="status">{gps.text}</div>}
       <Seg<GameMode> label="Mode" value={p.mode} options={(["mission", "escape", "survival"] as GameMode[]).map((m) => ({ v: m, t: MODE_LABEL[m] }))} onChange={(mode) => set({ mode })} />
-      <div className="muted">{MODE_HELP[p.mode]}</div>
+      <div className="muted">{MODE_HELP[p.mode]}{p.mode === "survival" ? ` Extraction opens after ${Math.round(extractionOpensAtS(p.durationS) / 60)} min.` : ""}</div>
       <Seg<Activity> label="Activity" value={p.activity} options={(["walk", "mtb"] as Activity[]).map((a) => ({ v: a, t: ACTIVITY_LABEL[a] }))} onChange={(a) => setP(withActivity(p, a))} />
       <Seg<Difficulty> label="Difficulty" value={p.difficulty} options={(["easy", "normal", "hard"] as Difficulty[]).map((d) => ({ v: d, t: DIFFICULTY_LABEL[d] }))} onChange={(difficulty) => set({ difficulty })} />
       {p.mode === "survival" ? (

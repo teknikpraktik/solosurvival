@@ -1,7 +1,7 @@
 import { ACTIVITIES, type Activity } from "./activities";
 import { DIFFICULTIES, type Difficulty } from "./difficulty";
 
-export const RULES_VERSION = "2.4.0";
+export const RULES_VERSION = "2.5.0";
 
 /** Fast simuleringssteg (PRD 8.4): 5 Hz. */
 export const STEP_S = 0.2;
@@ -12,6 +12,15 @@ export const INFECTION_TIME_S = 3;
 export const INFECTION_TIME_VERIFY_S = 5;
 
 export const EXTRACTION_OPEN_FRACTION = 0.8;
+
+/**
+ * Survival: when extraction opens (s). About 80 % of the match, rounded down to whole 5 minutes so the player can be told a plain time
+ * (30 min → 20 min, 45 → 35, 60 → 45, 15 → 10). Always in the last half; very short matches (tests) keep the plain 80 %.
+ */
+export function extractionOpensAtS(durationS: number): number {
+  const rounded = Math.floor((durationS * EXTRACTION_OPEN_FRACTION) / 300) * 300;
+  return rounded >= durationS / 2 ? rounded : durationS * EXTRACTION_OPEN_FRACTION;
+}
 export const EXTRACTION_RADIUS_M = 30;
 export const EXTRACTION_HOLD_S = 5;
 
@@ -102,14 +111,14 @@ export function resolveRules(
   const d = DIFFICULTIES[difficulty];
   const maxZombies = Math.max(1, Math.min(Math.round(a.maxZombies * d.countMultiplier), spawnCapacity));
   const initialZombies = Math.max(1, Math.min(Math.round(a.initialZombies * d.countMultiplier), maxZombies));
-  const growthWindowMin = Math.max(1, (durationS * EXTRACTION_OPEN_FRACTION - a.headStartS) / 60);
+  const growthWindowMin = Math.max(1, (extractionOpensAtS(durationS) - a.headStartS) / 60);
   return {
     rulesVersion: RULES_VERSION,
     activity,
     difficulty,
     durationS,
     headStartS: a.headStartS,
-    extractionOpensAtS: durationS * EXTRACTION_OPEN_FRACTION,
+    extractionOpensAtS: extractionOpensAtS(durationS),
     zombieSpeedMps: (ZOMBIE_SPEED_KMH[activity]?.[difficulty] ?? a.zombieSpeedKmh * d.speedMultiplier) / 3.6,
     initialZombies,
     maxZombies,
