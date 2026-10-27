@@ -1,6 +1,6 @@
 import RoutesClient from "./RoutesClient";
 
-export const metadata = { title: "OUTBREAK – rutter och spellägen (dev)" };
+export const metadata = { title: "Solo Survival – rutter och spellägen (dev)" };
 
 export default function Page() {
   return <RoutesClient />;

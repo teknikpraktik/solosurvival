@@ -21,7 +21,7 @@ check("service worker registrerad och aktiv", !!sw?.active, JSON.stringify(sw));
 await page.reload(); await page.waitForTimeout(1500);
 check("sidan kontrolleras av service worker efter omladdning", await page.evaluate(() => !!navigator.serviceWorker.controller));
 const man = await (await ctx.request.get(BASE + "/manifest.webmanifest")).json();
-check("manifest", man.name === "OUTBREAK – Solo Survival" && man.icons.length === 3, man.display);
+check("manifest", man.name === "Solo Survival" && man.short_name === "Solo Survival" && man.icons.length === 3, man.display);
 for (const i of man.icons) { const r = await ctx.request.get(BASE + i.src); check("ikon " + i.src, r.ok() && /png/.test(r.headers()["content-type"] ?? "")); }
 const tile = await ctx.request.get(BASE + "/data/v1/varmland/t/1187_135.json?v=x");
 check("tile cache-header immutable", /immutable/.test(tile.headers()["cache-control"] ?? ""), tile.headers()["cache-control"]);

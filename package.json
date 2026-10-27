@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "OUTBREAK – Solo Survival (GPS-baserat överlevnadsspel)",
+  "description": "Solo Survival (GPS-baserat överlevnadsspel)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

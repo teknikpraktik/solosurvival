@@ -101,7 +101,7 @@ try {
   check("testläge nås via direktlänk", (await page.getByText("TEST MODE").count()) === 1);
 
   const mani = await (await ctx.request.get(BASE + "/manifest.webmanifest")).json();
-  check("manifest har rätt namn", mani.name === "OUTBREAK – Solo Survival");
+  check("manifest har rätt namn", mani.name === "Solo Survival" && mani.short_name === "Solo Survival");
   const sw = await ctx.request.get(BASE + "/sw.js");
   check("service worker serveras", sw.ok());
 } catch (e) {

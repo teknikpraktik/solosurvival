@@ -1,6 +1,6 @@
 import { PageHeader } from "../_client/Modal";
 
-export const metadata = { title: "How to play – OUTBREAK" };
+export const metadata = { title: "How to play – Solo Survival" };
 
 export default function HowToPlay() {
   return (
