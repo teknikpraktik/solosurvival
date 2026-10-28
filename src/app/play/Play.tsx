@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime, objectiveLabel } from "../_client/format";
+import { DIFFICULTY_LABEL, RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime, objectiveLabel } from "../_client/format";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio } from "../_client/cues";
 import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, VIEW_RETURN_S, nextApproaching, nextClose, viewProfile } from "@/play/camera-view";
@@ -166,7 +166,7 @@ export default function Play() {
       />
       <div className="hudbar">
         <div className="line">
-          <span className="pill">{MODE_LABEL[m.mode]}</span>
+          <span className="pill" aria-label="Mode and difficulty">{MODE_LABEL[m.mode]} · {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span>
           <span className="pill" aria-label="Time left">{fmtTime(remaining)}</span>
         </div>
         <div className="line">

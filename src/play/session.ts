@@ -110,6 +110,7 @@ export interface MatchView {
   id: string;
   mode: MatchParams["mode"];
   activity: MatchParams["activity"];
+  difficulty: MatchParams["difficulty"];
   phase: string;
   paused: boolean;
   result: string | undefined;
@@ -491,6 +492,7 @@ export class PlaySession {
           break;
         case "infection_contact": this.cue("danger", "Zombie close – move away!"); this.log?.add(t, "infection_contact"); break;
         case "zombie_spawned": this.log?.add(t, "zombie_spawned", { id: e.zombieId, n: live.state.zombies.length }); break;
+        case "zombie_culled": this.log?.add(t, "zombie_culled", { id: e.zombieId, n: live.state.zombies.length }); break;
         case "zombie_sprint":
           this.log?.add(t, "zombie_sprint", { id: e.zombieId });
           if (t - this.lastSprintCueMs > SPRINT_CUE_COOLDOWN_MS) { this.lastSprintCueMs = t; this.cue("sprint", "Zombie sprinting!"); }
@@ -739,6 +741,7 @@ export class PlaySession {
       id: s.id,
       mode: s.config.mode ?? "survival",
       activity: live.rules.activity,
+      difficulty: live.rules.difficulty,
       phase: s.phase,
       paused: s.paused,
       result: s.result,

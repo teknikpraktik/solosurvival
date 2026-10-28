@@ -1,7 +1,7 @@
 import { ACTIVITIES, type Activity } from "./activities";
 import { DIFFICULTIES, type Difficulty } from "./difficulty";
 
-export const RULES_VERSION = "2.5.0";
+export const RULES_VERSION = "2.6.0";
 
 /** Fast simuleringssteg (PRD 8.4): 5 Hz. */
 export const STEP_S = 0.2;
@@ -40,7 +40,8 @@ export const ZOMBIE_SPEED_KMH: Partial<Record<Activity, Record<Difficulty, numbe
   //   Hard   13 km/h   oförändrad. Svår är dessutom 2 × antal zombier: i simulering klarar ingen testad strategi den ens i 14–19 km/h (se rapporten); en omarbetning
   //                    av Svår (antal/tillväxt) är ett produktbeslut och ingår inte i denna justering.
   walk: { easy: 4.5, normal: 7, hard: 13 },
-  mtb: { easy: 14, normal: 17, hard: 24 },
+  // Bike: 30 % lower than 2.5 (14 / 17 / 24 km/h) after field testing.
+  mtb: { easy: 9.8, normal: 11.9, hard: 16.8 },
 };
 
 /** Neutral återstartsperiod efter paus, utan infektion (PRD 7.2). */

@@ -147,7 +147,8 @@ describe("A TO B: zombier uppstår mellan A och B", () => {
           expect(lat(ll)).toBeLessThanOrEqual(half + 1);
         }
       }
-      expect(live.state.zombies.length).toBeGreaterThan(live.rules.initialZombies - 1);
+      // Zombier som står still i en hög långt bort gallras (engine/ai/culling.ts) och räknas då i tillväxten i stället.
+      expect(live.state.zombies.length + (live.state.culledZombies ?? 0)).toBeGreaterThan(live.rules.initialZombies - 1);
     }
   });
 });

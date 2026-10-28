@@ -94,6 +94,8 @@ export interface GameState {
   nextSpawnTryAtS: number;
   zombieCounter: number;
   peakZombies: number;
+  /** Zombier som tagits bort ur högar av jagande zombier (engine/ai/culling.ts). Räknas in i tillväxten så att de inte ersätts. */
+  culledZombies?: number;
   /** Spelarens komponent i grafen – zombier hålls i samma komponent. */
   component: number;
   /** Matchens startposition (A i A TO B). */
@@ -110,6 +112,7 @@ export type GameEvent =
   | { type: "zombie_spawned"; zombieId: string }
   | { type: "spawn_skipped" }
   | { type: "zombie_sprint"; zombieId: string }
+  | { type: "zombie_culled"; zombieId: string }
   | { type: "spawn_relaxed" }
   | { type: "zombie_detected"; zombieId: string }
   | { type: "infection_contact" }

@@ -13,6 +13,7 @@ import { haversineM, toLocal, type LatLon } from "@/geo/geometry";
 import { edgeLatLon, nodeLatLon, snapToGraph } from "@/geo/graph/graph";
 import type { EdgePos, TrailGraph } from "@/geo/graph/types";
 import type { GpsQuality } from "@/gps/types";
+import { cullStackedZombies } from "../ai/culling";
 import { makeObservation, updateZombieAI } from "../ai/zombie-ai";
 import { chooseExtraction } from "../extraction/extraction";
 import { CONTACT_CHECK_M, infectionContactM } from "../infection/contact";
@@ -245,7 +246,8 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   if (hunting && t >= s.nextSpawnTryAtS) {
     const sinceHunt = t - rules.headStartS;
     const target = Math.min(rules.maxZombies, rules.initialZombies + Math.floor((rules.growthPerMin * sinceHunt) / 60));
-    if (s.zombies.length < target) {
+    // Zombier som tagits bort ur en hög räknas fortfarande: nya kommer i samma takt som förut, men de borttagna ersätts inte.
+    if (s.zombies.length + (s.culledZombies ?? 0) < target) {
       const snap = snapToGraph(g, input.position, s.component);
       if (snap && trySpawn(g, s, rules, snap, events)) s.nextSpawnTryAtS = t + 5;
       else s.nextSpawnTryAtS = t + 10; // ingen säker plats: avstå och försök senare
@@ -300,6 +302,10 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
       );
     }
     events.push(...aiEvents);
+    for (const id of cullStackedZombies(g, s.zombies, input.position)) {
+      s.culledZombies = (s.culledZombies ?? 0) + 1;
+      events.push({ type: "zombie_culled", zombieId: id });
+    }
   }
 
   // Spelare utanför nätet (cykel): klassificering med hysteres och budget; exponerad spelare kan smittas av zombier som väntar vid närmaste nätpunkt.
