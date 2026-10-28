@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DIFFICULTY_LABEL, RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime, objectiveLabel } from "../_client/format";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio } from "../_client/cues";
-import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, VIEW_RETURN_S, nextApproaching, nextClose, viewProfile } from "@/play/camera-view";
+import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, VIEW_RETURN_S, nextApproaching, nextClose, nextGoalClose, viewProfile } from "@/play/camera-view";
 import { Modal } from "../_client/Modal";
 import { Scare } from "../_client/Scare";
 import { JumpScare } from "../_client/JumpScare";
@@ -25,7 +25,9 @@ export default function Play() {
   const [follow, setFollow] = useState(true);
   const [tried, setTried] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  // Every match starts in Track Up with auto zoom on.
   const [trackUp, setTrackUp] = useState(true);
+  const [autoZoom, setAutoZoom] = useState(true);
   const [recenterNonce, setRecenterNonce] = useState(0);
   // After the user has moved/zoomed the map, it returns to the player after VIEW_RETURN_S seconds without interaction.
   const returnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,7 +66,7 @@ export default function Play() {
 
   const m = view?.match ?? null;
   const vp = viewProfile(m?.activity ?? "walk");
-  // Close state: zombie within 200 m (Bike) / 100 m (on foot); back out beyond 260 / 130 m. Bike zooms the map in; both play an uneasy sound on entering (with a cooldown).
+  // Close state: zombie within 200 m (Bike) / 100 m (on foot); back out beyond 260 / 130 m. Auto zoom closes in; entering plays an uneasy sound (with a cooldown).
   const [viewClose, setViewClose] = useState(false);
   const lastTension = useRef(-Infinity);
   const nearestM = m && !m.paused && m.phase !== "finished" ? m.nearestZombieM : null;
@@ -75,6 +77,12 @@ export default function Play() {
     const now = Date.now();
     if (wantClose && now - lastTension.current >= TENSION_COOLDOWN_S * 1000) { lastTension.current = now; playCue("tension"); }
   }, [wantClose, viewClose]);
+  // Goal near: auto zoom also closes in when the next checkpoint (or home, B, extraction) is near, and widens again once it is taken. No sound.
+  const [goalClose, setGoalClose] = useState(false);
+  const goal = m && !m.paused && m.phase !== "finished" ? (m.objectives?.next ?? m.extraction) : null;
+  const goalM = goal ? (session?.live?.distanceTo(goal) ?? null) : null;
+  const wantGoalClose = nextGoalClose(goalClose, goalM, vp);
+  useEffect(() => { if (wantGoalClose !== goalClose) setGoalClose(wantGoalClose); }, [wantGoalClose, goalClose]);
   // "Zombies approaching": spoken once when the nearest zombie comes within 200 m, armed again after it has been beyond 260 m (and not more often than the cooldown).
   const [approaching, setApproaching] = useState(false);
   const lastApproach = useRef(-Infinity);
@@ -160,7 +168,9 @@ export default function Play() {
         follow={follow}
         viewAheadM={vp.aheadM}
         viewCloseAheadM={vp.closeAheadM}
-        viewClose={viewClose && vp.autoZoom}
+        viewClose={viewClose || goalClose}
+        viewPlayerY={vp.playerY}
+        autoZoom={autoZoom}
         onUserMove={onUserMove}
         onError={(w) => session.fieldLog?.renderProblem(Date.now(), w)}
       />
@@ -178,7 +188,7 @@ export default function Play() {
         </div>
         {!finished && (
           <div className="line">
-            <span className="pill" aria-label="Nearest zombie">🧟 {m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>
+            <span className="pill" aria-label="Nearest zombie">💀 {m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>
             {m.activity === "mtb" && <span className="pill" aria-label="Your speed">{view.speedMps === null ? "– km/h" : `${(view.speedMps * 3.6).toFixed(1)} km/h`}</span>}
           </div>
         )}
@@ -199,6 +209,12 @@ export default function Play() {
             <button className="wide" onClick={() => session.pause("manual")}>PAUSE</button>
           )}
           <button className={`iconbtn${follow ? "" : " attn"}`} onClick={() => { setFollow(true); setRecenterNonce((n) => n + 1); }} aria-label="Center on me">⌖</button>
+          <button className="iconbtn zoombtn" onClick={() => { setAutoZoom((a) => !a); setFollow(true); }} aria-label={autoZoom ? "Auto zoom on (tap to turn off)" : "Auto zoom off (tap to turn on)"} aria-pressed={autoZoom}>
+            <svg viewBox="0 0 26 26" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2.2" /><path d="M16.2 16.2l6 6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+              <text x="11" y="14.6" textAnchor="middle" fontSize="9.5" fontWeight="800" fill="currentColor">A</text>
+            </svg>
+          </button>
           <button className="iconbtn compass" onClick={() => { void session.enableCompass(); setTrackUp((t) => !t); setFollow(true); }} aria-label={trackUp ? "Track Up (tap for North Up)" : "North Up (tap for Track Up)"} aria-pressed={trackUp}>
             <svg viewBox="0 0 26 26" style={{ transform: trackUp && view.heading != null ? `rotate(${-view.heading}deg)` : "none" }} aria-hidden="true">
               <path d="M13 2l5 11h-10z" fill="#ef4444" /><path d="M13 24l-5-11h10z" fill="#8b98a5" /><circle cx="13" cy="13" r="1.8" fill="#0b0f14" />

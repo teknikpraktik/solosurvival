@@ -1,22 +1,30 @@
 import type { Activity } from "@/config/activities";
 
-/** Camera profile: player centred, Track Up; zoomed so that `aheadM` is visible ahead of AND behind the player (top/bottom edge). */
+/**
+ * Camera profile: Track Up, player a little below the middle of the screen (`playerY`); with auto zoom on, zoomed so that `aheadM` is
+ * visible between the player and the top edge. Auto zoom closes in to `closeAheadM` when a zombie or the next goal is near and widens
+ * again when it is gone or taken. Auto zoom can be turned off in the game (then the zoom stays where the player put it).
+ */
 export interface ViewProfile {
-  /** Normal view: metres ahead of and behind the player. */
+  /** Normal view: metres from the player to the top edge. */
   aheadM: number;
-  /** Zoomed-in view (zombies close): metres ahead of and behind the player. */
+  /** Zoomed-in view (zombie or goal near): metres from the player to the top edge. */
   closeAheadM: number;
-  /** Whether the map zooms in to `closeAheadM` when a zombie is close (the "close" state still drives the tension sound either way). */
-  autoZoom: boolean;
+  /** Player's height on the screen as a fraction from the top (0.5 = middle). */
+  playerY: number;
   /** Zoom in when the nearest zombie is within this distance (m)… */
   enterM: number;
   /** …and zoom out again only when it is farther than this (hysteresis, avoids flicker). */
   exitM: number;
+  /** Zoom in when the next goal (checkpoint, home, B, extraction) is within this distance (m)… */
+  goalEnterM: number;
+  /** …and out again when it is farther than this, or taken (the next one is then far away). */
+  goalExitM: number;
 }
 
-/** On foot is slower than Bike, so it needs fewer metres of view. On foot the view never zooms in automatically. */
-const FOOT: ViewProfile = { aheadM: 400, closeAheadM: 150, autoZoom: false, enterM: 100, exitM: 130 };
-const BIKE: ViewProfile = { aheadM: 1000, closeAheadM: 300, autoZoom: true, enterM: 200, exitM: 260 };
+/** On foot is slower than Bike, so it needs fewer metres of view. */
+const FOOT: ViewProfile = { aheadM: 400, closeAheadM: 150, playerY: 0.6, enterM: 100, exitM: 130, goalEnterM: 120, goalExitM: 160 };
+const BIKE: ViewProfile = { aheadM: 1000, closeAheadM: 300, playerY: 0.6, enterM: 200, exitM: 260, goalEnterM: 250, goalExitM: 320 };
 
 export const viewProfile = (a: Activity): ViewProfile => (a === "mtb" ? BIKE : FOOT);
 
@@ -44,9 +52,15 @@ export function nextClose(prev: boolean, nearestM: number | null, v: ViewProfile
   return prev ? nearestM <= v.exitM : nearestM <= v.enterM;
 }
 
-/** Zoom level at which 2 × aheadM spans the map height (MapLibre world size = 512 · 2^zoom px). */
-export function viewZoom(latDeg: number, heightPx: number, aheadM: number): number {
-  const mpp = (2 * aheadM) / Math.max(200, heightPx);
+/** Next zoomed-in state given the distance to the next goal (null = no goal). */
+export function nextGoalClose(prev: boolean, goalM: number | null, v: ViewProfile): boolean {
+  if (goalM === null) return false;
+  return prev ? goalM <= v.goalExitM : goalM <= v.goalEnterM;
+}
+
+/** Zoom level at which `aheadM` spans the part of the map above the player (`playerY` of the height; MapLibre world size = 512 · 2^zoom px). */
+export function viewZoom(latDeg: number, heightPx: number, aheadM: number, playerY = 0.5): number {
+  const mpp = aheadM / (playerY * Math.max(200, heightPx));
   const z = Math.log2((40075016.686 * Math.cos((latDeg * Math.PI) / 180)) / (512 * mpp));
   return Math.min(18, Math.max(10, z));
 }

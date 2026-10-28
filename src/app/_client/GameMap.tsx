@@ -70,8 +70,12 @@ export interface GameMapProps {
   /** Game view: player centred, zoom fitted so that `viewAheadM` (`viewCloseAheadM` when `viewClose`) is visible ahead of and behind the player (top/bottom edge). */
   viewAheadM?: number;
   viewCloseAheadM?: number;
-  /** Zoomed in on the surroundings (zombies close) instead of the wide view. */
+  /** Zoomed in on the surroundings (zombie or goal near) instead of the wide view. */
   viewClose?: boolean;
+  /** Game view: the player's height on the screen as a fraction from the top (standard 0.5 = middle). */
+  viewPlayerY?: number;
+  /** Game view: false = the game never changes the zoom (the player's own zoom stays). Standard on. */
+  autoZoom?: boolean;
   fit?: LatLon[] | null;
   onUserMove?: () => void;
   /** Tryck på kartan (t.ex. för att välja A/B). */
@@ -163,7 +167,7 @@ export default function GameMap(props: GameMapProps) {
 
   const src = (id: string, data: GeoJSON.FeatureCollection) => (mapRef.current?.getSource(id) as GeoJSONSource | undefined)?.setData(data);
 
-  const { graph, routes, markers, player, accuracyM, start, zombies, extraction, pointTo, follow, fit, frozen, viewAheadM, viewCloseAheadM, viewClose, recenterNonce } = props;
+  const { graph, routes, markers, player, accuracyM, start, zombies, extraction, pointTo, follow, fit, frozen, viewAheadM, viewCloseAheadM, viewClose, viewPlayerY, autoZoom, recenterNonce } = props;
   useEffect(() => { if (loaded) src("net", fc(graph ? [...graph.edges.values()].filter((e) => !e.offtrail).map((e) => line(e.geometry)) : [])); }, [loaded, graph]);
   useEffect(() => { if (loaded) src("routes", fc((routes ?? []).map((r) => line(r.points, { sel: r.selected, faint: !!r.faint })))); }, [loaded, routes]);
   useEffect(() => { if (loaded) src("start", fc(start ? [pt(start)] : [])); }, [loaded, start]);
@@ -222,6 +226,7 @@ export default function GameMap(props: GameMapProps) {
   const lastRecenter = useRef<number | undefined>(undefined);
   const wasFollowing = useRef(true);
   const lastClose = useRef(false);
+  const lastAuto = useRef(true);
   useEffect(() => {
     const map = mapRef.current;
     if (!loaded || !map) return;
@@ -247,12 +252,17 @@ export default function GameMap(props: GameMapProps) {
       const cam: { center: [number, number]; bearing: number; padding: { top: number; bottom: number; left: number; right: number }; zoom?: number } = { center: [player.lon, player.lat], bearing, padding: { top: Math.round(h * 0.3), bottom: 0, left: 0, right: 0 } };
       let returning = false;
       if (viewAheadM !== undefined) {
-        // Player in the middle of the screen; zoom so that viewAheadM fits between the player and the top (and bottom) edge, unless the user zoomed by hand.
-        cam.padding = { top: 0, bottom: 0, left: 0, right: 0 };
-        cam.zoom = userZoom.current ?? viewZoom(player.lat, h, viewClose ? (viewCloseAheadM ?? viewAheadM) : viewAheadM);
-        // Coming back after the user moved the map, or switching between the wide and the close view: ease smoothly.
-        returning = !wasFollowing.current || lastClose.current !== !!viewClose || lastRecenter.current !== recenterNonce;
+        // Player at viewPlayerY of the height (padding moves the map centre); with auto zoom, zoom so that viewAheadM fits between the player and the
+        // top edge, unless the user zoomed by hand. Without auto zoom the zoom is left alone.
+        const y = Math.min(0.8, Math.max(0.2, viewPlayerY ?? 0.5));
+        cam.padding = { top: Math.round(Math.max(0, 2 * y - 1) * h), bottom: Math.round(Math.max(0, 1 - 2 * y) * h), left: 0, right: 0 };
+        const auto = autoZoom !== false;
+        if (auto && !lastAuto.current) userZoom.current = null; // turning auto zoom on drops the user's own zoom, so the game's zoom applies at once
+        if (auto) cam.zoom = userZoom.current ?? viewZoom(player.lat, h, viewClose ? (viewCloseAheadM ?? viewAheadM) : viewAheadM, y);
+        // Coming back after the user moved the map, switching between the wide and the close view, or turning auto zoom on: ease smoothly.
+        returning = !wasFollowing.current || (auto && lastClose.current !== !!viewClose) || lastRecenter.current !== recenterNonce || lastAuto.current !== auto;
         lastClose.current = !!viewClose;
+        lastAuto.current = auto;
       }
       lastRecenter.current = recenterNonce;
       wasFollowing.current = true;
@@ -261,7 +271,7 @@ export default function GameMap(props: GameMapProps) {
       else map.jumpTo(cam);
     }
     if (el.current) el.current.dataset.zoom = map.getZoom().toFixed(2);
-  }, [loaded, player, accuracyM, follow, viewAheadM, viewCloseAheadM, viewClose, recenterNonce]);
+  }, [loaded, player, accuracyM, follow, viewAheadM, viewCloseAheadM, viewClose, viewPlayerY, autoZoom, recenterNonce]);
   // "Centrera": släpp också den egna zoomen så att spelets automatiska zoom gäller igen.
   useEffect(() => { if (recenterNonce !== undefined) userZoom.current = null; }, [recenterNonce]);
   // Rotation och pil: en enda bildrutesloop (högst ~30 Hz) som läser riktningen direkt och mjukar den. Kartan ritas bara om medan den roterar.

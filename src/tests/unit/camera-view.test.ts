@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextApproaching, nextClose, viewProfile, viewZoom } from "@/play/camera-view";
+import { nextApproaching, nextClose, nextGoalClose, viewProfile, viewZoom } from "@/play/camera-view";
 
 const BIKE = viewProfile("mtb"), FOOT = viewProfile("walk");
 
@@ -33,9 +33,31 @@ describe("viewZoom", () => {
     expect(nextClose(true, 261, BIKE)).toBe(false);
     expect(nextClose(true, null, BIKE)).toBe(false);
   });
-  it("on foot: 400 m normal view and no automatic zoom", () => {
-    expect(FOOT.autoZoom).toBe(false);
-    expect(BIKE.autoZoom).toBe(true);
+  it("player a little below the middle: the whole ahead distance fits above the player", () => {
+    for (const v of [BIKE, FOOT]) {
+      expect(v.playerY).toBeGreaterThan(0.5);
+      expect(v.playerY).toBeLessThanOrEqual(0.65);
+      for (const h of [640, 844]) {
+        const z = viewZoom(59.4, h, v.aheadM, v.playerY);
+        expect(v.playerY * h * mpp(z, 59.4)).toBeCloseTo(v.aheadM, 0);
+        expect(v.playerY * h * mpp(viewZoom(59.4, h, v.closeAheadM, v.playerY), 59.4)).toBeCloseTo(v.closeAheadM, 0);
+      }
+    }
+    expect(BIKE.aheadM).toBe(1000);
+    expect(BIKE.closeAheadM).toBe(300);
+  });
+  it("zooms in near the next goal and out again when it is taken (next goal far) or gone", () => {
+    expect(nextGoalClose(false, 251, BIKE)).toBe(false);
+    expect(nextGoalClose(false, 250, BIKE)).toBe(true);
+    expect(nextGoalClose(true, 320, BIKE)).toBe(true);
+    expect(nextGoalClose(true, 900, BIKE)).toBe(false);
+    expect(nextGoalClose(true, null, BIKE)).toBe(false);
+    expect(nextGoalClose(false, 120, FOOT)).toBe(true);
+    expect(nextGoalClose(true, 161, FOOT)).toBe(false);
+    // The goal is still inside the close view when the zoom closes in.
+    for (const v of [BIKE, FOOT]) expect(v.goalEnterM).toBeLessThan(v.closeAheadM);
+  });
+  it("on foot: 400 m normal view, 150 m close", () => {
     expect(FOOT.aheadM).toBeLessThan(BIKE.aheadM);
     expect(422 * mpp(viewZoom(59.4, 844, FOOT.aheadM), 59.4)).toBeCloseTo(400, 0);
     expect(422 * mpp(viewZoom(59.4, 844, FOOT.closeAheadM), 59.4)).toBeCloseTo(150, 0);

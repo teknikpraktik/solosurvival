@@ -163,3 +163,10 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 /* Skalstock: längst ner till vänster, ovanför knappraden. */
 .map-shell .maplibregl-ctrl-bottom-left { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 80px); pointer-events: none; }
 .map-shell .maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale { margin: 0 0 0 12px; background: #0b0f14b3; color: #e6edf3; border: 2px solid #e6edf3; border-top: 0; font: 600 10px system-ui, sans-serif; line-height: 1.4; padding: 0 4px; box-sizing: border-box; }
+/* Auto zoom: lit (blue) when on, dimmed when off. */
+.controls .zoombtn svg { width: 24px; height: 24px; display: block; margin: 0 auto; }
+.controls .zoombtn { color: #8b98a5; }
+.controls .zoombtn[aria-pressed="true"] { color: #93c5fd; border-color: #3b82f6; }
+/* With the auto zoom button the row has five icons: the main button (START/CONTINUE/PAUSE) gets more of the width than QUIT. */
+.controls .wide { flex: 1.35; }
+.controls button:last-child { flex: 1; }
