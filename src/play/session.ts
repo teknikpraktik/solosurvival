@@ -10,7 +10,7 @@ import { GpsProvider, type GeoLike, type GpsErrorCode, type GpsEvent } from "@/g
 import type { GPSFix, GpsQuality } from "@/gps/types";
 import type { TileStore } from "@/data/store";
 import type { RouteProposal } from "@/routes/types";
-import { proximityRadiusM, VISIBLE_RADIUS_M, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
+import { proximityRadiusM, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
 import { FieldLog } from "./fieldlog";
 import { HeadingFusion, HeadingTracker, type HeadingSource } from "./heading";
 import type { CompassSource, CompassStatus } from "./compass";
@@ -116,7 +116,7 @@ export interface MatchView {
   elapsedS: number;
   limitS: number;
   distanceM: number;
-  /** Zombier inom VISIBLE_RADIUS_M (ritas på kartan). */
+  /** Alla zombier i matchen, närmast först (ritas på kartan oavsett avstånd). */
   zombiesNear: ZombieView[];
   proximityM: number;
   /** Sekunder kvar av försprånget (zombierna står stilla tills det är slut), annars 0. */
@@ -745,8 +745,8 @@ export class PlaySession {
       elapsedS: s.elapsedSeconds,
       limitS: s.config.durationSeconds,
       distanceM: s.player.distanceM,
-      // A TO B: every zombie is shown along the whole way; otherwise only those within VISIBLE_RADIUS_M.
-      zombiesNear: s.config.mode === "escape" ? zs : zs.filter((z) => z.distanceM <= VISIBLE_RADIUS_M),
+      // Every zombie is drawn, however far away: a map without zombies at the start looked like a bug (field test, Bike Survival).
+      zombiesNear: zs,
       proximityM: aware,
       headStartLeftS: s.phase === "head_start" ? Math.max(0, live.rules.headStartS - s.elapsedSeconds) : 0,
       zombieCount: zs.length,

@@ -1,7 +1,7 @@
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Map as MapLibreMap, Marker, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
+import { Map as MapLibreMap, Marker, ScaleControl, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import { viewZoom } from "@/play/camera-view";
 import { bearingDeg, haversineM, type LatLon } from "@/geo/geometry";
@@ -11,7 +11,7 @@ import { BearingSmoother } from "@/play/bearing";
 import { wrap180, type HeadingSource } from "@/play/heading";
 import { ZombieAnimator, type ZombieTarget } from "@/play/zombie-anim";
 import { MAP_ATTRIBUTION, MAP_STYLE } from "./mapStyle";
-import { ARROW_SVG, DOT_SVG, EXTRACTION_SVG, HOME_SVG, ZOMBIE_DIR_SVG, ZOMBIE_SVG } from "./symbols";
+import { ARROW_SVG, DOT_SVG, EXTRACTION_SVG, GOAL_POINTER_SVG, HOME_SVG, ZOMBIE_DIR_SVG, ZOMBIE_SVG } from "./symbols";
 
 const fc = (features: GeoJSON.Feature[] = []): GeoJSON.FeatureCollection => ({ type: "FeatureCollection", features });
 const pt = (p: LatLon, props: Record<string, unknown> = {}): GeoJSON.Feature => ({ type: "Feature", properties: props, geometry: { type: "Point", coordinates: [p.lon, p.lat] } });
@@ -61,6 +61,10 @@ export interface GameMapProps {
   /** Startzoom (standard 15). Ändras aldrig automatiskt efteråt. */
   zoom?: number;
   extraction?: LatLon | null;
+  /** Nästa mål (checkpoint, hem, B eller extraction). Ligger det utanför kartbilden pekar en diskret pil i kanten mot det. */
+  pointTo?: LatLon | null;
+  /** Skalstock längst ner till vänster (sätts vid start). */
+  scale?: boolean;
   /** Följ spelaren. */
   follow?: boolean;
   /** Game view: player centred, zoom fitted so that `viewAheadM` (`viewCloseAheadM` when `viewClose`) is visible ahead of and behind the player (top/bottom edge). */
@@ -99,6 +103,7 @@ export default function GameMap(props: GameMapProps) {
     const map = new MapLibreMap({ container: el.current, style: MAP_STYLE, center: [c.lon, c.lat], zoom: propsRef.current.zoom ?? 15, minZoom: 10, maxZoom: 18, attributionControl: false, dragRotate: false, pitchWithRotate: false, fadeDuration: 0, maxTileCacheSize: 40, pixelRatio: Math.min(window.devicePixelRatio || 1, 2) });
     mapRef.current = map;
     map.touchZoomRotate.disableRotation();
+    if (propsRef.current.scale) map.addControl(new ScaleControl({ maxWidth: 90, unit: "metric" }), "bottom-left");
     map.on("dragstart", () => propsRef.current.onUserMove?.());
     // Bike view: also pinch/scroll zoom and the whole drag count as user interaction (resets the return-to-follow timer).
     map.on("move", (e) => { if (propsRef.current.viewAheadM !== undefined && (e as { originalEvent?: unknown }).originalEvent) propsRef.current.onUserMove?.(); });
@@ -157,7 +162,7 @@ export default function GameMap(props: GameMapProps) {
 
   const src = (id: string, data: GeoJSON.FeatureCollection) => (mapRef.current?.getSource(id) as GeoJSONSource | undefined)?.setData(data);
 
-  const { graph, routes, markers, player, accuracyM, start, zombies, extraction, follow, fit, frozen, viewAheadM, viewCloseAheadM, viewClose, recenterNonce } = props;
+  const { graph, routes, markers, player, accuracyM, start, zombies, extraction, pointTo, follow, fit, frozen, viewAheadM, viewCloseAheadM, viewClose, recenterNonce } = props;
   useEffect(() => { if (loaded) src("net", fc(graph ? [...graph.edges.values()].filter((e) => !e.offtrail).map((e) => line(e.geometry)) : [])); }, [loaded, graph]);
   useEffect(() => { if (loaded) src("routes", fc((routes ?? []).map((r) => line(r.points, { sel: r.selected, faint: !!r.faint })))); }, [loaded, routes]);
   useEffect(() => { if (loaded) src("start", fc(start ? [pt(start)] : [])); }, [loaded, start]);
@@ -177,6 +182,38 @@ export default function GameMap(props: GameMapProps) {
     extractionMarker.current = new Marker({ element: d }).setLngLat([extraction.lon, extraction.lat]).addTo(map);
     return () => { extractionMarker.current?.remove(); extractionMarker.current = null; };
   }, [loaded, extraction]);
+  // Pil mot nästa mål när det ligger utanför bild: placeras i kanten av den fria kartytan (mellan HUD:en och knappraden) på linjen från ytans mitt mot målet.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!loaded || !map || !pointTo) return;
+    const target: [number, number] = [pointTo.lon, pointTo.lat];
+    const d = document.createElement("div");
+    d.className = "goalptr";
+    d.innerHTML = GOAL_POINTER_SVG;
+    const box = map.getContainer();
+    box.appendChild(d);
+    const update = () => {
+      const r = box.getBoundingClientRect();
+      const shell = box.parentElement;
+      const hud = shell?.querySelector(".hudbar")?.getBoundingClientRect();
+      const ctl = shell?.querySelector(".controls")?.getBoundingClientRect();
+      const inset = 22;
+      const x0 = inset, x1 = r.width - inset;
+      const y0 = (hud ? Math.max(0, hud.bottom - r.top) : 0) + inset;
+      const y1 = (ctl ? Math.min(r.height, ctl.top - r.top) : r.height) - inset;
+      const p = map.project(target);
+      if (y1 <= y0 || (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1)) { d.style.opacity = "0"; return; }
+      const ox = r.width / 2, oy = (y0 + y1) / 2, dx = p.x - ox, dy = p.y - oy;
+      const t = Math.min(dx ? ((dx > 0 ? x1 : x0) - ox) / dx : Infinity, dy ? ((dy > 0 ? y1 : y0) - oy) / dy : Infinity);
+      const deg = (Math.atan2(dx, -dy) * 180) / Math.PI;
+      d.style.opacity = "1";
+      d.style.transform = `translate(${(ox + dx * t).toFixed(1)}px, ${(oy + dy * t).toFixed(1)}px) translate(-50%, -50%) rotate(${deg.toFixed(1)}deg)`;
+    };
+    update();
+    map.on("render", update);
+    window.addEventListener("resize", update);
+    return () => { map.off("render", update); window.removeEventListener("resize", update); d.remove(); };
+  }, [loaded, pointTo?.lat, pointTo?.lon]); // eslint-disable-line react-hooks/exhaustive-deps
   // --- Spelarmarkör (riktningspil) och Track Up ---
   const playerEl = useRef<HTMLDivElement | null>(null);
   const playerMarker = useRef<Marker | null>(null);

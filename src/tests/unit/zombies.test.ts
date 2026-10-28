@@ -204,7 +204,7 @@ describe("Testfall D: närhetsljud", () => {
     expect(cues.filter((c) => c === "zombie")).toHaveLength(0);
   }, 60000);
 
-  it("vyn visar zombier inom radien på kartan och alltid närmaste avstånd", async () => {
+  it("vyn visar alla zombier på kartan, även långt bort, och alltid närmaste avstånd", async () => {
     const { session, advance } = await setup();
     const live = session.live!;
     live.state.phase = "head_start";
@@ -213,7 +213,8 @@ describe("Testfall D: närhetsljud", () => {
     advance(1500);
     const v = session.getView().match!;
     expect(v.proximityM).toBe(500);
-    expect(v.zombiesNear.map((z) => z.id)).toEqual([live.state.zombies[0].id]);
+    expect(v.zombiesNear).toHaveLength(live.state.zombies.length);
+    expect(v.zombiesNear[0].id).toBe(live.state.zombies[0].id);
     expect(v.nearestZombieM).toBeGreaterThan(200);
     expect(v.nearestZombieM).toBeLessThan(400);
     expect(v.zombieCount).toBe(live.state.zombies.length);
@@ -230,9 +231,9 @@ describe("Testfall D: närhetsljud", () => {
     const v = session.getView().match!;
     expect(v.zombiesNear.map((z) => z.id)).toContain(live.state.zombies[0].id);
     expect(cues.filter((c) => c === "zombie")).toHaveLength(0);
-    place(live, 0, 1300);
+    place(live, 0, 3000);
     advance(2000);
-    expect(session.getView().match!.zombiesNear).toHaveLength(0);
+    expect(session.getView().match!.zombiesNear.map((z) => z.id)).toContain(live.state.zombies[0].id);
   }, 60000);
 
   it("zombiehändelser loggas för att skilja spawn-, routing- och renderingsfel", async () => {

@@ -155,6 +155,8 @@ export default function Play() {
         recenterNonce={recenterNonce}
         zoom={16}
         extraction={m.extraction}
+        pointTo={!finished ? (m.objectives?.next ?? m.extraction) : null}
+        scale
         follow={follow}
         viewAheadM={vp.aheadM}
         viewCloseAheadM={vp.closeAheadM}

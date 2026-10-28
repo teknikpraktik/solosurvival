@@ -15,7 +15,7 @@ export default function HowToPlay() {
       <p>Zombies move only along real trails and roads. You move in the real world with your phone in your pocket or on your handlebars. The game follows your location.</p>
 
       <h2>The map</h2>
-      <p>The arrow is you and points the way you are moving. The map rotates so your direction of travel is up (Track Up); the compass button switches to north up. Standing still, the arrow keeps its last direction. Zombies show as faces when they are within 1 km (in A TO B all zombies are shown, along the whole way), with the distance written beside the three closest. A short sound warns you when a new zombie comes close. The speaker button turns sound off.</p>
+      <p>The arrow is you and points the way you are moving. The map rotates so your direction of travel is up (Track Up); the compass button switches to north up. Standing still, the arrow keeps its last direction. All zombies show as faces on the map, however far away, with the distance written beside the three closest. A small green arrow at the edge of the map points to your next goal when it is off screen, and the scale bar at the bottom shows distances on the map. A short sound warns you when a new zombie comes close. The speaker button turns sound off.</p>
 
       <h2>Game modes</h2>
       <ul>
