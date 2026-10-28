@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DIFFICULTY_LABEL, RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime, objectiveLabel } from "../_client/format";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
-import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio } from "../_client/cues";
+import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio, type CountdownLine } from "../_client/cues";
+import { COUNTDOWN_START_M, nextCountdown, type CountdownStep } from "@/play/countdown";
 import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, VIEW_RETURN_S, nextApproaching, nextClose, nextGoalClose, viewProfile } from "@/play/camera-view";
 import { Modal } from "../_client/Modal";
 import { Scare } from "../_client/Scare";
@@ -97,6 +98,14 @@ export default function Play() {
       speak("Zombies approaching");
     }
   }, [wantApproaching, approaching]);
+  // Countdown: the distance to the nearest zombie is spoken at 100, 50, 40, 30, 20 and 10 m as it closes in (eyes on the road, not the screen).
+  const countdown = useRef<CountdownStep | null>(null);
+  useEffect(() => {
+    const r = nextCountdown(countdown.current, nearestM);
+    countdown.current = r.last;
+    if (r.say !== null) speak(String(r.say) as CountdownLine);
+  }, [nearestM]);
+  const zombieClose = nearestM !== null && nearestM <= COUNTDOWN_START_M;
   // Captured: spoken a moment after the scream starts, when the scare screen opens.
   const capturedNow = m?.phase === "finished" && m.result === "infected";
   useEffect(() => {
@@ -148,7 +157,7 @@ export default function Play() {
   const canResume = !m.needsFix && !m.gpsLost;
 
   return (
-    <div className="map-shell">
+    <div className={`map-shell${m.activity === "mtb" ? " bike" : ""}`}>
       <GameMap
         graph={live?.g}
         routes={route}
@@ -176,7 +185,7 @@ export default function Play() {
       />
       <div className="hudbar">
         <div className="line">
-          <span className="pill" aria-label="Mode and difficulty">{MODE_LABEL[m.mode]} · {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span>
+          <span className="pill mode" aria-label="Mode and difficulty">{MODE_LABEL[m.mode]} · {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span>
           <span className="pill" aria-label="Time left">{fmtTime(remaining)}</span>
         </div>
         <div className="line">
@@ -188,7 +197,7 @@ export default function Play() {
         </div>
         {!finished && (
           <div className="line">
-            <span className="pill" aria-label="Nearest zombie">💀 {m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>
+            <span className={`pill${zombieClose ? " zclose" : ""}`} aria-label="Nearest zombie">💀 {m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>
             {m.activity === "mtb" && <span className="pill" aria-label="Your speed">{view.speedMps === null ? "– km/h" : `${(view.speedMps * 3.6).toFixed(1)} km/h`}</span>}
           </div>
         )}

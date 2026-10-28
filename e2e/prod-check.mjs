@@ -29,7 +29,7 @@ const mf = await ctx.request.get(BASE + "/data/v1/varmland/manifest.json");
 check("datamanifest revalideras", /must-revalidate|max-age=0/.test(mf.headers()["cache-control"] ?? ""), mf.headers()["cache-control"]);
 check("HTTPS/Permissions-Policy", /geolocation=\(self\)/.test((await ctx.request.get(BASE + "/")).headers()["permissions-policy"] ?? ""));
 // Flöde: Survival och Escape i produktion
-for (const mode of ["SURVIVAL", "MISSION"]) // A TO B testas i e2e/atob.e2e.mjs {
+for (const mode of ["SURVIVAL", "CHECKPOINTS"]) // A TO B testas i e2e/atob.e2e.mjs {
   await page.goto(BASE + "/new");
   for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
   await page.waitForTimeout(800);

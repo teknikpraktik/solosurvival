@@ -87,7 +87,7 @@ try {
   check("avbryt avslutar matchen", true);
 
   await page.goto(BASE + "/history");
-  await page.getByText(/MISSION/).first().waitFor({ timeout: 10000 });
+  await page.getByText(/CHECKPOINTS/).first().waitFor({ timeout: 10000 });
   await page.screenshot({ path: `${OUT}/06-history.png` });
   check("historik visar matchen", true);
   page.once("dialog", (d) => d.accept());

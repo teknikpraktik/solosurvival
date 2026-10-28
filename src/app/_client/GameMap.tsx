@@ -202,10 +202,11 @@ export default function GameMap(props: GameMapProps) {
       const shell = box.parentElement;
       const hud = shell?.querySelector(".hudbar")?.getBoundingClientRect();
       const ctl = shell?.querySelector(".controls")?.getBoundingClientRect();
+      const scaleBox = box.querySelector(".maplibregl-ctrl-scale")?.getBoundingClientRect();
       const inset = 22;
       const x0 = inset, x1 = r.width - inset;
       const y0 = (hud ? Math.max(0, hud.bottom - r.top) : 0) + inset;
-      const y1 = (ctl ? Math.min(r.height, ctl.top - r.top) : r.height) - inset;
+      const y1 = Math.min(ctl ? ctl.top - r.top : r.height, scaleBox && scaleBox.height ? scaleBox.top - r.top : r.height, r.height) - inset; // above the controls and the scale bar
       const p = map.project(target);
       if (y1 <= y0 || (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1)) { d.style.opacity = "0"; return; }
       const ox = r.width / 2, oy = (y0 + y1) / 2, dx = p.x - ox, dy = p.y - oy;

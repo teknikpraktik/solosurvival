@@ -11,7 +11,11 @@ export function setCuesEnabled(on: boolean): void {
 }
 
 /** Spoken lines: the phone's own speech synthesis, so nothing is downloaded and it works the same on Android, iOS and desktop. */
-export type Line = "Game on" | "Captured" | "Zombies approaching" | "Run!";
+export type Line = "Game on" | "Captured" | "Zombies approaching" | "Run!" | "Checkpoint" | CountdownLine;
+/** Spoken distance to the nearest zombie as it closes in (see play/countdown.ts). */
+export type CountdownLine = "100" | "50" | "40" | "30" | "20" | "10";
+/** Lines said in a brighter voice than the low, menacing default (a reward, not a threat). */
+const BRIGHT = new Set<Line>(["Checkpoint"]);
 
 /** Android's speech engine drops an utterance nothing refers to; these keep them alive until they end. */
 const speaking = new Set<SpeechSynthesisUtterance>();
@@ -37,8 +41,8 @@ export function speak(text: Line): boolean {
     u.lang = "en-US";
     const v = voice();
     if (v) u.voice = v;
-    u.pitch = 0.5;
-    u.rate = 0.9;
+    u.pitch = BRIGHT.has(text) ? 1.1 : 0.5;
+    u.rate = BRIGHT.has(text) ? 1 : 0.9;
     u.volume = 1;
     const done = () => speaking.delete(u);
     u.onend = done;
@@ -89,15 +93,30 @@ export async function preloadCues(): Promise<void> {
 /** Only these cues make sound ("goal" = the rewarding chime when a checkpoint is reached); the others (alerts, extraction, match over) are silent so the game is not noisy. */
 const AUDIBLE = new Set<Cue>(["zombie", "captured", "jump", "tension", "goal", "sprint"]);
 
+/**
+ * Brings the audio context back to "running". iOS leaves it "suspended" or "interrupted" (speech, a call, Siri, another app's audio, the
+ * screen going dark); a sound started then is silently lost. Resolves with the state reached (waits at most `maxMs`).
+ */
+async function wake(c: AudioContext, maxMs = 1500): Promise<string> {
+  if (c.state === "running") return "running";
+  try { await Promise.race([c.resume(), new Promise((r) => setTimeout(r, maxMs))]); } catch { /* not allowed without a gesture */ }
+  return c.state;
+}
+
+/** How a cue came out, for the field log: "sample" / "synth" = sound started (context state after it), "silent" = no sound by design, "muted", "error". */
+export type CueResult = { how: "sample" | "synth" | "silent" | "muted" | "error"; state?: string };
+
 /** Ljud och vibration så att spelaren inte behöver titta på skärmen (särskilt viktigt på cykel). Vibration saknas på iPhone. */
-export function playCue(cue: Cue): void {
-  if (!cuesEnabled()) return;
+export async function playCue(cue: Cue): Promise<CueResult> {
+  if (!cuesEnabled()) return { how: "muted" };
   try { navigator.vibrate?.(PATTERN[cue].vib); } catch { /* ej stött */ }
-  if (!AUDIBLE.has(cue)) return;
+  if (!AUDIBLE.has(cue)) return { how: "silent" };
   try {
     ctx ??= new AudioContext();
-    if (ctx.state === "suspended") void ctx.resume();
-    const buf = buffers.get(cue);
+    // Start the sound only once the context really runs: started on a suspended/interrupted context it may never be heard (checkpoint chime "only sometimes").
+    const state = await wake(ctx);
+    let buf = buffers.get(cue);
+    if (!buf && SAMPLES[cue]) { await preloadCues(); buf = buffers.get(cue); } // not decoded yet (e.g. right after a reload): load it now rather than a faint beep
     if (buf) {
       const src = ctx.createBufferSource();
       const gain = ctx.createGain();
@@ -105,7 +124,7 @@ export function playCue(cue: Cue): void {
       src.buffer = buf;
       src.connect(gain).connect(ctx.destination);
       src.start();
-      return;
+      return { how: "sample", state };
     }
     let t = ctx.currentTime;
     for (const f of PATTERN[cue].f) {
@@ -120,12 +139,20 @@ export function playCue(cue: Cue): void {
       o.stop(t + 0.2);
       t += 0.22;
     }
-  } catch { /* ljud kan vara blockerat före första användarinteraktionen */ }
+    return { how: "synth", state };
+  } catch { return { how: "error", state: ctx?.state }; /* ljud kan vara blockerat före första användarinteraktionen */ }
 }
+
+let wakeOnTouch = false;
 
 /** Anropas vid en knapptryckning så att ljud tillåts senare under spelet. */
 export function unlockAudio(): void {
   try { ctx ??= new AudioContext(); void ctx.resume(); void preloadCues(); } catch { /* ignoreras */ }
+  // Every later touch also wakes the audio (iOS only allows resume() reliably inside a gesture), so one interruption does not silence the rest of the match.
+  if (!wakeOnTouch) {
+    wakeOnTouch = true;
+    try { document.addEventListener("pointerdown", () => { if (ctx && ctx.state !== "running") void ctx.resume(); }, { capture: true, passive: true }); } catch { /* ignoreras */ }
+  }
   // Speech has its own gesture requirement and must not depend on Web Audio having started: give it a silent first utterance.
   try {
     if ("speechSynthesis" in window) {

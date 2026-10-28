@@ -39,7 +39,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         compass: createBrowserCompass(),
         traceEnabled,
         jumpScares: () => true, // hidden feature: always on (never on Bike, decided by the session)
-        onCue: (c) => { playCue(c); if (c === "sprint") setTimeout(() => speak("Run!"), 250); }, // zombie sprint: shriek plus a spoken "Run!"
+        onCue: (c, text) => {
+          // The checkpoint chime's outcome goes to the field log (it was heard "only sometimes" in the field), and a bright spoken "Checkpoint"
+          // follows it on its own audio path, so the reward comes through even if Web Audio was interrupted.
+          void playCue(c).then((r) => { if (c === "goal") session?.fieldLog?.add(Date.now(), "cue_goal", { ...r, text }); });
+          if (c === "goal" && /^(Checkpoint|All checkpoints)/.test(text)) setTimeout(() => speak("Checkpoint"), 1000);
+          if (c === "sprint") setTimeout(() => speak("Run!"), 250); // zombie sprint: shriek plus a spoken "Run!"
+        },
         wakeLock: "wakeLock" in navigator ? { request: () => (navigator as Navigator & { wakeLock: { request(t: "screen"): Promise<{ release(): Promise<void> }> } }).wakeLock.request("screen") } : undefined,
       });
       // Ny datauppsättning på servern rensar gamla tiles i cachen.
