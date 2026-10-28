@@ -83,7 +83,8 @@ export interface GameMapProps {
   onError?: (what: string) => void;
 }
 
-const TONE = { next: "#16a34a", done: "#475569", todo: "#0f766e" } as const;
+// Next goal blue, reached green, upcoming neutral grey (field test: the goal to head for and a taken checkpoint must not look alike).
+const TONE = { next: "#2563eb", done: "#16a34a", todo: "#475569" } as const;
 
 export default function GameMap(props: GameMapProps) {
   const el = useRef<HTMLDivElement>(null);
@@ -401,7 +402,7 @@ export default function GameMap(props: GameMapProps) {
       }
       d.textContent = m.label;
       d.setAttribute("aria-label", `Objective ${m.label}`);
-      d.style.cssText = `width:28px;height:28px;border-radius:50%;background:${TONE[m.tone]};color:#fff;font:700 14px system-ui;display:flex;align-items:center;justify-content:center;border:2px solid #fff;${m.tone === "next" ? "box-shadow:0 0 0 4px #16a34a66;" : ""}`;
+      d.style.cssText = `width:28px;height:28px;border-radius:50%;background:${TONE[m.tone]};color:#fff;font:700 14px system-ui;display:flex;align-items:center;justify-content:center;border:2px solid #fff;${m.tone === "next" ? "box-shadow:0 0 0 4px #2563eb66;" : ""}`;
       return new Marker({ element: d }).setLngLat([m.lon, m.lat]).addTo(map);
     });
   }, [loaded, markers]);

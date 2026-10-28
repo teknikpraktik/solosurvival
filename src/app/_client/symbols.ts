@@ -46,8 +46,8 @@ export const EXTRACTION_SVG = `<svg viewBox="0 0 40 40" width="42" height="42" x
 <path d="M14.5 11h13l-3.6 4.6 3.6 4.6h-13z" fill="#ffffff"/>
 </svg>`;
 
-/** Pil i kartans kant mot nästa mål utanför bild: liten grön vinkel med mörk kontur, spetsen uppåt (roteras med CSS). */
+/** Pil i kartans kant mot nästa mål utanför bild: liten blå vinkel (samma färg som nästa mål) med mörk kontur, spetsen uppåt (roteras med CSS). */
 export const GOAL_POINTER_SVG = `<svg viewBox="0 0 24 24" width="26" height="26" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 <path d="M12 3 L21 19 L12 15 L3 19 Z" fill="none" stroke="#0b0f14" stroke-width="4" stroke-linejoin="round" opacity=".75"/>
-<path d="M12 3 L21 19 L12 15 L3 19 Z" fill="#16a34a" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
+<path d="M12 3 L21 19 L12 15 L3 19 Z" fill="#2563eb" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
 </svg>`;
