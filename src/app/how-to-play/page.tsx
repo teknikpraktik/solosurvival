@@ -15,7 +15,28 @@ export default function HowToPlay() {
       <p>Zombies move only along real trails and roads. You move in the real world with your phone in your pocket or on your handlebars. The game follows your location.</p>
 
       <h2>The map</h2>
-      <p>The arrow is you and points the way you are moving. The map rotates so your direction of travel is up (Track Up); the compass button switches to north up. Standing still, the arrow keeps its last direction. All zombies show as faces on the map, however far away, with the distance written beside the three closest. The checkpoint to head for is blue and turns green when you have taken it, with a bright chime. A small blue arrow at the edge of the map points to your next goal when it is off screen, and the scale bar at the bottom shows distances on the map. A short sound warns you when a new zombie comes close. When a zombie is within 100 m its distance is shown larger and spoken: 100, 50, 40, 30, 20, 10. A taken checkpoint gives a chime and a spoken "Checkpoint". The speaker button turns sound off. The magnifier button (A) turns auto zoom on and off: with it on, the map shows about 1 km ahead on a bike (400 m on foot) and closes in when a zombie or your next checkpoint is near, then widens again once the checkpoint is taken. Every match starts with auto zoom on and Track Up.</p>
+      <ul>
+        <li>The arrow is you and points the way you are moving. Standing still, it keeps its last direction.</li>
+        <li>All zombies show as faces, however far away, with the distance written beside the three closest.</li>
+        <li>The checkpoint to head for is blue and turns green once you have taken it. When your next goal is off screen, a small blue arrow at the edge of the map points to it.</li>
+        <li>The scale bar at the bottom shows distances on the map.</li>
+      </ul>
+
+      <h2>Sound and voice</h2>
+      <ul>
+        <li>A short sound warns you when a new zombie comes close.</li>
+        <li>When a zombie is within 100 m its distance is shown larger and spoken: 100, 50, 40, 30, 20, 10.</li>
+        <li>A taken checkpoint gives a bright chime and a spoken &quot;Checkpoint&quot;.</li>
+      </ul>
+
+      <h2>Buttons</h2>
+      <ul>
+        <li><b>⌖</b> centres the map on you again.</li>
+        <li><b>Magnifier (A)</b> turns auto zoom on and off. With it on, the map shows about 1 km ahead on a bike (400 m on foot), closes in when a zombie or your next checkpoint is near, and widens again once the checkpoint is taken.</li>
+        <li><b>Compass</b> switches between Track Up (your direction of travel is up) and North Up.</li>
+        <li><b>Speaker</b> turns sound off and on.</li>
+      </ul>
+      <p>Every match starts with auto zoom on and Track Up.</p>
 
       <h2>Game modes</h2>
       <ul>
@@ -26,7 +47,7 @@ export default function HowToPlay() {
       <p>You may go anywhere you like – but zombies follow only the trails, and a goal counts only after you stand within 30 m for 5 seconds.</p>
 
       <h2>Activity and difficulty</h2>
-      <p>On foot and Bike use different trail networks, speeds and time limits. Difficulty changes how many zombies there are, how fast they are, and how generous the time limit is. There is no bonus for being fast.</p>
+      <p>On foot and Bike use different trail networks, speeds and time limits. Difficulty changes how many zombies there are, how fast they are, and how generous the time limit is. The difficulty is shown next to the mode at the top of the screen. There is no bonus for being fast.</p>
 
       <h2>Zombies</h2>
       <p>Zombies hunt you from the first second, always heading for you along the trails. When a zombie gets within 100 m it can sprint: it speeds up (up to 1.25× its speed on Easy, 1.4× on Normal, 1.5× on Hard), then slowly loses that speed again and has to rest before it can sprint again. Shake them off by taking another path, or keep moving.</p>
@@ -44,6 +65,10 @@ export default function HowToPlay() {
 
       <h2>Map data</h2>
       <p>Trails and roads come from OpenStreetMap (© OpenStreetMap contributors, ODbL). Map data can be incomplete or wrong. The game excludes trails marked private or forbidden and tries to avoid roads, railways and water – but a stretch appearing in the game does not mean it is safe or allowed.</p>
+      <p>The background map (forest, water, roads) is loaded as map tiles from OpenFreeMap (data © OpenStreetMap contributors, © OpenMapTiles). That provider sees your IP address and which map area is shown, but not your location as such or your matches. Without a connection the game works with just the trail network.</p>
+
+      <h2>Your data</h2>
+      <p>Matches, location data and test logs are stored only on your device. No login, no upload. You can delete matches under PREVIOUS GAMES.</p>
 
       <h2>Credits</h2>
       <p>Photographs used in the app, all cropped, darkened and colour-graded:</p>
@@ -53,39 +78,6 @@ export default function HowToPlay() {
         <li>Settings-page backdrop: “Zombie gals” by istolethetv, <a href="https://commons.wikimedia.org/wiki/File:Zombie_gals_(3261797845).jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>.</li>
         <li>Jump scare: “Zombie Halloween Mask” by Sharpshotefx, <a href="https://commons.wikimedia.org/wiki/File:Zombie_Halloween_Mask.jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</li>
       </ul>
-      <p>The route shown is a suggestion. You may go anywhere you like – but zombies follow only the trails, and a goal counts only after you stand within 30 m for 5 seconds.</p>
-
-      <h2>Activity and difficulty</h2>
-      <p>On foot and Bike use different trail networks, speeds and time limits. Difficulty changes how many zombies there are, how fast they are, and how generous the time limit is. There is no bonus for being fast.</p>
-
-      <h2>Zombies</h2>
-      <p>Zombies hunt you from the first second, always heading for you along the trails. When a zombie gets within 100 m it can sprint: it speeds up (up to 1.25× its speed on Easy, 1.4× on Normal, 1.5× on Hard), then slowly loses that speed again and has to rest before it can sprint again. Shake them off by taking another path, or keep moving.</p>
-
-      <h2>Capture</h2>
-      <p>If a zombie stays within 20 m for a few seconds you are captured and the match is over. With uncertain location accuracy this takes longer or is paused. The game never captures you from an old or guessed position.</p>
-
-      <h2>Location and screen</h2>
-      <ul>
-        <li>The app must stay open and in the foreground. Browsers cannot guarantee location in the background – if you lock the screen or switch app, the game pauses and you continue manually.</li>
-        <li>If the location signal drops, the clock and the zombies stand still until it is back.</li>
-        <li>The game tries to keep the screen on. That uses more battery; bring a power bank on long sessions.</li>
-        <li>Open sky gives the best accuracy. Dense forest and cliffs can make it less accurate.</li>
-      </ul>
-
-      <h2>Map data</h2>
-      <p>Trails and roads come from OpenStreetMap (© OpenStreetMap contributors, ODbL). Map data can be incomplete or wrong. The game excludes trails marked private or forbidden and tries to avoid roads, railways and water – but a stretch appearing in the game does not mean it is safe or allowed.</p>
-
-      <h2>Credits</h2>
-      <p>Photographs used in the app, all cropped, darkened and colour-graded:</p>
-      <ul>
-        <li>Start page: “Crazy zombie boy in the studio” by Heath Cajandig, <a href="https://commons.wikimedia.org/wiki/File:Crazy_zombie_boy_in_the_studio.jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>.</li>
-        <li>Captured screen: “Zombie Halloween Mask” by Sharpshotefx, <a href="https://commons.wikimedia.org/wiki/File:Zombie_Halloween_Mask.jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</li>
-        <li>Other images: <a href="https://commons.wikimedia.org/wiki/File:As_a_film_Make-up_artist,_Creating_Zombies_is_something_I_enjoy_doing_at_SCARLET_STUDIOS.jpg">a zombie make-up photo on Wikimedia Commons</a> (CC0 / public domain).</li>
-      </ul>
-
-      <h2>Your data</h2>
-      <p>Matches, location data and test logs are stored only on your device. No login, no upload. You can delete matches under PREVIOUS GAMES.</p>
-      <p>The background map (forest, water, roads) is loaded as map tiles from OpenFreeMap (data © OpenStreetMap contributors, © OpenMapTiles). That provider sees your IP address and which map area is shown, but not your location as such or your matches. Without a connection the game works with just the trail network.</p>
     </main>
   );
 }
