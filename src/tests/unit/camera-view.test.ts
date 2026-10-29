@@ -57,10 +57,10 @@ describe("viewZoom", () => {
     // The goal is still inside the close view when the zoom closes in.
     for (const v of [BIKE, FOOT]) expect(v.goalEnterM).toBeLessThan(v.closeAheadM);
   });
-  it("on foot: 400 m normal view, 150 m close", () => {
+  it("on foot: 600 m normal view, 225 m close", () => {
     expect(FOOT.aheadM).toBeLessThan(BIKE.aheadM);
-    expect(422 * mpp(viewZoom(59.4, 844, FOOT.aheadM), 59.4)).toBeCloseTo(400, 0);
-    expect(422 * mpp(viewZoom(59.4, 844, FOOT.closeAheadM), 59.4)).toBeCloseTo(150, 0);
+    expect(422 * mpp(viewZoom(59.4, 844, FOOT.aheadM), 59.4)).toBeCloseTo(600, 0);
+    expect(422 * mpp(viewZoom(59.4, 844, FOOT.closeAheadM), 59.4)).toBeCloseTo(225, 0);
     expect(viewZoom(59.4, 844, FOOT.closeAheadM)).toBeLessThanOrEqual(18);
     expect(nextClose(false, 101, FOOT)).toBe(false);
     expect(nextClose(false, 100, FOOT)).toBe(true);
