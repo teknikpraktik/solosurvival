@@ -16,10 +16,10 @@ export function resolveModeRules(mode: GameMode, activity: Activity, difficulty:
   if (mode === "survival") return r;
   const base: Rules = { ...r, extractionOpensAtS: Infinity };
   if (mode !== "escape" || !straightM) return base;
-  // A TO B: the population follows the distance, not the (long) time limit.
+  // A TO B: the population follows the distance, not the (long) time limit, but never beyond the level's maximum (ZOMBIE_COUNT, at most 20).
   const wanted = Math.round((straightM / 1000) * AB_ZOMBIES_PER_KM[activity] * DIFFICULTIES[difficulty].countMultiplier);
-  const initialZombies = Math.min(Math.max(r.initialZombies, wanted), spawnCapacity ?? Infinity);
-  const maxZombies = Math.max(r.maxZombies, Math.round(initialZombies * 1.4));
+  const initialZombies = Math.min(Math.max(r.initialZombies, wanted), r.maxZombies, spawnCapacity ?? Infinity);
+  const maxZombies = r.maxZombies;
   const windowMin = r.growthPerMin > 0 ? (r.maxZombies - r.initialZombies) / r.growthPerMin : 1;
   return { ...base, initialZombies, maxZombies, growthPerMin: (maxZombies - initialZombies) / Math.max(1, windowMin) };
 }

@@ -46,11 +46,12 @@ export const ZOMBIE_SPEED_KMH: Partial<Record<Activity, Record<Difficulty, numbe
 
 /**
  * Number of zombies per activity and difficulty, set after field testing instead of activity × `countMultiplier` (which gave up to 36 on foot
- * and 60 on Bike Hard). `initial` = zombies at the start (omitted: activity × multiplier as before), `max` = most at once. Run falls back to the formula.
+ * and 60 on Bike Hard). Both rise linearly with the difficulty: the start by 2 per level, the most at once by 5 per level, up to 20 on Hard.
+ * Bike starts 2 higher (larger area, start zombies spread over it); the maximum is the same. Run falls back to the formula.
  */
-export const ZOMBIE_COUNT: Partial<Record<Activity, Record<Difficulty, { initial?: number; max: number }>>> = {
-  walk: { easy: { max: 10 }, normal: { max: 12 }, hard: { max: 20 } },
-  mtb: { easy: { max: 14 }, normal: { max: 18 }, hard: { initial: 10, max: 20 } },
+export const ZOMBIE_COUNT: Partial<Record<Activity, Record<Difficulty, { initial: number; max: number }>>> = {
+  walk: { easy: { initial: 4, max: 10 }, normal: { initial: 6, max: 15 }, hard: { initial: 8, max: 20 } },
+  mtb: { easy: { initial: 6, max: 10 }, normal: { initial: 8, max: 15 }, hard: { initial: 10, max: 20 } },
 };
 
 /** Neutral återstartsperiod efter paus, utan infektion (PRD 7.2). */
