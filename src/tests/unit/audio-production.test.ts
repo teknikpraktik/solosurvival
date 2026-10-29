@@ -51,6 +51,12 @@ describe("audio catalog", () => {
     }
   });
 
+  it("is mirrored in docs/AUDIO-SCRIPTS.md (every text, so the reviewed script is what gets generated)", () => {
+    const doc = readFileSync(path.resolve(DIR, "../docs/AUDIO-SCRIPTS.md"), "utf8");
+    const missing = expand(cat).filter((i) => !doc.includes(i.variant.text)).map((i) => i.variantId);
+    expect(missing).toEqual([]);
+  });
+
   it("rejects duplicate ids, bad durations and forbidden Mini words", () => {
     const bad: Catalog = structuredClone(cat);
     bad.sounds.push(structuredClone(bad.sounds[0]));

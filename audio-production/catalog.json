@@ -142,8 +142,8 @@
       "voice": "adult-operator", "file": "vo/sprint",
       "notes": "Ersätter talsyntesens \"Run!\". Se säkerhetsnot i AUDIO-DESIGN.md om ordet 'run'.",
       "variants": [
-        { "n": 1, "text": "Sprinter! Pick up the pace!" },
-        { "n": 2, "text": "One's sprinting. Move!" }
+        { "n": 1, "text": "Sprinter on your trail!" },
+        { "n": 2, "text": "One of them is sprinting toward you." }
       ]
     },
     {
@@ -335,7 +335,7 @@
     },
     {
       "id": "adult.enemy.capture", "product": "adult", "type": "enemy", "event": "match.captured", "trigger": "existing",
-      "priority": "P1", "cooldownS": 0, "durationS": 1.8, "volume": 1, "interrupts": "lower", "random": false,
+      "priority": "P1", "cooldownS": 0, "durationS": 1.8, "volume": 0.9, "interrupts": "lower", "random": false,
       "file": "enemy/capture", "sfx": { "promptInfluence": 0.6 },
       "notes": "Ersätter public/audio/captured-scream.wav. Inga kroppsljud eller gore.",
       "variants": [
@@ -389,7 +389,7 @@
     },
     {
       "id": "adult.sfx.checkpoint", "product": "adult", "type": "effect", "event": "objective.checkpoint", "trigger": "existing",
-      "priority": "P3", "cooldownS": 0, "durationS": 1, "volume": 1, "interrupts": "lower", "random": false,
+      "priority": "P3", "cooldownS": 0, "durationS": 1, "volume": 0.9, "interrupts": "lower", "random": false,
       "file": "sfx/checkpoint", "sfx": { "promptInfluence": 0.7 },
       "notes": "Ersätter public/audio/checkpoint.wav. Ska vara tydlig även utomhus.",
       "variants": [

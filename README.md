@@ -21,6 +21,12 @@ Verktyg för balans och granskning (alla använder samma motor som spelet):
 - `scripts/infection-noise.ts` (GPS-brus mot infektionsregeln), `scripts/background-exploit.ts` (regler för frånvaro), `scripts/graph-audit.ts` / `graph-audit-karlstad.ts` (passager mot facit).
 - `npm run lint` – `tsc` med `noUnusedLocals/Parameters` (ESLint stöder ännu inte TypeScript 7).
 
+## Ljud (ElevenLabs)
+
+Förinspelade röster, fiendeläten och effekter för Outbreak och Mini Outbreak produceras lokalt i förväg, aldrig under spel. Inget är genererat ännu.
+- Inventering: [`docs/AUDIO-INVENTORY.md`](docs/AUDIO-INVENTORY.md) · design och integrationsplan: [`docs/AUDIO-DESIGN.md`](docs/AUDIO-DESIGN.md) · manus: [`docs/AUDIO-SCRIPTS.md`](docs/AUDIO-SCRIPTS.md) · produktion och kostnad: [`docs/ELEVENLABS-WORKFLOW.md`](docs/ELEVENLABS-WORKFLOW.md)
+- Katalog och skript: [`audio-production/`](audio-production/README.md) (`npx tsx audio-production/generate.ts --pack sample` = torrkörning)
+
 ## Kommandon
 
 ```bash

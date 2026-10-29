@@ -114,6 +114,7 @@ export function validate(cat: Catalog, voices: Voices): string[] {
     ids.add(s.id);
     if (!cat.priorities[s.priority]) errors.push(`${at}: unknown priority ${s.priority}`);
     if (!(s.volume > 0 && s.volume <= 1)) errors.push(`${at}: volume must be in (0, 1]`);
+    if (s.type !== "voice" && s.volume > 0.9) errors.push(`${at}: effects, enemies and ambience are capped at volume 0.9 (only voice lines may be louder)`);
     if (!(s.cooldownS >= 0)) errors.push(`${at}: cooldownS must be >= 0`);
     if (!(s.durationS > 0)) errors.push(`${at}: durationS must be > 0`);
     if (!/^[a-z]+\/[a-z0-9-]+$/.test(s.file)) errors.push(`${at}: file must look like 'dir/name'`);
