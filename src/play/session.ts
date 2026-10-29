@@ -10,7 +10,8 @@ import { GpsProvider, type GeoLike, type GpsErrorCode, type GpsEvent } from "@/g
 import type { GPSFix, GpsQuality } from "@/gps/types";
 import type { TileStore } from "@/data/store";
 import type { RouteProposal } from "@/routes/types";
-import { proximityRadiusM, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
+import { applyProfile, proximityRadiusM, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
+import type { ProductProfile } from "@/config/product";
 import { FieldLog } from "./fieldlog";
 import { HeadingFusion, HeadingTracker, type HeadingSource } from "./heading";
 import type { CompassSource, CompassStatus } from "./compass";
@@ -53,8 +54,10 @@ export interface SessionDeps {
   wakeLock?: { request(): Promise<{ release(): Promise<void> } | null> };
   userAgent?: string;
   traceEnabled?: () => boolean;
-  /** Slumpade skrämmor (standard av om utelämnat). Aldrig på cykel. */
+  /** Slumpade skrämmor (standard av om utelämnat). Aldrig på cykel, och aldrig om produktprofilen stänger av dem. */
   jumpScares?: () => boolean;
+  /** Produktprofil (src/config/product.ts): tillåtna aktiviteter och lägen, fiendefart, skrämmor. Utelämnad = vuxenappens beteende. */
+  profile?: ProductProfile;
   random?: () => number;
   onCue?: (cue: Cue, text: string) => void;
   /** Kompass (webbläsarens rörelsesensorer). Utelämnad = bara GPS-riktning. */
@@ -276,6 +279,13 @@ export class PlaySession {
 
   // --- förberedelse ---
   async prepare(params: MatchParams): Promise<Prepared | null> {
+    const allowed = applyProfile(params, this.d.profile);
+    if (!allowed) {
+      this.messages = ["This option is not available in this app."];
+      this.emit();
+      return null;
+    }
+    params = allowed;
     const gps = this.currentStart();
     // A TO B: A is always the player's current position; the player only picks B.
     const isAB = params.mode === "escape" && !!params.pointB;
@@ -324,7 +334,7 @@ export class PlaySession {
   // --- match ---
   async startMatch(): Promise<boolean> {
     const prep = this.prepared;
-    const params = this.params;
+    const params = this.params && applyProfile(this.params, this.d.profile);
     const start = this.currentStart();
     if (!prep || !params || !prep.graph || !start || prep.status === "off_network" || prep.status === "outside_region" || prep.status === "sparse" || prep.status === "no_route") return false;
     if (this.previewStart && haversineM(start, this.previewStart) > START_MOVED_LIMIT_M) {
@@ -361,7 +371,7 @@ export class PlaySession {
     this.silentFirstCheck = !fresh;
     // Slumpade skrämmor (aldrig på cykel och bara om påslaget). Återställd match: planera om från nuvarande speltid.
     const random = this.d.random ?? Math.random;
-    this.scareTimes = this.d.jumpScares?.() && params.activity !== "mtb" ? planScares(random).map((x) => x + (fresh ? 0 : live.state.elapsedSeconds)) : [];
+    this.scareTimes = this.d.jumpScares?.() && (this.d.profile?.jumpScares ?? true) && params.activity !== "mtb" ? planScares(random).map((x) => x + (fresh ? 0 : live.state.elapsedSeconds)) : [];
     this.log.add(t, "match_start", {
       zombiesInitial: live.state.zombies.length, rulesZombies: { initial: live.rules.initialZombies, max: live.rules.maxZombies, headStartS: live.rules.headStartS, spawnMinM: live.rules.spawnMinDistanceM }, proximityM: proximityRadiusM(params),
       mode: params.mode, activity: params.activity, difficulty: params.difficulty,
@@ -634,6 +644,15 @@ export class PlaySession {
       return { ok: false, reason: out.reason };
     }
     const r = out.restored;
+    const allowed = applyProfile(r.params, this.d.profile);
+    if (!allowed || allowed !== r.params) {
+      // Sparad med inställningar som den här appen inte erbjuder (t.ex. cykel eller annan fiendefart): avsluta kontrollerat i stället för att återuppta.
+      const reason = "The saved match uses settings that are not available in this app.";
+      try { await this.enqueue(() => this.storage!.finish(r.live, r.params, r.proposal, "interrupted")); } catch { this.storageWarning = true; }
+      this.messages = [reason];
+      this.emit();
+      return { ok: false, reason };
+    }
     this.live = r.live;
     this.params = r.params;
     this.proposal = r.proposal;

@@ -1,7 +1,7 @@
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Map as MapLibreMap, Marker, ScaleControl, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
+import { Map as MapLibreMap, Marker, ScaleControl, setWorkerUrl, type GeoJSONSource, type StyleSpecification } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import { viewZoom } from "@/play/camera-view";
 import { bearingDeg, haversineM, type LatLon } from "@/geo/geometry";
@@ -81,6 +81,10 @@ export interface GameMapProps {
   /** En tryckt punkt avvisades av kontrollen (texten kan visas för spelaren). `onPick` anropas inte. */
   onPickRejected?: (message: string) => void;
   onError?: (what: string) => void;
+  /** Fiendesymbol (SVG-markup) per fiende-id. Utelämnad = vuxenappens zombie. Läses när fienden först ritas. */
+  enemySvg?: (id: string) => string;
+  /** Bakgrundskartans stil. Utelämnad = MAP_STYLE. Läses när kartan skapas. */
+  mapStyle?: StyleSpecification;
 }
 
 // Next goal blue, reached green, upcoming neutral grey (field test: the goal to head for and a taken checkpoint must not look alike).
@@ -103,7 +107,7 @@ export default function GameMap(props: GameMapProps) {
     if (!el.current) return;
     setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
     const c = propsRef.current.player ?? propsRef.current.start ?? { lat: 59.38, lon: 13.5 };
-    const map = new MapLibreMap({ container: el.current, style: MAP_STYLE, center: [c.lon, c.lat], zoom: propsRef.current.zoom ?? 15, minZoom: 10, maxZoom: 18, attributionControl: false, dragRotate: false, pitchWithRotate: false, fadeDuration: 0, maxTileCacheSize: 40, pixelRatio: Math.min(window.devicePixelRatio || 1, 2) });
+    const map = new MapLibreMap({ container: el.current, style: propsRef.current.mapStyle ?? MAP_STYLE, center: [c.lon, c.lat], zoom: propsRef.current.zoom ?? 15, minZoom: 10, maxZoom: 18, attributionControl: false, dragRotate: false, pitchWithRotate: false, fadeDuration: 0, maxTileCacheSize: 40, pixelRatio: Math.min(window.devicePixelRatio || 1, 2) });
     mapRef.current = map;
     map.touchZoomRotate.disableRotation();
     if (propsRef.current.scale) map.addControl(new ScaleControl({ maxWidth: 90, unit: "metric" }), "bottom-left");
@@ -329,7 +333,7 @@ export default function GameMap(props: GameMapProps) {
       if (!z) {
         const el = document.createElement("div");
         el.className = "zmark";
-        el.innerHTML = `${ZOMBIE_SVG}<span class="zdir">${ZOMBIE_DIR_SVG}</span><span class="zlabel"></span>`;
+        el.innerHTML = `${propsRef.current.enemySvg?.(f.id) ?? ZOMBIE_SVG}<span class="zdir">${ZOMBIE_DIR_SVG}</span><span class="zlabel"></span>`;
         z = { m: new Marker({ element: el, rotationAlignment: "viewport", pitchAlignment: "viewport" }).setLngLat([f.lon, f.lat]).addTo(map), el, dir: el.querySelector(".zdir") as HTMLElement, label: el.querySelector(".zlabel") as HTMLElement, lat: f.lat, lon: f.lon, text: "" };
         zMarkers.current.set(f.id, z);
       } else if (Math.abs(z.lat - f.lat) > 1e-8 || Math.abs(z.lon - f.lon) > 1e-8) {

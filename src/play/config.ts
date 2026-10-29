@@ -2,6 +2,7 @@ import { ACTIVITIES, type Activity } from "@/config/activities";
 import { haversineM, type LatLon } from "@/geo/geometry";
 import type { Difficulty } from "@/config/difficulty";
 import type { GameMode } from "@/engine/objectives/objectives";
+import type { ProductProfile } from "@/config/product";
 
 export interface MatchParams {
   mode: GameMode;
@@ -15,6 +16,8 @@ export interface MatchParams {
   pointA?: LatLon | null;
   pointB?: LatLon | null;
   seed: number;
+  /** Produktens fiendefart (se src/config/product.ts). Saknas = 1. Sparas med matchen så att en återställd match får samma regler. */
+  enemySpeedMultiplier?: number;
 }
 
 /** Skjutreglage för sträcka (Escape/Mission) per aktivitet: min, max, steg och förvalt värde (m). */
@@ -91,3 +94,13 @@ export const START_MAX_ACCURACY_M = 25;
 export const START_WARN_ACCURACY_M = 15;
 /** Hur långt spelaren får ha rört sig från förhandsvisningens startpunkt innan förslaget måste uppdateras. */
 export const START_MOVED_LIMIT_M = 60;
+
+/**
+ * Matchinställningar enligt appens produktprofil: null om aktivitet eller läge inte är tillåtet (t.ex. cykel i Mini Outbreak, även från
+ * sparade eller manipulerade inställningar), annars med profilens fiendefart. Utan profil returneras inställningarna oförändrade.
+ */
+export function applyProfile(p: MatchParams, profile?: ProductProfile): MatchParams | null {
+  if (!profile) return p;
+  if (!profile.activities.includes(p.activity) || !profile.modes.includes(p.mode)) return null;
+  return p.enemySpeedMultiplier === profile.enemySpeedMultiplier ? p : { ...p, enemySpeedMultiplier: profile.enemySpeedMultiplier };
+}

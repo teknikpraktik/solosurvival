@@ -1,0 +1,47 @@
+name: CI
+
+# Skyddar vuxenappen (repo-roten): typkontroll, tester, oförändrade simulerade matcher och produktionsbygge.
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  outbreak:
+    name: Outbreak (root app)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      # Deterministiska matcher (gång/cykel × svårighet × läge × seeds). En avsiktlig regeländring uppdaterar referensfilen i samma PR.
+      - name: Regression fingerprint
+        run: npx tsx scripts/regression-fingerprint.ts | diff -u scripts/regression-fingerprint.expected.txt -
+      - run: npm run build
+
+  mini:
+    name: Mini Outbreak (apps/mini)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # Beroenden installeras bara i repo-roten: barnappen och delad kod ska använda samma React.
+      - run: npm ci
+      - run: npm run typecheck
+        working-directory: apps/mini
+      - run: npx tsc -p apps/mini --noEmit --noUnusedLocals --noUnusedParameters
+      - run: npm test
+        working-directory: apps/mini
+      - run: npm run build
+        working-directory: apps/mini

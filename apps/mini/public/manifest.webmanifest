@@ -1,0 +1,18 @@
+{
+  "name": "Mini Outbreak Solo Survival",
+  "short_name": "Mini Outbreak",
+  "description": "A friendly GPS game: walk real paths and dodge cute critters.",
+  "lang": "en",
+  "id": "/?app=mini-outbreak",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff7ec",
+  "theme_color": "#7c5cff",
+  "icons": [
+    { "src": "/icons/icon-192.png?v=1", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png?v=1", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png?v=1", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

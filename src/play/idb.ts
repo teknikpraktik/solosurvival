@@ -54,10 +54,10 @@ export function openDb(factory: IDBFactory = indexedDB, name = DB_NAME): Promise
 }
 
 /** Försöker öppna databasen; returnerar null om IndexedDB saknas eller är blockerat (t.ex. privat läge). */
-export async function tryOpenDb(factory?: IDBFactory): Promise<Db | null> {
+export async function tryOpenDb(factory?: IDBFactory, name = DB_NAME): Promise<Db | null> {
   try {
     const f = factory ?? (typeof indexedDB === "undefined" ? undefined : indexedDB);
-    return f ? await openDb(f) : null;
+    return f ? await openDb(f, name) : null;
   } catch {
     return null;
   }
