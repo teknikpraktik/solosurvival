@@ -255,13 +255,21 @@ describe("svårighetsgrader: fart och antal", () => {
     expect([resolveRules("walk", "easy", 3000).sprintSpeedFactor, resolveRules("walk", "normal", 3000).sprintSpeedFactor, resolveRules("walk", "hard", 3000).sprintSpeedFactor]).toEqual([1.25, 1.4, 1.5]);
     // Antal (start → max) efter fälttest, 2.7.
     const counts = (a: "walk" | "mtb") => (["easy", "normal", "hard"] as const).map((d) => { const r = resolveRules(a, d, 3000); return [r.initialZombies, r.maxZombies]; });
-    expect(counts("walk")).toEqual([[4, 10], [6, 12], [12, 20]]);
-    expect(counts("mtb")).toEqual([[7, 14], [10, 18], [10, 20]]);
+    expect(counts("walk")).toEqual([[4, 10], [6, 15], [8, 20]]);
+    expect(counts("mtb")).toEqual([[6, 10], [8, 15], [10, 20]]);
+    // Linjärt: start +2 per nivå, max +5 per nivå, högst 20.
+    for (const a of ["walk", "mtb"] as const) {
+      const c = counts(a);
+      expect([c[1][0] - c[0][0], c[2][0] - c[1][0]]).toEqual([2, 2]);
+      expect([c[1][1] - c[0][1], c[2][1] - c[1][1]]).toEqual([5, 5]);
+      expect(c[2][1]).toBe(20);
+    }
     for (const a of ["walk", "mtb"] as const) {
       const e = resolveRules(a, "easy", 3000), n = resolveRules(a, "normal", 3000), h = resolveRules(a, "hard", 3000);
       expect(e.maxZombies).toBeLessThan(n.maxZombies);
       expect(n.maxZombies).toBeLessThan(h.maxZombies);
       expect(e.initialZombies).toBeLessThan(n.initialZombies);
+      expect(n.initialZombies).toBeLessThan(h.initialZombies);
     }
     // Ett litet område begränsar fortfarande antalet.
     expect(resolveRules("mtb", "hard", 3000, 8).maxZombies).toBe(8);

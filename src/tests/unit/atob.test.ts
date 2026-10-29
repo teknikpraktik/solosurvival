@@ -154,7 +154,7 @@ describe("A TO B: zombier uppstår mellan A och B", () => {
 });
 
 describe("A TO B: antal zombies följer sträckan och sprids längs hela vägen (riktiga data)", () => {
-  for (const [act, expectedMin] of [["walk", 12], ["mtb", 10]] as const) {
+  for (const [act, expectedMin] of [["walk", 12], ["mtb", 8]] as const) {
     it(`${act} ~5 km: tillräckligt många zombies (Normal), jämnt längs A–B`, async () => {
       const p0 = params({ ...withActivity(defaultParams(act), act), mode: "escape", seed: 3, pointA: A, pointB: destinationPoint(A, 5000, 90) });
       const pre = await prepareMatch(store(), A, p0);
@@ -174,7 +174,7 @@ describe("A TO B: antal zombies följer sträckan och sprids längs hela vägen 
       for (const t of ts) { expect(t).toBeGreaterThan(0); expect(t).toBeLessThan(1); }
     });
   }
-  it("Hard har dubbelt så många som Normal på samma sträcka", async () => {
+  it("fler zombies ju svårare på samma sträcka, aldrig fler än nivåns max (20 på Hard)", async () => {
     const p0 = params({ mode: "escape", seed: 3, pointA: A, pointB: destinationPoint(A, 5000, 90) });
     const near = p0.pointB!; // till fots: terräng, B exakt där spelaren valde
     const count = async (difficulty: "easy" | "normal" | "hard") => {
@@ -184,6 +184,7 @@ describe("A TO B: antal zombies följer sträckan och sprids längs hela vägen 
     };
     const [e, n, h] = [await count("easy"), await count("normal"), await count("hard")];
     expect(e).toBeLessThan(n);
-    expect(h).toBeGreaterThanOrEqual(n * 1.8);
+    expect(h).toBeGreaterThan(n);
+    expect(h).toBeLessThanOrEqual(20);
   });
 });

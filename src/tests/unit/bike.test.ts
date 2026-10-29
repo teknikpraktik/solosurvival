@@ -65,7 +65,7 @@ describe("Bike Mission (real Värmland data)", { timeout: 120000 }, () => {
     const r = await prepareMatch(store(), I2, bike());
     const live = createLiveMatch({ id: "s", params: bike(), start: I2, proposal: r.proposals[0], graph: r.graph!, dataVersion: "t" });
     const ds = live.state.zombies.map((z) => haversineM(zombieLatLon(live.g, z), I2));
-    expect(ds.length).toBe(10);
+    expect(ds.length).toBe(8); // Bike Normal starts with 8 (game-rules ZOMBIE_COUNT)
     expect(Math.min(...ds)).toBeGreaterThanOrEqual(1500);
     const bins = new Set(ds.map((d) => Math.floor(d / 500)));
     expect(bins.size).toBeGreaterThanOrEqual(3);
