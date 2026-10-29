@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "about": "Röstprofiler. voiceId fylls i först när rösten har valts och provlyssnats (null = ej vald; skriptet vägrar då att generera tal). ElevenLabs standardröster ('default'/'premade') upphör 2026-12-31 och finns bara för konton skapade före mars 2026: välj en röst ur Voice Library eller skapa en egen med Voice Design. Redan genererade filer påverkas inte när en röst försvinner.",
+  "profiles": {
+    "adult-operator": {
+      "product": "adult",
+      "voiceId": null,
+      "voiceName": null,
+      "modelId": "eleven_multilingual_v2",
+      "languageCode": null,
+      "seed": 1001,
+      "voiceSettings": { "stability": 0.55, "similarity_boost": 0.75, "style": 0.15, "speed": 1.0, "use_speaker_boost": true },
+      "character": "English-speaking radio operator guiding a lone survivor through a dangerous zone. Clear, controlled, calm under pressure, slightly raspy. Short, clipped radio phrasing. Never theatrical or shouting, except a firmer tone on urgent lines.",
+      "librarySearch": "middle-aged male, American or British, gravelly or raspy, calm, authoritative, military, radio, narration; use case: characters/video games",
+      "voiceDesignPrompt": "A middle-aged male radio operator with a calm, controlled and slightly raspy voice, neutral American accent, speaking clearly and concisely over a field radio, steady and reassuring but serious.",
+      "postProcess": "Valfritt: radiofilter (bandpass ca 300–3400 Hz, lätt distorsion) läggs på lokalt efter godkännande, eller i appen med Web Audio. Generera alltid ett rent original."
+    },
+    "mini-narrator": {
+      "product": "mini",
+      "voiceId": null,
+      "voiceName": null,
+      "modelId": "eleven_multilingual_v2",
+      "languageCode": null,
+      "seed": 2001,
+      "voiceSettings": { "stability": 0.45, "similarity_boost": 0.75, "style": 0.3, "speed": 0.95, "use_speaker_boost": true },
+      "character": "Friendly English-speaking storyteller for children aged about 6–10. Warm, clear diction, positive energy, playful but never shrill or sarcastic. Slightly slower than normal speech.",
+      "librarySearch": "young adult or adult, female or male, warm, friendly, cheerful, clear, children's storyteller, animation; use case: characters/children's content",
+      "voiceDesignPrompt": "A warm, cheerful young adult storyteller voice for a children's adventure game, clear pronunciation, gentle enthusiasm, smiling tone, neutral accent, never shrill.",
+      "postProcess": "Ingen effekt. Normalisera bara nivån."
+    }
+  }
+}
