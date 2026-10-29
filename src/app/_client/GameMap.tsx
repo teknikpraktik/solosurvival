@@ -236,6 +236,8 @@ export default function GameMap(props: GameMapProps) {
     if (!loaded || !map) return;
     const el = document.createElement("div");
     el.className = "pmark";
+    // Ovanför hem, checkpoints och extraction (som läggs till senare och annars hamnar ovanpå spelaren vid start); zombier ligger överst.
+    el.style.zIndex = "2";
     el.innerHTML = `<div class="arrow">${ARROW_SVG}</div><div class="dot">${DOT_SVG}</div>`;
     playerEl.current = el;
     playerMarker.current = new Marker({ element: el, rotationAlignment: "viewport", pitchAlignment: "viewport" });
@@ -333,6 +335,7 @@ export default function GameMap(props: GameMapProps) {
       if (!z) {
         const el = document.createElement("div");
         el.className = "zmark";
+        el.style.zIndex = "3";
         el.innerHTML = `${propsRef.current.enemySvg?.(f.id) ?? ZOMBIE_SVG}<span class="zdir">${ZOMBIE_DIR_SVG}</span><span class="zlabel"></span>`;
         z = { m: new Marker({ element: el, rotationAlignment: "viewport", pitchAlignment: "viewport" }).setLngLat([f.lon, f.lat]).addTo(map), el, dir: el.querySelector(".zdir") as HTMLElement, label: el.querySelector(".zlabel") as HTMLElement, lat: f.lat, lon: f.lon, text: "" };
         zMarkers.current.set(f.id, z);

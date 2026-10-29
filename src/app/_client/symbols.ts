@@ -51,8 +51,14 @@ export const EXTRACTION_SVG = `<svg viewBox="0 0 40 40" width="42" height="42" x
 <path d="M13.4 24.5l-.9 3.4M20 24.5l.9 3.4M9.8 28h14.4" stroke="#ffffff" stroke-width="1.7" stroke-linecap="round"/>
 </svg>`;
 
-/** Pil i kartans kant mot nästa mål utanför bild: liten blå vinkel (samma färg som nästa mål) med mörk kontur, spetsen uppåt (roteras med CSS). */
-export const GOAL_POINTER_SVG = `<svg viewBox="0 0 24 24" width="26" height="26" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-<path d="M12 3 L21 19 L12 15 L3 19 Z" fill="none" stroke="#0b0f14" stroke-width="4" stroke-linejoin="round" opacity=".75"/>
-<path d="M12 3 L21 19 L12 15 L3 19 Z" fill="#2563eb" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
+/**
+ * Visare i kartans kant mot nästa mål utanför bild: vit rund bricka med blå ring och måltavla (samma blå som nästa mål), med en liten spets
+ * som pekar mot målet (spetsen uppåt, roteras med CSS). Medvetet en annan form än spelarens blå pilspets, så att de inte förväxlas.
+ */
+export const GOAL_POINTER_SVG = `<svg viewBox="0 0 32 32" width="30" height="30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<path d="M16 1.5 L21.2 9.4 A10.4 10.4 0 1 1 10.8 9.4 Z" fill="none" stroke="#0b0f14" stroke-width="3.6" stroke-linejoin="round" opacity=".75"/>
+<path d="M16 1.5 L21.2 9.4 A10.4 10.4 0 1 1 10.8 9.4 Z" fill="#2563eb" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="16" cy="18.4" r="6.6" fill="#ffffff"/>
+<circle cx="16" cy="18.4" r="3.6" fill="#2563eb"/>
+<circle cx="16" cy="18.4" r="1.4" fill="#ffffff"/>
 </svg>`;

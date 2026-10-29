@@ -123,7 +123,7 @@ button.btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .goalmark .goallabel { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 1px; font: 900 10px system-ui; letter-spacing: .06em; color: var(--ink); background: #fffffff0; border-radius: 6px; padding: 1px 5px; }
 .goalmark.home.todo { opacity: .8; }
 .goalmark.home.next { filter: drop-shadow(0 0 6px #74c0fc); }
-.goalptr { position: absolute; left: 0; top: 0; z-index: 2; width: 26px; height: 26px; pointer-events: none; opacity: 0; transition: opacity .3s; will-change: transform; filter: drop-shadow(0 0 3px #0008); }
+.goalptr { position: absolute; left: 0; top: 0; z-index: 2; width: 30px; height: 30px; pointer-events: none; opacity: 0; transition: opacity .3s; will-change: transform; filter: drop-shadow(0 0 3px #0008); }
 
 /* Dialogs (shared Modal) */
 .modal-backdrop { position: fixed; inset: 0; z-index: 50; background: #2d2a4acc; display: flex; align-items: center; justify-content: center;
