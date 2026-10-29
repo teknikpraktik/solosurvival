@@ -35,5 +35,7 @@ Tänkt som ett eget Vercel-projekt från samma repo: Root Directory `apps/mini`,
 
 ## Tillfällig grafik och ljud
 
-- Fiendefigurerna, illustrationerna och ikonerna (`src/client/enemies.ts`, `public/icons/`, ritade med `scripts/make-icons.mts`) är enkla platshållare. De ska ersättas av slutliga illustrationer: fyra fiendetyper (kartmarkör cirka 38 px och illustration), app-ikon 192/512/maskable/Apple 180 och gärna en startbild.
+- Startbild: `public/brand/splash.webp` (+ `splash.jpg` som reserv), levererad av beställaren och nedskalad till 1080 px. Visas av `src/client/Splash.tsx` i cirka 2,5 s vid första start per session (tryck hoppar över, aldrig på `/play`).
+- App-ikonen (`public/icons/`, ritad med `scripts/make-icons.mts`) är en förenklad version av startbildens stil: nattblå himmel, fullmåne och ett glödande spöke.
+- Fiendefigurerna och illustrationerna i appen (`src/client/enemies.ts`) är enkla platshållare som ska ersättas av slutliga illustrationer (fyra fiendetyper, kartmarkör cirka 38 px och illustration).
 - Ljud: bara `public/audio/checkpoint.wav` (samma glada klang som i OUTBREAK). Barnvänliga ljud för fiende nära, fångad, vinst och match slut läggs till i `MINI_SOUNDS` (`src/client/sounds.ts`).

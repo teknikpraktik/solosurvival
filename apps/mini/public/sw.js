@@ -28,7 +28,7 @@ self.addEventListener("message", (event) => {
 });
 
 const isStatic = (url) =>
-  url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/maplibre/") || url.pathname.startsWith("/audio/") || url.pathname.startsWith("/img/") || url.pathname === "/manifest.webmanifest";
+  url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/maplibre/") || url.pathname.startsWith("/audio/") || url.pathname.startsWith("/img/") || url.pathname.startsWith("/brand/") || url.pathname === "/manifest.webmanifest";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;

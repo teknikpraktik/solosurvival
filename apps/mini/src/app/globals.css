@@ -143,3 +143,12 @@ button.btn:disabled { opacity: 0.45; cursor: not-allowed; }
   .controls button { font-size: 0.82rem; }
   .pill { font-size: 0.9rem; padding: 6px 10px; }
 }
+
+/* Startbild (client/Splash.tsx): fyller skärmen, bilden centrerad på samma nattblå som bildens kant. */
+.splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #07182f; opacity: 1; transition: opacity .4s ease; cursor: pointer; }
+.splash.out { opacity: 0; pointer-events: none; }
+.splash picture { display: block; width: min(100vw, 100dvh, 560px); }
+.splash img { display: block; width: 100%; height: auto; -webkit-mask-image: linear-gradient(transparent, #000 7%, #000 93%, transparent); mask-image: linear-gradient(transparent, #000 7%, #000 93%, transparent); }
+.splash-hint { position: absolute; left: 0; right: 0; bottom: max(28px, env(safe-area-inset-bottom)); text-align: center; color: #cfe6ff; font-weight: 800; letter-spacing: .12em; font-size: .85rem; opacity: .8; }
+html.nosplash .splash { display: none; }
+@media (prefers-reduced-motion: reduce) { .splash { transition: none; } }
