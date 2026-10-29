@@ -31,12 +31,10 @@ export default function HowToPlay() {
 
       <h2>Buttons</h2>
       <ul>
-        <li><b>⌖</b> centres the map on you again.</li>
-        <li><b>Magnifier (A)</b> turns auto zoom on and off. With it on, the map shows about 1 km ahead on a bike (400 m on foot), closes in when a zombie or your next checkpoint is near, and widens again once the checkpoint is taken.</li>
-        <li><b>Compass</b> switches between Track Up (your direction of travel is up) and North Up.</li>
+        <li><b>AUTO</b> (green) – the map follows you, turns so your direction of travel is up, and zooms by itself: about 1 km ahead on a bike (400 m on foot), closer when a zombie or your next checkpoint is near, wide again once the checkpoint is taken. Every match starts in AUTO.</li>
+        <li>Touch the map to move or zoom it yourself: AUTO turns off (grey) and the map stays where you put it. Tap AUTO to follow again.</li>
         <li><b>Speaker</b> turns sound off and on.</li>
       </ul>
-      <p>Every match starts with auto zoom on and Track Up.</p>
 
       <h2>Game modes</h2>
       <ul>

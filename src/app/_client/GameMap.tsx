@@ -56,8 +56,6 @@ export interface GameMapProps {
   trackUp?: boolean;
   /** Läser aktuell riktning varje bildruta (kompassen ändras oftare än vyn uppdateras). Utan den används `heading`. */
   getHeading?: () => { deg: number | null; source: HeadingSource };
-  /** Ökas när användaren trycker "centrera": då återgår kartan även till automatisk zoom. */
-  recenterNonce?: number;
   /** Startzoom (standard 15). Ändras aldrig automatiskt efteråt. */
   zoom?: number;
   extraction?: LatLon | null;
@@ -65,7 +63,7 @@ export interface GameMapProps {
   pointTo?: LatLon | null;
   /** Skalstock längst ner till vänster (sätts vid start). */
   scale?: boolean;
-  /** Följ spelaren. */
+  /** Följ spelaren (game view: AUTO on). Any touch on the map then hands it to the player at once: `onUserMove` is called and the game stops moving the camera. */
   follow?: boolean;
   /** Game view: player centred, zoom fitted so that `viewAheadM` (`viewCloseAheadM` when `viewClose`) is visible ahead of and behind the player (top/bottom edge). */
   viewAheadM?: number;
@@ -74,8 +72,6 @@ export interface GameMapProps {
   viewClose?: boolean;
   /** Game view: the player's height on the screen as a fraction from the top (standard 0.5 = middle). */
   viewPlayerY?: number;
-  /** Game view: false = the game never changes the zoom (the player's own zoom stays). Standard on. */
-  autoZoom?: boolean;
   fit?: LatLon[] | null;
   onUserMove?: () => void;
   /** Tryck på kartan (t.ex. för att välja A/B). */
@@ -97,8 +93,10 @@ export default function GameMap(props: GameMapProps) {
   const markersRef = useRef<Marker[]>([]);
   const propsRef = useRef(props);
   propsRef.current = props;
-  // Användarens egen zoom (pinch/scroll). När den finns används den i stället för spelets automatiska zoom, tills "centrera" trycks.
-  const userZoom = useRef<number | null>(null);
+  // The player has taken the map (touched it while following): from that moment no code moves the camera, until `follow` is turned on again.
+  // Set synchronously in the input listener, before the gesture starts: every camera move (jumpTo/easeTo/setBearing) cancels MapLibre's gesture
+  // handlers, which is what made pinch and pan feel unresponsive (the follow and rotation updates kept cancelling them).
+  const manual = useRef(false);
   const smoother = useRef(new BearingSmoother(0));
 
   useEffect(() => {
@@ -109,18 +107,14 @@ export default function GameMap(props: GameMapProps) {
     mapRef.current = map;
     map.touchZoomRotate.disableRotation();
     if (propsRef.current.scale) map.addControl(new ScaleControl({ maxWidth: 90, unit: "metric" }), "bottom-left");
-    map.on("dragstart", () => propsRef.current.onUserMove?.());
-    // Bike view: also pinch/scroll zoom and the whole drag count as user interaction (resets the return-to-follow timer).
-    map.on("move", (e) => { if (propsRef.current.viewAheadM !== undefined && (e as { originalEvent?: unknown }).originalEvent) propsRef.current.onUserMove?.(); });
-    // Manuell zoom respekteras tills användaren centrerar. Kartmotorn märker inte sina egna zoomhändelser med originalEvent, så en användargest känns i stället igen
-    // på att pekar-/hjulhändelser nyss gått till kartan (kartans egna animeringar sker utan sådana).
-    let lastInputMs = -Infinity;
-    const markInput = () => { lastInputMs = performance.now(); };
+    const takeOver = () => {
+      if (!propsRef.current.follow || manual.current) return;
+      manual.current = true;
+      propsRef.current.onUserMove?.();
+    };
     const canvas = map.getCanvasContainer();
-    for (const ev of ["wheel", "touchstart", "touchmove", "touchend", "mousedown", "dblclick", "keydown"]) canvas.addEventListener(ev, markInput, { passive: true, capture: true });
-    const rememberZoom = () => { if (propsRef.current.viewAheadM !== undefined && performance.now() - lastInputMs < 1500) userZoom.current = map.getZoom(); };
-    map.on("zoom", rememberZoom);
-    map.on("zoomend", rememberZoom);
+    for (const ev of ["wheel", "touchstart", "pointerdown", "mousedown", "dblclick", "keydown"]) canvas.addEventListener(ev, takeOver, { passive: true, capture: true });
+    map.on("zoomend", () => { if (el.current) el.current.dataset.zoom = map.getZoom().toFixed(2); });
     map.on("click", (e) => {
       const p = { lat: e.lngLat.lat, lon: e.lngLat.lng };
       if (propsRef.current.validatePick) {
@@ -167,7 +161,7 @@ export default function GameMap(props: GameMapProps) {
 
   const src = (id: string, data: GeoJSON.FeatureCollection) => (mapRef.current?.getSource(id) as GeoJSONSource | undefined)?.setData(data);
 
-  const { graph, routes, markers, player, accuracyM, start, zombies, extraction, pointTo, follow, fit, frozen, viewAheadM, viewCloseAheadM, viewClose, viewPlayerY, autoZoom, recenterNonce } = props;
+  const { graph, routes, markers, player, accuracyM, start, zombies, extraction, pointTo, follow, fit, frozen, viewAheadM, viewCloseAheadM, viewClose, viewPlayerY } = props;
   useEffect(() => { if (loaded) src("net", fc(graph ? [...graph.edges.values()].filter((e) => !e.offtrail).map((e) => line(e.geometry)) : [])); }, [loaded, graph]);
   useEffect(() => { if (loaded) src("routes", fc((routes ?? []).map((r) => line(r.points, { sel: r.selected, faint: !!r.faint })))); }, [loaded, routes]);
   useEffect(() => { if (loaded) src("start", fc(start ? [pt(start)] : [])); }, [loaded, start]);
@@ -224,10 +218,15 @@ export default function GameMap(props: GameMapProps) {
   const playerEl = useRef<HTMLDivElement | null>(null);
   const playerMarker = useRef<Marker | null>(null);
   const bearingRef = useRef(0); // aktuell kartrotation (grader, utrullad)
-  const lastRecenter = useRef<number | undefined>(undefined);
   const wasFollowing = useRef(true);
   const lastClose = useRef(false);
-  const lastAuto = useRef(true);
+  // Following turned on again (AUTO tapped): the game takes the camera back. Declared before the follow effect so that it eases back at once.
+  const followProp = useRef(follow);
+  useEffect(() => {
+    if (follow && !followProp.current) { manual.current = false; smoother.current = new BearingSmoother(mapRef.current?.getBearing() ?? 0); }
+    if (!follow) wasFollowing.current = false;
+    followProp.current = follow;
+  }, [follow]);
   useEffect(() => {
     const map = mapRef.current;
     if (!loaded || !map) return;
@@ -248,33 +247,26 @@ export default function GameMap(props: GameMapProps) {
     m.setLngLat([player.lon, player.lat]);
     if (!m.getElement().isConnected) m.addTo(map);
     const bearing = smoother.current.value;
-    if (follow) {
+    if (follow && !manual.current) {
       const h = map.getContainer().clientHeight;
       const cam: { center: [number, number]; bearing: number; padding: { top: number; bottom: number; left: number; right: number }; zoom?: number } = { center: [player.lon, player.lat], bearing, padding: { top: Math.round(h * 0.3), bottom: 0, left: 0, right: 0 } };
       let returning = false;
       if (viewAheadM !== undefined) {
-        // Player at viewPlayerY of the height (padding moves the map centre); with auto zoom, zoom so that viewAheadM fits between the player and the
-        // top edge, unless the user zoomed by hand. Without auto zoom the zoom is left alone.
+        // Player at viewPlayerY of the height (padding moves the map centre); zoom so that viewAheadM fits between the player and the top edge.
         const y = Math.min(0.8, Math.max(0.2, viewPlayerY ?? 0.5));
         cam.padding = { top: Math.round(Math.max(0, 2 * y - 1) * h), bottom: Math.round(Math.max(0, 1 - 2 * y) * h), left: 0, right: 0 };
-        const auto = autoZoom !== false;
-        if (auto && !lastAuto.current) userZoom.current = null; // turning auto zoom on drops the user's own zoom, so the game's zoom applies at once
-        if (auto) cam.zoom = userZoom.current ?? viewZoom(player.lat, h, viewClose ? (viewCloseAheadM ?? viewAheadM) : viewAheadM, y);
-        // Coming back after the user moved the map, switching between the wide and the close view, or turning auto zoom on: ease smoothly.
-        returning = !wasFollowing.current || (auto && lastClose.current !== !!viewClose) || lastRecenter.current !== recenterNonce || lastAuto.current !== auto;
+        cam.zoom = viewZoom(player.lat, h, viewClose ? (viewCloseAheadM ?? viewAheadM) : viewAheadM, y);
+        // Coming back to AUTO, or switching between the wide and the close view: ease smoothly.
+        returning = !wasFollowing.current || lastClose.current !== !!viewClose;
         lastClose.current = !!viewClose;
-        lastAuto.current = auto;
       }
-      lastRecenter.current = recenterNonce;
       wasFollowing.current = true;
       // Rotationen sköts av egen bildrutesloop (mjuk, utan fördröjning); här flyttas bara kartan till spelaren. En GPS-fix = ett hopp.
       if (returning) map.easeTo({ ...cam, duration: 700, essential: true });
       else map.jumpTo(cam);
     }
     if (el.current) el.current.dataset.zoom = map.getZoom().toFixed(2);
-  }, [loaded, player, accuracyM, follow, viewAheadM, viewCloseAheadM, viewClose, viewPlayerY, autoZoom, recenterNonce]);
-  // "Centrera": släpp också den egna zoomen så att spelets automatiska zoom gäller igen.
-  useEffect(() => { if (recenterNonce !== undefined) userZoom.current = null; }, [recenterNonce]);
+  }, [loaded, player, accuracyM, follow, viewAheadM, viewCloseAheadM, viewClose, viewPlayerY]);
   // Rotation och pil: en enda bildrutesloop (högst ~30 Hz) som läser riktningen direkt och mjukar den. Kartan ritas bara om medan den roterar.
   useEffect(() => {
     if (!loaded) return;
@@ -292,31 +284,32 @@ export default function GameMap(props: GameMapProps) {
       const sm = smoother.current;
       if (!map) return;
       const h = P.getHeading ? P.getHeading() : { deg: P.heading ?? null, source: "gps" as HeadingSource };
-      // Mål: Track Up följer riktningen (kompass med dödband mot darrning), North Up ligger fast på 0°. Okänd riktning: kartan står kvar.
-      if (P.trackUp) {
-        if (h.deg != null && Math.abs(wrap180(h.deg - sm.target)) >= (h.source === "compass" ? 1.5 : 0.5)) sm.setTarget(h.deg);
-      } else sm.setTarget(0);
-      if (sm.step(dt)) {
-        const c = P.player;
-        if (P.follow && c) map.jumpTo({ bearing: sm.value, center: [c.lon, c.lat] });
-        else map.setBearing(sm.value);
-      }
-      bearingRef.current = sm.value;
+      if (P.follow && !manual.current) {
+        // Mål: Track Up följer riktningen (kompass med dödband mot darrning), North Up ligger fast på 0°. Okänd riktning: kartan står kvar.
+        if (P.trackUp) {
+          if (h.deg != null && Math.abs(wrap180(h.deg - sm.target)) >= (h.source === "compass" ? 1.5 : 0.5)) sm.setTarget(h.deg);
+        } else sm.setTarget(0);
+        if (sm.step(dt)) {
+          const c = P.player;
+          if (c) map.jumpTo({ bearing: sm.value, center: [c.lon, c.lat] });
+          else map.setBearing(sm.value);
+        }
+        bearingRef.current = sm.value;
+      } else bearingRef.current = map.getBearing(); // the player (or nobody) holds the map: never touch the camera, only follow its rotation for the arrows
       // Pilen visas relativt skärmen (≈ 0° i Track Up). Utan känd riktning visas en neutral prick, aldrig en gissad pil.
       const el0 = playerEl.current;
       if (el0) {
         el0.classList.toggle("has-heading", h.deg != null);
         if (h.deg != null) {
-          arrow = arrow + wrap180(h.deg - sm.value - arrow);
+          arrow = arrow + wrap180(h.deg - bearingRef.current - arrow);
           (el0.querySelector(".arrow") as HTMLElement).style.transform = `rotate(${arrow.toFixed(1)}deg)`;
         }
       }
-      if (el.current) el.current.dataset.bearing = String(Math.round(sm.value));
+      if (el.current) el.current.dataset.bearing = String(Math.round(bearingRef.current));
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
   }, [loaded]);
-  useEffect(() => { if (!follow) wasFollowing.current = false; }, [follow]);
 
   // --- Zombier: en enda rAF-loop som animerar mellan motorns uppdateringar ---
   const animRef = useRef<ZombieAnimator | null>(null);

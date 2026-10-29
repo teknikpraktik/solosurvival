@@ -8,7 +8,7 @@ import { DIFFICULTY_LABEL, RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime, objectiveLa
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio, type CountdownLine } from "../_client/cues";
 import { COUNTDOWN_START_M, nextCountdown, type CountdownStep } from "@/play/countdown";
-import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, VIEW_RETURN_S, nextApproaching, nextClose, nextGoalClose, viewProfile } from "@/play/camera-view";
+import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, nextApproaching, nextClose, nextGoalClose, viewProfile } from "@/play/camera-view";
 import { Modal } from "../_client/Modal";
 import { Scare } from "../_client/Scare";
 import { JumpScare } from "../_client/JumpScare";
@@ -23,21 +23,12 @@ export default function Play() {
   const router = useRouter();
   const session = ctx?.session;
   const view = useSessionView(session);
-  const [follow, setFollow] = useState(true);
+  // Two map modes. AUTO (every match starts in it): the map follows you, Track Up, auto zoom. Off: the map is yours to pan and zoom, the game
+  // never moves it. Touching the map turns AUTO off at once; tapping AUTO turns it back on.
+  const [auto, setAuto] = useState(true);
   const [tried, setTried] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
-  // Every match starts in Track Up with auto zoom on.
-  const [trackUp, setTrackUp] = useState(true);
-  const [autoZoom, setAutoZoom] = useState(true);
-  const [recenterNonce, setRecenterNonce] = useState(0);
-  // After the user has moved/zoomed the map, it returns to the player after VIEW_RETURN_S seconds without interaction.
-  const returnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const onUserMove = useCallback(() => {
-    setFollow(false);
-    if (returnTimer.current) clearTimeout(returnTimer.current);
-    returnTimer.current = setTimeout(() => setFollow(true), VIEW_RETURN_S * 1000);
-  }, []);
-  useEffect(() => () => { if (returnTimer.current) clearTimeout(returnTimer.current); }, []);
+  const onUserMove = useCallback(() => setAuto(false), []);
   const [pauseDismissed, setPauseDismissed] = useState(false);
   const [gpsDismissed, setGpsDismissed] = useState(false);
   const [sound, setSound] = useState(true);
@@ -168,18 +159,16 @@ export default function Play() {
         frozen={m.paused || finished}
         heading={view.heading}
         getHeading={() => session.liveHeading()}
-        trackUp={trackUp}
-        recenterNonce={recenterNonce}
+        trackUp={auto}
         zoom={16}
         extraction={m.extraction}
         pointTo={!finished ? (m.objectives?.next ?? m.extraction) : null}
         scale
-        follow={follow}
+        follow={auto}
         viewAheadM={vp.aheadM}
         viewCloseAheadM={vp.closeAheadM}
         viewClose={viewClose || goalClose}
         viewPlayerY={vp.playerY}
-        autoZoom={autoZoom}
         onUserMove={onUserMove}
         onError={(w) => session.fieldLog?.renderProblem(Date.now(), w)}
       />
@@ -204,7 +193,7 @@ export default function Play() {
         {!finished && !m.paused && m.offNetwork?.active && (
           <div className="line"><span className="pill warn" role="status" aria-live="polite">{m.offNetwork.exposed ? "Off the road · zombies can reach you. Return to a road!" : `Off the road network · ${m.offNetwork.budgetLeftS} s until zombies find you`}</span></div>
         )}
-        {!finished && !m.paused && trackUp && view.heading == null && (
+        {!finished && !m.paused && auto && view.heading == null && (
           <div className="line"><span className="pill warn" aria-live="polite">{view.compass === "denied" ? "Direction unknown · allow motion sensors for a compass" : "Direction unknown · walk a few steps"}</span></div>
         )}
         {m.infection > 0 && <div className="infect" aria-label="Smittrisk"><div style={{ width: `${Math.min(100, (m.infection / 3) * 100)}%` }} /></div>}
@@ -213,22 +202,11 @@ export default function Play() {
       {!finished && (
         <div className="controls">
           {m.paused ? (
-            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{!canResume ? "WAITING FOR LOCATION…" : ready ? "START" : "CONTINUE"}</button>
+            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); if (ready) speak("Game on"); session.resume(); setAuto(true); }}>{!canResume ? "WAITING FOR LOCATION…" : ready ? "START" : "CONTINUE"}</button>
           ) : (
             <button className="wide" onClick={() => session.pause("manual")}>PAUSE</button>
           )}
-          <button className={`iconbtn${follow ? "" : " attn"}`} onClick={() => { setFollow(true); setRecenterNonce((n) => n + 1); }} aria-label="Center on me">⌖</button>
-          <button className="iconbtn zoombtn" onClick={() => { setAutoZoom((a) => !a); setFollow(true); }} aria-label={autoZoom ? "Auto zoom on (tap to turn off)" : "Auto zoom off (tap to turn on)"} aria-pressed={autoZoom}>
-            <svg viewBox="0 0 26 26" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2.2" /><path d="M16.2 16.2l6 6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-              <text x="11" y="14.6" textAnchor="middle" fontSize="9.5" fontWeight="800" fill="currentColor">A</text>
-            </svg>
-          </button>
-          <button className="iconbtn compass" onClick={() => { void session.enableCompass(); setTrackUp((t) => !t); setFollow(true); }} aria-label={trackUp ? "Track Up (tap for North Up)" : "North Up (tap for Track Up)"} aria-pressed={trackUp}>
-            <svg viewBox="0 0 26 26" style={{ transform: trackUp && view.heading != null ? `rotate(${-view.heading}deg)` : "none" }} aria-hidden="true">
-              <path d="M13 2l5 11h-10z" fill="#ef4444" /><path d="M13 24l-5-11h10z" fill="#8b98a5" /><circle cx="13" cy="13" r="1.8" fill="#0b0f14" />
-            </svg>
-          </button>
+          <button className="autobtn" onClick={() => { if (!auto) void session.enableCompass(); setAuto((a) => !a); }} aria-pressed={auto} aria-label={auto ? "AUTO on: the map follows you (tap to move the map yourself)" : "AUTO off: you move the map (tap to follow again)"}>AUTO</button>
           <button className="iconbtn" onClick={() => { const on = !sound; setSound(on); setCuesEnabled(on); }} aria-label={sound ? "Sound on (tap to mute)" : "Sound off (tap to unmute)"} aria-pressed={sound}>{sound ? "🔊" : "🔇"}</button>
           <button onClick={() => setConfirmEnd(true)}>QUIT</button>
         </div>
@@ -240,7 +218,7 @@ export default function Play() {
           onClose={() => setPauseDismissed(true)}
           actions={
             <>
-              <button className="btn primary big" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); if (ready) speak("Game on"); session.resume(); setFollow(true); }}>{canResume ? (ready ? "START" : "CONTINUE") : "WAITING FOR LOCATION…"}</button>
+              <button className="btn primary big" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); if (ready) speak("Game on"); session.resume(); setAuto(true); }}>{canResume ? (ready ? "START" : "CONTINUE") : "WAITING FOR LOCATION…"}</button>
               <button className="btn" onClick={() => setConfirmEnd(true)}>QUIT</button>
             </>
           }

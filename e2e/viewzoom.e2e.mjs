@@ -1,4 +1,4 @@
-// Game camera (ACTIVITY=bike|foot): player a little below the middle (60 %), auto zoom fitted to 1 km / 400 m ahead (closing in to 300 / 150 m when a zombie is near; the auto zoom button turns this off), Track Up kept, drag + zoom hold the map for ~15 s, then the position returns but the user's zoom is kept until the centre button is tapped. GPS is MOCKED (Playwright).
+// Game camera (ACTIVITY=bike|foot): AUTO = player a little below the middle (60 %), zoom fitted to 1 km / 400 m ahead (closing in to 300 / 150 m when a zombie is near); touching the map turns AUTO off and leaves the map to the player.
 import { chromium } from "playwright-core";
 const FOOT = process.env.ACTIVITY === "foot";
 const AHEAD = FOOT ? 400 : 1000, CLOSE_AHEAD = FOOT ? 150 : 300, NEAR_M = FOOT ? 60 : 120, FAR_M = FOOT ? 500 : 700;
@@ -55,35 +55,40 @@ await page.screenshot({ path: `${OUT}/close.png` });
 await placeZombie(FAR_M);
 for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(700); }
 check("zombie far away again: back to the normal view", Math.abs((await zoom()) - z0) < 0.1, `zoom ${await zoom()}`);
-// Auto zoom off: a close zombie no longer changes the zoom; on again: the close view returns.
-const autoBtn = page.getByRole("button", { name: /^Auto zoom/ });
-check("auto zoom is on at the start", (await autoBtn.getAttribute("aria-pressed")) === "true");
-await autoBtn.click(); await tick(2);
-check("auto zoom button turns it off", (await autoBtn.getAttribute("aria-pressed")) === "false");
+// One AUTO button: on = follow, Track Up, auto zoom. The first touch on the map hands it to the player at once (AUTO off), so the gesture is never cancelled.
+const autoBtn = page.getByRole("button", { name: /^AUTO/ });
+const pressed = async () => (await autoBtn.getAttribute("aria-pressed")) === "true";
+check("AUTO is on at the start", await pressed());
+const pm = async () => { const b = await page.locator(".pmark").first().boundingBox(); return b ? { x: b.x + b.width / 2, y: b.y + b.height / 2 } : null; };
+const zBefore = await zoom();
+await page.mouse.move(195, 300); await page.mouse.wheel(0, 300); await page.waitForTimeout(700);
+check("the first wheel step turns AUTO off", !(await pressed()));
+check("… and already zooms the map (not swallowed)", (await zoom()) < zBefore - 0.15, `zoom ${await zoom()} (was ${zBefore})`);
+// Drag while GPS fixes keep arriving: the map follows the finger the whole way.
+const p0 = await pm();
+let dragging = true;
+const fixes = (async () => { while (dragging) { await ctx.setGeolocation(START); await page.waitForTimeout(150); } })();
+await page.mouse.move(200, 400); await page.mouse.down(); await page.mouse.move(200, 650, { steps: 12 }); await page.mouse.up();
+dragging = false; await fixes; await page.waitForTimeout(400);
+const p1 = await pm();
+check("a drag moves the map by the drag distance, also while fixes arrive", p0 && p1 && Math.abs(p1.y - p0.y - 250) < 30, p0 && p1 ? `moved ${Math.round(p1.y - p0.y)} px` : "");
+// AUTO off: the game never moves the map by itself (no return to the player, no zoom for a close zombie).
+const zUser = await zoom();
 await placeZombie(NEAR_M);
-for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(700); }
-check("auto zoom off: a close zombie does NOT change the zoom", Math.abs((await zoom()) - z0) < 0.05, `zoom ${await zoom()} (was ${z0})`);
+for (let i = 0; i < 8; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(1000); }
+const p2 = await pm();
+check("AUTO off: the map stays where the user left it", p1 && p2 && Math.abs(p2.y - p1.y) < 3 && Math.abs(p2.x - p1.x) < 3);
+check("AUTO off: a close zombie does not change the zoom", Math.abs((await zoom()) - zUser) < 0.02, `zoom ${await zoom()} (user ${zUser})`);
+await page.screenshot({ path: `${OUT}/manual.png` });
+// AUTO again: back to the player, at the close zoom (the zombie is still near), then wide again when it is gone.
 await autoBtn.click(); await page.waitForTimeout(1200); await tick(3);
-check("auto zoom on again: zoomed in to the close distance", Math.abs(PY * mpp(await zoom()) - CLOSE_AHEAD) < CLOSE_AHEAD * 0.07, `zoom ${await zoom()}`);
+check("tapping AUTO turns it on again", await pressed());
+const p3 = await pm();
+check("AUTO again: the player is back a little below the middle", p3 && Math.abs(p3.y - PY) < 30 && Math.abs(p3.x - 195) < 20, p3 ? `y=${Math.round(p3.y)}` : "");
+check("AUTO again: close zoom for the near zombie", Math.abs(PY * mpp(await zoom()) - CLOSE_AHEAD) < CLOSE_AHEAD * 0.07, `zoom ${await zoom()}`);
 await placeZombie(FAR_M);
 for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(700); }
-// Drag and zoom out by hand: the map must stay put; after ~15 s the position returns, the zoom the user chose stays until "centre" is tapped.
-await page.mouse.move(200, 400); await page.mouse.down(); await page.mouse.move(200, 650, { steps: 8 }); await page.mouse.up();
-await page.mouse.move(195, 300); await page.mouse.wheel(0, 500);
-await page.waitForTimeout(2500); await tick(2);
-const zUser = await zoom();
-check("manual zoom out changed the zoom", zUser < z0 - 0.3, `zoom ${zUser} (auto ${z0})`);
-const dragged = await page.locator(".pmark").first().boundingBox();
-check("map stays where the user left it", dragged && Math.abs(dragged.y + dragged.height / 2 - PY) > 60, dragged ? `y=${Math.round(dragged.y + dragged.height / 2)}` : "");
-await page.screenshot({ path: `${OUT}/dragged.png` });
-for (let i = 0; i < 8; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(1000); }
-const still = await page.locator(".pmark").first().boundingBox();
-check("still held after 8 s (not the old 6 s)", still && Math.abs(still.y + still.height / 2 - PY) > 60);
-for (let i = 0; i < 12; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(1000); }
-const back = await page.locator(".pmark").first().boundingBox();
-check("returns to the player after ~15 s", back && Math.abs(back.y + back.height / 2 - PY) < 30);
-check("the zoom the user chose is kept (no automatic reset)", Math.abs((await zoom()) - zUser) < 0.1, `zoom ${await zoom()} (user ${zUser}, auto ${z0})`);
-await page.getByRole("button", { name: "Center on me" }).click(); await page.waitForTimeout(1200); await tick(2);
-check("centre button restores the automatic zoom", Math.abs((await zoom()) - z0) < 0.1, `zoom ${await zoom()}`);
+check("AUTO: wide view again when the zombie is far", Math.abs((await zoom()) - z0) < 0.1, `zoom ${await zoom()}`);
+await page.screenshot({ path: `${OUT}/auto.png` });
 await browser.close();
 process.exit(res.every(Boolean) ? 0 : 1);

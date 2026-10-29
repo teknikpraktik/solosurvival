@@ -1,9 +1,9 @@
 import type { Activity } from "@/config/activities";
 
 /**
- * Camera profile: Track Up, player a little below the middle of the screen (`playerY`); with auto zoom on, zoomed so that `aheadM` is
- * visible between the player and the top edge. Auto zoom closes in to `closeAheadM` when a zombie or the next goal is near and widens
- * again when it is gone or taken. Auto zoom can be turned off in the game (then the zoom stays where the player put it).
+ * Camera profile for AUTO (the game's map mode): Track Up, player a little below the middle of the screen (`playerY`), zoomed so that `aheadM`
+ * is visible between the player and the top edge, closing in to `closeAheadM` when a zombie or the next goal is near and widening again when
+ * it is gone or taken. With AUTO off (the player touched the map) the game leaves the map alone.
  */
 export interface ViewProfile {
   /** Normal view: metres from the player to the top edge. */
@@ -30,8 +30,6 @@ export const viewProfile = (a: Activity): ViewProfile => (a === "mtb" ? BIKE : F
 
 /** Minimum seconds between two "tension" sounds. */
 export const TENSION_COOLDOWN_S = 45;
-/** Seconds the map stays where the user left it before it returns to the player (position only: a zoom the user set is kept until they tap centre). */
-export const VIEW_RETURN_S = 15;
 
 /** "Zombies approaching" is spoken when the nearest zombie comes within this distance (m)… */
 export const APPROACH_ENTER_M = 200;
