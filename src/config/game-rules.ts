@@ -160,6 +160,16 @@ export function resolveRules(
   };
 }
 
+/**
+ * Produktens fiendefart (se src/config/product.ts): grundfarten skalas efter att aktivitet och svårighet har bestämt den. Spurt
+ * (`sprintSpeedFactor`) och terrängfart (`offTrailFactor`) är faktorer av grundfarten och skalas därmed lika. 1 ger exakt samma regler.
+ */
+export function applyEnemySpeedMultiplier(r: Rules, multiplier = 1): Rules {
+  if (multiplier === 1) return r;
+  if (!(multiplier > 0) || !Number.isFinite(multiplier)) throw new Error(`Invalid enemy speed multiplier: ${multiplier}`);
+  return { ...r, zombieSpeedMps: r.zombieSpeedMps * multiplier };
+}
+
 /** Spurtens totala längd (ramp + topp + avtagande). */
 export const sprintTotalS = (r: Pick<Rules, "sprintRampS" | "sprintDurationS" | "sprintDecayS">): number => r.sprintRampS + r.sprintDurationS + r.sprintDecayS;
 

@@ -1,5 +1,5 @@
 import { ACTIVITIES } from "@/config/activities";
-import { RESUME_NEUTRAL_S, STEP_S, type Rules } from "@/config/game-rules";
+import { RESUME_NEUTRAL_S, STEP_S, applyEnemySpeedMultiplier, type Rules } from "@/config/game-rules";
 import { resolveModeRules } from "@/config/modes";
 import { abortGame, pauseGame, resumeGame, stepGame } from "@/engine/core/engine";
 import type { GameEvent, GameState } from "@/engine/core/types";
@@ -113,10 +113,10 @@ export class LiveGame {
    * Återställer en sparad match: motorns tillstånd (inkl. RNG och zombie-AI) är oförändrat. Filtret börjar tomt:
    * ingen position gäller förrän nya fixar kommit, och spelet förblir pausat tills spelaren fortsätter.
    */
-  static restore(g: TrailGraph, state: GameState, params: { activity: GameState["config"]["activity"]; mode: GameState["config"]["mode"]; difficulty: GameState["config"]["difficulty"] }, proposal: unknown, counters: FixCounters, lastFix: LastFix | null, fixSeq: number): LiveGame {
+  static restore(g: TrailGraph, state: GameState, params: { activity: GameState["config"]["activity"]; mode: GameState["config"]["mode"]; difficulty: GameState["config"]["difficulty"]; enemySpeedMultiplier?: number }, proposal: unknown, counters: FixCounters, lastFix: LastFix | null, fixSeq: number): LiveGame {
     void proposal;
     const dest = state.objectives?.targets.find((t) => t.kind === "destination");
-    const rules = resolveModeRules(params.mode ?? "survival", params.activity, params.difficulty, state.config.durationSeconds, undefined, dest && state.startPos ? haversineM(state.startPos, dest) : undefined);
+    const rules = applyEnemySpeedMultiplier(resolveModeRules(params.mode ?? "survival", params.activity, params.difficulty, state.config.durationSeconds, undefined, dest && state.startPos ? haversineM(state.startPos, dest) : undefined), params.enemySpeedMultiplier);
     const live = new LiveGame(g, state, rules);
     live.counters = counters;
     live.lastFix = lastFix;
