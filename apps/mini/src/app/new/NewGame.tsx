@@ -9,13 +9,14 @@ import type { MapMarker } from "@/app/_client/GameMap";
 import type { Difficulty } from "@/config/difficulty";
 import type { GameMode } from "@/engine/objectives/objectives";
 import { extractionOpensAtS } from "@/config/game-rules";
-import { DISTANCE_LIMITS, DURATION_LIMITS, START_MAX_ACCURACY_M, clampParams, defaultParams, type MatchParams } from "@/play/config";
+import { DURATION_LIMITS, START_MAX_ACCURACY_M, defaultParams, type MatchParams } from "@/play/config";
 import { estimatedMinutes } from "@/play/prepare";
 import { COURSE_DETOUR_FACTOR } from "@/routes/course";
 import { haversineM } from "@/geo/geometry";
 import { errorText } from "@/gps/provider/provider";
 import { matchDurationS } from "@/play/match";
 import { MINI_PROFILE } from "../../config/product";
+import { MINI_ACTIVITY, MINI_DISTANCE_LIMITS, clampMiniParams } from "../../config/params";
 import { DIFFICULTY_LABEL, MODE_HELP, MODE_LABEL } from "../../client/text";
 import { cuesEnabled, setCuesEnabled, unlockAudio } from "../../client/sounds";
 import { MINI_MAP_STYLE } from "../../client/mapStyle";
@@ -35,7 +36,7 @@ function Seg<T extends string>({ label, value, options, onChange }: { label: str
 }
 
 /** Mini Outbreak only walks: the activity is fixed here, and the shared session refuses anything else (MINI_PROFILE). */
-const ACTIVITY = MINI_PROFILE.activities[0];
+const ACTIVITY = MINI_ACTIVITY;
 
 export default function NewGame() {
   const ctx = useSessionCtx();
@@ -59,7 +60,7 @@ export default function NewGame() {
   const preview = stage === "preview" || stage === "preparing";
   const prepared = view?.prepared ?? null;
   const proposal = prepared?.proposals[view?.selected ?? 0] ?? null;
-  const set = (patch: Partial<MatchParams>) => setP((cur) => clampParams({ ...cur, ...patch, activity: ACTIVITY }));
+  const set = (patch: Partial<MatchParams>) => setP((cur) => clampMiniParams({ ...cur, ...patch }));
 
   const gps = useMemo(() => {
     if (!view) return null;
@@ -73,7 +74,7 @@ export default function NewGame() {
   const canPrepare = !!session?.currentStart() && (!isAB || !!p.pointB) && !busy && stage !== "preparing";
   const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
 
-  const limit = DISTANCE_LIMITS[ACTIVITY];
+  const limit = MINI_DISTANCE_LIMITS;
   const dur = DURATION_LIMITS[ACTIVITY];
   const abA = view?.params?.pointA ?? null;
   const abB = proposal?.waypoints[0] ?? null;
@@ -81,7 +82,7 @@ export default function NewGame() {
   const markers: MapMarker[] = proposal ? proposal.waypoints.filter((w) => w.kind !== "home").map((w, i) => ({ id: w.id, label: w.kind === "destination" ? "B" : String(i + 1), lat: w.lat, lon: w.lon, tone: "todo" as const })) : [];
   if (proposal && isAB && view?.params?.pointA) markers.push({ id: "A", label: "A", lat: view.params.pointA.lat, lon: view.params.pointA.lon, tone: "done" });
 
-  const params = () => clampParams({ ...p, activity: ACTIVITY, seed: Math.floor(Math.random() * 1e9) });
+  const params = () => clampMiniParams({ ...p, seed: Math.floor(Math.random() * 1e9) });
   const direct = p.mode === "survival";
   const startDirect = () => run(async () => {
     unlockAudio();

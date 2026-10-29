@@ -6,7 +6,7 @@ import { IDBFactory } from "fake-indexeddb";
 import { beforeAll, describe, expect, it } from "vitest";
 import { TileStore, type Fetcher } from "@/data/store";
 import { prepareMatch, type Prepared } from "@/play/prepare";
-import { applyProfile, defaultParams, withActivity, type MatchParams } from "@/play/config";
+import { DISTANCE_LIMITS, applyProfile, defaultParams, withActivity, type MatchParams } from "@/play/config";
 import { createLiveMatch } from "@/play/match";
 import { openDb, tryOpenDb, DB_NAME } from "@/play/idb";
 import { MatchStorage } from "@/play/storage";
@@ -24,6 +24,7 @@ import type { Difficulty } from "@/config/difficulty";
 import { ENEMY_KINDS, MINI_DB_NAME, MINI_PROFILE, MINI_STORAGE_PREFIX } from "../src/config/product";
 import { enemyArt, enemyKind, enemyMarker, enemySvg } from "../src/client/enemies";
 import { MINI_SOUNDS } from "../src/client/sounds";
+import { MINI_ACTIVITY, MINI_DISTANCE_LIMITS, clampMiniParams } from "../src/config/params";
 import { OUTBREAK_SOUNDS } from "@/app/_client/cues";
 
 const APP = path.resolve(import.meta.dirname, "..");
@@ -158,7 +159,21 @@ describe("4. cykelläget är avstängt", () => {
   it("gränssnittet erbjuder bara gång", () => {
     const src = readFileSync(path.join(APP, "src/app/new/NewGame.tsx"), "utf8");
     expect(src).not.toMatch(/"mtb"|On Bike|ACTIVITY_LABEL/);
-    expect(src).toMatch(/const ACTIVITY = MINI_PROFILE\.activities\[0\]/);
+    expect(src).toMatch(/const ACTIVITY = MINI_ACTIVITY/);
+    expect(MINI_ACTIVITY).toBe("walk");
+    expect(clampMiniParams({ ...withActivity(defaultParams("walk"), "mtb"), seed: 1 }).activity).toBe("walk");
+  });
+  it("CHECKPOINTS: sträckan högst 4 km i barnappen; OUTBREAK behåller 6 km", () => {
+    expect(MINI_DISTANCE_LIMITS).toEqual({ min: 1000, max: 4000, step: 250, default: 3000 });
+    expect(MINI_DISTANCE_LIMITS.default).toBeLessThanOrEqual(MINI_DISTANCE_LIMITS.max);
+    expect(DISTANCE_LIMITS.walk.max).toBe(6000);
+    const base = { ...defaultParams("walk"), mode: "mission" as const, seed: 1 };
+    expect(clampMiniParams({ ...base, targetLengthM: 6000 }).targetLengthM).toBe(4000);
+    expect(clampMiniParams({ ...base, targetLengthM: 2500 }).targetLengthM).toBe(2500);
+    expect(clampMiniParams({ ...base, targetLengthM: 200 }).targetLengthM).toBe(1000);
+    const src = readFileSync(path.join(APP, "src/app/new/NewGame.tsx"), "utf8");
+    expect(src).toMatch(/const limit = MINI_DISTANCE_LIMITS;/);
+    expect(src).not.toMatch(/clampParams\(/);
   });
   it("en sparad cykelmatch i barnappens lagring återställs inte", async () => {
     const db = await openDb(new IDBFactory(), MINI_DB_NAME);
