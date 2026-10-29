@@ -1,7 +1,7 @@
 import { ACTIVITIES, type Activity } from "./activities";
 import { DIFFICULTIES, type Difficulty } from "./difficulty";
 
-export const RULES_VERSION = "2.6.0";
+export const RULES_VERSION = "2.7.0";
 
 /** Fast simuleringssteg (PRD 8.4): 5 Hz. */
 export const STEP_S = 0.2;
@@ -39,9 +39,18 @@ export const ZOMBIE_SPEED_KMH: Partial<Record<Activity, Record<Difficulty, numbe
   //   Normal 7 km/h    lugn joggingfart (jogg ≈ 7,9 km/h, förhållande ≈ 1,1); v2.1 hade 10 km/h, vilket bara en löpare (10,8 km/h) kunde hålla jämna steg med.
   //   Hard   13 km/h   oförändrad. Svår är dessutom 2 × antal zombier: i simulering klarar ingen testad strategi den ens i 14–19 km/h (se rapporten); en omarbetning
   //                    av Svår (antal/tillväxt) är ett produktbeslut och ingår inte i denna justering.
-  walk: { easy: 4.5, normal: 7, hard: 13 },
-  // Bike: 30 % lower than 2.5 (14 / 17 / 24 km/h) after field testing.
-  mtb: { easy: 9.8, normal: 11.9, hard: 16.8 },
+  // 2.7: every speed about 20 % lower after field testing (2.6: walk 4.5 / 7 / 13, Bike 9.8 / 11.9 / 16.8; Bike was already 30 % below 2.5).
+  walk: { easy: 3.6, normal: 5.6, hard: 10.4 },
+  mtb: { easy: 7.8, normal: 9.5, hard: 13.4 },
+};
+
+/**
+ * Number of zombies per activity and difficulty, set after field testing instead of activity × `countMultiplier` (which gave up to 36 on foot
+ * and 60 on Bike Hard). `initial` = zombies at the start (omitted: activity × multiplier as before), `max` = most at once. Run falls back to the formula.
+ */
+export const ZOMBIE_COUNT: Partial<Record<Activity, Record<Difficulty, { initial?: number; max: number }>>> = {
+  walk: { easy: { max: 10 }, normal: { max: 12 }, hard: { max: 20 } },
+  mtb: { easy: { max: 14 }, normal: { max: 18 }, hard: { initial: 10, max: 20 } },
 };
 
 /** Neutral återstartsperiod efter paus, utan infektion (PRD 7.2). */
@@ -55,7 +64,7 @@ export const GPS_ACCURACY = { okM: 10, verifyM: 20, infectionPausedM: 35 } as co
  * Zombiers fart (km/h) utanför stigar i terrängläget (A TO B till fots), samma absoluta värde oavsett aktivitet.
  * Preliminära värden från docs/OFFTRAIL-BIKE-ADDENDUM.md; används bara på terrängkanter (`GraphEdge.offtrail`), som bara finns i terrängläget.
  */
-export const OFF_TRAIL_KMH: Record<Difficulty, number> = { easy: 2.5, normal: 3.5, hard: 4.5 };
+export const OFF_TRAIL_KMH: Record<Difficulty, number> = { easy: 2, normal: 2.8, hard: 3.6 }; // 2.7: 20 % lower (was 2.5 / 3.5 / 4.5)
 
 export interface Rules {
   rulesVersion: string;
@@ -110,8 +119,9 @@ export function resolveRules(
 ): Rules {
   const a = ACTIVITIES[activity];
   const d = DIFFICULTIES[difficulty];
-  const maxZombies = Math.max(1, Math.min(Math.round(a.maxZombies * d.countMultiplier), spawnCapacity));
-  const initialZombies = Math.max(1, Math.min(Math.round(a.initialZombies * d.countMultiplier), maxZombies));
+  const count = ZOMBIE_COUNT[activity]?.[difficulty];
+  const maxZombies = Math.max(1, Math.min(count?.max ?? Math.round(a.maxZombies * d.countMultiplier), spawnCapacity));
+  const initialZombies = Math.max(1, Math.min(count?.initial ?? Math.round(a.initialZombies * d.countMultiplier), maxZombies));
   const growthWindowMin = Math.max(1, (extractionOpensAtS(durationS) - a.headStartS) / 60);
   return {
     rulesVersion: RULES_VERSION,
