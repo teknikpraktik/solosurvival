@@ -31,11 +31,9 @@ await page.goto(BASE + "/new");
 for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 await page.waitForTimeout(800);
 await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
-await page.getByRole("button", { name: "SHOW AREA" }).click();
-await page.getByText(/Match length/).first().waitFor({ timeout: 60000 });
+await page.getByRole("button", { name: "START", exact: true }).click(); // Survival: START on the settings page goes straight to the game (no preview)
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-await page.getByRole("button", { name: "START", exact: true }).click();
-await page.waitForURL("**/play");
+await page.waitForURL("**/play", { timeout: 90000 });
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 
 // Dialog "Ready to start"

@@ -16,10 +16,8 @@ const tick = async (n = 3) => { for (let i = 0; i < n; i++) { await ctx.setGeolo
 await page.goto(BASE + "/new"); await tick(4);
 await page.getByRole("button", { name: FOOT ? "On foot" : "Bike", exact: true }).click();
 await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
-await page.getByRole("button", { name: "SHOW AREA" }).click();
-await page.getByText(/Match length/).first().waitFor({ timeout: 90000 }); await tick();
-await page.getByRole("button", { name: "START", exact: true }).click();
-await page.waitForURL("**/play"); await tick();
+await page.getByRole("button", { name: "START", exact: true }).click(); await tick(); // Survival: START on the settings page goes straight to the game (no preview)
+await page.waitForURL("**/play", { timeout: 90000 }); await tick();
 await page.getByRole("dialog").getByRole("button", { name: "START" }).click();
 await page.waitForTimeout(1500); await tick(2);
 const map = page.locator('[data-testid="map"]');

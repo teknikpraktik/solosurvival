@@ -82,7 +82,19 @@ export default function NewGame() {
   const markers: MapMarker[] = proposal ? proposal.waypoints.filter((w) => w.kind !== "home").map((w, i) => ({ id: w.id, label: w.kind === "destination" ? "B" : String(i + 1), lat: w.lat, lon: w.lon, tone: "todo" as const })) : [];
   if (proposal && isAB && view?.params?.pointA) markers.push({ id: "A", label: "A", lat: view.params.pointA.lat, lon: view.params.pointA.lon, tone: "done" });
 
-  if ((preview || starting) && view) {
+  // Survival has no course to look at (the area is the same whatever you choose), so START on the settings page goes straight into the game.
+  // The preview is only shown if preparing failed (it carries the message and the alternatives).
+  const direct = p.mode === "survival";
+  const startDirect = () => run(async () => {
+    unlockAudio();
+    const r = await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) }));
+    if (r?.status !== "ok") return;
+    setStarting(true);
+    if (await session!.startMatch()) router.push("/play");
+    else setStarting(false);
+  });
+
+  if ((preview || starting) && view && !(direct && (busy || starting))) {
     const status = prepared?.status;
     const ok = status === "ok" || status === "alternative";
     return (
@@ -128,7 +140,7 @@ export default function NewGame() {
           {view.messages.map((m) => <div key={m} className="card warn">{m}</div>)}
           <div className="muted">{isAB ? (proposal?.terrain ? "Walk any way you like to B, on trails or across country. The line is only a hint. Zombies run on trails and walk slowly across country. The game does not know about roads, railways, water or private land: never cross them just because the game suggests it." : "Any route you like counts. The line is only a hint. Never cross a road or railway just because the game suggests it.") : p.mode === "mission" ? "Fetch the numbered checkpoints in order, then return home. Choose your own way. Never cross a road or railway just because the game suggests it." : "Never cross a road or railway just because the game suggests it."}</div>
           <div className="row">
-            {!isAB && <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "REFRESH" : "NEW COURSE"}</button>}
+            {!isAB && <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "TRY AGAIN" : "NEW COURSE"}</button>}
           </div>
           <button
             className="btn primary big"
@@ -183,8 +195,8 @@ export default function NewGame() {
         <input type="checkbox" checked={cues} onChange={(e) => { setCues(e.target.checked); setCuesEnabled(e.target.checked); }} style={{ width: 22, height: 22 }} />
         Sound and vibration for events (no vibration on iPhone)
       </label>
-      <button className="btn primary big" disabled={!canPrepare} onClick={() => run(async () => { unlockAudio(); await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) })); })}>
-        {p.mode === "survival" ? "SHOW AREA" : isAB && !p.pointB ? "PICK B ON THE MAP" : isAB ? "SHOW ROUTE" : "SHOW COURSE"}
+      <button className="btn primary big" disabled={!canPrepare || starting} onClick={direct ? startDirect : () => run(async () => { unlockAudio(); await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) })); })}>
+        {direct ? (busy || starting ? "LOADING MAP…" : "START") : isAB && !p.pointB ? "PICK B ON THE MAP" : isAB ? "SHOW ROUTE" : "SHOW COURSE"}
       </button>
       {!ctx && <div className="muted">Loading…</div>}
     </main>
