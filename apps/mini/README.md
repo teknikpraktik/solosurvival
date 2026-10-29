@@ -31,7 +31,7 @@ CHROMIUM_PATH=/path/to/chrome npm run e2e   # webbläsartest, mockad GPS
 
 ## Driftsättning (ej gjord)
 
-Tänkt som ett eget Vercel-projekt från samma repo: Root Directory `apps/mini`, inställningar i `vercel.json` (installation i roten). `ignoreCommand` hoppar över bygget när en commit inte rör barnappen, `src/`, kartdatan eller beroendena (osäkert läge, t.ex. ingen föregående commit, ger alltid bygge). Vuxenprojektet ändras inte. Barnappen ska ha en egen domän eller subdomän, aldrig en sökväg under vuxenappens domän: där skulle vuxenappens service worker (scope `/`) och lagring delas.
+Tänkt som ett eget Vercel-projekt från samma repo: Root Directory `apps/mini`, inställningar i `vercel.json` (installation i roten). Inget `ignoreCommand`: repo-rotens `.vercelignore` tar bort `.git` före bygget, så ett git-baserat ignore-steg kan inte köras i Vercel (projektet byggs därför vid varje push till `master`). Vuxenprojektet ändras inte. Barnappen ska ha en egen domän eller subdomän, aldrig en sökväg under vuxenappens domän: där skulle vuxenappens service worker (scope `/`) och lagring delas.
 
 ## Tillfällig grafik och ljud
 
