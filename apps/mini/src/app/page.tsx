@@ -1,16 +1,20 @@
-"use client";
-import dynamic from "next/dynamic";
-import { useMemo, version } from "react";
-import { SimSession } from "@/sim/runner";
-import { gridGraph } from "@/sim/test-graphs";
-import { edgeLatLon } from "@/geo/graph/graph";
-const GameMap = dynamic(() => import("@/app/_client/GameMap"), { ssr: false });
-export default function Page() {
-  const r = useMemo(() => {
-    const g = gridGraph(8, 8, 120);
-    const s = new SimSession({ g, activity: "walk", difficulty: "easy", durationS: 300, seed: 1, strategy: "avoid", start: edgeLatLon(g, { edgeId: "r4:3", distM: 60 }) });
-    for (let i = 0; i < 500 && !s.finished; i++) s.step();
-    return { t: s.state.elapsedSeconds, z: s.state.zombies.length, g };
-  }, []);
-  return <main><p data-react={version}>spike t={r.t.toFixed(1)} zombies={r.z}</p><div style={{ height: 300, position: "relative" }}><GameMap graph={r.g} player={null} /></div></main>;
+import Link from "next/link";
+import ResumeBanner from "../client/ResumeBanner";
+import { Critters } from "../client/Critters";
+
+export default function Home() {
+  return (
+    <main className="center hero">
+      <Critters size={72} className="critters parade" />
+      <h1 className="title">MINI OUTBREAK</h1>
+      <p className="sub">SOLO SURVIVAL</p>
+      <ResumeBanner />
+      <Link className="btn primary" href="/new">NEW GAME</Link>
+      <Link className="btn" href="/history">MY GAMES</Link>
+      <Link className="btn" href="/how-to-play">HOW TO PLAY</Link>
+      <p className="hint" style={{ maxWidth: 320 }}>
+        Play with a grown-up nearby, in a place they have said is OK. Watch out for traffic and never run out onto a road.
+      </p>
+    </main>
+  );
 }

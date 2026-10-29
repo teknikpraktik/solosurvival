@@ -28,9 +28,6 @@
     "paths": {
       "@/*": [
         "../../src/*"
-      ],
-      "@mini/*": [
-        "./src/*"
       ]
     },
     "allowJs": true

@@ -1,0 +1,195 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { CloseButton, PageHeader } from "@/app/_client/Modal";
+import { fmtKm, fmtTime } from "@/app/_client/format";
+import type { MapMarker } from "@/app/_client/GameMap";
+import type { Difficulty } from "@/config/difficulty";
+import type { GameMode } from "@/engine/objectives/objectives";
+import { extractionOpensAtS } from "@/config/game-rules";
+import { DISTANCE_LIMITS, DURATION_LIMITS, START_MAX_ACCURACY_M, clampParams, defaultParams, type MatchParams } from "@/play/config";
+import { estimatedMinutes } from "@/play/prepare";
+import { COURSE_DETOUR_FACTOR } from "@/routes/course";
+import { haversineM } from "@/geo/geometry";
+import { errorText } from "@/gps/provider/provider";
+import { matchDurationS } from "@/play/match";
+import { MINI_PROFILE } from "../../config/product";
+import { DIFFICULTY_LABEL, MODE_HELP, MODE_LABEL, SAFETY_NOTE, SAFETY_POINTS } from "../../client/text";
+import { cuesEnabled, setCuesEnabled, unlockAudio } from "../../client/sounds";
+import { MINI_MAP_STYLE } from "../../client/mapStyle";
+import { useSessionCtx, useSessionView } from "../../client/SessionProvider";
+
+const GameMap = dynamic(() => import("@/app/_client/GameMap"), { ssr: false });
+
+function Seg<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { v: T; t: string }[]; onChange: (v: T) => void }) {
+  return (
+    <div className="field">
+      <label>{label}</label>
+      <div className="seg" role="group" aria-label={label}>
+        {options.map((o) => <button key={o.v} aria-pressed={value === o.v} onClick={() => onChange(o.v)}>{o.t}</button>)}
+      </div>
+    </div>
+  );
+}
+
+/** Mini Outbreak only walks: the activity is fixed here, and the shared session refuses anything else (MINI_PROFILE). */
+const ACTIVITY = MINI_PROFILE.activities[0];
+
+export default function NewGame() {
+  const ctx = useSessionCtx();
+  const router = useRouter();
+  const session = ctx?.session;
+  const view = useSessionView(session);
+  const [p, setP] = useState<MatchParams>(() => defaultParams(ACTIVITY));
+  const [cues, setCues] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [pickProblem, setPickProblem] = useState<string | null>(null);
+  // The safety promise is asked for before every game (not remembered).
+  const [safe, setSafe] = useState(false);
+
+  useEffect(() => { setCues(cuesEnabled()); }, []);
+  useEffect(() => {
+    if (!session) return;
+    if (session.getView().stage === "finished") session.reset();
+    session.startLocating();
+  }, [session]);
+
+  const stage = view?.stage ?? "idle";
+  const preview = stage === "preview" || stage === "preparing";
+  const prepared = view?.prepared ?? null;
+  const proposal = prepared?.proposals[view?.selected ?? 0] ?? null;
+  const set = (patch: Partial<MatchParams>) => setP((cur) => clampParams({ ...cur, ...patch, activity: ACTIVITY }));
+
+  const gps = useMemo(() => {
+    if (!view) return null;
+    if (view.gpsError) return { tone: "bad", text: errorText[view.gpsError.code] };
+    if (view.accuracyM === null) return { tone: "warn", text: "Finding where you are… Go outside where you can see the sky." };
+    if (view.accuracyM > START_MAX_ACCURACY_M) return { tone: "warn", text: "Waiting for a better location signal…" };
+    return null;
+  }, [view]);
+
+  const isAB = p.mode === "escape";
+  const canPrepare = safe && !!session?.currentStart() && (!isAB || !!p.pointB) && !busy && stage !== "preparing";
+  const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
+
+  const limit = DISTANCE_LIMITS[ACTIVITY];
+  const dur = DURATION_LIMITS[ACTIVITY];
+  const abA = view?.params?.pointA ?? null;
+  const abB = proposal?.waypoints[0] ?? null;
+  const routes = isAB && abA && abB ? [{ points: [abA, { lat: abB.lat, lon: abB.lon }], selected: false, faint: true }] : [];
+  const markers: MapMarker[] = proposal ? proposal.waypoints.filter((w) => w.kind !== "home").map((w, i) => ({ id: w.id, label: w.kind === "destination" ? "B" : String(i + 1), lat: w.lat, lon: w.lon, tone: "todo" as const })) : [];
+  if (proposal && isAB && view?.params?.pointA) markers.push({ id: "A", label: "A", lat: view.params.pointA.lat, lon: view.params.pointA.lon, tone: "done" });
+
+  const params = () => clampParams({ ...p, activity: ACTIVITY, seed: Math.floor(Math.random() * 1e9) });
+  const direct = p.mode === "survival";
+  const startDirect = () => run(async () => {
+    unlockAudio();
+    const r = await session!.prepare(params());
+    if (r?.status !== "ok") return;
+    setStarting(true);
+    if (await session!.startMatch()) router.push("/play");
+    else setStarting(false);
+  });
+
+  if ((preview || starting) && view && !(direct && (busy || starting))) {
+    const status = prepared?.status;
+    const ok = status === "ok" || status === "alternative";
+    return (
+      <div className="map-shell">
+        <GameMap mapStyle={MINI_MAP_STYLE} graph={prepared?.graph} routes={routes} markers={markers} start={session?.currentStart()} player={view.position} accuracyM={view.accuracyM} fit={isAB && abA && abB ? [abA, { lat: abB.lat, lon: abB.lon }] : proposal?.geometry ?? (view.position ? [view.position] : null)} />
+        <div className="hudbar"><div className="line"><span className="pill">{MODE_LABEL[p.mode]}</span><CloseButton label="Close preview" disabled={busy || starting} onClick={() => session!.backToConfig()} /></div></div>
+        <div className="sheet">
+          {stage === "preparing" && <div className="card">Loading the map and planning your game…</div>}
+          {stage !== "preparing" && prepared && !ok && <div className="card bad">{prepared.message}</div>}
+          {stage !== "preparing" && prepared?.status === "alternative" && <div className="card warn">{prepared.message}</div>}
+          {stage !== "preparing" && ok && proposal && (
+            <>
+              <div className="stat"><span>{isAB ? "Straight line" : "Distance (straight lines)"}</span><b>{fmtKm(isAB && abA && abB ? haversineM(abA, abB) : proposal.lengthM)}</b></div>
+              <div className="stat"><span>Estimated time</span><b>about {estimatedMinutes(proposal.lengthM * (p.mode === "mission" || proposal.terrain ? COURSE_DETOUR_FACTOR : 1), p)} min</b></div>
+              <div className="stat"><span>Time limit</span><b>{fmtTime(matchDurationS(p, proposal))}</b></div>
+              <div className="stat"><span>Goal</span><b>{p.mode === "escape" ? "Point B" : `${proposal.waypoints.filter((w) => w.kind === "checkpoint").length} checkpoints + home`}</b></div>
+            </>
+          )}
+          {view.movedFromPreview && (
+            <div className="card warn">
+              {isAB ? `You have moved ${view.distToPreviewStartM ?? "?"} m from A. Update the route from where you are.` : "You have moved from the start. Update the course."}
+              {isAB && <button className="link" style={{ display: "block" }} onClick={() => run(() => session!.prepare({ ...(view.params ?? p), pointA: null }))}>Update A to where I am</button>}
+            </div>
+          )}
+          {view.messages.map((m) => <div key={m} className="card warn">{m}</div>)}
+          <div className="muted">The game only shows where to go. You choose the way. Never cross a road or railway just because the game points there.</div>
+          <div className="row">
+            {!isAB && <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "TRY AGAIN" : "NEW COURSE"}</button>}
+          </div>
+          <button
+            className="btn primary big"
+            disabled={!ok || stage === "preparing" || view.movedFromPreview || !session!.currentStart() || starting}
+            onClick={() => run(async () => { unlockAudio(); setStarting(true); if (await session!.startMatch()) router.push("/play"); else setStarting(false); })}
+          >
+            START
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <main className="page">
+      <PageHeader title="NEW GAME" />
+      {gps && <div className={`card ${gps.tone}`} role="status">{gps.text}</div>}
+      <Seg<GameMode> label="Game" value={p.mode} options={MINI_PROFILE.modes.map((m) => ({ v: m, t: MODE_LABEL[m] }))} onChange={(mode) => set({ mode })} />
+      <div className="muted">{MODE_HELP[p.mode]}{p.mode === "survival" ? ` The helicopter comes after ${Math.round(extractionOpensAtS(p.durationS) / 60)} min.` : ""}</div>
+      <Seg<Difficulty> label="Level" value={p.difficulty} options={(["easy", "normal", "hard"] as Difficulty[]).map((d) => ({ v: d, t: DIFFICULTY_LABEL[d] }))} onChange={(difficulty) => set({ difficulty })} />
+      {p.mode === "survival" ? (
+        <div className="field">
+          <label htmlFor="dur">Game length: <b>{Math.round(p.durationS / 60)} min</b></label>
+          <input id="dur" type="range" min={dur.minMin} max={dur.maxMin} step={dur.stepMin} value={Math.round(p.durationS / 60)} onChange={(e) => set({ durationS: Number(e.target.value) * 60 })} />
+        </div>
+      ) : p.mode === "mission" ? (
+        <div className="field">
+          <label htmlFor="dist">Distance (straight lines between checkpoints): <b>{fmtKm(p.targetLengthM)}</b></label>
+          <input id="dist" type="range" min={limit.min} max={limit.max} step={limit.step} value={p.targetLengthM} onChange={(e) => set({ targetLengthM: Number(e.target.value) })} />
+        </div>
+      ) : (
+        <div className="field">
+          <div className="stat"><span>A</span><b>Where you are now</b></div>
+          <div className="stat"><span>B</span><b>{p.pointB ? "Picked ✓" : "Tap the map"}</b></div>
+          <div className="pickmap" data-testid="pickmap">
+            <GameMap
+              mapStyle={MINI_MAP_STYLE}
+              zoom={14}
+              player={view?.position}
+              accuracyM={view?.accuracyM}
+              fit={view?.position && p.pointB ? [view.position, p.pointB] : null}
+              markers={[...(view?.position ? [{ id: "A", label: "A", lat: view.position.lat, lon: view.position.lon, tone: "done" as const }] : []), ...(p.pointB ? [{ id: "B", label: "B", lat: p.pointB.lat, lon: p.pointB.lon, tone: "next" as const }] : [])]}
+              validatePick
+              onPickRejected={setPickProblem}
+              onPick={(pt) => { setPickProblem(null); set({ pointB: pt }); }}
+            />
+          </div>
+          {pickProblem && <div className="card warn" role="status">{pickProblem}</div>}
+        </div>
+      )}
+      <section className="card safety" aria-labelledby="safety-h">
+        <h2 id="safety-h">Before you play</h2>
+        <ul>{SAFETY_POINTS.map((s) => <li key={s}>{s}</li>)}</ul>
+        <div className="muted">{SAFETY_NOTE}</div>
+        <label className="check">
+          <input type="checkbox" checked={safe} onChange={(e) => setSafe(e.target.checked)} />
+          I will watch out for traffic and play where a grown-up said it is OK.
+        </label>
+      </section>
+      <label className="muted check">
+        <input type="checkbox" checked={cues} onChange={(e) => { setCues(e.target.checked); setCuesEnabled(e.target.checked); }} />
+        Sound and vibration (no vibration on iPhone)
+      </label>
+      <button className="btn primary big" disabled={!canPrepare || starting} onClick={direct ? startDirect : () => run(async () => { unlockAudio(); await session!.prepare(params()); })}>
+        {!safe ? "TICK THE SAFETY BOX FIRST" : direct ? (busy || starting ? "LOADING MAP…" : "START") : isAB && !p.pointB ? "PICK B ON THE MAP" : isAB ? "SHOW ROUTE" : "SHOW COURSE"}
+      </button>
+      {!ctx && <div className="muted">Loading…</div>}
+    </main>
+  );
+}

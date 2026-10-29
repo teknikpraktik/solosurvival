@@ -3,14 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "description": "Mini Outbreak Solo Survival – barnversionen av OUTBREAK. Delar motor, GPS och karta med repo-roten (src/).",
   "scripts": {
-    "dev": "next dev",
+    "preinstall": "node -e \"console.error('Install in the repository root (npm ci there). apps/mini must not have its own node_modules: shared code and the app must use one React.'); process.exit(1)\"",
+    "predev": "node scripts/prepare.mjs",
+    "dev": "next dev -p 3001",
+    "prebuild": "node scripts/prepare.mjs",
     "build": "next build",
-    "start": "next start"
+    "start": "next start -p 3001",
+    "typecheck": "tsc -p . --noEmit",
+    "test": "vitest run --config vitest.config.mts",
+    "e2e": "node e2e/mini.e2e.mjs"
   },
   "dependencies": {
     "next": "^16.4.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
