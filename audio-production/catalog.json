@@ -1,0 +1,709 @@
+{
+  "schemaVersion": 1,
+  "about": "Ljudkatalog för Outbreak (adult) och Mini Outbreak (mini). Källa för audio-production/generate.ts, docs/AUDIO-*.md och tester. Text i 'text' skickas oförändrad till ElevenLabs (engelska). Ändra inte id:n för ljud som redan har godkänts: id:t är nyckeln i manifest.json.",
+  "products": {
+    "adult": { "publicDir": "public/audio/el", "urlPrefix": "/audio/el" },
+    "mini": { "publicDir": "apps/mini/public/audio/el", "urlPrefix": "/audio/el" }
+  },
+  "priorities": {
+    "P0": "Kritisk säkerhets- eller spelinformation (fiende i kontakt, avstånd). Avbryter allt utom annan P0.",
+    "P1": "Matchens utfall och extraction, GPS-förlust. Avbryter P2–P4.",
+    "P2": "Fiendevarningar. Avbryter P3–P4.",
+    "P3": "Checkpoints och bekräftelser. Avbryter P4.",
+    "P4": "Atmosfär och fiendeläten. Avbryter aldrig något; tappas hellre än köas."
+  },
+  "pricing": {
+    "verifiedAt": "2026-10-29",
+    "sources": [
+      "https://elevenlabs.io/pricing/api",
+      "https://elevenlabs.io/docs/overview/capabilities/sound-effects",
+      "https://elevenlabs.io/docs/overview/models"
+    ],
+    "tts": {
+      "eleven_multilingual_v2": { "usdPer1kChars": 0.08, "creditsPerChar": 1, "creditsCertain": false },
+      "eleven_v3": { "usdPer1kChars": 0.08, "creditsPerChar": 1, "creditsCertain": false },
+      "eleven_flash_v2_5": { "usdPer1kChars": 0.04, "creditsPerChar": 0.5, "creditsCertain": false },
+      "eleven_flash_v2": { "usdPer1kChars": 0.04, "creditsPerChar": 0.5, "creditsCertain": false }
+    },
+    "sfx": {
+      "eleven_text_to_sound_v2": { "creditsPerSecond": 40, "creditsCertain": true, "usdPerMinute": 0.12, "usdCertain": false }
+    },
+    "notes": "USD-priserna gäller API-fakturering i dollar (pay-as-you-go). Krediter gäller abonnemang. Tecken→krediter för TTS står inte i nuvarande dokumentation och är ett antagande (1 per tecken, 0,5 för Flash). Ljudeffekter: '40 credits per second when duration is specified' är dokumenterat; dollarpriset är motsägelsefullt på prissidan (per minut vs per generering). Varje ljudeffekt i katalogen har därför en angiven längd."
+  },
+  "defaults": {
+    "outputFormat": "mp3_44100_128",
+    "ttsModel": "eleven_multilingual_v2",
+    "sfxModel": "eleven_text_to_sound_v2",
+    "sfxPromptInfluence": 0.5
+  },
+  "packs": {
+    "sample": [
+      "adult.vo.game_start.1",
+      "adult.vo.enemy_nearby.1",
+      "adult.vo.extraction_open.1",
+      "adult.enemy.growl.1",
+      "adult.enemy.growl.2",
+      "adult.sfx.warning.1",
+      "mini.vo.game_start.1",
+      "mini.vo.enemy_nearby.1",
+      "mini.vo.checkpoint.1",
+      "mini.enemy.cute_zombie.1",
+      "mini.enemy.rainbow_ghost.1",
+      "mini.sfx.warning.1"
+    ]
+  },
+  "sounds": [
+    {
+      "id": "adult.vo.game_start", "product": "adult", "type": "voice", "event": "match.start", "trigger": "existing",
+      "priority": "P1", "cooldownS": 0, "durationS": 3, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "adult-operator", "file": "vo/game-start",
+      "variants": [
+        { "n": 1, "text": "Survivor, this is Control. You're live. Move out." },
+        { "n": 2, "text": "Control here. The clock is running. Stay sharp." },
+        { "n": 3, "text": "Comms check complete. The infected are out there. Keep moving." }
+      ]
+    },
+    {
+      "id": "adult.vo.resume", "product": "adult", "type": "voice", "event": "match.resume", "trigger": "existing-silent",
+      "priority": "P3", "cooldownS": 10, "durationS": 2, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "adult-operator", "file": "vo/resume",
+      "variants": [
+        { "n": 1, "text": "Back on the grid. Keep moving." },
+        { "n": 2, "text": "Copy that. Resuming." }
+      ]
+    },
+    {
+      "id": "adult.vo.pause", "product": "adult", "type": "voice", "event": "match.pause", "trigger": "existing-silent",
+      "priority": "P3", "cooldownS": 10, "durationS": 2, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "adult-operator", "file": "vo/pause",
+      "variants": [
+        { "n": 1, "text": "Holding. Everything is on pause." }
+      ]
+    },
+    {
+      "id": "adult.vo.first_contact", "product": "adult", "type": "voice", "event": "enemy.first_contact", "trigger": "existing",
+      "priority": "P2", "cooldownS": 0, "durationS": 2.5, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "adult-operator", "file": "vo/first-contact",
+      "notes": "Spelas efter adult.enemy.growl (en gång per match).",
+      "variants": [
+        { "n": 1, "text": "Survivor, hostile movement detected." },
+        { "n": 2, "text": "Heads up. I've got infected on the scope." }
+      ]
+    },
+    {
+      "id": "adult.vo.enemy_nearby", "product": "adult", "type": "voice", "event": "enemy.approach", "trigger": "existing",
+      "priority": "P2", "cooldownS": 30, "durationS": 2.5, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "adult-operator", "file": "vo/enemy-nearby",
+      "notes": "Ersätter talsyntesens \"Zombies approaching\" (200 m, hysteres 260 m).",
+      "variants": [
+        { "n": 1, "text": "Infected inside two hundred metres. Keep moving." },
+        { "n": 2, "text": "Hostiles closing on your position." },
+        { "n": 3, "text": "Contact, two hundred metres. Don't stop." }
+      ]
+    },
+    {
+      "id": "adult.vo.hunted", "product": "adult", "type": "voice", "event": "enemy.detected", "trigger": "existing-silent",
+      "priority": "P2", "cooldownS": 60, "durationS": 2.5, "volume": 1, "interrupts": "none", "random": true,
+      "voice": "adult-operator", "file": "vo/hunted",
+      "notes": "Motorns zombie_detected (idag bara vibration, 15 s spärr). Föreslagen längre spärr: 60 s, och aldrig inom 10 s efter enemy_nearby.",
+      "variants": [
+        { "n": 1, "text": "They've picked up your trail." },
+        { "n": 2, "text": "Multiple infected approaching. Keep moving." },
+        { "n": 3, "text": "You've been spotted. Move." }
+      ]
+    },
+    {
+      "id": "adult.vo.danger_close", "product": "adult", "type": "voice", "event": "enemy.contact", "trigger": "existing-silent",
+      "priority": "P0", "cooldownS": 8, "durationS": 1.5, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "adult-operator", "file": "vo/danger-close",
+      "notes": "Motorns infection_contact: infektionen har börjat räknas. Spelas efter adult.sfx.warning.",
+      "variants": [
+        { "n": 1, "text": "Contact! Move away now!" },
+        { "n": 2, "text": "Too close! Break away!" }
+      ]
+    },
+    {
+      "id": "adult.vo.countdown", "product": "adult", "type": "voice", "event": "enemy.countdown", "trigger": "existing",
+      "priority": "P0", "cooldownS": 0, "durationS": 1.2, "volume": 1, "interrupts": "same-or-lower", "random": false,
+      "voice": "adult-operator", "file": "vo/countdown",
+      "notes": "Ersätter talsyntesens avståndsnedräkning (src/play/countdown.ts). Variant väljs efter avstånd, inte slumpvis. Nyare steg avbryter äldre.",
+      "variants": [
+        { "n": 100, "text": "One hundred metres." },
+        { "n": 50, "text": "Fifty." },
+        { "n": 40, "text": "Forty." },
+        { "n": 30, "text": "Thirty." },
+        { "n": 20, "text": "Twenty!" },
+        { "n": 10, "text": "Ten!" }
+      ]
+    },
+    {
+      "id": "adult.vo.sprint", "product": "adult", "type": "voice", "event": "enemy.sprint", "trigger": "existing",
+      "priority": "P2", "cooldownS": 25, "durationS": 1.5, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "adult-operator", "file": "vo/sprint",
+      "notes": "Ersätter talsyntesens \"Run!\". Se säkerhetsnot i AUDIO-DESIGN.md om ordet 'run'.",
+      "variants": [
+        { "n": 1, "text": "Sprinter on your trail!" },
+        { "n": 2, "text": "One of them is sprinting toward you." }
+      ]
+    },
+    {
+      "id": "adult.vo.checkpoint", "product": "adult", "type": "voice", "event": "objective.checkpoint", "trigger": "existing",
+      "priority": "P3", "cooldownS": 0, "durationS": 2, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "adult-operator", "file": "vo/checkpoint",
+      "notes": "Ersätter talsyntesens \"Checkpoint\". Spelas efter adult.sfx.checkpoint.",
+      "variants": [
+        { "n": 1, "text": "Checkpoint secured." },
+        { "n": 2, "text": "Good. Checkpoint confirmed." },
+        { "n": 3, "text": "Checkpoint reached. On to the next one." }
+      ]
+    },
+    {
+      "id": "adult.vo.all_checkpoints", "product": "adult", "type": "voice", "event": "objective.all_checkpoints", "trigger": "existing",
+      "priority": "P3", "cooldownS": 0, "durationS": 2.5, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "adult-operator", "file": "vo/all-checkpoints",
+      "variants": [
+        { "n": 1, "text": "All checkpoints secured. Head home." },
+        { "n": 2, "text": "That's the last one. Get back home." }
+      ]
+    },
+    {
+      "id": "adult.vo.extraction_open", "product": "adult", "type": "voice", "event": "extraction.opened", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 0, "durationS": 3, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "adult-operator", "file": "vo/extraction-open",
+      "variants": [
+        { "n": 1, "text": "Extraction point identified. Head there now." },
+        { "n": 2, "text": "Evac is open. Get to the pickup." }
+      ]
+    },
+    {
+      "id": "adult.vo.extraction_unavailable", "product": "adult", "type": "voice", "event": "extraction.unavailable", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 0, "durationS": 3, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "adult-operator", "file": "vo/extraction-unavailable",
+      "notes": "Granska texten mot regeln: utan extraction slutar Survival som 'failed' när tiden går ut.",
+      "variants": [
+        { "n": 1, "text": "No safe extraction available. Stay alive, survivor." }
+      ]
+    },
+    {
+      "id": "adult.vo.extraction_soon", "product": "adult", "type": "voice", "event": "extraction.soon", "trigger": "proposed",
+      "priority": "P1", "cooldownS": 0, "durationS": 2.5, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "adult-operator", "file": "vo/extraction-soon",
+      "variants": [
+        { "n": 1, "text": "Extraction opens in one minute. Stay alive." }
+      ]
+    },
+    {
+      "id": "adult.vo.extraction_hold", "product": "adult", "type": "voice", "event": "extraction.holding", "trigger": "proposed",
+      "priority": "P1", "cooldownS": 20, "durationS": 2, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "adult-operator", "file": "vo/extraction-hold",
+      "variants": [
+        { "n": 1, "text": "You're at the pickup. Hold position." }
+      ]
+    },
+    {
+      "id": "adult.vo.victory", "product": "adult", "type": "voice", "event": "match.won", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 0, "durationS": 3, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "adult-operator", "file": "vo/victory",
+      "notes": "Mission och A TO B. Survival med extraction använder adult.vo.extracted.",
+      "variants": [
+        { "n": 1, "text": "You made it. Good work, survivor." },
+        { "n": 2, "text": "Mission complete. You're safe." }
+      ]
+    },
+    {
+      "id": "adult.vo.extracted", "product": "adult", "type": "voice", "event": "match.won", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 0, "durationS": 3, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "adult-operator", "file": "vo/extracted",
+      "variants": [
+        { "n": 1, "text": "Extraction confirmed. You're out. Well done." },
+        { "n": 2, "text": "Wheels up. You survived." }
+      ]
+    },
+    {
+      "id": "adult.vo.captured", "product": "adult", "type": "voice", "event": "match.captured", "trigger": "existing",
+      "priority": "P1", "cooldownS": 0, "durationS": 2.5, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "adult-operator", "file": "vo/captured",
+      "notes": "Ersätter talsyntesens \"Captured\" (700 ms efter skriket).",
+      "variants": [
+        { "n": 1, "text": "Survivor down. I repeat, survivor down." },
+        { "n": 2, "text": "We've lost you. You've been caught." }
+      ]
+    },
+    {
+      "id": "adult.vo.time_up", "product": "adult", "type": "voice", "event": "match.time_up", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 0, "durationS": 2.5, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "adult-operator", "file": "vo/time-up",
+      "variants": [
+        { "n": 1, "text": "Time's up. Mission failed." },
+        { "n": 2, "text": "Out of time, survivor. We couldn't get you out." }
+      ]
+    },
+    {
+      "id": "adult.vo.time_warning", "product": "adult", "type": "voice", "event": "time.warning", "trigger": "proposed",
+      "priority": "P2", "cooldownS": 0, "durationS": 2, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "adult-operator", "file": "vo/time-warning",
+      "notes": "Variant efter kvarvarande minuter.",
+      "variants": [
+        { "n": 5, "text": "Five minutes remaining." },
+        { "n": 1, "text": "One minute left. Make it count." }
+      ]
+    },
+    {
+      "id": "adult.vo.gps_lost", "product": "adult", "type": "voice", "event": "gps.lost_long", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 120, "durationS": 3, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "adult-operator", "file": "vo/gps-lost",
+      "notes": "Motorn stoppar klocka och zombier när GPS saknas, därför 'on hold'.",
+      "variants": [
+        { "n": 1, "text": "I've lost your signal. Everything is on hold until it's back." }
+      ]
+    },
+    {
+      "id": "adult.vo.gps_restored", "product": "adult", "type": "voice", "event": "gps.restored", "trigger": "proposed",
+      "priority": "P1", "cooldownS": 60, "durationS": 2, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "adult-operator", "file": "vo/gps-restored",
+      "variants": [
+        { "n": 1, "text": "Signal restored. I've got you again." }
+      ]
+    },
+    {
+      "id": "adult.vo.offnet_entered", "product": "adult", "type": "voice", "event": "offnet.entered", "trigger": "existing-silent",
+      "priority": "P2", "cooldownS": 30, "durationS": 3, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "adult-operator", "file": "vo/offnet-entered",
+      "notes": "Bara cykel.",
+      "variants": [
+        { "n": 1, "text": "You're off the road network. Get back on a road." }
+      ]
+    },
+    {
+      "id": "adult.vo.offnet_exposed", "product": "adult", "type": "voice", "event": "offnet.exposed", "trigger": "existing-silent",
+      "priority": "P0", "cooldownS": 30, "durationS": 2.5, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "adult-operator", "file": "vo/offnet-exposed",
+      "notes": "Bara cykel.",
+      "variants": [
+        { "n": 1, "text": "They've found you. Back to the road, now." }
+      ]
+    },
+    {
+      "id": "adult.vo.offnet_left", "product": "adult", "type": "voice", "event": "offnet.left", "trigger": "existing-silent",
+      "priority": "P3", "cooldownS": 30, "durationS": 1.5, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "adult-operator", "file": "vo/offnet-left",
+      "notes": "Bara cykel.",
+      "variants": [
+        { "n": 1, "text": "Back on the network. Good." }
+      ]
+    },
+    {
+      "id": "adult.vo.paused_away", "product": "adult", "type": "voice", "event": "app.paused_away", "trigger": "existing-silent",
+      "priority": "P3", "cooldownS": 0, "durationS": 3, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "adult-operator", "file": "vo/paused-away",
+      "notes": "Spelas när appen kommer tillbaka och spelet har pausats (lång frånvaro eller fryst app).",
+      "variants": [
+        { "n": 1, "text": "You were gone too long. We're on hold. Continue when you're ready." }
+      ]
+    },
+    {
+      "id": "adult.enemy.growl", "product": "adult", "type": "enemy", "event": "enemy.first_contact", "trigger": "existing",
+      "priority": "P2", "cooldownS": 12, "durationS": 1.2, "volume": 0.7, "interrupts": "none", "random": true,
+      "file": "enemy/growl", "sfx": { "promptInfluence": 0.6 },
+      "notes": "Ersätter public/audio/zombie-near.wav.",
+      "variants": [
+        { "n": 1, "text": "Low guttural zombie growl, close by, wet rasping throat, single breath, horror game, no music" },
+        { "n": 2, "text": "Hungry zombie snarl rising then falling, hoarse and menacing, dry outdoor acoustics, horror game, no music" },
+        { "n": 3, "text": "Raspy rattling zombie breath with a short low moan, close and unsettling, no music" }
+      ]
+    },
+    {
+      "id": "adult.enemy.distant_scream", "product": "adult", "type": "enemy", "event": "enemy.reveal", "trigger": "proposed",
+      "priority": "P4", "cooldownS": 90, "durationS": 2.5, "volume": 0.45, "interrupts": "none", "random": true,
+      "file": "enemy/distant-scream", "sfx": { "promptInfluence": 0.5 },
+      "notes": "Förslag: motorns 'reveal' (zombierna får spelarens position, var 60–180 s). Atmosfär, får tappas.",
+      "variants": [
+        { "n": 1, "text": "Distant zombie scream echoing between buildings, far away, eerie reverb, no music" },
+        { "n": 2, "text": "Several far-off infected howls answering each other across an empty town, distant, no music" },
+        { "n": 3, "text": "Single distant inhuman shriek fading into wind, far away, no music" }
+      ]
+    },
+    {
+      "id": "adult.enemy.sprint_shriek", "product": "adult", "type": "enemy", "event": "enemy.sprint", "trigger": "existing",
+      "priority": "P2", "cooldownS": 25, "durationS": 1.5, "volume": 0.9, "interrupts": "lower", "random": true,
+      "file": "enemy/sprint-shriek", "sfx": { "promptInfluence": 0.6 },
+      "notes": "Ersätter public/audio/sprint-shriek.wav.",
+      "variants": [
+        { "n": 1, "text": "Zombie breaks into a sprint, sharp aggressive shriek with fast running footsteps on gravel, no music" },
+        { "n": 2, "text": "Short piercing infected howl followed by rapid footsteps approaching, no music" }
+      ]
+    },
+    {
+      "id": "adult.enemy.capture", "product": "adult", "type": "enemy", "event": "match.captured", "trigger": "existing",
+      "priority": "P1", "cooldownS": 0, "durationS": 1.8, "volume": 0.9, "interrupts": "lower", "random": false,
+      "file": "enemy/capture", "sfx": { "promptInfluence": 0.6 },
+      "notes": "Ersätter public/audio/captured-scream.wav. Inga kroppsljud eller gore.",
+      "variants": [
+        { "n": 1, "text": "Zombie lunges with a vicious snarl and a burst of radio static cutting out, cinematic horror sting, no gore" }
+      ]
+    },
+    {
+      "id": "adult.enemy.jump_scream", "product": "adult", "type": "enemy", "event": "scare.jump", "trigger": "existing",
+      "priority": "P4", "cooldownS": 240, "durationS": 1.2, "volume": 0.85, "interrupts": "none", "random": false,
+      "file": "enemy/jump-scream", "sfx": { "promptInfluence": 0.6 },
+      "notes": "Ersätter public/audio/jump-scream.wav. Se säkerhetsnot: får aldrig avbryta tal, och volymen är begränsad.",
+      "variants": [
+        { "n": 1, "text": "Sudden zombie screech right next to the listener, short and sharp, horror jump scare sting, no music" }
+      ]
+    },
+    {
+      "id": "adult.sfx.radio_in", "product": "adult", "type": "effect", "event": "voice.chain", "trigger": "existing",
+      "priority": "P4", "cooldownS": 0, "durationS": 0.5, "volume": 0.5, "interrupts": "none", "random": true,
+      "file": "sfx/radio-in", "sfx": { "promptInfluence": 0.7 },
+      "notes": "Spelas direkt före varje operatörsreplik (del av röstkedjan, inte en egen händelse).",
+      "variants": [
+        { "n": 1, "text": "Short walkie-talkie squelch click, radio transmission start, clean, no voice" },
+        { "n": 2, "text": "Military radio key-up chirp with a brief burst of static, no voice" }
+      ]
+    },
+    {
+      "id": "adult.sfx.radio_out", "product": "adult", "type": "effect", "event": "voice.chain", "trigger": "existing",
+      "priority": "P4", "cooldownS": 0, "durationS": 0.5, "volume": 0.4, "interrupts": "none", "random": false,
+      "file": "sfx/radio-out", "sfx": { "promptInfluence": 0.7 },
+      "variants": [
+        { "n": 1, "text": "Short walkie-talkie release squelch, radio transmission end, soft static tail, no voice" }
+      ]
+    },
+    {
+      "id": "adult.sfx.warning", "product": "adult", "type": "effect", "event": "enemy.contact", "trigger": "existing-silent",
+      "priority": "P0", "cooldownS": 8, "durationS": 1, "volume": 0.9, "interrupts": "lower", "random": false,
+      "file": "sfx/warning", "sfx": { "promptInfluence": 0.7 },
+      "variants": [
+        { "n": 1, "text": "Urgent two-tone electronic warning beep, military proximity alarm, repeated twice, clean, no music" }
+      ]
+    },
+    {
+      "id": "adult.sfx.tension", "product": "adult", "type": "effect", "event": "enemy.close_tension", "trigger": "existing",
+      "priority": "P4", "cooldownS": 45, "durationS": 2.5, "volume": 0.6, "interrupts": "none", "random": true,
+      "file": "sfx/tension", "sfx": { "promptInfluence": 0.5 },
+      "notes": "Ersätter public/audio/tension.wav.",
+      "variants": [
+        { "n": 1, "text": "Low ominous cinematic drone swell with a slow heartbeat pulse, tense, horror" },
+        { "n": 2, "text": "Dark rising braam with dissonant strings, short, tense horror sting" }
+      ]
+    },
+    {
+      "id": "adult.sfx.checkpoint", "product": "adult", "type": "effect", "event": "objective.checkpoint", "trigger": "existing",
+      "priority": "P3", "cooldownS": 0, "durationS": 1, "volume": 0.9, "interrupts": "lower", "random": false,
+      "file": "sfx/checkpoint", "sfx": { "promptInfluence": 0.7 },
+      "notes": "Ersätter public/audio/checkpoint.wav. Ska vara tydlig även utomhus.",
+      "variants": [
+        { "n": 1, "text": "Clear confirmation tone, two rising digital notes, tactical interface success sound, bright, short" }
+      ]
+    },
+    {
+      "id": "adult.sfx.extraction_open", "product": "adult", "type": "effect", "event": "extraction.opened", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 0, "durationS": 2.5, "volume": 0.9, "interrupts": "lower", "random": false,
+      "file": "sfx/extraction-open", "sfx": { "promptInfluence": 0.6 },
+      "variants": [
+        { "n": 1, "text": "Distant helicopter rotor approaching with a radio beacon ping, cinematic, no music" }
+      ]
+    },
+    {
+      "id": "adult.sfx.victory", "product": "adult", "type": "effect", "event": "match.won", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 0, "durationS": 3, "volume": 0.9, "interrupts": "lower", "random": false,
+      "file": "sfx/victory", "sfx": { "promptInfluence": 0.5 },
+      "variants": [
+        { "n": 1, "text": "Helicopter lifting off and flying away, rotor fading, with a soft hopeful synth swell, cinematic" }
+      ]
+    },
+    {
+      "id": "adult.sfx.game_over", "product": "adult", "type": "effect", "event": "match.time_up", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 0, "durationS": 2.5, "volume": 0.9, "interrupts": "lower", "random": false,
+      "file": "sfx/game-over", "sfx": { "promptInfluence": 0.5 },
+      "variants": [
+        { "n": 1, "text": "Deep cinematic boom followed by radio static fading to silence, bleak, horror game over" }
+      ]
+    },
+    {
+      "id": "adult.sfx.gps_lost", "product": "adult", "type": "effect", "event": "gps.lost_long", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 120, "durationS": 1, "volume": 0.6, "interrupts": "none", "random": false,
+      "file": "sfx/gps-lost", "sfx": { "promptInfluence": 0.7 },
+      "variants": [
+        { "n": 1, "text": "Radio signal dropping out, short burst of static with a falling electronic tone" }
+      ]
+    },
+    {
+      "id": "adult.amb.wind", "product": "adult", "type": "ambient", "event": "match.playing", "trigger": "proposed",
+      "priority": "P4", "cooldownS": 0, "durationS": 20, "volume": 0.2, "interrupts": "none", "random": false,
+      "file": "amb/wind", "sfx": { "promptInfluence": 0.4, "loop": true },
+      "notes": "Valfri bakgrund. Rekommenderas AV som standard (batteri, uppmärksamhet). Endast efter fälttest.",
+      "variants": [
+        { "n": 1, "text": "Desolate abandoned town ambience, cold wind, distant creaking metal, very sparse, seamless loop, no music" }
+      ]
+    },
+
+    {
+      "id": "mini.vo.game_start", "product": "mini", "type": "voice", "event": "match.start", "trigger": "existing",
+      "priority": "P1", "cooldownS": 0, "durationS": 3, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "mini-narrator", "file": "vo/game-start",
+      "notes": "Ersätter talsyntesens \"Game on\".",
+      "variants": [
+        { "n": 1, "text": "Ready, explorer? Your adventure starts now!" },
+        { "n": 2, "text": "Here we go, explorer! Let's have an adventure!" },
+        { "n": 3, "text": "Adventure time! Off we go!" }
+      ]
+    },
+    {
+      "id": "mini.vo.resume", "product": "mini", "type": "voice", "event": "match.resume", "trigger": "existing-silent",
+      "priority": "P3", "cooldownS": 10, "durationS": 2, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "mini-narrator", "file": "vo/resume",
+      "variants": [
+        { "n": 1, "text": "And we're back! Let's keep exploring!" },
+        { "n": 2, "text": "Adventure on!" }
+      ]
+    },
+    {
+      "id": "mini.vo.pause", "product": "mini", "type": "voice", "event": "match.pause", "trigger": "existing-silent",
+      "priority": "P3", "cooldownS": 10, "durationS": 2, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "mini-narrator", "file": "vo/pause",
+      "variants": [
+        { "n": 1, "text": "Time for a little break!" }
+      ]
+    },
+    {
+      "id": "mini.vo.first_contact", "product": "mini", "type": "voice", "event": "enemy.first_contact", "trigger": "existing-silent",
+      "priority": "P2", "cooldownS": 0, "durationS": 2.5, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "mini-narrator", "file": "vo/first-contact",
+      "variants": [
+        { "n": 1, "text": "Ooh, I hear something silly out there!" },
+        { "n": 2, "text": "Look out, explorer, the little monsters are awake!" }
+      ]
+    },
+    {
+      "id": "mini.vo.enemy_nearby", "product": "mini", "type": "voice", "event": "enemy.approach", "trigger": "existing",
+      "priority": "P2", "cooldownS": 30, "durationS": 3, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "mini-narrator", "file": "vo/enemy-nearby",
+      "notes": "Ersätter talsyntesens \"Watch out!\" (200 m).",
+      "variants": [
+        { "n": 1, "text": "Uh-oh! Some little monsters are getting closer!" },
+        { "n": 2, "text": "Watch out, explorer! Someone silly is coming!" },
+        { "n": 3, "text": "Psst! A little monster is nearby. Keep going!" }
+      ]
+    },
+    {
+      "id": "mini.vo.nearby_kind", "product": "mini", "type": "voice", "event": "enemy.approach", "trigger": "proposed",
+      "priority": "P2", "cooldownS": 30, "durationS": 3, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "mini-narrator", "file": "vo/nearby-kind",
+      "notes": "Förslag: välj replik efter närmaste fiendes typ (enemyKind). Alternativ till mini.vo.enemy_nearby, inte samtidigt.",
+      "variants": [
+        { "n": 1, "key": "cute-zombie", "text": "A cute zombie is waddling your way!" },
+        { "n": 2, "key": "rainbow-ghost", "text": "A rainbow ghost is floating closer!" },
+        { "n": 3, "key": "rainbow-spider", "text": "A rainbow spider is scuttling nearby!" },
+        { "n": 4, "key": "mini-monster", "text": "A mini monster is bouncing your way!" }
+      ]
+    },
+    {
+      "id": "mini.vo.danger_close", "product": "mini", "type": "voice", "event": "enemy.contact", "trigger": "existing-silent",
+      "priority": "P0", "cooldownS": 8, "durationS": 2, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "mini-narrator", "file": "vo/danger-close",
+      "variants": [
+        { "n": 1, "text": "Too close! Move away, explorer!" },
+        { "n": 2, "text": "Whoa, scoot away from that one!" }
+      ]
+    },
+    {
+      "id": "mini.vo.sprint", "product": "mini", "type": "voice", "event": "enemy.sprint", "trigger": "existing-silent",
+      "priority": "P2", "cooldownS": 25, "durationS": 2, "volume": 1, "interrupts": "none", "random": true,
+      "voice": "mini-narrator", "file": "vo/sprint",
+      "variants": [
+        { "n": 1, "text": "Whoa, that one is speedy!" },
+        { "n": 2, "text": "Zoom! Someone is in a hurry!" }
+      ]
+    },
+    {
+      "id": "mini.vo.checkpoint", "product": "mini", "type": "voice", "event": "objective.checkpoint", "trigger": "existing",
+      "priority": "P3", "cooldownS": 0, "durationS": 2.5, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "mini-narrator", "file": "vo/checkpoint",
+      "notes": "Ersätter talsyntesens \"Checkpoint\". Spelas efter mini.sfx.checkpoint.",
+      "variants": [
+        { "n": 1, "text": "Awesome! You've reached a checkpoint!" },
+        { "n": 2, "text": "Yay! Checkpoint found!" },
+        { "n": 3, "text": "Great job! That's a checkpoint!" }
+      ]
+    },
+    {
+      "id": "mini.vo.all_checkpoints", "product": "mini", "type": "voice", "event": "objective.all_checkpoints", "trigger": "existing",
+      "priority": "P3", "cooldownS": 0, "durationS": 2.5, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "mini-narrator", "file": "vo/all-checkpoints",
+      "variants": [
+        { "n": 1, "text": "You found them all! Now let's head home!" },
+        { "n": 2, "text": "Every checkpoint done! Time to go home!" }
+      ]
+    },
+    {
+      "id": "mini.vo.extraction_open", "product": "mini", "type": "voice", "event": "extraction.opened", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 0, "durationS": 3, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "mini-narrator", "file": "vo/extraction-open",
+      "variants": [
+        { "n": 1, "text": "The helicopter has landed! Let's go there now!" },
+        { "n": 2, "text": "Your ride is here, explorer! Head to the helicopter!" }
+      ]
+    },
+    {
+      "id": "mini.vo.victory", "product": "mini", "type": "voice", "event": "match.won", "trigger": "existing",
+      "priority": "P1", "cooldownS": 0, "durationS": 3, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "mini-narrator", "file": "vo/victory",
+      "notes": "Ersätter talsyntesens \"You made it!\". Spelas efter mini.sfx.victory.",
+      "variants": [
+        { "n": 1, "text": "You did it! What an amazing adventure!" },
+        { "n": 2, "text": "Hooray! You made it, explorer!" }
+      ]
+    },
+    {
+      "id": "mini.vo.caught", "product": "mini", "type": "voice", "event": "match.captured", "trigger": "existing",
+      "priority": "P1", "cooldownS": 0, "durationS": 3, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "mini-narrator", "file": "vo/caught",
+      "notes": "Ersätter talsyntesens \"Caught! Try again!\". Vänlig, aldrig sorglig.",
+      "variants": [
+        { "n": 1, "text": "Oh no, they caught you! Want to try again?" },
+        { "n": 2, "text": "Gotcha! The little monsters win this time. Let's try again!" }
+      ]
+    },
+    {
+      "id": "mini.vo.time_up", "product": "mini", "type": "voice", "event": "match.time_up", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 0, "durationS": 2.5, "volume": 1, "interrupts": "lower", "random": true,
+      "voice": "mini-narrator", "file": "vo/time-up",
+      "variants": [
+        { "n": 1, "text": "Time's up! Great try, explorer!" },
+        { "n": 2, "text": "That's the end of the clock. Nice exploring!" }
+      ]
+    },
+    {
+      "id": "mini.vo.time_warning", "product": "mini", "type": "voice", "event": "time.warning", "trigger": "proposed",
+      "priority": "P2", "cooldownS": 0, "durationS": 2, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "mini-narrator", "file": "vo/time-warning",
+      "variants": [
+        { "n": 1, "text": "Just one minute left, explorer!" }
+      ]
+    },
+    {
+      "id": "mini.vo.gps_lost", "product": "mini", "type": "voice", "event": "gps.lost_long", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 120, "durationS": 3, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "mini-narrator", "file": "vo/gps-lost",
+      "variants": [
+        { "n": 1, "text": "Hmm, I can't find you right now. Let's wait a moment." }
+      ]
+    },
+    {
+      "id": "mini.vo.gps_restored", "product": "mini", "type": "voice", "event": "gps.restored", "trigger": "proposed",
+      "priority": "P1", "cooldownS": 60, "durationS": 2, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "mini-narrator", "file": "vo/gps-restored",
+      "variants": [
+        { "n": 1, "text": "Found you! Let's keep going!" }
+      ]
+    },
+    {
+      "id": "mini.vo.paused_away", "product": "mini", "type": "voice", "event": "app.paused_away", "trigger": "existing-silent",
+      "priority": "P3", "cooldownS": 0, "durationS": 3, "volume": 1, "interrupts": "lower", "random": false,
+      "voice": "mini-narrator", "file": "vo/paused-away",
+      "variants": [
+        { "n": 1, "text": "Welcome back! The game took a little nap. Press continue when you're ready." }
+      ]
+    },
+    {
+      "id": "mini.enemy.cute_zombie", "product": "mini", "type": "enemy", "event": "enemy.approach", "trigger": "proposed",
+      "priority": "P4", "cooldownS": 15, "durationS": 1, "volume": 0.6, "interrupts": "none", "random": true,
+      "file": "enemy/cute-zombie", "sfx": { "promptInfluence": 0.6 },
+      "notes": "Spelas för närmaste fiende av typen cute-zombie. Kan i dag kopplas till 'zombie'-cue (första närkontakt) som är tyst i Mini.",
+      "variants": [
+        { "n": 1, "text": "Small comic cartoon zombie groan, goofy and sleepy, 'uhhh' sound, kids cartoon, soft volume, not scary" },
+        { "n": 2, "text": "Silly little cartoon zombie mumble with a hiccup, playful, kids game, not scary" },
+        { "n": 3, "text": "Tiny clumsy cartoon zombie yawn and grumble, funny, kids cartoon, not scary" }
+      ]
+    },
+    {
+      "id": "mini.enemy.rainbow_ghost", "product": "mini", "type": "enemy", "event": "enemy.approach", "trigger": "proposed",
+      "priority": "P4", "cooldownS": 15, "durationS": 1.2, "volume": 0.6, "interrupts": "none", "random": true,
+      "file": "enemy/rainbow-ghost", "sfx": { "promptInfluence": 0.6 },
+      "variants": [
+        { "n": 1, "text": "Soft airy playful cartoon ghost 'woooo' with a sparkly twinkle, gentle, kids game, not scary" },
+        { "n": 2, "text": "Friendly floating ghost giggle with a breathy whoosh and soft chimes, kids cartoon, not scary" },
+        { "n": 3, "text": "Gentle magical ghost hum gliding up and down with fairy sparkles, kids game, not scary" }
+      ]
+    },
+    {
+      "id": "mini.enemy.rainbow_spider", "product": "mini", "type": "enemy", "event": "enemy.approach", "trigger": "proposed",
+      "priority": "P4", "cooldownS": 15, "durationS": 0.8, "volume": 0.55, "interrupts": "none", "random": true,
+      "file": "enemy/rainbow-spider", "sfx": { "promptInfluence": 0.6 },
+      "variants": [
+        { "n": 1, "text": "Tiny fast cartoon chittering clicks like a happy cricket, playful, kids game, not creepy" },
+        { "n": 2, "text": "Quick little pitter-patter of tiny cartoon feet with cheerful chirps, kids cartoon, not creepy" },
+        { "n": 3, "text": "Small giggly cartoon bug trill, bouncy and fast, kids game, not creepy" }
+      ]
+    },
+    {
+      "id": "mini.enemy.mini_monster", "product": "mini", "type": "enemy", "event": "enemy.approach", "trigger": "proposed",
+      "priority": "P4", "cooldownS": 15, "durationS": 1, "volume": 0.6, "interrupts": "none", "random": true,
+      "file": "enemy/mini-monster", "sfx": { "promptInfluence": 0.6 },
+      "variants": [
+        { "n": 1, "text": "Bubbly cartoon monster gurgle with a happy squeak, kids game, cute, not scary" },
+        { "n": 2, "text": "Little round monster boing and blubber, silly and friendly, kids cartoon, not scary" },
+        { "n": 3, "text": "Cute small monster 'rawr' that sounds like a playful puppy, kids game, not scary" }
+      ]
+    },
+    {
+      "id": "mini.sfx.warning", "product": "mini", "type": "effect", "event": "enemy.approach", "trigger": "existing",
+      "priority": "P2", "cooldownS": 30, "durationS": 0.8, "volume": 0.6, "interrupts": "none", "random": false,
+      "file": "sfx/warning", "sfx": { "promptInfluence": 0.7 },
+      "notes": "Mjuk signal före mini.vo.enemy_nearby. Även för enemy.contact (P0) med kortare spärr.",
+      "variants": [
+        { "n": 1, "text": "Gentle two-note marimba alert going up, soft and friendly, kids game notification, no music bed" }
+      ]
+    },
+    {
+      "id": "mini.sfx.checkpoint", "product": "mini", "type": "effect", "event": "objective.checkpoint", "trigger": "existing",
+      "priority": "P3", "cooldownS": 0, "durationS": 1, "volume": 0.9, "interrupts": "lower", "random": false,
+      "file": "sfx/checkpoint", "sfx": { "promptInfluence": 0.7 },
+      "notes": "Ersätter apps/mini/public/audio/checkpoint.wav.",
+      "variants": [
+        { "n": 1, "text": "Bright cheerful sparkle chime, three rising bell notes, happy kids game reward sound" }
+      ]
+    },
+    {
+      "id": "mini.sfx.game_start", "product": "mini", "type": "effect", "event": "match.start", "trigger": "existing",
+      "priority": "P1", "cooldownS": 0, "durationS": 1.5, "volume": 0.8, "interrupts": "lower", "random": false,
+      "file": "sfx/game-start", "sfx": { "promptInfluence": 0.6 },
+      "variants": [
+        { "n": 1, "text": "Short cheerful adventure start jingle, ukulele and xylophone, upbeat kids game" }
+      ]
+    },
+    {
+      "id": "mini.sfx.extraction_open", "product": "mini", "type": "effect", "event": "extraction.opened", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 0, "durationS": 2, "volume": 0.8, "interrupts": "lower", "random": false,
+      "file": "sfx/extraction-open", "sfx": { "promptInfluence": 0.6 },
+      "variants": [
+        { "n": 1, "text": "Friendly toy helicopter landing with magical twinkles, cartoon, kids game, soft" }
+      ]
+    },
+    {
+      "id": "mini.sfx.victory", "product": "mini", "type": "effect", "event": "match.won", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 0, "durationS": 2.5, "volume": 0.85, "interrupts": "lower", "random": false,
+      "file": "sfx/victory", "sfx": { "promptInfluence": 0.6 },
+      "variants": [
+        { "n": 1, "text": "Short happy victory fanfare with toy trumpets, xylophone and a little cheer, kids game, not too loud" }
+      ]
+    },
+    {
+      "id": "mini.sfx.caught", "product": "mini", "type": "effect", "event": "match.captured", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 0, "durationS": 1.2, "volume": 0.7, "interrupts": "lower", "random": false,
+      "file": "sfx/caught", "sfx": { "promptInfluence": 0.6 },
+      "variants": [
+        { "n": 1, "text": "Soft cartoon boing followed by a gentle descending slide whistle, funny and friendly, kids game, not sad" }
+      ]
+    },
+    {
+      "id": "mini.sfx.gps_lost", "product": "mini", "type": "effect", "event": "gps.lost_long", "trigger": "existing-silent",
+      "priority": "P1", "cooldownS": 120, "durationS": 0.7, "volume": 0.6, "interrupts": "none", "random": false,
+      "file": "sfx/gps-lost", "sfx": { "promptInfluence": 0.7 },
+      "variants": [
+        { "n": 1, "text": "Soft curious cartoon 'bloop' with a questioning upward pitch, kids game" }
+      ]
+    }
+  ]
+}

@@ -12,3 +12,8 @@ e2e/out-prod*
 e2e/out-fix*
 e2e/out-atob
 e2e/out-capture
+
+# ElevenLabs-tagningar för granskning (godkända filer kopieras till public/ och checkas in där)
+audio-production/output/*
+!audio-production/output/.gitkeep
+.env*.local
