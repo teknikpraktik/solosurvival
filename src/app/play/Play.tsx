@@ -143,6 +143,7 @@ export default function Play() {
   const scare = finished && m.result === "infected" && !scareDone;
   const home = m.objectives?.next;
   const dHome = home && view.position ? Math.round(live?.distanceTo(home) ?? 0) : null;
+  const dExtraction = m.extraction ? (live?.distanceTo(m.extraction) ?? null) : null;
   const remaining = Math.max(0, m.limitS - m.elapsedS);
   const ready = m.elapsedS < 0.5;
   const canResume = !m.needsFix && !m.gpsLost;
@@ -181,7 +182,7 @@ export default function Play() {
           {m.objectives ? (
             <span className="pill">{objectiveLabel(m.objectives.progress)}{dHome !== null ? ` · ${dHome} m` : ""}{m.objectives.holdS > 0 ? ` · ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
           ) : (
-            <span className="pill">{m.extraction ? "Extraction open" : m.phase === "head_start" ? `Head start ${fmtTime(m.headStartLeftS)}` : "Survive"}</span>
+            <span className="pill">{m.extraction ? `Extraction open${dExtraction !== null ? ` · ${fmtDist(dExtraction)}` : ""}` : m.phase === "head_start" ? `Head start ${fmtTime(m.headStartLeftS)}` : "Survive"}</span>
           )}
         </div>
         {!finished && (

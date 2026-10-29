@@ -176,7 +176,7 @@ export default function GameMap(props: GameMapProps) {
     const d = document.createElement("div");
     d.className = "goalmark";
     d.setAttribute("role", "img");
-    d.setAttribute("aria-label", "Extraction point");
+    d.setAttribute("aria-label", "Extraction point (helicopter)");
     d.innerHTML = `${EXTRACTION_SVG}<span class="goallabel">EXIT</span>`;
     extractionMarker.current = new Marker({ element: d }).setLngLat([extraction.lon, extraction.lat]).addTo(map);
     return () => { extractionMarker.current?.remove(); extractionMarker.current = null; };

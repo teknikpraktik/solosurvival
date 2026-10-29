@@ -39,11 +39,16 @@ export const HOME_SVG = `<svg viewBox="0 0 40 40" width="42" height="42" xmlns="
 <path d="M13 19.5V29h5.5v-6h3v6H27v-9.5L20 13.5z" fill="#ffffff"/>
 </svg>`;
 
-/** Extraction (Survival): flagga på mål-skiva i grönt, med texten EXIT i etiketten. */
+/** Extraction (Survival): helikopter på grön mål-skiva (rotor, hytt med fönster, stjärtbom och stjärtrotor, medar), med texten EXIT i etiketten. */
 export const EXTRACTION_SVG = `<svg viewBox="0 0 40 40" width="42" height="42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 <circle cx="20" cy="20" r="18" fill="#15803d" stroke="#ffffff" stroke-width="2.6"/>
-<path d="M14 30V10" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round"/>
-<path d="M14.5 11h13l-3.6 4.6 3.6 4.6h-13z" fill="#ffffff"/>
+<path d="M7.5 11.2h21" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+<path d="M17.2 11.2v4" stroke="#ffffff" stroke-width="2"/>
+<ellipse cx="16.6" cy="19.8" rx="6.8" ry="5" fill="#ffffff"/>
+<path d="M11.4 19.2c0-2 1.3-3.3 3.2-3.3h1.6v4.2h-4.8z" fill="#15803d"/>
+<path d="M22.4 18.1l9 .8v1.7l-9 1.2z" fill="#ffffff"/>
+<path d="M31.6 15.6v7.6" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+<path d="M13.4 24.5l-.9 3.4M20 24.5l.9 3.4M9.8 28h14.4" stroke="#ffffff" stroke-width="1.7" stroke-linecap="round"/>
 </svg>`;
 
 /** Pil i kartans kant mot nästa mål utanför bild: liten blå vinkel (samma färg som nästa mål) med mörk kontur, spetsen uppåt (roteras med CSS). */
