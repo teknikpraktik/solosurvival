@@ -13,7 +13,7 @@ export const RESULT_LABEL: Record<string, string> = {
   survived: "You made it!", infected: "Caught", failed: "Out of time", aborted: "Stopped", incomplete: "Not finished", active: "In progress", interrupted: "Stopped (could not continue)",
 };
 
-/** Short safety text shown before every game. Never claims that the game makes anything safe. */
+/** Short safety text (HOW TO PLAY). Never claims that the game makes anything safe. */
 export const SAFETY_POINTS = [
   "Play only in an area that a grown-up has said is OK.",
   "Watch out for cars, bikes and other people. Look up, not at the phone, when you move.",

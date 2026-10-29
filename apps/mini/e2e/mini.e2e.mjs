@@ -82,10 +82,8 @@ try {
   const body = await page.locator("main").innerText();
   check("bara gång: inget cykelval", (await page.getByRole("button", { name: /bike|cycl/i }).count()) === 0 && !/On Bike|Activity/.test(body) && (await page.getByRole("group", { name: "Activity" }).count()) === 0);
   check("tre spellägen erbjuds", ["CHECKPOINTS", "A TO B", "SURVIVAL"].every((t) => body.includes(t)));
-  check("säkerhetsinstruktion visas", body.includes("Before you play") && /traffic/i.test(body));
-  check("start kräver säkerhetsrutan", await page.getByRole("button", { name: "TICK THE SAFETY BOX FIRST" }).isDisabled());
+  check("ingen säkerhetsruta före spelstart (borttagen på begäran)", !body.includes("Before you play") && (await page.getByRole("checkbox", { name: /watch out for traffic/i }).count()) === 0);
   await page.screenshot({ path: `${OUT}/02-new.png`, fullPage: true });
-  await page.getByLabel(/I will watch out for traffic/).check();
   await page.getByRole("button", { name: "SHOW COURSE" }).click();
   await page.getByText(/checkpoints \+ home/).first().waitFor({ timeout: 60000 });
   await page.waitForSelector('[data-testid="map"][data-loaded="true"]', { timeout: 20000 });
@@ -124,7 +122,6 @@ try {
   await newGame();
   await page.getByRole("button", { name: "A TO B" }).click();
   await page.waitForSelector('[data-testid="pickmap"] [data-testid="map"][data-loaded="true"]', { timeout: 20000 });
-  await page.getByLabel(/I will watch out for traffic/).check();
   await page.locator('[data-testid="pickmap"]').scrollIntoViewIfNeeded();
   // Some taps land in water or on a building and are rejected (as in OUTBREAK): try a few points.
   for (const [dx, dy] of [[0.3, -0.3], [-0.3, -0.3], [0.3, 0.3], [-0.3, 0.3], [0.1, -0.4], [-0.4, 0]]) {
@@ -146,7 +143,6 @@ try {
   await newGame();
   await page.getByRole("button", { name: "SURVIVAL" }).click();
   check("SURVIVAL: helikoptern beskrivs", /helicopter/i.test(await page.locator("main").innerText()));
-  await page.getByLabel(/I will watch out for traffic/).check();
   await page.getByRole("button", { name: "START", exact: true }).click();
   const k3 = await playFewSeconds("SURVIVAL");
   check("SURVIVAL: flera fiendetyper i samma match", new Set(k3).size >= 2, [...new Set(k3)].join(", "));

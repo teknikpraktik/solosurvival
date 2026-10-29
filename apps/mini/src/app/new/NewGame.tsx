@@ -16,7 +16,7 @@ import { haversineM } from "@/geo/geometry";
 import { errorText } from "@/gps/provider/provider";
 import { matchDurationS } from "@/play/match";
 import { MINI_PROFILE } from "../../config/product";
-import { DIFFICULTY_LABEL, MODE_HELP, MODE_LABEL, SAFETY_NOTE, SAFETY_POINTS } from "../../client/text";
+import { DIFFICULTY_LABEL, MODE_HELP, MODE_LABEL } from "../../client/text";
 import { cuesEnabled, setCuesEnabled, unlockAudio } from "../../client/sounds";
 import { MINI_MAP_STYLE } from "../../client/mapStyle";
 import { useSessionCtx, useSessionView } from "../../client/SessionProvider";
@@ -47,8 +47,6 @@ export default function NewGame() {
   const [busy, setBusy] = useState(false);
   const [starting, setStarting] = useState(false);
   const [pickProblem, setPickProblem] = useState<string | null>(null);
-  // The safety promise is asked for before every game (not remembered).
-  const [safe, setSafe] = useState(false);
 
   useEffect(() => { setCues(cuesEnabled()); }, []);
   useEffect(() => {
@@ -72,7 +70,7 @@ export default function NewGame() {
   }, [view]);
 
   const isAB = p.mode === "escape";
-  const canPrepare = safe && !!session?.currentStart() && (!isAB || !!p.pointB) && !busy && stage !== "preparing";
+  const canPrepare = !!session?.currentStart() && (!isAB || !!p.pointB) && !busy && stage !== "preparing";
   const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
 
   const limit = DISTANCE_LIMITS[ACTIVITY];
@@ -173,21 +171,12 @@ export default function NewGame() {
           {pickProblem && <div className="card warn" role="status">{pickProblem}</div>}
         </div>
       )}
-      <section className="card safety" aria-labelledby="safety-h">
-        <h2 id="safety-h">Before you play</h2>
-        <ul>{SAFETY_POINTS.map((s) => <li key={s}>{s}</li>)}</ul>
-        <div className="muted">{SAFETY_NOTE}</div>
-        <label className="check">
-          <input type="checkbox" checked={safe} onChange={(e) => setSafe(e.target.checked)} />
-          I will watch out for traffic and play where a grown-up said it is OK.
-        </label>
-      </section>
       <label className="muted check">
         <input type="checkbox" checked={cues} onChange={(e) => { setCues(e.target.checked); setCuesEnabled(e.target.checked); }} />
         Sound and vibration (no vibration on iPhone)
       </label>
       <button className="btn primary big" disabled={!canPrepare || starting} onClick={direct ? startDirect : () => run(async () => { unlockAudio(); await session!.prepare(params()); })}>
-        {!safe ? "TICK THE SAFETY BOX FIRST" : direct ? (busy || starting ? "LOADING MAP…" : "START") : isAB && !p.pointB ? "PICK B ON THE MAP" : isAB ? "SHOW ROUTE" : "SHOW COURSE"}
+        {direct ? (busy || starting ? "LOADING MAP…" : "START") : isAB && !p.pointB ? "PICK B ON THE MAP" : isAB ? "SHOW ROUTE" : "SHOW COURSE"}
       </button>
       {!ctx && <div className="muted">Loading…</div>}
     </main>
