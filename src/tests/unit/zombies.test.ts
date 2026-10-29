@@ -250,17 +250,21 @@ describe("svårighetsgrader: fart och antal", () => {
   it("fart per aktivitet och svårighetsgrad (km/h) och antal per nivå", async () => {
     const { resolveRules } = await import("@/config/game-rules");
     const kmh = (a: "walk" | "mtb", d: "easy" | "normal" | "hard") => resolveRules(a, d, 3000).zombieSpeedMps * 3.6;
-    expect([kmh("walk", "easy"), kmh("walk", "normal"), kmh("walk", "hard")]).toEqual([4.5, 7, 13].map((x) => expect.closeTo(x, 5)));
-    expect([kmh("mtb", "easy"), kmh("mtb", "normal"), kmh("mtb", "hard")]).toEqual([9.8, 11.9, 16.8].map((x) => expect.closeTo(x, 5)));
+    expect([kmh("walk", "easy"), kmh("walk", "normal"), kmh("walk", "hard")]).toEqual([3.6, 5.6, 10.4].map((x) => expect.closeTo(x, 5)));
+    expect([kmh("mtb", "easy"), kmh("mtb", "normal"), kmh("mtb", "hard")]).toEqual([7.8, 9.5, 13.4].map((x) => expect.closeTo(x, 5)));
     expect([resolveRules("walk", "easy", 3000).sprintSpeedFactor, resolveRules("walk", "normal", 3000).sprintSpeedFactor, resolveRules("walk", "hard", 3000).sprintSpeedFactor]).toEqual([1.25, 1.4, 1.5]);
+    // Antal (start → max) efter fälttest, 2.7.
+    const counts = (a: "walk" | "mtb") => (["easy", "normal", "hard"] as const).map((d) => { const r = resolveRules(a, d, 3000); return [r.initialZombies, r.maxZombies]; });
+    expect(counts("walk")).toEqual([[4, 10], [6, 12], [12, 20]]);
+    expect(counts("mtb")).toEqual([[7, 14], [10, 18], [10, 20]]);
     for (const a of ["walk", "mtb"] as const) {
       const e = resolveRules(a, "easy", 3000), n = resolveRules(a, "normal", 3000), h = resolveRules(a, "hard", 3000);
-      expect(h.initialZombies).toBeGreaterThanOrEqual(n.initialZombies * 1.9);
-      expect(h.maxZombies).toBeGreaterThanOrEqual(n.maxZombies * 1.9);
+      expect(e.maxZombies).toBeLessThan(n.maxZombies);
+      expect(n.maxZombies).toBeLessThan(h.maxZombies);
       expect(e.initialZombies).toBeLessThan(n.initialZombies);
     }
-    const n = resolveRules("walk", "normal", 3000), h = resolveRules("walk", "hard", 3000);
-    expect([n.initialZombies, n.maxZombies, h.initialZombies, h.maxZombies]).toEqual([6, 18, 12, 36]);
+    // Ett litet område begränsar fortfarande antalet.
+    expect(resolveRules("mtb", "hard", 3000, 8).maxZombies).toBe(8);
   });
 });
 
