@@ -13,10 +13,10 @@ describe("viewZoom", () => {
       expect((h / 2) * mpp(z, 59.4)).toBeCloseTo(BIKE.aheadM, 0);
     }
   });
-  it("gives a sensible side view on a phone (about 0.4–0.5 km on 390 px)", () => {
+  it("gives a sensible side view on a phone (about 0.6–0.8 km on 390 px)", () => {
     const side = 195 * mpp(viewZoom(59.4, 844, BIKE.aheadM), 59.4);
-    expect(side).toBeGreaterThan(380);
-    expect(side).toBeLessThan(520);
+    expect(side).toBeGreaterThan(600);
+    expect(side).toBeLessThan(800);
   });
   it("stays inside the map zoom limits", () => {
     expect(viewZoom(59.4, 100, BIKE.aheadM)).toBeLessThanOrEqual(18);
@@ -43,7 +43,7 @@ describe("viewZoom", () => {
         expect(v.playerY * h * mpp(viewZoom(59.4, h, v.closeAheadM, v.playerY), 59.4)).toBeCloseTo(v.closeAheadM, 0);
       }
     }
-    expect(BIKE.aheadM).toBe(1000);
+    expect(BIKE.aheadM).toBe(1500);
     expect(BIKE.closeAheadM).toBe(300);
   });
   it("zooms in near the next goal and out again when it is taken (next goal far) or gone", () => {

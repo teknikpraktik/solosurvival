@@ -22,9 +22,9 @@ export interface ViewProfile {
   goalExitM: number;
 }
 
-/** On foot is slower than Bike, so it needs fewer metres of view (50 % wider than 400 / 150 m after field testing). */
+/** On foot is slower than Bike, so it needs fewer metres of view (50 % wider than 400 / 150 m after field testing). Bike normal view 50 % wider (1000 → 1500 m) after field test on bike. */
 const FOOT: ViewProfile = { aheadM: 600, closeAheadM: 225, playerY: 0.6, enterM: 100, exitM: 130, goalEnterM: 120, goalExitM: 160 };
-const BIKE: ViewProfile = { aheadM: 1000, closeAheadM: 300, playerY: 0.6, enterM: 200, exitM: 260, goalEnterM: 250, goalExitM: 320 };
+const BIKE: ViewProfile = { aheadM: 1500, closeAheadM: 300, playerY: 0.6, enterM: 200, exitM: 260, goalEnterM: 250, goalExitM: 320 };
 
 export const viewProfile = (a: Activity): ViewProfile => (a === "mtb" ? BIKE : FOOT);
 
