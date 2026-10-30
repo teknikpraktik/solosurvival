@@ -43,8 +43,8 @@ const pressed = (loc) => loc.getAttribute("aria-pressed").then((v) => v === "tru
   // Preview. The emulated GPS sends one fix; send fresh ones as a phone would, so the start position is current.
   for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
   await page.getByRole("button", { name: "SHOW COURSE" }).click();
-  const opened = await page.getByText("Estimated time").waitFor({ timeout: 90000 }).then(() => true, () => false);
-  check("SHOW COURSE opens the course preview (with START)", opened && (await page.locator(".sheet").getByRole("button", { name: "START", exact: true }).count()) === 1, opened ? "" : (await page.locator("main, .sheet").first().innerText()).slice(0, 200));
+  const opened = await page.locator(".pvstats").waitFor({ timeout: 90000 }).then(() => true, () => false);
+  check("SHOW COURSE opens the course preview (with START GAME)", opened && (await page.getByRole("button", { name: "START GAME", exact: true }).count()) === 1, opened ? "" : (await page.locator("main, .sheet").first().innerText()).slice(0, 200));
   await ctx.close();
 }
 

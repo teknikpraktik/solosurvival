@@ -239,7 +239,7 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .opt[aria-pressed="true"] .opticon, .opt[aria-pressed="true"] .optsub { color: #fde2e2; }
 .opt[aria-pressed="true"]::after { content: "✓"; position: absolute; top: 4px; right: 6px; font-size: 0.72rem; font-weight: 800; color: #fff; line-height: 1; }
 .opt:active { transform: scale(0.98); }
-.opt:focus-visible, .ngrange:focus-visible, .ngfoot .btn:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
+.opt:focus-visible, .ngrange:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
 @media (hover: hover) { .opt:hover { border-color: #4b5d73; } .opt[aria-pressed="true"]:hover { border-color: #f87171; } }
 @media (prefers-reduced-motion: reduce) { .opt { transition: none; } .opt:active { transform: none; } }
 /* Very narrow phones: the mode cards become rows (icon, title, subtitle) instead of being squeezed. */
@@ -261,6 +261,52 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 /* Primary action: kept in reach at the bottom (sticky) above the iPhone home indicator, separated from the settings by a fade. */
 .ngfoot { position: sticky; bottom: 0; margin: auto -16px 0; padding: 8px 16px max(12px, env(safe-area-inset-bottom)); background: linear-gradient(#0b0f1400, #0b0f14f2 22%); }
 .ngfoot .btn.big { padding: 16px; }
-.ngfoot .btn { width: 100%; background: #b91c1c; border-color: #ef4444; color: #fff; box-shadow: 0 6px 18px #0009; }
-.ngfoot .btn:disabled { background: #3a1a1a; border-color: #5b2626; color: #c9b1b1; box-shadow: none; }
-.ngfoot .btn:not(:disabled):active { background: #991b1b; }
+/* The screen's one primary action (New game, course preview): bright red, full contrast, large. */
+.btn.cta { width: 100%; background: #b91c1c; border-color: #ef4444; color: #fff; box-shadow: 0 6px 18px #0009; }
+.btn.cta:disabled { background: #3a1a1a; border-color: #5b2626; color: #c9b1b1; box-shadow: none; }
+.btn.cta:not(:disabled):active { background: #991b1b; }
+.btn.cta:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
+
+/* ---------- Course preview: the map first, a compact panel, START GAME as the one primary action ---------- */
+.map-shell.preview .goalmark.home { opacity: 1; }
+.pvtop .line { justify-content: flex-start; }
+.backbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 12px; pointer-events: auto; cursor: pointer;
+  background: #0f151ce6; border: 1px solid #2d3b4d; color: var(--text); font: inherit; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.06em; box-shadow: 0 2px 8px #0008; }
+.backbtn span { font-size: 1.3rem; line-height: 1; margin-top: -2px; }
+.backbtn:active { background: #1b2430; }
+.backbtn:focus-visible, .pvtoggle:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
+.backbtn:disabled { opacity: .5; }
+.sheet.pvsheet { gap: 8px; padding-top: 12px; max-height: 66dvh; }
+/* The buttons stay at the bottom of the panel while longer details scroll above them. */
+.pvactions { position: sticky; bottom: calc(-1 * max(14px, env(safe-area-inset-bottom)) - 12px); margin-bottom: calc(-1 * max(14px, env(safe-area-inset-bottom)) - 12px);
+  padding: 8px 0 calc(max(14px, env(safe-area-inset-bottom)) + 12px); background: #0f151c; z-index: 1; }
+/* Map attribution: top right in the preview, so it never sits on the panel's buttons. */
+.map-shell.preview .attrib { left: auto; right: 8px; bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 28px + 50px); }
+.pvhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.pvkicker { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #a9b6c4; }
+.pvtitle { margin: 2px 0 0; font-size: 1.15rem; letter-spacing: 0.02em; }
+.pvtoggle { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border-radius: 10px; background: transparent; border: 1px solid #2d3b4d; color: #cbd5e1; font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+.pvtoggle .chev { display: inline-block; transition: transform .15s; }
+.pvtoggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .pvtoggle .chev { transition: none; } }
+.pvstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.pvstats div { background: #131a22; border: 1px solid #243040; border-radius: 10px; padding: 7px 9px; min-width: 0; }
+.pvstats dt { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #9fb0c0; white-space: nowrap; }
+.pvstats dd { margin: 2px 0 0; font-size: 1.08rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pvlimit { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.9rem; color: #c3ced9; padding: 0 2px; }
+.pvlimit b { color: var(--text); font-size: 1rem; font-variant-numeric: tabular-nums; }
+.pvsafety { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: 0.82rem; line-height: 1.35; color: #fde68a; }
+.pvsafety .warnicon { flex-shrink: 0; }
+.pvdetails { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #243040; padding-top: 8px; }
+.pvdetails p { margin: 0; font-size: 0.85rem; line-height: 1.4; color: #c3ced9; }
+.pvactions { display: flex; gap: 8px; }
+.pvactions .btn { width: auto; }
+.pvregen { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 0 0 auto; padding: 0 14px; min-height: 56px; font-size: 0.82rem; letter-spacing: 0.04em; }
+.pvregen .regenicon { display: flex; }
+.pvactions .pvstart { flex: 1; }
+@media (max-width: 359px) { .pvregen { padding: 0 10px; font-size: 0.74rem; } .pvstats dd { font-size: 0.98rem; } .pvstats div { padding: 6px 7px; } .pvstats dt { font-size: 0.62rem; letter-spacing: 0.02em; } }
+/* Landscape phones: the panel becomes a column on the right so the map keeps its height (the fit leaves that column free). */
+@media (orientation: landscape) and (max-height: 520px) {
+  .sheet.pvsheet { left: auto; top: 0; width: min(380px, 48vw); max-height: none; border-radius: 16px 0 0 16px; border-top: 0; border-left: 1px solid #243040;
+    padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) 14px; }
+}

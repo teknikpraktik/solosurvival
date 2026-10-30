@@ -32,23 +32,18 @@ export const DOT_SVG = `<svg viewBox="0 0 40 40" width="40" height="40" xmlns="h
 /** Liten riktningstriangel som visas vid en rörlig zombie (roteras med CSS). */
 export const ZOMBIE_DIR_SVG = `<svg viewBox="0 0 14 14" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M7 1 L12.5 12 L7 9.2 L1.5 12 Z" fill="#ff4d4d" stroke="#0b0f14" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
 
-/** Hem (start/hemkomst): hus i blå skiva. Skiljs tydligt från numrerade checkpoints (cirklar) och från extraction (flagga). */
+/** Home (start and return): green disc, white border, white house. Same in the course preview, the game and the match recap. */
 export const HOME_SVG = `<svg viewBox="0 0 40 40" width="42" height="42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-<circle cx="20" cy="20" r="18" fill="#1d4ed8" stroke="#ffffff" stroke-width="2.6"/>
+<circle cx="20" cy="20" r="18" fill="#15803d" stroke="#ffffff" stroke-width="2.6"/>
 <path d="M9.5 20.5 20 11l10.5 9.5" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M13 19.5V29h5.5v-6h3v6H27v-9.5L20 13.5z" fill="#ffffff"/>
 </svg>`;
 
-/** Extraction (Survival): helikopter på grön mål-skiva (rotor, hytt med fönster, stjärtbom och stjärtrotor, medar), med texten EXIT i etiketten. */
+/** Extraction (Survival): red disc, white border, white flag; labelled EXIT. Same in the game and the match recap. */
 export const EXTRACTION_SVG = `<svg viewBox="0 0 40 40" width="42" height="42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-<circle cx="20" cy="20" r="18" fill="#15803d" stroke="#ffffff" stroke-width="2.6"/>
-<path d="M7.5 11.2h21" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
-<path d="M17.2 11.2v4" stroke="#ffffff" stroke-width="2"/>
-<ellipse cx="16.6" cy="19.8" rx="6.8" ry="5" fill="#ffffff"/>
-<path d="M11.4 19.2c0-2 1.3-3.3 3.2-3.3h1.6v4.2h-4.8z" fill="#15803d"/>
-<path d="M22.4 18.1l9 .8v1.7l-9 1.2z" fill="#ffffff"/>
-<path d="M31.6 15.6v7.6" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
-<path d="M13.4 24.5l-.9 3.4M20 24.5l.9 3.4M9.8 28h14.4" stroke="#ffffff" stroke-width="1.7" stroke-linecap="round"/>
+<circle cx="20" cy="20" r="18" fill="#b91c1c" stroke="#ffffff" stroke-width="2.6"/>
+<path d="M14 30V10" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/>
+<path d="M14.6 10.6h12.2l-2.8 4.6 2.8 4.6H14.6z" fill="#ffffff"/>
 </svg>`;
 
 /**
@@ -105,4 +100,9 @@ export const SOUND_ON_SVG = `<svg viewBox="0 0 24 24" width="24" height="24" xml
 /** … and the same speaker struck through (off). */
 export const SOUND_OFF_SVG = `<svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M3 3l18 18"/>
+</svg>`;
+
+/** Course preview: regenerate (a circular arrow). currentColor. */
+export const REGENERATE_SVG = `<svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4.5V11h-6.5"/>
 </svg>`;
