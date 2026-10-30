@@ -170,7 +170,11 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 /* Bike: every text in the game view one to two points larger, for reading at a glance while riding. */
 .map-shell.bike .hudbar .pill { font-size: 1.12rem; }
 /* On foot / Bike icon next to the mode pill. */
-.hudbar .modegroup { display: flex; gap: 6px; align-items: stretch; min-width: 0; }
+.hudbar .modegroup { display: flex; gap: 6px; align-items: stretch; min-width: 0; flex: 0 1 auto; }
+/* A long mode name (SURVIVE AND EXTRACT) wraps at the separator instead of being cut off or pushing the icon out of view. */
+.hudbar .pill.mode { min-width: 0; border-radius: 18px; line-height: 1.25; }
+.hudbar .pill.mode > span { white-space: nowrap; }
+.hudbar .pill.activity, .hudbar .line > .pill:last-child { flex-shrink: 0; }
 .hudbar .pill.activity { display: flex; align-items: center; justify-content: center; padding: 0 9px; }
 .hudbar .pill.activity svg { display: block; }
 .map-shell.bike .hudbar .pill.zclose { font-size: 1.55rem; }
@@ -183,8 +187,7 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .map-shell.bike .modal-body, .map-shell.bike .modal-body .muted { font-size: 1.02rem; }
 .map-shell.bike .modal .btn { font-size: 1.08rem; }
 .map-shell.bike .attrib { font-size: 11px; }
-/* The mode pill stays on one line next to the clock (it is not read while riding, so it keeps the normal size on Bike). */
-.hudbar .pill.mode { white-space: nowrap; }
+/* The mode pill keeps the normal size on Bike (it is not read while riding); a long mode name wraps at the separator (rules above). */
 .map-shell.bike .hudbar .pill.mode { font-size: 1rem; }
 /* AUTO (map follows, Track Up, auto zoom): green when on, plain when off (the map is the player's). Replaces centre, auto zoom and compass. */
 .controls .autobtn { flex: 1.1; color: #8b98a5; }

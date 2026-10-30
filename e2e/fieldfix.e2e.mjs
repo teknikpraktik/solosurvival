@@ -30,7 +30,7 @@ const reachable = async (locator) => locator.evaluate((el) => {
 await page.goto(BASE + "/new");
 for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 await page.waitForTimeout(800);
-await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
+await page.getByRole("button", { name: "SURVIVE AND EXTRACT", exact: true }).click();
 await page.getByRole("button", { name: "START", exact: true }).click(); // Survival: START on the settings page goes straight to the game (no preview)
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 await page.waitForURL("**/play", { timeout: 90000 });

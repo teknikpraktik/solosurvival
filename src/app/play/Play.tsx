@@ -178,7 +178,7 @@ export default function Play() {
       <div className="hudbar">
         <div className="line">
           <span className="modegroup">
-            <span className="pill mode" aria-label="Mode and difficulty">{MODE_LABEL[m.mode]} · {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span>
+            <span className="pill mode" aria-label="Mode and difficulty"><span>{MODE_LABEL[m.mode]}</span> <span>· {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span></span>
             <span className="pill activity" role="img" aria-label={m.activity === "mtb" ? "Bike" : "On foot"} dangerouslySetInnerHTML={{ __html: m.activity === "mtb" ? BIKE_SVG : WALK_SVG }} />
           </span>
           <span className="pill" aria-label="Time left">{fmtTime(remaining)}</span>

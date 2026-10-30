@@ -30,21 +30,21 @@ check("datamanifest revalideras", /must-revalidate|max-age=0/.test(mf.headers()[
 check("HTTPS/Permissions-Policy", /geolocation=\(self\)/.test((await ctx.request.get(BASE + "/")).headers()["permissions-policy"] ?? ""));
 // Flöde: Survival och Escape i produktion
 // A TO B testas i e2e/atob.e2e.mjs
-for (const mode of ["SURVIVAL", "CHECKPOINTS"]) {
+for (const mode of ["SURVIVE AND EXTRACT", "CHECKPOINTS"]) {
   await page.goto(BASE + "/new");
   for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
   await page.waitForTimeout(800);
   await page.getByRole("button", { name: mode, exact: true }).click();
-  if (mode === "SURVIVAL") {
+  if (mode === "SURVIVE AND EXTRACT") {
     // Survival has no preview: START on the settings page goes straight to the game.
     await page.getByRole("button", { name: "START", exact: true }).click();
     await page.waitForURL("**/play", { timeout: 90000 });
-    check("SURVIVAL: START leder direkt till spelet", true);
+    check("SURVIVE AND EXTRACT: START leder direkt till spelet", true);
     await page.goto(BASE + "/");
     continue;
   }
   await page.getByRole("button", { name: /SHOW (ROUTE|COURSE)/ }).click();
-  await page.getByText(mode === "SURVIVAL" ? /Match length/ : /Distance|Straight line/).first().waitFor({ timeout: 60000 });
+  await page.getByText(mode === "SURVIVE AND EXTRACT" ? /Match length/ : /Distance|Straight line/).first().waitFor({ timeout: 60000 });
   await page.waitForSelector('[data-testid="map"][data-loaded="true"]', { timeout: 20000 });
   await page.waitForTimeout(2500);
   const txt = await page.locator(".sheet").innerText();

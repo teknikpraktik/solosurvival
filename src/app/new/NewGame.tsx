@@ -128,7 +128,7 @@ export default function NewGame() {
           {stage !== "preparing" && ok && p.mode === "survival" && (
             <>
               <div className="stat"><span>Match length</span><b>{fmtTime(p.durationS)}</b></div>
-              <div className="muted">Survival has no route. Move freely along the trails. Extraction opens after {Math.round(extractionOpensAtS(p.durationS) / 60)} min; reach it before the time runs out.</div>
+              <div className="muted">Survive and Extract has no route. Move freely along the trails. Extraction opens after {Math.round(extractionOpensAtS(p.durationS) / 60)} min; reach it before the time runs out.</div>
             </>
           )}
           {view.movedFromPreview && (
