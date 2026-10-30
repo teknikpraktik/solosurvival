@@ -164,6 +164,7 @@ export default function Play() {
         zoom={16}
         extraction={m.extraction}
         pointTo={!finished ? (m.objectives?.next ?? m.extraction) : null}
+        zombieEdgeDots={m.activity === "mtb" && !finished}
         scale
         follow={auto}
         viewAheadM={vp.aheadM}

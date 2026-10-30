@@ -157,6 +157,8 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 /* Centrera-knappen lyser när kartan inte följer spelaren. */
 /* Pil mot nästa mål utanför bild (placeras i JS). Under HUD:en och knapparna, ovanför kartmarkörerna. */
 .goalptr { position: absolute; left: 0; top: 0; z-index: 2; width: 30px; height: 30px; pointer-events: none; opacity: 0; transition: opacity .3s; will-change: transform; filter: drop-shadow(0 0 3px #000c); }
+/* Bike: zombie outside the screen, a small red dot at the edge towards it. */
+.zedge { position: absolute; left: 0; top: 0; z-index: 2; width: 10px; height: 10px; border-radius: 50%; background: #ff2a2a; border: 1.5px solid #fff; box-shadow: 0 0 4px #000c; pointer-events: none; will-change: transform; }
 /* Skalstock: längst ner till vänster, ovanför knappraden. */
 .map-shell .maplibregl-ctrl-bottom-left { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 80px); pointer-events: none; }
 .map-shell .maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale { margin: 0 0 0 12px; background: #0b0f14b3; color: #e6edf3; border: 2px solid #e6edf3; border-top: 0; font: 600 10px system-ui, sans-serif; line-height: 1.4; padding: 0 4px; box-sizing: border-box; }

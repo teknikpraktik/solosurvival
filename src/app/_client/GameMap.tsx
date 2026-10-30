@@ -28,6 +28,32 @@ function circle(c: LatLon, rM: number): GeoJSON.Feature {
   return { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [pts] } };
 }
 
+/** The free map area (between the HUD bar and the controls/scale bar), in px relative to the map container, inset from its edges. */
+function freeArea(map: MapLibreMap, inset: number) {
+  const box = map.getContainer();
+  const r = box.getBoundingClientRect();
+  const shell = box.parentElement;
+  const hud = shell?.querySelector(".hudbar")?.getBoundingClientRect();
+  const ctl = shell?.querySelector(".controls")?.getBoundingClientRect();
+  const scaleBox = box.querySelector(".maplibregl-ctrl-scale")?.getBoundingClientRect();
+  const x0 = inset, x1 = r.width - inset;
+  const y0 = (hud ? Math.max(0, hud.bottom - r.top) : 0) + inset;
+  const y1 = Math.min(ctl ? ctl.top - r.top : r.height, scaleBox && scaleBox.height ? scaleBox.top - r.top : r.height, r.height) - inset; // above the controls and the scale bar
+  return { x0, x1, y0, y1, ox: r.width / 2, oy: (y0 + y1) / 2 };
+}
+
+/**
+ * Where the line from `from` (default: the middle of the free area; clamped into it) towards screen point (px, py) meets the area's edge,
+ * or null when the point is inside it.
+ */
+function edgePoint(a: ReturnType<typeof freeArea>, px: number, py: number, from?: { x: number; y: number }): { x: number; y: number; deg: number } | null {
+  if (a.y1 <= a.y0 || (px >= a.x0 && px <= a.x1 && py >= a.y0 && py <= a.y1)) return null;
+  const ox = from ? Math.min(a.x1, Math.max(a.x0, from.x)) : a.ox, oy = from ? Math.min(a.y1, Math.max(a.y0, from.y)) : a.oy;
+  const dx = px - ox, dy = py - oy;
+  const t = Math.min(dx ? ((dx > 0 ? a.x1 : a.x0) - ox) / dx : Infinity, dy ? ((dy > 0 ? a.y1 : a.y0) - oy) / dy : Infinity);
+  return { x: ox + dx * t, y: oy + dy * t, deg: (Math.atan2(dx, -dy) * 180) / Math.PI };
+}
+
 export interface MapMarker {
   id: string;
   label: string;
@@ -61,6 +87,8 @@ export interface GameMapProps {
   extraction?: LatLon | null;
   /** Nästa mål (checkpoint, hem, B eller extraction). Ligger det utanför kartbilden pekar en diskret pil i kanten mot det. */
   pointTo?: LatLon | null;
+  /** Bike: a small red dot at the edge of the free map area towards each zombie that is outside it. */
+  zombieEdgeDots?: boolean;
   /** Skalstock längst ner till vänster (sätts vid start). */
   scale?: boolean;
   /** Följ spelaren (game view: AUTO on). Any touch on the map then hands it to the player at once: `onUserMove` is called and the game stops moving the camera. */
@@ -196,22 +224,11 @@ export default function GameMap(props: GameMapProps) {
     const box = map.getContainer();
     box.appendChild(d);
     const update = () => {
-      const r = box.getBoundingClientRect();
-      const shell = box.parentElement;
-      const hud = shell?.querySelector(".hudbar")?.getBoundingClientRect();
-      const ctl = shell?.querySelector(".controls")?.getBoundingClientRect();
-      const scaleBox = box.querySelector(".maplibregl-ctrl-scale")?.getBoundingClientRect();
-      const inset = 22;
-      const x0 = inset, x1 = r.width - inset;
-      const y0 = (hud ? Math.max(0, hud.bottom - r.top) : 0) + inset;
-      const y1 = Math.min(ctl ? ctl.top - r.top : r.height, scaleBox && scaleBox.height ? scaleBox.top - r.top : r.height, r.height) - inset; // above the controls and the scale bar
       const p = map.project(target);
-      if (y1 <= y0 || (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1)) { d.style.opacity = "0"; return; }
-      const ox = r.width / 2, oy = (y0 + y1) / 2, dx = p.x - ox, dy = p.y - oy;
-      const t = Math.min(dx ? ((dx > 0 ? x1 : x0) - ox) / dx : Infinity, dy ? ((dy > 0 ? y1 : y0) - oy) / dy : Infinity);
-      const deg = (Math.atan2(dx, -dy) * 180) / Math.PI;
+      const e = edgePoint(freeArea(map, 22), p.x, p.y);
+      if (!e) { d.style.opacity = "0"; return; }
       d.style.opacity = "1";
-      d.style.transform = `translate(${(ox + dx * t).toFixed(1)}px, ${(oy + dy * t).toFixed(1)}px) translate(-50%, -50%) rotate(${deg.toFixed(1)}deg)`;
+      d.style.transform = `translate(${e.x.toFixed(1)}px, ${e.y.toFixed(1)}px) translate(-50%, -50%) rotate(${e.deg.toFixed(1)}deg)`;
     };
     update();
     map.on("render", update);
@@ -365,7 +382,44 @@ export default function GameMap(props: GameMapProps) {
       z.label.style.transform = `translate(-50%, -50%) translate(${(Math.sin(a) * 40).toFixed(1)}px, ${(-Math.cos(a) * 40).toFixed(1)}px)`;
     }
     for (const [id, z] of zMarkers.current) if (!live.has(id)) { z.m.remove(); zMarkers.current.delete(id); }
+    framesRef.current = frames;
+    drawEdgeDots();
   };
+  // Edge dots: one per zombie outside the free map area, on the line from the player (the middle without a position) towards the zombie. Redrawn when the zombies move
+  // (the loop above) and when the camera moves (map render), so they also follow a paused match being panned.
+  const framesRef = useRef<{ id: string; lat: number; lon: number }[]>([]);
+  const edgeDots = useRef(new Map<string, HTMLDivElement>());
+  const drawEdgeDots = () => {
+    const map = mapRef.current;
+    const dots = edgeDots.current;
+    const on = !!map && !!propsRef.current.zombieEdgeDots;
+    const area = on ? freeArea(map!, 10) : null;
+    const me = propsRef.current.player;
+    const from = area && me ? map!.project([me.lon, me.lat]) : undefined;
+    const seen = new Set<string>();
+    if (area) for (const f of framesRef.current) {
+      const p = map!.project([f.lon, f.lat]);
+      const e = edgePoint(area, p.x, p.y, from);
+      if (!e) continue;
+      seen.add(f.id);
+      let d = dots.get(f.id);
+      if (!d) {
+        d = document.createElement("div");
+        d.className = "zedge";
+        map!.getContainer().appendChild(d);
+        dots.set(f.id, d);
+      }
+      d.style.transform = `translate(${e.x.toFixed(1)}px, ${e.y.toFixed(1)}px) translate(-50%, -50%)`;
+    }
+    for (const [id, d] of dots) if (!seen.has(id)) { d.remove(); dots.delete(id); }
+  };
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!loaded || !map) return;
+    map.on("render", drawEdgeDots);
+    drawEdgeDots();
+    return () => { map.off("render", drawEdgeDots); edgeDots.current.forEach((d) => d.remove()); edgeDots.current.clear(); };
+  }, [loaded, props.zombieEdgeDots]); // eslint-disable-line react-hooks/exhaustive-deps
   const ensureLoop = () => {
     const L = loopRef.current;
     if (L.running) return;
@@ -385,7 +439,7 @@ export default function GameMap(props: GameMapProps) {
   useEffect(() => {
     if (!loaded || !graph) return;
     animRef.current = new ZombieAnimator(graph);
-    return () => { cancelAnimationFrame(loopRef.current.raf); loopRef.current.running = false; animRef.current = null; zMarkers.current.forEach((z) => z.m.remove()); zMarkers.current.clear(); };
+    return () => { cancelAnimationFrame(loopRef.current.raf); loopRef.current.running = false; animRef.current = null; zMarkers.current.forEach((z) => z.m.remove()); zMarkers.current.clear(); framesRef.current = []; drawEdgeDots(); };
   }, [loaded, graph]);
   useEffect(() => {
     if (!animRef.current) return;

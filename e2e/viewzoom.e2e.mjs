@@ -1,7 +1,7 @@
-// Game camera (ACTIVITY=bike|foot): AUTO = player a little below the middle (60 %), zoom fitted to 1 km / 600 m ahead (closing in to 300 / 225 m when a zombie is near); touching the map turns AUTO off and leaves the map to the player.
+// Game camera (ACTIVITY=bike|foot): AUTO = player a little below the middle (60 %), zoom fitted to 1.5 km / 600 m ahead (closing in to 300 / 225 m when a zombie is near); touching the map turns AUTO off and leaves the map to the player.
 import { chromium } from "playwright-core";
 const FOOT = process.env.ACTIVITY === "foot";
-const AHEAD = FOOT ? 600 : 1000, CLOSE_AHEAD = FOOT ? 225 : 300, NEAR_M = FOOT ? 60 : 120, FAR_M = FOOT ? 500 : 700;
+const AHEAD = FOOT ? 600 : 1500, CLOSE_AHEAD = FOOT ? 225 : 300, NEAR_M = FOOT ? 60 : 120, FAR_M = FOOT ? 500 : 700;
 const BASE = process.env.BASE_URL ?? "http://localhost:3100";
 const START = { latitude: 59.40731, longitude: 13.46753, accuracy: 6 };
 const PY = 0.6 * 844; // the player's height on the screen (px)
