@@ -39,22 +39,22 @@ export const HOME_SVG = `<svg viewBox="0 0 40 40" width="42" height="42" xmlns="
 <path d="M13 19.5V29h5.5v-6h3v6H27v-9.5L20 13.5z" fill="#ffffff"/>
 </svg>`;
 
-/** Extraction (Survival): red disc, white border, white flag; labelled EXIT. Same in the game and the match recap. */
+/** Extraction (Survival): magenta disc (the goal colour), white border, white flag; labelled EXIT. Same in the game and the match recap. */
 export const EXTRACTION_SVG = `<svg viewBox="0 0 40 40" width="42" height="42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-<circle cx="20" cy="20" r="18" fill="#b91c1c" stroke="#ffffff" stroke-width="2.6"/>
+<circle cx="20" cy="20" r="18" fill="#c026d3" stroke="#ffffff" stroke-width="2.6"/>
 <path d="M14 30V10" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/>
 <path d="M14.6 10.6h12.2l-2.8 4.6 2.8 4.6H14.6z" fill="#ffffff"/>
 </svg>`;
 
 /**
- * Visare i kartans kant mot nästa mål utanför bild: vit rund bricka med blå ring och måltavla (samma blå som nästa mål), med en liten spets
+ * Visare i kartans kant mot nästa mål utanför bild: vit rund bricka med magenta ring och måltavla (samma magenta som nästa mål), med en liten spets
  * som pekar mot målet (spetsen uppåt, roteras med CSS). Medvetet en annan form än spelarens blå pilspets, så att de inte förväxlas.
  */
 export const GOAL_POINTER_SVG = `<svg viewBox="0 0 32 32" width="30" height="30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 <path d="M16 1.5 L21.2 9.4 A10.4 10.4 0 1 1 10.8 9.4 Z" fill="none" stroke="#0b0f14" stroke-width="3.6" stroke-linejoin="round" opacity=".75"/>
-<path d="M16 1.5 L21.2 9.4 A10.4 10.4 0 1 1 10.8 9.4 Z" fill="#2563eb" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
+<path d="M16 1.5 L21.2 9.4 A10.4 10.4 0 1 1 10.8 9.4 Z" fill="#c026d3" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
 <circle cx="16" cy="18.4" r="6.6" fill="#ffffff"/>
-<circle cx="16" cy="18.4" r="3.6" fill="#2563eb"/>
+<circle cx="16" cy="18.4" r="3.6" fill="#c026d3"/>
 <circle cx="16" cy="18.4" r="1.4" fill="#ffffff"/>
 </svg>`;
 

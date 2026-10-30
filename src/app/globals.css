@@ -16,7 +16,9 @@ a { color: inherit; }
 .btn { display: block; width: min(320px, 100%); padding: 16px; border-radius: 12px; background: var(--panel); border: 1px solid #243040; text-align: center; text-decoration: none; font-weight: 700; letter-spacing: 0.08em; color: var(--text); font-size: 1rem; }
 .btn.primary { background: #7f1d1d; border-color: #b91c1c; }
 .btn[aria-disabled="true"] { opacity: 0.45; }
-.map-shell { position: fixed; inset: 0; }
+/* Edge to edge: on iPhone (home-screen app, translucent status bar) inset 0 can stop short of the bottom and leave a black band
+   under the map; the large viewport height reaches the screen's edge. Controls keep their own safe-area margins. */
+.map-shell { position: fixed; top: 0; left: 0; right: 0; bottom: 0; height: 100vh; height: 100lvh; }
 .map-shell .maplibregl-map { position: absolute; inset: 0; }
 .hud { position: absolute; left: 0; right: 0; top: 0; display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: max(10px, env(safe-area-inset-top)) 12px 10px; background: linear-gradient(#0b0f14ee, #0b0f1400); z-index: 2; pointer-events: none; }
 .hud > * { pointer-events: auto; }
@@ -152,14 +154,19 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .goalmark { width: 42px; height: 42px; pointer-events: none; }
 .goalmark .goallabel { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 1px; font: 800 10px system-ui; letter-spacing: .06em; color: #fff; background: #0b0f14cc; border-radius: 6px; padding: 1px 5px; }
 .goalmark.home.todo { opacity: .75; }
-.goalmark.home.next { filter: drop-shadow(0 0 6px #60a5fa); }
+.goalmark.home.next { filter: drop-shadow(0 0 6px #e879f9); }
+/* Standing at home: the marker steps back so the player's arrow reads on its own. */
+/* Scale the icon, never the marker element: MapLibre places the marker with transform, and scaling it would move it on the map. */
+.goalmark.home.atplayer { opacity: .45; }
+.goalmark.home.atplayer > svg { scale: .7; }
+.goalmark.home.atplayer .goallabel { display: none; }
 .goalmark.home.done { opacity: .9; }
 
 /* Centrera-knappen lyser när kartan inte följer spelaren. */
 /* Pil mot nästa mål utanför bild (placeras i JS). Under HUD:en och knapparna, ovanför kartmarkörerna. */
 .goalptr { position: absolute; left: 0; top: 0; z-index: 2; width: 30px; height: 30px; pointer-events: none; opacity: 0; transition: opacity .3s; will-change: transform; filter: drop-shadow(0 0 3px #000c); }
-/* Bike: zombie outside the screen, a small red dot at the edge towards it. */
-.zedge { position: absolute; left: 0; top: 0; z-index: 2; width: 10px; height: 10px; border-radius: 50%; background: #ff2a2a; border: 1.5px solid #fff; box-shadow: 0 0 4px #000c; pointer-events: none; will-change: transform; }
+/* Zombie outside the free map area (or under the HUD/controls): a small amber (caution) dot at the edge towards it. */
+.zedge { position: absolute; left: 0; top: 0; z-index: 2; width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; border: 1.5px solid #fff; box-shadow: 0 0 4px #000c; pointer-events: none; will-change: transform; }
 /* Skalstock: längst ner till vänster, ovanför knappraden. */
 .map-shell .maplibregl-ctrl-bottom-left { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 80px); pointer-events: none; }
 .map-shell .maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale { margin: 0 0 0 12px; background: #0b0f14b3; color: #e6edf3; border: 2px solid #e6edf3; border-top: 0; font: 600 10px system-ui, sans-serif; line-height: 1.4; padding: 0 4px; box-sizing: border-box; }
@@ -310,3 +317,27 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .sheet.pvsheet { left: auto; top: 0; width: min(380px, 48vw); max-height: none; border-radius: 16px 0 0 16px; border-top: 0; border-left: 1px solid #243040;
     padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) 14px; }
 }
+
+/* ---------- Game view: one meaning per colour (amber = caution, red = danger, magenta = goal), less HUD over the map ---------- */
+/* Zombie threat levels: chasing = amber ring, within 100 m = red and larger, far and idle = dimmed. Shape and size change too, not only colour. */
+.zmark.chase .zring { stroke: #f59e0b; }
+.zmark.chase::after { border-color: #f59e0b; }
+.zmark.near .zring { stroke: #ff3b3b; stroke-width: 2.8; }
+.zmark.near::after { border-color: #ff3b3b; }
+.zmark.near > svg { scale: 1.18; }
+.zmark.far { opacity: .7; }
+.zmark.far > svg { scale: .85; }
+.zmark .zlabel { border-color: #f59e0b; }
+.zmark.near .zlabel { border-color: #ff3b3b; }
+/* Closing in: filled label with a marker; moving away: muted. */
+.zmark .zlabel.closing { background: #7f1d1d; border-color: #ff3b3b; }
+.zmark .zlabel.closing::before { content: "▼ "; font-size: .8em; }
+.zmark .zlabel.opening { color: #b6c2cf; border-color: #4b5563; }
+.hudbar .pill.zwarn { border-color: #f59e0b; color: #fde68a; }
+.hudbar .pill.mode { font-size: .82rem; }
+.map-shell.bike .hudbar .pill.mode { font-size: .9rem; }
+.hudbar .pill.goal { min-width: 0; white-space: normal; line-height: 1.25; }
+.hudbar .pill.zpill { flex-shrink: 0; }
+.hudbar .line.end { justify-content: flex-end; }
+/* QUIT is a confirmed, rare action: present but quieter than PAUSE and AUTO. */
+.controls button.quit { color: #9fb0c0; flex: .85; font-size: .85rem; }

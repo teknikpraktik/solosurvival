@@ -32,6 +32,6 @@ export const MAP_STYLE: StyleSpecification = {
     { id: "path", type: "line", source: "omt", "source-layer": "transportation", minzoom: 12, filter: ["in", "class", "path", "track"], paint: { "line-color": "#2c3b30", "line-width": w(12, 0.5, 18, 2.5), "line-dasharray": [2, 1.5] } },
     { id: "minor", type: "line", source: "omt", "source-layer": "transportation", filter: ["in", "class", "minor", "service"], paint: { "line-color": "#2a3544", "line-width": w(11, 0.5, 18, 5) } },
     { id: "railway", type: "line", source: "omt", "source-layer": "transportation", filter: ["==", "class", "rail"], paint: { "line-color": "#6b5426", "line-width": w(10, 0.8, 18, 3), "line-dasharray": [3, 2] } },
-    { id: "major", type: "line", source: "omt", "source-layer": "transportation", filter: ["in", "class", ...MAJOR], paint: { "line-color": "#7a4338", "line-width": w(6, 0.8, 12, 2, 18, 9) } },
+    { id: "major", type: "line", source: "omt", "source-layer": "transportation", filter: ["in", "class", ...MAJOR], paint: { "line-color": "#5c5a52", "line-width": w(6, 0.8, 12, 2, 18, 9) } }, // neutral, wider and lighter than minor roads: red is kept for zombies
   ],
 };

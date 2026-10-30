@@ -14,6 +14,7 @@ import { BIKE_SVG, SOUND_OFF_SVG, SOUND_ON_SVG, WALK_SVG } from "../_client/symb
 import { t } from "../_client/strings";
 import { RecapStatsList } from "../_client/RecapStats";
 import { personalRecord } from "@/play/recap";
+import { extractionOpensAtS } from "@/config/game-rules";
 import { MatchStorage } from "@/play/storage";
 import { Scare } from "../_client/Scare";
 import { JumpScare } from "../_client/JumpScare";
@@ -102,6 +103,8 @@ export default function Play() {
     if (r.say !== null) speak(String(r.say) as CountdownLine);
   }, [nearestM]);
   const zombieClose = nearestM !== null && nearestM <= COUNTDOWN_START_M;
+  // Caution (amber) before danger (red): a zombie within twice the countdown distance.
+  const zombieWarn = nearestM !== null && nearestM <= 2 * COUNTDOWN_START_M;
   // Captured: spoken a moment after the scream starts, when the scare screen opens.
   const capturedNow = m?.phase === "finished" && m.result === "infected";
   useEffect(() => {
@@ -179,7 +182,8 @@ export default function Play() {
         zoom={16}
         extraction={m.extraction}
         pointTo={!finished ? (m.objectives?.next ?? m.extraction) : null}
-        zombieEdgeDots={m.activity === "mtb" && !finished}
+        zombieEdgeDots={!finished}
+        homeStepsBack
         scale
         follow={auto}
         viewAheadM={vp.aheadM}
@@ -197,18 +201,17 @@ export default function Play() {
           </span>
           <span className="pill" aria-label="Time left">{fmtTime(remaining)}</span>
         </div>
+        {/* Goal and nearest zombie share a row: the top of the map is what the player is heading for, so the HUD covers as little of it as it can. */}
         <div className="line">
           {m.objectives ? (
-            <span className="pill">{objectiveLabel(m.objectives.progress)}{dHome !== null ? ` · ${dHome} m` : ""}{m.objectives.holdS > 0 ? ` · ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
+            <span className="pill goal">{objectiveLabel(m.objectives.progress)}{dHome !== null ? ` · ${dHome} m` : ""}{m.objectives.holdS > 0 ? ` · ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
           ) : (
-            <span className="pill">{m.extraction ? `Extraction open${dExtraction !== null ? ` · ${fmtDist(dExtraction)}` : ""}` : m.phase === "head_start" ? `Head start ${fmtTime(m.headStartLeftS)}` : "Survive"}</span>
+            <span className="pill goal">{m.extraction ? `Extraction open${dExtraction !== null ? ` · ${fmtDist(dExtraction)}` : ""}` : m.phase === "head_start" ? `Head start ${fmtTime(m.headStartLeftS)}` : `Extraction in ${fmtTime(Math.max(0, extractionOpensAtS(m.limitS) - m.elapsedS))}`}</span>
           )}
+          {!finished && <span className={`pill zpill${zombieClose ? " zclose" : zombieWarn ? " zwarn" : ""}`} aria-label="Nearest zombie">💀 {m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>}
         </div>
-        {!finished && (
-          <div className="line">
-            <span className={`pill${zombieClose ? " zclose" : ""}`} aria-label="Nearest zombie">💀 {m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>
-            {m.activity === "mtb" && <span className="pill" aria-label="Your speed">{view.speedMps === null ? "– km/h" : `${(view.speedMps * 3.6).toFixed(1)} km/h`}</span>}
-          </div>
+        {!finished && m.activity === "mtb" && (
+          <div className="line end"><span className="pill" aria-label="Your speed">{view.speedMps === null ? "– km/h" : `${(view.speedMps * 3.6).toFixed(1)} km/h`}</span></div>
         )}
         {!finished && !m.paused && m.offNetwork?.active && (
           <div className="line"><span className="pill warn" role="status" aria-live="polite">{m.offNetwork.exposed ? "Off the road · zombies can reach you. Return to a road!" : `Off the road network · ${m.offNetwork.budgetLeftS} s until zombies find you`}</span></div>
@@ -226,7 +229,7 @@ export default function Play() {
           <button className="autobtn" onClick={() => { if (!auto) void session.enableCompass(); setAuto((a) => !a); }} aria-pressed={auto} aria-label={auto ? "AUTO on: the map follows you (tap to move the map yourself)" : "AUTO off: you move the map (tap to follow again)"}>AUTO</button>
           {/* Sound on/off for every game sound and spoken line (same player, same stored choice). Turning it on is a tap, so audio is unlocked here as iOS requires. */}
           <button className="iconbtn" onClick={() => { const on = !sound; setSound(on); setCuesEnabled(on); if (on) unlockAudio(); }} aria-label={sound ? t().hud.soundOn : t().hud.soundOff} aria-pressed={sound} dangerouslySetInnerHTML={{ __html: sound ? SOUND_ON_SVG : SOUND_OFF_SVG }} />
-          <button onClick={() => setConfirmEnd(true)}>QUIT</button>
+          <button className="quit" onClick={() => setConfirmEnd(true)}>QUIT</button>
         </div>
       )}
 

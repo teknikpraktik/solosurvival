@@ -87,7 +87,9 @@ export interface GameMapProps {
   extraction?: LatLon | null;
   /** Nästa mål (checkpoint, hem, B eller extraction). Ligger det utanför kartbilden pekar en diskret pil i kanten mot det. */
   pointTo?: LatLon | null;
-  /** Bike: a small red dot at the edge of the free map area towards each zombie that is outside it. */
+  /** In the game: the home marker steps back (smaller, faded) while the player stands on it. Off in the preview, where home must stand out. */
+  homeStepsBack?: boolean;
+  /** A small dot at the edge of the free map area towards each zombie outside it (or under the HUD or the controls). */
   zombieEdgeDots?: boolean;
   /** Skalstock längst ner till vänster (sätts vid start). */
   scale?: boolean;
@@ -123,7 +125,17 @@ export interface GameMapProps {
 }
 
 // Next goal blue, reached green, upcoming neutral grey (field test: the goal to head for and a taken checkpoint must not look alike).
-const TONE = { next: "#2563eb", done: "#16a34a", todo: "#475569" } as const;
+// Colours keep one meaning each (as on an aircraft's navigation display): magenta = the goal to head for now, green = reached,
+// slate = later; red is kept for danger (zombies close), so a goal is never mistaken for a threat or for the player's blue arrow.
+const TONE = { next: "#c026d3", done: "#16a34a", todo: "#475569" } as const;
+/** Zombie threat levels on the map: within NEAR_M red and larger, chasing amber, beyond FAR_M dimmed (with magnet hunting nearly all chase). */
+const ZOMBIE_NEAR_M = 100;
+/** The player is "at" the home marker within this distance (m). */
+const AT_HOME_M = 30;
+const ZOMBIE_FAR_M = 600;
+/** Closing or opening: the distance has changed by more than this (m) over the last CLOSING_WINDOW_MS. */
+const CLOSING_M = 3;
+const CLOSING_WINDOW_MS = 3000;
 
 export default function GameMap(props: GameMapProps) {
   const el = useRef<HTMLDivElement>(null);
@@ -354,6 +366,7 @@ export default function GameMap(props: GameMapProps) {
   const zMarkers = useRef(new Map<string, { m: Marker; el: HTMLDivElement; dir: HTMLElement; label: HTMLElement; lat: number; lon: number; text: string }>());
   const loopRef = useRef<{ raf: number; running: boolean; last: number }>({ raf: 0, running: false, last: 0 });
   const frozenRef = useRef(false);
+  const closingHist = useRef(new Map<string, { t: number; d: number }[]>());
   frozenRef.current = !!frozen;
   const drawZombies = () => {
     const map = mapRef.current;
@@ -377,6 +390,10 @@ export default function GameMap(props: GameMapProps) {
       }
       z.el.classList.toggle("chase", f.chasing);
       z.el.classList.toggle("sprint", f.sprinting);
+      const me0 = propsRef.current.player;
+      const dz = me0 ? haversineM(f, me0) : Infinity;
+      z.el.classList.toggle("near", dz <= ZOMBIE_NEAR_M);
+      z.el.classList.toggle("far", dz > ZOMBIE_FAR_M);
       // Rörelsepil: tydlig rörelse även på låg zoom (zombier går ~1 m/s, bara någon pixel i sekunden). Vinkel relativt skärmen.
       if (f.bearing === null) z.dir.style.opacity = "0";
       else { z.dir.style.opacity = "1"; z.dir.style.transform = `rotate(${f.bearing - bearingRef.current}deg) translateY(-24px)`; }
@@ -392,11 +409,19 @@ export default function GameMap(props: GameMapProps) {
       const d = haversineM(f, me);
       const text = d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d / (d < 100 ? 1 : 5)) * (d < 100 ? 1 : 5)} m`;
       if (text !== z.text) { z.label.textContent = text; z.text = text; }
+      // Closing or opening (the question the player has: is it coming for me?), from the distance a few seconds ago.
+      const now = performance.now();
+      const h = (closingHist.current.get(f.id) ?? []).filter((x) => now - x.t <= CLOSING_WINDOW_MS);
+      if (!h.length || now - h[h.length - 1].t > 250) h.push({ t: now, d });
+      closingHist.current.set(f.id, h);
+      const change = d - h[0].d;
+      z.label.classList.toggle("closing", now - h[0].t > 1000 && change < -CLOSING_M);
+      z.label.classList.toggle("opening", now - h[0].t > 1000 && change > CLOSING_M);
       const a = ((bearingDeg(f, me) - bearingRef.current) * Math.PI) / 180;
       z.label.style.opacity = "1";
       z.label.style.transform = `translate(-50%, -50%) translate(${(Math.sin(a) * 40).toFixed(1)}px, ${(-Math.cos(a) * 40).toFixed(1)}px)`;
     }
-    for (const [id, z] of zMarkers.current) if (!live.has(id)) { z.m.remove(); zMarkers.current.delete(id); }
+    for (const [id, z] of zMarkers.current) if (!live.has(id)) { z.m.remove(); zMarkers.current.delete(id); closingHist.current.delete(id); }
     framesRef.current = frames;
     drawEdgeDots();
   };
@@ -482,10 +507,20 @@ export default function GameMap(props: GameMapProps) {
       }
       d.textContent = m.label;
       d.setAttribute("aria-label", `Objective ${m.label}`);
-      d.style.cssText = `width:28px;height:28px;border-radius:50%;background:${TONE[m.tone]};color:#fff;font:700 14px system-ui;display:flex;align-items:center;justify-content:center;border:2px solid #fff;${m.tone === "next" ? "box-shadow:0 0 0 4px #2563eb66;" : ""}`;
+      d.style.cssText = `width:28px;height:28px;border-radius:50%;background:${TONE[m.tone]};color:#fff;font:700 14px system-ui;display:flex;align-items:center;justify-content:center;border:2px solid #fff;${m.tone === "next" ? "box-shadow:0 0 0 4px #c026d366;" : ""}`;
       return new Marker({ element: d }).setLngLat([m.lon, m.lat]).addTo(map);
     });
   }, [loaded, markers]);
+  // Standing at home (the start): the home marker steps back (smaller, faded, no label) so the player's arrow is not read as part of it.
+  useEffect(() => {
+    if (!player || !props.homeStepsBack) return;
+    for (const mk of markersRef.current) {
+      const el = mk.getElement();
+      if (!el.classList.contains("home")) continue;
+      const ll = mk.getLngLat();
+      el.classList.toggle("atplayer", haversineM(player, { lat: ll.lat, lon: ll.lng }) <= AT_HOME_M);
+    }
+  }, [player, markers, loaded, props.homeStepsBack]);
   // Fit the given points into the visible part of the map: once per set of points, again when the covered parts change (panel opened,
   // screen turned), but never after the player has panned or zoomed, so the map is theirs once they touch it.
   const fitKey = fit && fit.length ? fit.map((p) => `${p.lat.toFixed(6)},${p.lon.toFixed(6)}`).join(";") : "";
