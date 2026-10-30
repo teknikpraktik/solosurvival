@@ -101,6 +101,13 @@ export interface GameMapProps {
   /** Game view: the player's height on the screen as a fraction from the top (standard 0.5 = middle). */
   viewPlayerY?: number;
   fit?: LatLon[] | null;
+  /**
+   * Parts of the map covered by other UI (px from the map's top and bottom edge), read when fitting so every `fit` point lands in the
+   * visible part. Without it a fixed margin is used.
+   */
+  fitInsets?: () => { top: number; bottom: number; right?: number };
+  /** Change it to fit again (e.g. the panel over the map changed height). Ignored once the player has moved or zoomed the map. */
+  refitKey?: string | number;
   onUserMove?: () => void;
   /** Tryck på kartan (t.ex. för att välja A/B). */
   onPick?: (p: LatLon) => void;
@@ -479,12 +486,48 @@ export default function GameMap(props: GameMapProps) {
       return new Marker({ element: d }).setLngLat([m.lon, m.lat]).addTo(map);
     });
   }, [loaded, markers]);
+  // Fit the given points into the visible part of the map: once per set of points, again when the covered parts change (panel opened,
+  // screen turned), but never after the player has panned or zoomed, so the map is theirs once they touch it.
+  const fitKey = fit && fit.length ? fit.map((p) => `${p.lat.toFixed(6)},${p.lon.toFixed(6)}`).join(";") : "";
+  const userMoved = useRef(false);
+  const lastFitKey = useRef("");
+  const doFit = useRef<() => void>(() => undefined);
+  doFit.current = () => {
+    const map = mapRef.current;
+    const pts = propsRef.current.fit;
+    if (!map || !pts || !pts.length) return;
+    const h = map.getContainer().clientHeight, w = map.getContainer().clientWidth;
+    const ins = propsRef.current.fitInsets?.() ?? { top: 70 - 36, bottom: 260 - 36 };
+    const m = 36; // room for a marker (and its label) at the edge
+    let top = Math.max(0, ins.top) + m, bottom = Math.max(0, ins.bottom) + m;
+    const room = h - 80; // always keep at least 80 px of map for the points
+    if (top + bottom > room) { const k = Math.max(0, room) / (top + bottom); top *= k; bottom *= k; }
+    let left = m, right = Math.max(0, ins.right ?? 0) + m;
+    const wroom = w - 80;
+    if (left + right > wroom) { const k = Math.max(0, wroom) / (left + right); left *= k; right *= k; }
+    const lons = pts.map((p) => p.lon), lats = pts.map((p) => p.lat);
+    map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: { top, bottom, left, right }, duration: 0, maxZoom: 17 });
+  };
   useEffect(() => {
     const map = mapRef.current;
-    if (!loaded || !map || !fit || fit.length === 0) return;
-    const lons = fit.map((p) => p.lon), lats = fit.map((p) => p.lat);
-    map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: { top: 70, bottom: 260, left: 40, right: 40 }, duration: 0, maxZoom: 17 });
-  }, [loaded, fit]);
+    if (!loaded || !map) return;
+    // A gesture (drag, pinch, wheel) has an original event; our own fitBounds does not.
+    const onMove = (e: { originalEvent?: unknown }) => { if (e.originalEvent) userMoved.current = true; };
+    map.on("movestart", onMove);
+    map.on("zoomstart", onMove);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onResize = () => { if (timer) clearTimeout(timer); timer = setTimeout(() => { if (!userMoved.current) doFit.current(); }, 150); };
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => { map.off("movestart", onMove); map.off("zoomstart", onMove); window.removeEventListener("resize", onResize); window.removeEventListener("orientationchange", onResize); if (timer) clearTimeout(timer); };
+  }, [loaded]);
+  useEffect(() => {
+    if (!loaded || !fitKey) return;
+    if (fitKey !== lastFitKey.current) { lastFitKey.current = fitKey; userMoved.current = false; doFit.current(); }
+  }, [loaded, fitKey]);
+  useEffect(() => {
+    if (loaded && fitKey && !userMoved.current) doFit.current();
+  }, [props.refitKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>

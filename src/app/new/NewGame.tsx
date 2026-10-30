@@ -1,9 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { CloseButton, PageHeader } from "../_client/Modal";
+import { PageHeader } from "../_client/Modal";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
 import type { GameMode } from "@/engine/objectives/objectives";
@@ -14,8 +14,8 @@ import { COURSE_DETOUR_FACTOR } from "@/routes/course";
 import { haversineM } from "@/geo/geometry";
 import { errorText } from "@/gps/provider/provider";
 import { matchDurationS } from "@/play/match";
-import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
-import { BIKE_SVG, MODE_ATOB_SVG, MODE_CHECKPOINTS_SVG, MODE_SURVIVAL_SVG, WALK_SVG } from "../_client/symbols";
+import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_LABEL, fmtKm } from "../_client/format";
+import { BIKE_SVG, MODE_ATOB_SVG, MODE_CHECKPOINTS_SVG, MODE_SURVIVAL_SVG, REGENERATE_SVG, WALK_SVG } from "../_client/symbols";
 import { t } from "../_client/strings";
 import { resolveModeRules } from "@/config/modes";
 import { applyEnemySpeedMultiplier } from "@/config/game-rules";
@@ -70,6 +70,8 @@ function RangeField({ id, label, shown, min, max, step, value, onChange, note }:
 
 const MODE_ICON: Record<GameMode, string> = { mission: MODE_CHECKPOINTS_SVG, escape: MODE_ATOB_SVG, survival: MODE_SURVIVAL_SVG };
 const km1 = (m: number) => `${(Math.round(m / 100) / 10).toFixed(1)} km`;
+/** Time limit in the preview: hours and minutes (the game counts down to the second). */
+const fmtHM = (s: number) => { const m = Math.round(s / 60); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
 
 export default function NewGame() {
   const ctx = useSessionCtx();
@@ -82,6 +84,28 @@ export default function NewGame() {
   const [starting, setStarting] = useState(false);
   // A TO B på terräng: varför senaste tryckta B avvisades (vatten, byggnad, större väg, järnväg).
   const [pickProblem, setPickProblem] = useState<string | null>(null);
+  // Course preview: details open, and the parts of the map covered by the top bar and the panel (so the course is fitted into the rest).
+  const [details, setDetails] = useState(false);
+  const topRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [sheetH, setSheetH] = useState(0);
+  const previewInsets = useCallback(() => {
+    const map = sheetRef.current?.parentElement?.getBoundingClientRect();
+    const top = topRef.current?.getBoundingClientRect();
+    const sheet = sheetRef.current?.getBoundingClientRect();
+    if (!map) return { top: 0, bottom: 0 };
+    if (!sheet) return { top: top ? top.bottom - map.top : 0, bottom: 0 };
+    // Landscape: the panel is a column on the right, not a sheet at the bottom.
+    const side = sheet.left > map.left + 8;
+    return { top: top ? top.bottom - map.top : 0, bottom: side ? 0 : map.bottom - sheet.top, right: side ? map.right - sheet.left : 0 };
+  }, []);
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setSheetH(Math.round(el.getBoundingClientRect().height / 8) * 8)); // ignore sub-pixel changes
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
 
   useEffect(() => {
     if (!session) return;
@@ -116,7 +140,8 @@ export default function NewGame() {
   const routes = isAB
     ? (abA && abB ? [{ points: [abA, { lat: abB.lat, lon: abB.lon }], selected: false, faint: true }] : [])
     : []; // Mission: no route line, only the numbered checkpoints
-  const markers: MapMarker[] = proposal ? proposal.waypoints.filter((w) => w.kind !== "home").map((w, i) => ({ id: w.id, label: w.kind === "destination" ? "B" : String(i + 1), lat: w.lat, lon: w.lon, tone: "todo" as const })) : [];
+  // Same markers as in the game: numbered checkpoints in the game's order, B, and the green home (start and return are the same place).
+  const markers: MapMarker[] = proposal ? proposal.waypoints.map((w, i) => ({ id: w.id, label: w.kind === "destination" ? "B" : w.kind === "home" ? "" : String(i + 1), lat: w.lat, lon: w.lon, tone: "todo" as const, icon: w.kind === "home" ? "home" as const : undefined })) : [];
   if (proposal && isAB && view?.params?.pointA) markers.push({ id: "A", label: "A", lat: view.params.pointA.lat, lon: view.params.pointA.lon, tone: "done" });
 
   // Survival has no course to look at (the area is the same whatever you choose), so START on the settings page goes straight into the game.
@@ -132,15 +157,57 @@ export default function NewGame() {
   });
 
   if ((preview || starting) && view && !(direct && (busy || starting))) {
+    const P = t().preview;
     const status = prepared?.status;
     const ok = status === "ok" || status === "alternative";
+    const loading = stage === "preparing";
+    const checkpoints = proposal ? proposal.waypoints.filter((w) => w.kind === "checkpoint").length : 0;
+    const detourPct = Math.round((COURSE_DETOUR_FACTOR - 1) * 100);
+    const extractionMin = Math.round(extractionOpensAtS(p.durationS) / 60);
+    // The three numbers, the time limit and the goal text for this mode (all from the prepared course and the same functions the game uses).
+    type Cell = { k: string; v: string; mark?: boolean };
+    const summary: { title: string; cells: Cell[]; limit: string; goal: string; distanceNote: string | null } | null = !loading && ok && proposal ? {
+      title: isAB ? P.yourRoute : P.yourCourse,
+      cells: [
+        { k: P.distance, v: fmtKm(isAB && abA && abB ? haversineM(abA, abB) : proposal.lengthM), mark: true },
+        { k: P.estTime, v: P.minutes(estimatedMinutes(proposal.lengthM * (p.mode === "mission" || proposal.terrain ? COURSE_DETOUR_FACTOR : 1), p)) },
+        isAB ? { k: P.goal, v: P.pointB } : { k: P.checkpoints, v: P.checkpointsValue(checkpoints) },
+      ],
+      limit: fmtHM(matchDurationS(p, proposal)),
+      goal: isAB ? (proposal.terrain ? P.goalEscapeTerrain : P.goalEscape) : P.goalMission(checkpoints),
+      distanceNote: isAB ? P.distanceNoteEscape : P.distanceNoteMission(detourPct),
+    } : !loading && ok && p.mode === "survival" ? {
+      title: P.yourMatch,
+      cells: [{ k: P.matchLength, v: P.minutes(Math.round(p.durationS / 60)) }, { k: P.extraction, v: P.afterMin(extractionMin) }, { k: P.goal, v: P.reachExtraction }],
+      limit: fmtHM(p.durationS),
+      goal: P.goalSurvival(extractionMin),
+      distanceNote: null,
+    } : null;
+    const fitPts = isAB && abA && abB ? [abA, { lat: abB.lat, lon: abB.lon }] : proposal ? proposal.waypoints.map((w) => ({ lat: w.lat, lon: w.lon })).concat(view.position ? [view.position] : []) : (view.position ? [view.position] : null);
     return (
-      <div className="map-shell">
-        <GameMap graph={prepared?.graph} routes={routes} markers={markers} start={session?.currentStart()} player={view.position} accuracyM={view.accuracyM} fit={isAB && abA && abB ? [abA, { lat: abB.lat, lon: abB.lon }] : proposal?.geometry ?? (view.position ? [view.position] : null)} />
-        <div className="hudbar"><div className="line"><span className="pill">{MODE_LABEL[p.mode]} · {ACTIVITY_LABEL[p.activity]}</span><CloseButton label="Close preview" disabled={busy || starting} onClick={() => session!.backToConfig()} /></div></div>
-        <div className="sheet">
-          {stage === "preparing" && <div className="card">Loading map data and planning…</div>}
-          {stage !== "preparing" && prepared && !ok && (
+      <div className="map-shell preview">
+        <GameMap graph={prepared?.graph} routes={routes} markers={markers} player={view.position} accuracyM={view.accuracyM} fit={fitPts} fitInsets={previewInsets} refitKey={sheetH} />
+        <div className="hudbar pvtop" ref={topRef}>
+          <div className="line">
+            <button className="backbtn" aria-label={P.editSetupLabel} disabled={busy || starting} onClick={() => { setDetails(false); session!.backToConfig(); }}>
+              <span aria-hidden="true">‹</span> {P.editSetup}
+            </button>
+          </div>
+        </div>
+        <div className="sheet pvsheet" ref={sheetRef}>
+          <div className="pvhead">
+            <div>
+              <div className="pvkicker">{MODE_LABEL[p.mode]} · {ACTIVITY_LABEL[p.activity]}</div>
+              <h2 className="pvtitle">{summary?.title ?? P.yourCourse}</h2>
+            </div>
+            {summary && (
+              <button className="pvtoggle" aria-expanded={details} aria-controls="pv-details" onClick={() => setDetails((d) => !d)}>
+                {details ? P.detailsHide : P.details} <span className="chev" aria-hidden="true">⌄</span>
+              </button>
+            )}
+          </div>
+          {loading && <div className="card" role="status">{P.loading}</div>}
+          {!loading && prepared && !ok && (
             <div className="card bad">
               {prepared.message}
               {prepared.alternatives?.includes("walk") && (
@@ -151,23 +218,26 @@ export default function NewGame() {
               )}
             </div>
           )}
-          {stage !== "preparing" && prepared?.status === "ok" && prepared.notes.some((n) => n.startsWith("easy-bike-network")) && <div className="card warn">Few easy gravel roads or bike lanes here, so the route may include rougher trails.</div>}
-          {stage !== "preparing" && prepared?.status === "alternative" && <div className="card warn">{prepared.message}</div>}
-          {stage !== "preparing" && ok && proposal && (
+          {!loading && prepared?.status === "ok" && prepared.notes.some((n) => n.startsWith("easy-bike-network")) && <div className="card warn">Few easy gravel roads or bike lanes here, so the route may include rougher trails.</div>}
+          {!loading && prepared?.status === "alternative" && <div className="card warn">{prepared.message}</div>}
+          {summary && (
             <>
-              <div className="stat"><span>{isAB ? "Straight line" : "Distance (straight lines)"}</span><b>{fmtKm(isAB && abA && abB ? haversineM(abA, abB) : proposal.lengthM)}</b></div>
-              <div className="stat"><span>Estimated time</span><b>about {estimatedMinutes(proposal.lengthM * (p.mode === "mission" || proposal.terrain ? COURSE_DETOUR_FACTOR : 1), p)} min</b></div>
-              <div className="stat"><span>Time limit</span><b>{fmtTime(matchDurationS(p, proposal))}</b></div>
-              <div className="stat"><span>Goal</span><b>{p.mode === "escape" ? "Point B – any route" : `${proposal.waypoints.filter((w) => w.kind === "checkpoint").length} checkpoints + home`}</b></div>
-              {proposal.quality.flags.length > 0 && <div className="muted">{proposal.quality.flags.join(" · ")}</div>}
+              <dl className="pvstats">
+                {summary.cells.map((c) => <div key={c.k}><dt>{c.k}{c.mark ? <span aria-hidden="true">*</span> : null}</dt><dd>{c.v}</dd></div>)}
+              </dl>
+              <div className="pvlimit"><span>{P.timeLimit}</span><b>{summary.limit}</b></div>
+              {details && (
+                <div className="pvdetails" id="pv-details">
+                  <p>{summary.goal}</p>
+                  {summary.distanceNote && <p><span aria-hidden="true">* </span>{summary.distanceNote}</p>}
+                  {proposal && <p>{P.estNote}</p>}
+                  {proposal && proposal.quality.flags.length > 0 && <p>{proposal.quality.flags.join(" · ")}</p>}
+                  <p>{P.safetyMore}</p>
+                </div>
+              )}
             </>
           )}
-          {stage !== "preparing" && ok && p.mode === "survival" && (
-            <>
-              <div className="stat"><span>Match length</span><b>{fmtTime(p.durationS)}</b></div>
-              <div className="muted">Survival has no route. Move freely along the trails. Extraction opens after {Math.round(extractionOpensAtS(p.durationS) / 60)} min; reach it before the time runs out.</div>
-            </>
-          )}
+          <p className="pvsafety"><span className="warnicon" aria-hidden="true">⚠</span>{P.safety}</p>
           {view.movedFromPreview && (
             <div className="card warn">
               {isAB ? `You have moved ${view.distToPreviewStartM ?? "?"} m from A. Update the route from your position.` : "You have moved from the start point. Update the route."}
@@ -175,17 +245,20 @@ export default function NewGame() {
             </div>
           )}
           {view.messages.map((m) => <div key={m} className="card warn">{m}</div>)}
-          <div className="muted">{isAB ? (proposal?.terrain ? "Walk any way you like to B, on trails or across country. The line is only a hint. Zombies run on trails and walk slowly across country. The game does not know about roads, railways, water or private land: never cross them just because the game suggests it." : "Any route you like counts. The line is only a hint. Never cross a road or railway just because the game suggests it.") : p.mode === "mission" ? "Fetch the numbered checkpoints in order, then return home. Choose your own way. Never cross a road or railway just because the game suggests it." : "Never cross a road or railway just because the game suggests it."}</div>
-          <div className="row">
-            {!isAB && <button className="btn" disabled={busy || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>{p.mode === "survival" ? "TRY AGAIN" : "NEW COURSE"}</button>}
+          <div className="pvactions">
+            {!isAB && (
+              <button className="btn pvregen" aria-label={P.regenerateLabel} disabled={busy || loading} onClick={() => run(() => session!.regenerate())}>
+                <span className="regenicon" aria-hidden="true" dangerouslySetInnerHTML={{ __html: REGENERATE_SVG }} />{P.regenerate}
+              </button>
+            )}
+            <button
+              className="btn primary big cta pvstart"
+              disabled={!ok || loading || view.movedFromPreview || !session!.currentStart() || starting}
+              onClick={() => run(async () => { unlockAudio(); setStarting(true); if (await session!.startMatch()) router.push("/play"); else setStarting(false); })}
+            >
+              {P.startGame}
+            </button>
           </div>
-          <button
-            className="btn primary big"
-            disabled={!ok || stage === "preparing" || view.movedFromPreview || !session!.currentStart() || starting}
-            onClick={() => run(async () => { unlockAudio(); setStarting(true); if (await session!.startMatch()) router.push("/play"); else setStarting(false); })}
-          >
-            START
-          </button>
         </div>
       </div>
     );
@@ -237,7 +310,7 @@ export default function NewGame() {
         </section>
       )}
       <div className="ngfoot">
-        <button className="btn primary big" disabled={!canPrepare || starting} onClick={direct ? startDirect : () => run(async () => { unlockAudio(); await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) })); })}>
+        <button className="btn primary big cta" disabled={!canPrepare || starting} onClick={direct ? startDirect : () => run(async () => { unlockAudio(); await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) })); })}>
           {direct ? (busy || starting ? S.loadingMap : S.start) : isAB && !p.pointB ? S.pickB : isAB ? S.showRoute : S.showCourse}
         </button>
       </div>
