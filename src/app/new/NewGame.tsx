@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { CloseButton, PageHeader } from "../_client/Modal";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
 import type { GameMode } from "@/engine/objectives/objectives";
@@ -14,23 +14,62 @@ import { COURSE_DETOUR_FACTOR } from "@/routes/course";
 import { haversineM } from "@/geo/geometry";
 import { errorText } from "@/gps/provider/provider";
 import { matchDurationS } from "@/play/match";
-import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_HELP, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
+import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_LABEL, fmtKm, fmtTime } from "../_client/format";
+import { BIKE_SVG, MODE_ATOB_SVG, MODE_CHECKPOINTS_SVG, MODE_SURVIVAL_SVG, WALK_SVG } from "../_client/symbols";
+import { t } from "../_client/strings";
+import { resolveModeRules } from "@/config/modes";
+import { applyEnemySpeedMultiplier } from "@/config/game-rules";
 import type { MapMarker } from "../_client/GameMap";
-import { cuesEnabled, setCuesEnabled, unlockAudio } from "../_client/cues";
+import { unlockAudio } from "../_client/cues";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 
 const GameMap = dynamic(() => import("../_client/GameMap"), { ssr: false });
 
-function Seg<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { v: T; t: string }[]; onChange: (v: T) => void }) {
+interface Opt<T extends string> { v: T; t: string; sub?: string; icon?: string }
+
+/**
+ * One choice on New game (mode, activity, difficulty): a labelled group of toggle buttons. The chosen one has a red accent, a thicker
+ * border and a check mark (not colour alone), and `aria-pressed`. `cards` = icon, title and subtitle stacked; `row` = icon and title side by side.
+ */
+function Choice<T extends string>({ id, label, value, options, onChange, variant, children }: { id: string; label: string; value: T; options: Opt<T>[]; onChange: (v: T) => void; variant: "cards" | "row" | "seg"; children?: ReactNode }) {
   return (
-    <div className="field">
-      <label>{label}</label>
-      <div className="seg" role="group" aria-label={label}>
-        {options.map((o) => <button key={o.v} aria-pressed={value === o.v} onClick={() => onChange(o.v)}>{o.t}</button>)}
+    <section className="ngsec">
+      <h2 className="nglabel" id={`${id}-label`}>{label}</h2>
+      <div className={`opts ${variant}`} role="group" aria-labelledby={`${id}-label`}>
+        {options.map((o) => (
+          <button key={o.v} type="button" className="opt" aria-pressed={value === o.v} aria-label={o.t} aria-describedby={o.sub ? `${id}-${o.v}-sub` : undefined} onClick={() => onChange(o.v)}>
+            {o.icon && <span className="opticon" dangerouslySetInnerHTML={{ __html: o.icon }} />}
+            <span className="opttitle">{o.t}</span>
+            {o.sub && <span className="optsub" id={`${id}-${o.v}-sub`}>{o.sub}</span>}
+          </button>
+        ))}
       </div>
-    </div>
+      {children}
+    </section>
   );
 }
+
+/** A slider with its value to the right of the heading, Short/Long under the ends and a short note. */
+function RangeField({ id, label, shown, min, max, step, value, onChange, note }: { id: string; label: string; shown: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void; note: string }) {
+  const S = t().newGame;
+  return (
+    <section className="ngsec">
+      <div className="rangehead">
+        <label className="nglabel" htmlFor={id}>{label}</label>
+        <output className="rangeval" htmlFor={id}>{shown}</output>
+      </div>
+      <div className="rangerow">
+        <span aria-hidden="true">{S.short}</span>
+        <input id={id} className="ngrange" type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} aria-valuetext={shown} />
+        <span aria-hidden="true">{S.long}</span>
+      </div>
+      <p className="ngnote">{note}</p>
+    </section>
+  );
+}
+
+const MODE_ICON: Record<GameMode, string> = { mission: MODE_CHECKPOINTS_SVG, escape: MODE_ATOB_SVG, survival: MODE_SURVIVAL_SVG };
+const km1 = (m: number) => `${(Math.round(m / 100) / 10).toFixed(1)} km`;
 
 export default function NewGame() {
   const ctx = useSessionCtx();
@@ -38,14 +77,12 @@ export default function NewGame() {
   const session = ctx?.session;
   const view = useSessionView(session);
   const [p, setP] = useState<MatchParams>(() => defaultParams("walk"));
-  const [cues, setCues] = useState(true);
   const [busy, setBusy] = useState(false);
   // Pressing START: keep showing the preview until /play has taken over (otherwise the settings form flashes while the stage changes).
   const [starting, setStarting] = useState(false);
   // A TO B på terräng: varför senaste tryckta B avvisades (vatten, byggnad, större väg, järnväg).
   const [pickProblem, setPickProblem] = useState<string | null>(null);
 
-  useEffect(() => { setCues(cuesEnabled()); }, []);
   useEffect(() => {
     if (!session) return;
     if (session.getView().stage === "finished") session.reset();
@@ -62,8 +99,8 @@ export default function NewGame() {
   const gps = useMemo(() => {
     if (!view) return null;
     if (view.gpsError) return { tone: "bad", text: errorText[view.gpsError.code] };
-    if (view.accuracyM === null) return { tone: "warn", text: "Finding your location… Move to open sky." };
-    if (view.accuracyM > START_MAX_ACCURACY_M) return { tone: "warn", text: "Waiting for a better location signal…" };
+    if (view.accuracyM === null) return { tone: "warn", text: t().newGame.gpsFinding };
+    if (view.accuracyM > START_MAX_ACCURACY_M) return { tone: "warn", text: t().newGame.gpsWaiting };
     return null;
   }, [view]);
 
@@ -128,7 +165,7 @@ export default function NewGame() {
           {stage !== "preparing" && ok && p.mode === "survival" && (
             <>
               <div className="stat"><span>Match length</span><b>{fmtTime(p.durationS)}</b></div>
-              <div className="muted">Survive and Extract has no route. Move freely along the trails. Extraction opens after {Math.round(extractionOpensAtS(p.durationS) / 60)} min; reach it before the time runs out.</div>
+              <div className="muted">Survival has no route. Move freely along the trails. Extraction opens after {Math.round(extractionOpensAtS(p.durationS) / 60)} min; reach it before the time runs out.</div>
             </>
           )}
           {view.movedFromPreview && (
@@ -154,28 +191,36 @@ export default function NewGame() {
     );
   }
 
+  const S = t().newGame;
+  // Difficulty line from the rules this match would get (zombie speed and how many at most), never a made-up description.
+  const rules = applyEnemySpeedMultiplier(resolveModeRules(p.mode, p.activity, p.difficulty, p.durationS), p.enemySpeedMultiplier);
+  const steps = direct ? [S.steps.setup, S.steps.start] : [S.steps.setup, S.steps.preview, S.steps.start];
   return (
-    <main className="page">
-      <PageHeader title="NEW GAME" />
+    <main className="page newgame">
+      <PageHeader title={S.title} />
+      <ol className="steps" aria-label="Steps">
+        {steps.map((x, i) => <li key={x} aria-current={i === 0 ? "step" : undefined}><span>{i + 1}</span>{x}</li>)}
+      </ol>
       {gps && <div className={`card ${gps.tone}`} role="status">{gps.text}</div>}
-      <Seg<GameMode> label="Mode" value={p.mode} options={(["mission", "escape", "survival"] as GameMode[]).map((m) => ({ v: m, t: MODE_LABEL[m] }))} onChange={(mode) => set({ mode })} />
-      <div className="muted">{MODE_HELP[p.mode]}{p.mode === "survival" ? ` Extraction opens after ${Math.round(extractionOpensAtS(p.durationS) / 60)} min.` : ""}</div>
-      <Seg<Activity> label="Activity" value={p.activity} options={(["walk", "mtb"] as Activity[]).map((a) => ({ v: a, t: ACTIVITY_LABEL[a] }))} onChange={(a) => setP(withActivity(p, a))} />
-      <Seg<Difficulty> label="Difficulty" value={p.difficulty} options={(["easy", "normal", "hard"] as Difficulty[]).map((d) => ({ v: d, t: DIFFICULTY_LABEL[d] }))} onChange={(difficulty) => set({ difficulty })} />
+      <Choice<GameMode> id="mode" label={S.mode} variant="cards" value={p.mode} onChange={(mode) => set({ mode })}
+        options={(["mission", "escape", "survival"] as GameMode[]).map((m) => ({ v: m, t: MODE_LABEL[m], sub: S.modeSubtitle[m], icon: MODE_ICON[m] }))} />
+      <Choice<Activity> id="activity" label={S.activity} variant="row" value={p.activity} onChange={(a) => setP(withActivity(p, a))}
+        options={(["walk", "mtb"] as Activity[]).map((a) => ({ v: a, t: ACTIVITY_LABEL[a], icon: a === "mtb" ? BIKE_SVG : WALK_SVG }))} />
+      <Choice<Difficulty> id="difficulty" label={S.difficulty} variant="seg" value={p.difficulty} onChange={(difficulty) => set({ difficulty })}
+        options={(["easy", "normal", "hard"] as Difficulty[]).map((d) => ({ v: d, t: DIFFICULTY_LABEL[d] }))}>
+        <p className="ngnote" aria-live="polite">{S.difficultyLine(p.difficulty, (rules.zombieSpeedMps * 3.6).toFixed(1), rules.maxZombies)}</p>
+      </Choice>
       {p.mode === "survival" ? (
-        <div className="field">
-          <label htmlFor="dur">Match length: <b>{Math.round(p.durationS / 60)} min</b></label>
-          <input id="dur" type="range" min={dur.minMin} max={dur.maxMin} step={dur.stepMin} value={Math.round(p.durationS / 60)} onChange={(e) => set({ durationS: Number(e.target.value) * 60 })} />
-        </div>
+        <RangeField id="dur" label={S.matchLength} shown={`${Math.round(p.durationS / 60)} min`} min={dur.minMin} max={dur.maxMin} step={dur.stepMin} value={Math.round(p.durationS / 60)}
+          onChange={(v) => set({ durationS: v * 60 })} note={S.extractionNote(Math.round(extractionOpensAtS(p.durationS) / 60))} />
       ) : p.mode === "mission" ? (
-        <div className="field">
-          <label htmlFor="dist">Distance (straight lines between checkpoints): <b>{fmtKm(p.targetLengthM)}</b></label>
-          <input id="dist" type="range" min={limit.min} max={limit.max} step={limit.step} value={p.targetLengthM} onChange={(e) => set({ targetLengthM: Number(e.target.value) })} />
-        </div>
+        <RangeField id="dist" label={S.courseDistance} shown={km1(p.targetLengthM)} min={limit.min} max={limit.max} step={limit.step} value={p.targetLengthM}
+          onChange={(v) => set({ targetLengthM: v })} note={S.courseNote} />
       ) : (
-        <div className="field">
-          <div className="stat"><span>A</span><b>Your position now</b></div>
-          <div className="stat"><span>B</span><b>{p.pointB ? "Picked ✓" : "Tap the map"}</b></div>
+        <section className="ngsec">
+          <h2 className="nglabel">{S.destination}</h2>
+          <div className="stat"><span>{S.pointA}</span><b>{S.pointAValue}</b></div>
+          <div className="stat"><span>{S.pointB}</span><b>{p.pointB ? S.pointBPicked : S.pointBTap}</b></div>
           <div className="pickmap" data-testid="pickmap">
             <GameMap
               zoom={14}
@@ -189,16 +234,14 @@ export default function NewGame() {
             />
           </div>
           {pickProblem && <div className="card warn" role="status">{pickProblem}</div>}
-        </div>
+        </section>
       )}
-      <label className="muted" style={{ display: "flex", gap: 10, alignItems: "center", minHeight: 44 }}>
-        <input type="checkbox" checked={cues} onChange={(e) => { setCues(e.target.checked); setCuesEnabled(e.target.checked); }} style={{ width: 22, height: 22 }} />
-        Sound and vibration for events (no vibration on iPhone)
-      </label>
-      <button className="btn primary big" disabled={!canPrepare || starting} onClick={direct ? startDirect : () => run(async () => { unlockAudio(); await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) })); })}>
-        {direct ? (busy || starting ? "LOADING MAP…" : "START") : isAB && !p.pointB ? "PICK B ON THE MAP" : isAB ? "SHOW ROUTE" : "SHOW COURSE"}
-      </button>
-      {!ctx && <div className="muted">Loading…</div>}
+      <div className="ngfoot">
+        <button className="btn primary big" disabled={!canPrepare || starting} onClick={direct ? startDirect : () => run(async () => { unlockAudio(); await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) })); })}>
+          {direct ? (busy || starting ? S.loadingMap : S.start) : isAB && !p.pointB ? S.pickB : isAB ? S.showRoute : S.showCourse}
+        </button>
+      </div>
+      {!ctx && <div className="muted">{S.loading}</div>}
     </main>
   );
 }

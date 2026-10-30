@@ -106,7 +106,8 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 /* The one close button used everywhere (dialogs, page headers, course preview): large, red, white ✕. */
 .xbtn { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 52px; min-height: 52px; padding: 0; border-radius: 50%; border: 2px solid #fca5a5; background: #991b1b; color: #fff; font-size: 1.7rem; line-height: 1; text-decoration: none; box-shadow: 0 2px 10px #000a; cursor: pointer; pointer-events: auto; }
 .xbtn:active { background: #b91c1c; }
-.controls .iconbtn { flex: 0 0 48px; padding: 0; font-size: 1.2rem; }
+.controls .iconbtn { flex: 0 0 48px; padding: 0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+.controls .iconbtn[aria-pressed="false"] { color: #f87171; }
 .controls .wide { flex: 2; }
 .controls { gap: 8px; }
 .controls button { min-width: 0; padding: 0 4px; font-size: .85rem; letter-spacing: .03em; }
@@ -171,7 +172,7 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .map-shell.bike .hudbar .pill { font-size: 1.12rem; }
 /* On foot / Bike icon next to the mode pill. */
 .hudbar .modegroup { display: flex; gap: 6px; align-items: stretch; min-width: 0; flex: 0 1 auto; }
-/* A long mode name (SURVIVE AND EXTRACT) wraps at the separator instead of being cut off or pushing the icon out of view. */
+/* A long mode name wraps at the separator instead of being cut off or pushing the icon out of view. */
 .hudbar .pill.mode { min-width: 0; border-radius: 18px; line-height: 1.25; }
 .hudbar .pill.mode > span { white-space: nowrap; }
 .hudbar .pill.activity, .hudbar .line > .pill:last-child { flex-shrink: 0; }
@@ -203,3 +204,63 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .recapopt { display: flex; gap: 10px; align-items: center; min-height: 44px; }
 .recapopt input { width: 22px; height: 22px; flex-shrink: 0; }
 .stat.record b { color: #fbbf24; }
+
+/* ---------- New game ---------- */
+/* Darker overlay than the other pages: the zombie art sets the mood but never competes with the text (also in daylight). */
+.page.newgame { gap: 10px; padding-bottom: 0; }
+.page.newgame::before { background: linear-gradient(#0b0f14e0, #0b0f14c8 35%, #0b0f14f0 75%), url("/img/backdrop.jpg") 60% 20% / cover no-repeat; }
+.page.newgame .topbar { margin-bottom: -10px; }
+.steps { display: flex; gap: 14px; margin: 0; padding: 0; list-style: none; font-size: 0.78rem; color: var(--muted); letter-spacing: 0.04em; }
+.steps li { display: flex; align-items: center; gap: 6px; }
+.steps li span { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid #3a4a5e; font-size: 0.7rem; font-weight: 700; }
+.steps li[aria-current="step"] { color: var(--text); font-weight: 700; }
+.steps li[aria-current="step"] span { background: #b91c1c; border-color: #ef4444; color: #fff; }
+.ngsec { display: flex; flex-direction: column; gap: 5px; }
+.page .nglabel { margin: 0; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #a9b6c4; }
+.ngnote { margin: 0; font-size: 0.82rem; line-height: 1.35; color: #b6c2cf; }
+
+/* Options: one system for mode, activity and difficulty. Chosen = red fill, bright border and a check mark. */
+.opts { display: grid; gap: 8px; }
+.opts.cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.opts.row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.opts.seg { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.opt { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px 10px; border-radius: 12px;
+  background: #131a22e6; border: 1.5px solid #2a3747; color: var(--text); font: inherit; font-weight: 700; font-size: 0.92rem; letter-spacing: 0.04em; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: transform .08s; }
+.opt .opttitle { text-transform: uppercase; line-height: 1.15; }
+.opt .opticon { display: flex; color: #c6d0db; }
+.opt .opticon svg { display: block; }
+.opts.cards .opt { flex-direction: column; justify-content: flex-start; gap: 3px; padding: 7px 6px 6px; min-height: 76px; text-align: center; }
+.opts.cards .opticon svg { width: 22px; height: 22px; }
+/* The longest title (CHECKPOINTS) must fit one card at 360 px: the size follows the screen width rather than breaking the word. */
+.opts.cards .opttitle { font-size: min(0.82rem, 3.15vw); letter-spacing: 0; white-space: nowrap; }
+.opt .optsub { font-size: 0.72rem; font-weight: 500; letter-spacing: 0; color: #9fb0c0; line-height: 1.2; }
+.opt[aria-pressed="true"] { background: #7f1d1d; border-color: #ef4444; }
+.opt[aria-pressed="true"] .opticon, .opt[aria-pressed="true"] .optsub { color: #fde2e2; }
+.opt[aria-pressed="true"]::after { content: "✓"; position: absolute; top: 4px; right: 6px; font-size: 0.72rem; font-weight: 800; color: #fff; line-height: 1; }
+.opt:active { transform: scale(0.98); }
+.opt:focus-visible, .ngrange:focus-visible, .ngfoot .btn:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
+@media (hover: hover) { .opt:hover { border-color: #4b5d73; } .opt[aria-pressed="true"]:hover { border-color: #f87171; } }
+@media (prefers-reduced-motion: reduce) { .opt { transition: none; } .opt:active { transform: none; } }
+/* Very narrow phones: the mode cards become rows (icon, title, subtitle) instead of being squeezed. */
+@media (max-width: 359px) {
+  .opts.cards { grid-template-columns: 1fr; }
+  .opts.cards { gap: 6px; }
+  .opts.cards .opt { flex-direction: row; justify-content: flex-start; min-height: 46px; text-align: left; gap: 10px; padding: 6px 12px; }
+  .opts.cards .opttitle { font-size: 0.85rem; white-space: normal; }
+  .opts.cards .optsub { margin-left: auto; padding-right: 14px; }
+}
+
+/* Sliders: value to the right of the heading, a big red thumb, Short/Long under the ends. */
+.rangehead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: -4px; }
+.rangeval { font-size: 1.35rem; font-weight: 800; color: #f87171; font-variant-numeric: tabular-nums; }
+.rangerow { display: flex; align-items: center; gap: 10px; }
+.rangerow span { font-size: 0.72rem; color: var(--muted); flex-shrink: 0; }
+.ngrange { flex: 1; min-width: 0; height: 40px; margin: 0; accent-color: #ef4444; touch-action: pan-y; }
+
+/* Primary action: kept in reach at the bottom (sticky) above the iPhone home indicator, separated from the settings by a fade. */
+.ngfoot { position: sticky; bottom: 0; margin: auto -16px 0; padding: 8px 16px max(12px, env(safe-area-inset-bottom)); background: linear-gradient(#0b0f1400, #0b0f14f2 22%); }
+.ngfoot .btn.big { padding: 16px; }
+.ngfoot .btn { width: 100%; background: #b91c1c; border-color: #ef4444; color: #fff; box-shadow: 0 6px 18px #0009; }
+.ngfoot .btn:disabled { background: #3a1a1a; border-color: #5b2626; color: #c9b1b1; box-shadow: none; }
+.ngfoot .btn:not(:disabled):active { background: #991b1b; }

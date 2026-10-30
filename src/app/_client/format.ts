@@ -2,12 +2,7 @@ import type { GameMode, ObjectiveProgress } from "@/engine/objectives/objectives
 import type { Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
 
-export const MODE_LABEL: Record<GameMode, string> = { mission: "CHECKPOINTS", escape: "A TO B", survival: "SURVIVE AND EXTRACT" };
-export const MODE_HELP: Record<GameMode, string> = {
-  mission: "Fetch the numbered checkpoints in order, then return home. No route, choose your own way.",
-  escape: "A is where you are now. Pick B on the map and get there before time runs out. Any way you like.",
-  survival: "No route: survive until extraction opens, then reach it.",
-};
+export const MODE_LABEL: Record<GameMode, string> = { mission: "CHECKPOINTS", escape: "A TO B", survival: "SURVIVAL" };
 export const ACTIVITY_LABEL: Record<Activity, string> = { walk: "On foot", run: "On foot", mtb: "Bike" };
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: "Easy", normal: "Normal", hard: "Hard" };
 export const RESULT_LABEL: Record<string, string> = {

@@ -40,7 +40,7 @@ export default function HowToPlay() {
       <ul>
         <li><b>CHECKPOINTS</b> – numbered checkpoints about every 500 m on foot or every 1 km by bike, as the crow flies. No route is shown: fetch them in order, choose your own way, then return home. The distance you choose is the sum of the straight lines between the checkpoints.</li>
         <li><b>A TO B</b> – A is where you are now and you pick B (the goal) on the map. Any route you like counts; a faint line shows the straight line between A and B. You must stand at A to start.</li>
-        <li><b>SURVIVE AND EXTRACT</b> – no route. Survive until extraction opens near the end (shown before you start, e.g. after 20 min in a 30-minute match), then reach the helicopter. The distance to it is shown at the top.</li>
+        <li><b>SURVIVAL</b> – no route. Survive until extraction opens near the end (shown before you start, e.g. after 20 min in a 30-minute match), then reach the helicopter. The distance to it is shown at the top.</li>
       </ul>
       <p>You may go anywhere you like – but zombies follow only the trails, and a goal counts only after you stand within 30 m for 5 seconds.</p>
 

@@ -80,3 +80,29 @@ export const BIKE_SVG = `<svg viewBox="0 0 24 24" width="22" height="22" xmlns="
 <circle cx="15.6" cy="3.9" r="2" fill="currentColor" stroke="none"/>
 <path d="M14.6 6.6 10.4 11l3.2 2.6-1.4 3.8M14.6 6.6l1.4 3.6" stroke-width="2.1"/>
 </svg>`;
+
+/** Mode cards on New game (currentColor). Checkpoints: a flag on a pole. */
+export const MODE_CHECKPOINTS_SVG = `<svg viewBox="0 0 24 24" width="26" height="26" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M5 21V4"/><path d="M5 4.5h11l-2.2 3.8L16 12H5" fill="currentColor" fill-opacity=".25"/>
+</svg>`;
+
+/** A to B: a dashed route from a point to a target pin. */
+export const MODE_ATOB_SVG = `<svg viewBox="0 0 24 24" width="26" height="26" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="5" cy="18" r="2.2"/><path d="M7.5 17.2c3-1 3.5-4.2 6.5-5.2" stroke-dasharray="2 2.6"/>
+<path d="M18 13.5s-3.6-3.6-3.6-6.3a3.6 3.6 0 0 1 7.2 0c0 2.7-3.6 6.3-3.6 6.3z" fill="currentColor" fill-opacity=".25"/><circle cx="18" cy="7.2" r="1.2" fill="currentColor"/>
+</svg>`;
+
+/** Survival: a shield. */
+export const MODE_SURVIVAL_SVG = `<svg viewBox="0 0 24 24" width="26" height="26" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 2.8 4.5 5.6v5.6c0 4.6 3.1 8.5 7.5 10 4.4-1.5 7.5-5.4 7.5-10V5.6z" fill="currentColor" fill-opacity=".25"/><path d="m8.8 12 2.3 2.3 4.2-4.6"/>
+</svg>`;
+
+/** In-game sound button: a speaker with sound waves (on) … */
+export const SOUND_ON_SVG = `<svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M18.2 6.5a8 8 0 0 1 0 11"/>
+</svg>`;
+
+/** … and the same speaker struck through (off). */
+export const SOUND_OFF_SVG = `<svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M3 3l18 18"/>
+</svg>`;

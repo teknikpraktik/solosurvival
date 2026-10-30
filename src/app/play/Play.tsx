@@ -10,7 +10,8 @@ import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio, type Countdow
 import { COUNTDOWN_START_M, nextCountdown, type CountdownStep } from "@/play/countdown";
 import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, nextApproaching, nextClose, nextGoalClose, viewProfile } from "@/play/camera-view";
 import { Modal } from "../_client/Modal";
-import { BIKE_SVG, WALK_SVG } from "../_client/symbols";
+import { BIKE_SVG, SOUND_OFF_SVG, SOUND_ON_SVG, WALK_SVG } from "../_client/symbols";
+import { t } from "../_client/strings";
 import { RecapStatsList } from "../_client/RecapStats";
 import { personalRecord } from "@/play/recap";
 import { MatchStorage } from "@/play/storage";
@@ -223,7 +224,8 @@ export default function Play() {
             <button className="wide" onClick={() => session.pause("manual")}>PAUSE</button>
           )}
           <button className="autobtn" onClick={() => { if (!auto) void session.enableCompass(); setAuto((a) => !a); }} aria-pressed={auto} aria-label={auto ? "AUTO on: the map follows you (tap to move the map yourself)" : "AUTO off: you move the map (tap to follow again)"}>AUTO</button>
-          <button className="iconbtn" onClick={() => { const on = !sound; setSound(on); setCuesEnabled(on); }} aria-label={sound ? "Sound on (tap to mute)" : "Sound off (tap to unmute)"} aria-pressed={sound}>{sound ? "🔊" : "🔇"}</button>
+          {/* Sound on/off for every game sound and spoken line (same player, same stored choice). Turning it on is a tap, so audio is unlocked here as iOS requires. */}
+          <button className="iconbtn" onClick={() => { const on = !sound; setSound(on); setCuesEnabled(on); if (on) unlockAudio(); }} aria-label={sound ? t().hud.soundOn : t().hud.soundOff} aria-pressed={sound} dangerouslySetInnerHTML={{ __html: sound ? SOUND_ON_SVG : SOUND_OFF_SVG }} />
           <button onClick={() => setConfirmEnd(true)}>QUIT</button>
         </div>
       )}
