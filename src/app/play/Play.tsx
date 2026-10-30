@@ -10,6 +10,7 @@ import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio, type Countdow
 import { COUNTDOWN_START_M, nextCountdown, type CountdownStep } from "@/play/countdown";
 import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, nextApproaching, nextClose, nextGoalClose, viewProfile } from "@/play/camera-view";
 import { Modal } from "../_client/Modal";
+import { BIKE_SVG, WALK_SVG } from "../_client/symbols";
 import { Scare } from "../_client/Scare";
 import { JumpScare } from "../_client/JumpScare";
 import type { MapMarker } from "../_client/GameMap";
@@ -176,7 +177,10 @@ export default function Play() {
       />
       <div className="hudbar">
         <div className="line">
-          <span className="pill mode" aria-label="Mode and difficulty">{MODE_LABEL[m.mode]} · {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span>
+          <span className="modegroup">
+            <span className="pill mode" aria-label="Mode and difficulty">{MODE_LABEL[m.mode]} · {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span>
+            <span className="pill activity" role="img" aria-label={m.activity === "mtb" ? "Bike" : "On foot"} dangerouslySetInnerHTML={{ __html: m.activity === "mtb" ? BIKE_SVG : WALK_SVG }} />
+          </span>
           <span className="pill" aria-label="Time left">{fmtTime(remaining)}</span>
         </div>
         <div className="line">

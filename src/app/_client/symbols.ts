@@ -62,3 +62,21 @@ export const GOAL_POINTER_SVG = `<svg viewBox="0 0 32 32" width="30" height="30"
 <circle cx="16" cy="18.4" r="3.6" fill="#2563eb"/>
 <circle cx="16" cy="18.4" r="1.4" fill="#ffffff"/>
 </svg>`;
+
+/** HUD: on foot, a walking person (currentColor, so it follows the pill's text colour). */
+export const WALK_SVG = `<svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="13.2" cy="4" r="2.1" fill="currentColor" stroke="none"/>
+<path d="M12.6 7.6 11 14"/>
+<path d="M11 14 8.4 21.2"/>
+<path d="M11 14l2.8 3.3.6 4.2"/>
+<path d="M8 11.6l4.4-3.6 3.2 3.6"/>
+</svg>`;
+
+/** HUD: Bike, a person on a bike (currentColor). */
+export const BIKE_SVG = `<svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="5.2" cy="17.6" r="3.7" stroke-width="1.7"/>
+<circle cx="18.8" cy="17.6" r="3.7" stroke-width="1.7"/>
+<path d="M5.2 17.6 9 12h7.2l2.6 5.6M9 12l3.2 5.6L16.2 12M15.4 10.2h1.8" stroke-width="1.5"/>
+<circle cx="15.6" cy="3.9" r="2" fill="currentColor" stroke="none"/>
+<path d="M14.6 6.6 10.4 11l3.2 2.6-1.4 3.8M14.6 6.6l1.4 3.6" stroke-width="2.1"/>
+</svg>`;

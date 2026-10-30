@@ -169,6 +169,10 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .hudbar .pill.zclose { font-size: 1.4rem; padding: 6px 14px; border-color: #ef4444; color: #fecaca; background: #3b0d0dee; }
 /* Bike: every text in the game view one to two points larger, for reading at a glance while riding. */
 .map-shell.bike .hudbar .pill { font-size: 1.12rem; }
+/* On foot / Bike icon next to the mode pill. */
+.hudbar .modegroup { display: flex; gap: 6px; align-items: stretch; min-width: 0; }
+.hudbar .pill.activity { display: flex; align-items: center; justify-content: center; padding: 0 9px; }
+.hudbar .pill.activity svg { display: block; }
 .map-shell.bike .hudbar .pill.zclose { font-size: 1.55rem; }
 .map-shell.bike .controls button { font-size: .95rem; }
 .map-shell.bike .zmark .zlabel { font-size: 14px; }
