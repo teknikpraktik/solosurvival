@@ -100,59 +100,144 @@ export function unwrapToward(current: number, target: number): number {
 
 export type HeadingSource = "gps" | "compass" | "held" | "none";
 
+/** Direction for the map and the player arrow. `deg` turns the map (Track Up); `courseDeg` is the direction of travel, for the arrow. */
+export interface FusedHeading {
+  deg: number | null;
+  source: HeadingSource;
+  /** Direction of travel (GPS) while moving; otherwise the same as `deg`. The arrow is drawn at this angle relative to the map. */
+  courseDeg: number | null;
+}
+
 /** GPS-kursen litas på över denna (utjämnade) fart; under den används kompassen om den finns. */
 export const FUSION_MOVING_MPS = 1.2;
 /** En kompassmätning äldre än så här (ms) räknas som bortfall. */
 export const COMPASS_MAX_AGE_MS = 2_000;
 /** Hur länge (ms) den senast gångna riktningen visas efter att man stannat utan kompass; därefter är riktningen okänd. */
 export const HELD_MAX_AGE_MS = 30_000;
-/** Tidskonstant (s) för kompassens utjämning (sensorn brusar och skakar när man går). */
-const COMPASS_TAU_S = 0.25;
 /** Kompassen får ändra den visade kursen först när den skiljer sig minst så här mycket (grader): hindrar darrning. */
-const COMPASS_DEADBAND_DEG = 1.5;
+const COMPASS_DEADBAND_DEG = 0.5;
+/**
+ * Compass filter (one-euro): smooths hard when the phone is held still (no jitter) and hardly at all when it turns fast (no lag).
+ * Cut-off frequency (Hz) at rest, how much it rises per °/s of turn rate, and the cut-off for the turn-rate estimate.
+ */
+const COMPASS_MIN_CUTOFF_HZ = 0.8;
+const COMPASS_BETA = 0.02;
+const COMPASS_D_CUTOFF_HZ = 1;
+/** Compass correction: learned from GPS while moving, only when the two agree within this (a glance to the side is not learned)… */
+export const BIAS_GATE_DEG = 25;
+/** …with this time constant (s), so a constant error (declination, mount, phone held askew) is gone within about a minute. */
+export const BIAS_TAU_S = 15;
+/** A larger but steady disagreement while moving for this long (s) is a constant compass error (magnet in the mount): adopted at once. */
+export const BIAS_SNAP_S = 10;
+const BIAS_SNAP_SPREAD_DEG = 30;
+
+/** One-euro low-pass filter on an angle (unwrapped, so it never turns the long way round). */
+class AngleFilter {
+  private x: number | null = null;
+  private dx = 0;
+  private tMs = 0;
+  push(deg: number, tMs: number): number {
+    if (this.x === null) { this.x = deg; this.dx = 0; this.tMs = tMs; return wrap360(deg); }
+    const dt = Math.max(1e-3, (tMs - this.tMs) / 1000);
+    this.tMs = tMs;
+    const raw = this.x + wrap180(deg - this.x);
+    const a = (cutoff: number) => 1 / (1 + 1 / (2 * Math.PI * cutoff * dt));
+    this.dx += a(COMPASS_D_CUTOFF_HZ) * ((raw - this.x) / dt - this.dx);
+    this.x += a(COMPASS_MIN_CUTOFF_HZ + COMPASS_BETA * Math.abs(this.dx)) * (raw - this.x);
+    return wrap360(this.x);
+  }
+  reset(): void { this.x = null; }
+}
 
 /**
- * Slår ihop GPS-färdriktning och kompass till en enda riktning för pil och Track Up. Ren presentationslogik.
- * - I rörelse (fart ≥ 1,2 m/s) gäller GPS-kursen: den följer faktisk färdriktning även om telefonen ligger i fickan.
- * - Stillastående eller långsamt används kompassen (om den är tillåten och färsk), så pilen och kartan följer hur man vänder sig.
- * - Utan kompass behålls senast gångna riktning i högst 30 s ("held"); sedan är riktningen okänd (`none`) i stället för gammal och missvisande.
+ * Slår ihop GPS-färdriktning och kompass. Ren presentationslogik, samma för till fots och cykel.
+ * - Kartan (`deg`) följer kompassen när den finns och är färsk, även i rörelse: vrider man telefonen eller huvudet vrids kartan samtidigt.
+ *   Kompassen rättas med en korrektion som lärs från GPS-kursen i rörelse (missvisning, hållare, snett hållen telefon).
+ * - Pilen (`courseDeg`) visar färdriktningen från GPS i rörelse, relativt kartan; stillastående pekar den dit telefonen pekar.
+ * - Utan kompass (eller med kompassvyn avslagen): GPS-kursen i rörelse, kompassen stilla, senast gångna riktning ("held") i högst 30 s,
+ *   sedan okänd (`none`) i stället för gammal och missvisande.
  */
 export class HeadingFusion {
+  /** Compass turns the map also while moving (the setting "Compass turns the map"). Off: the map follows GPS while moving, as before. */
+  compassView = true;
   private compass: { deg: number; tMs: number } | null = null;
+  private readonly filter = new AngleFilter();
   private gps: { deg: number; tMs: number } | null = null;
   private lastMovingMs = -Infinity;
-  private shown: { deg: number; source: HeadingSource } | null = null;
+  private shown: FusedHeading | null = null;
+  private biasDeg = 0;
+  private lastBiasMs: number | null = null;
+  private snap: { sinceMs: number; errDeg: number } | null = null;
 
   pushCompass(deg: number | null, tMs: number): void {
     if (deg === null) return; // bortfall märks av att mätningen blir gammal
-    if (!this.compass || tMs - this.compass.tMs > COMPASS_MAX_AGE_MS) { this.compass = { deg: wrap360(deg), tMs }; return; }
-    const dt = Math.max(0, (tMs - this.compass.tMs) / 1000);
-    const k = 1 - Math.exp(-dt / COMPASS_TAU_S);
-    this.compass = { deg: wrap360(this.compass.deg + wrap180(deg - this.compass.deg) * k), tMs };
+    if (this.compass && tMs - this.compass.tMs > COMPASS_MAX_AGE_MS) this.filter.reset();
+    this.compass = { deg: this.filter.push(wrap360(deg), tMs), tMs };
   }
 
   /** Senaste GPS-baserade riktning (från HeadingTracker) och utjämnad fart; anropas vid varje GPS-fix. */
   pushGps(deg: number | null, speedMps: number | null, tMs: number): void {
     if (deg !== null) this.gps = { deg, tMs };
-    if (speedMps !== null && speedMps >= FUSION_MOVING_MPS && deg !== null) this.lastMovingMs = tMs;
+    const moving = speedMps !== null && speedMps >= FUSION_MOVING_MPS && deg !== null;
+    if (moving) this.lastMovingMs = tMs;
+    if (moving && this.compassFresh(tMs)) this.learnBias(deg!, tMs);
+    else { this.lastBiasMs = null; this.snap = null; }
+  }
+
+  private compassFresh(tMs: number): boolean {
+    return this.compass !== null && tMs - this.compass.tMs <= COMPASS_MAX_AGE_MS;
+  }
+
+  private learnBias(gpsDeg: number, tMs: number): void {
+    const err = wrap180(gpsDeg - (this.compass!.deg + this.biasDeg));
+    const dt = this.lastBiasMs === null ? 0 : Math.min(2, (tMs - this.lastBiasMs) / 1000);
+    this.lastBiasMs = tMs;
+    if (Math.abs(err) <= BIAS_GATE_DEG) {
+      this.snap = null;
+      this.biasDeg = wrap180(this.biasDeg + err * (1 - Math.exp(-dt / BIAS_TAU_S)));
+      return;
+    }
+    if (!this.snap || Math.abs(wrap180(err - this.snap.errDeg)) > BIAS_SNAP_SPREAD_DEG) { this.snap = { sinceMs: tMs, errDeg: err }; return; }
+    if (tMs - this.snap.sinceMs >= BIAS_SNAP_S * 1000) {
+      this.biasDeg = wrap180(this.biasDeg + err);
+      this.snap = null;
+    }
+  }
+
+  /** Learned compass correction (degrees), for the field log. */
+  get compassBiasDeg(): number { return this.biasDeg; }
+
+  /** Compass minus GPS course right now (degrees, after the correction), or null when not moving with a fresh compass. For the field log. */
+  disagreement(tMs: number): { gpsDeg: number; compassDeg: number; biasDeg: number; errDeg: number } | null {
+    if (!this.gps || tMs - this.lastMovingMs >= 3_000 || !this.compassFresh(tMs)) return null;
+    const compassDeg = this.compass!.deg;
+    return { gpsDeg: this.gps.deg, compassDeg, biasDeg: this.biasDeg, errDeg: wrap180(compassDeg + this.biasDeg - this.gps.deg) };
   }
 
   reset(): void {
     this.compass = null;
+    this.filter.reset();
     this.gps = null;
     this.lastMovingMs = -Infinity;
     this.shown = null;
+    this.biasDeg = 0;
+    this.lastBiasMs = null;
+    this.snap = null;
   }
 
-  /** Aktuell riktning och varifrån den kommer. */
-  get(tMs: number): { deg: number | null; source: HeadingSource } {
+  /** Aktuell riktning för kartan och pilen, och varifrån kartans riktning kommer. */
+  get(tMs: number): FusedHeading {
     const moving = tMs - this.lastMovingMs < 3_000 && this.gps !== null;
-    let next: { deg: number; source: HeadingSource } | null = null;
-    if (moving) next = { deg: this.gps!.deg, source: "gps" };
-    else if (this.compass && tMs - this.compass.tMs <= COMPASS_MAX_AGE_MS) next = { deg: this.compass.deg, source: "compass" };
-    else if (this.gps && tMs - this.lastMovingMs <= HELD_MAX_AGE_MS) next = { deg: this.gps.deg, source: "held" };
-    if (!next) { this.shown = null; return { deg: null, source: "none" }; }
-    if (this.shown && this.shown.source === next.source && next.source === "compass" && Math.abs(wrap180(next.deg - this.shown.deg)) < COMPASS_DEADBAND_DEG) return this.shown;
+    const compass = this.compassFresh(tMs) ? wrap360(this.compass!.deg + this.biasDeg) : null;
+    let view: { deg: number; source: HeadingSource } | null = null;
+    if (compass !== null && (this.compassView || !moving)) view = { deg: compass, source: "compass" };
+    else if (moving) view = { deg: this.gps!.deg, source: "gps" };
+    else if (this.gps && tMs - this.lastMovingMs <= HELD_MAX_AGE_MS) view = { deg: this.gps.deg, source: "held" };
+    if (!view) { this.shown = null; return { deg: null, source: "none", courseDeg: null }; }
+    const next: FusedHeading = { ...view, courseDeg: moving ? this.gps!.deg : view.deg };
+    const s = this.shown;
+    // Standing still the arrow follows the map, so the dead band covers both; moving, a new GPS course always gets through.
+    if (s && s.source === "compass" && next.source === "compass" && (!moving || s.courseDeg === next.courseDeg) && Math.abs(wrap180(next.deg! - s.deg!)) < COMPASS_DEADBAND_DEG) return s;
     this.shown = next;
     return next;
   }

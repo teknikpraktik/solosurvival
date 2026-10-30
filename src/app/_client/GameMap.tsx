@@ -7,8 +7,8 @@ import { viewZoom } from "@/play/camera-view";
 import { bearingDeg, haversineM, type LatLon } from "@/geo/geometry";
 import type { TrailGraph } from "@/geo/graph/types";
 import { checkPickPoint, type MapFeature } from "@/geo/point-check";
-import { BearingSmoother } from "@/play/bearing";
-import { wrap180, type HeadingSource } from "@/play/heading";
+import { BEARING_COMPASS_TAU_S, BearingSmoother } from "@/play/bearing";
+import { wrap180, type FusedHeading, type HeadingSource } from "@/play/heading";
 import { ZombieAnimator, type ZombieTarget } from "@/play/zombie-anim";
 import { MAP_ATTRIBUTION, MAP_STYLE } from "./mapStyle";
 import { ARROW_SVG, DOT_SVG, EXTRACTION_SVG, GOAL_POINTER_SVG, HOME_SVG, ZOMBIE_DIR_SVG, ZOMBIE_SVG } from "./symbols";
@@ -81,7 +81,7 @@ export interface GameMapProps {
   /** Track Up: kartan roteras så att färdriktningen pekar uppåt. Annars North Up. */
   trackUp?: boolean;
   /** Läser aktuell riktning varje bildruta (kompassen ändras oftare än vyn uppdateras). Utan den används `heading`. */
-  getHeading?: () => { deg: number | null; source: HeadingSource };
+  getHeading?: () => FusedHeading;
   /** Startzoom (standard 15). Ändras aldrig automatiskt efteråt. */
   zoom?: number;
   extraction?: LatLon | null;
@@ -295,37 +295,45 @@ export default function GameMap(props: GameMapProps) {
     if (!loaded) return;
     let raf = 0;
     let last = performance.now();
-    let arrow = 0;
+    let arrow = 0; // direction of travel (world degrees, eased)
+    let arrowShown = 0; // its angle on the screen (unwrapped, so CSS never turns it the long way round)
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
       if (document.hidden) { last = now; return; }
-      if (now - last < 33) return;
+      const P = propsRef.current;
+      const h: FusedHeading = P.getHeading ? P.getHeading() : { deg: P.heading ?? null, source: "gps" as HeadingSource, courseDeg: P.heading ?? null };
+      // The compass turning the map runs at the full frame rate so the map turns with the phone; otherwise 30 fps is plenty.
+      const compassDrives = h.source === "compass" && !!P.trackUp && !!P.follow && !manual.current;
+      if (!compassDrives && now - last < 33) return;
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
-      const P = propsRef.current;
       const map = mapRef.current;
       const sm = smoother.current;
       if (!map) return;
-      const h = P.getHeading ? P.getHeading() : { deg: P.heading ?? null, source: "gps" as HeadingSource };
       if (P.follow && !manual.current) {
-        // Mål: Track Up följer riktningen (kompass med dödband mot darrning), North Up ligger fast på 0°. Okänd riktning: kartan står kvar.
+        // Mål: Track Up följer riktningen (kompass med litet dödband mot darrning), North Up ligger fast på 0°. Okänd riktning: kartan står kvar.
         if (P.trackUp) {
-          if (h.deg != null && Math.abs(wrap180(h.deg - sm.target)) >= (h.source === "compass" ? 1.5 : 0.5)) sm.setTarget(h.deg);
+          if (h.deg != null && Math.abs(wrap180(h.deg - sm.target)) >= (h.source === "compass" ? 0.3 : 0.5)) sm.setTarget(h.deg);
         } else sm.setTarget(0);
-        if (sm.step(dt)) {
+        if (sm.step(dt, compassDrives ? BEARING_COMPASS_TAU_S : undefined)) {
           const c = P.player;
           if (c) map.jumpTo({ bearing: sm.value, center: [c.lon, c.lat] });
           else map.setBearing(sm.value);
         }
         bearingRef.current = sm.value;
       } else bearingRef.current = map.getBearing(); // the player (or nobody) holds the map: never touch the camera, only follow its rotation for the arrows
-      // Pilen visas relativt skärmen (≈ 0° i Track Up). Utan känd riktning visas en neutral prick, aldrig en gissad pil.
+      // The arrow shows the direction of travel relative to the screen (≈ 0° in Track Up when the phone points the way you go; to the side
+      // when you look to the side). Eased so a new GPS course (about once a second) turns it instead of jumping. No known direction: a neutral dot.
       const el0 = playerEl.current;
+      const course = h.courseDeg ?? h.deg;
       if (el0) {
-        el0.classList.toggle("has-heading", h.deg != null);
-        if (h.deg != null) {
-          arrow = arrow + wrap180(h.deg - bearingRef.current - arrow);
-          (el0.querySelector(".arrow") as HTMLElement).style.transform = `rotate(${arrow.toFixed(1)}deg)`;
+        el0.classList.toggle("has-heading", course != null);
+        if (course != null) {
+          // Eased in map (world) terms, then turned with the map at once: turning the phone turns the arrow exactly as much as the map.
+          arrow += wrap180(course - arrow) * (1 - Math.exp(-dt / 0.15));
+          const rel = arrowShown + wrap180(arrow - bearingRef.current - arrowShown);
+          arrowShown = rel;
+          (el0.querySelector(".arrow") as HTMLElement).style.transform = `rotate(${rel.toFixed(1)}deg)`;
         }
       }
       if (el.current) el.current.dataset.bearing = String(Math.round(bearingRef.current));

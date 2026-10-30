@@ -20,6 +20,9 @@ export const DATA_BASE = "/data/v1/varmland";
 const TRACE_KEY = "outbreak.trace";
 export const traceEnabled = () => { try { return localStorage.getItem(TRACE_KEY) === "on"; } catch { return false; } };
 export const setTraceEnabled = (on: boolean) => { try { localStorage.setItem(TRACE_KEY, on ? "on" : "off"); } catch { /* ignoreras */ } };
+const COMPASS_VIEW_KEY = "outbreak.compassView";
+export const compassViewEnabled = () => { try { return localStorage.getItem(COMPASS_VIEW_KEY) !== "off"; } catch { return true; } };
+export const setCompassViewEnabled = (on: boolean) => { try { localStorage.setItem(COMPASS_VIEW_KEY, on ? "on" : "off"); } catch { /* ignoreras */ } };
 
 /** Skapar en enda PlaySession för hela appen så att GPS och match överlever sidbyten. */
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -38,6 +41,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         userAgent: navigator.userAgent,
         compass: createBrowserCompass(),
         traceEnabled,
+        compassView: compassViewEnabled,
         jumpScares: () => true, // hidden feature: always on (never on Bike, decided by the session)
         onCue: (c, text) => {
           // The checkpoint chime's outcome goes to the field log (it was heard "only sometimes" in the field), and a bright spoken "Checkpoint"

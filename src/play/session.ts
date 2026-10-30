@@ -13,7 +13,7 @@ import type { RouteProposal } from "@/routes/types";
 import { applyProfile, proximityRadiusM, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
 import type { ProductProfile } from "@/config/product";
 import { FieldLog } from "./fieldlog";
-import { HeadingFusion, HeadingTracker, type HeadingSource } from "./heading";
+import { HeadingFusion, HeadingTracker, type FusedHeading, type HeadingSource } from "./heading";
 import type { CompassSource, CompassStatus } from "./compass";
 import { SpeedTracker } from "./speed";
 import { LiveGame } from "./live-game";
@@ -54,6 +54,8 @@ export interface SessionDeps {
   wakeLock?: { request(): Promise<{ release(): Promise<void> } | null> };
   userAgent?: string;
   traceEnabled?: () => boolean;
+  /** The compass turns the map also while moving (the arrow shows the GPS direction of travel). Read when the compass is turned on. Default on. */
+  compassView?: () => boolean;
   /** Slumpade skrämmor (standard av om utelämnat). Aldrig på cykel, och aldrig om produktprofilen stänger av dem. */
   jumpScares?: () => boolean;
   /** Produktprofil (src/config/product.ts): tillåtna aktiviteter och lägen, fiendefart, skrämmor. Utelämnad = vuxenappens beteende. */
@@ -241,6 +243,7 @@ export class PlaySession {
       if (pos) this.speed.push(pos, t, e.fix.speedMps);
       if (pos) this.heading.update({ pos, accuracyM: e.fix.accuracyM, gpsHeadingDeg: e.fix.headingDeg, gpsSpeedMps: e.fix.speedMps, tMs: e.fix.timestampMs });
       this.fusion.pushGps(this.heading.heading, this.speed.speedAt(t), t);
+      this.logHeading(t);
     }
     this.emit();
   }
@@ -250,6 +253,7 @@ export class PlaySession {
    * Utan kompass fungerar Track Up ändå med GPS-riktningen när man rör sig.
    */
   async enableCompass(): Promise<CompassStatus> {
+    this.fusion.compassView = this.d.compassView?.() ?? true;
     if (this.compassStatus === "on") return "on";
     if (!this.d.compass) { this.compassStatus = "unsupported"; this.emit(); return this.compassStatus; }
     try {
@@ -262,9 +266,25 @@ export class PlaySession {
     return this.compassStatus;
   }
 
+  /** The setting "Compass turns the map" changed: applies at once. */
+  setCompassView(on: boolean): void {
+    this.fusion.compassView = on;
+  }
+
   /** Aktuell riktning utan att vänta på nästa vy-uppdatering (kartan läser den varje bildruta). */
-  liveHeading(): { deg: number | null; source: HeadingSource } {
+  liveHeading(): FusedHeading {
     return this.fusion.get(this.now());
+  }
+
+  private lastHeadingLogMs = -Infinity;
+  /** Field log: compass against GPS course while moving, every 10 s, so a mount's compass error and noise can be read after a ride. */
+  private logHeading(t: number): void {
+    if (!this.log || t - this.lastHeadingLogMs < 10_000) return;
+    const d = this.fusion.disagreement(t);
+    if (!d) return;
+    this.lastHeadingLogMs = t;
+    const r = (x: number) => Math.round(x);
+    this.log.add(t, "heading", { gps: r(d.gpsDeg), compass: r(d.compassDeg), bias: r(d.biasDeg), err: r(d.errDeg), view: this.fusion.compassView });
   }
 
   /** Aktuell startposition för förhandsvisning: filtrerad position med tillräcklig noggrannhet. */

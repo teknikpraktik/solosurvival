@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BearingSmoother, BEARING_SETTLED_DEG } from "@/play/bearing";
 import { COMPASS_MAX_ERROR_DEG, headingFromOrientation } from "@/play/compass";
-import { COMPASS_MAX_AGE_MS, FUSION_MOVING_MPS, HELD_MAX_AGE_MS, HeadingFusion, wrap180 } from "@/play/heading";
+import { BIAS_SNAP_S, BIAS_TAU_S, COMPASS_MAX_AGE_MS, FUSION_MOVING_MPS, HELD_MAX_AGE_MS, HeadingFusion, wrap180 } from "@/play/heading";
 
 describe("kompass ur orienteringsdata", () => {
   it("iOS: webkitCompassHeading används som den är, med skärmrotation", () => {
@@ -64,11 +64,18 @@ describe("BearingSmoother (mjuk kartrotation)", () => {
 });
 
 describe("HeadingFusion (GPS + kompass, North Up/Track Up)", () => {
-  it("i rörelse gäller GPS-kursen, även om kompassen visar något annat (telefon i fickan)", () => {
+  it("kompassvyn av: i rörelse gäller GPS-kursen för kartan, även om kompassen visar något annat", () => {
+    const f = new HeadingFusion();
+    f.compassView = false;
+    f.pushCompass(200, 1000);
+    f.pushGps(75, FUSION_MOVING_MPS + 0.3, 1000);
+    expect(f.get(1000)).toEqual({ deg: 75, source: "gps", courseDeg: 75 });
+  });
+  it("kompassvyn på: i rörelse vrids kartan efter kompassen och pilen visar GPS-färdriktningen", () => {
     const f = new HeadingFusion();
     f.pushCompass(200, 1000);
     f.pushGps(75, FUSION_MOVING_MPS + 0.3, 1000);
-    expect(f.get(1000)).toEqual({ deg: 75, source: "gps" });
+    expect(f.get(1000)).toEqual({ deg: 200, source: "compass", courseDeg: 75 });
   });
   it("stillastående: kompassen tar över efter några sekunder och följer när man vänder sig", () => {
     const f = new HeadingFusion();
@@ -92,8 +99,8 @@ describe("HeadingFusion (GPS + kompass, North Up/Track Up)", () => {
     const f = new HeadingFusion();
     f.pushGps(75, 1.6, 0);
     f.pushGps(75, 0, 5000);
-    expect(f.get(5000)).toEqual({ deg: 75, source: "held" });
-    expect(f.get(HELD_MAX_AGE_MS + 1000)).toEqual({ deg: null, source: "none" });
+    expect(f.get(5000)).toEqual({ deg: 75, source: "held", courseDeg: 75 });
+    expect(f.get(HELD_MAX_AGE_MS + 1000)).toEqual({ deg: null, source: "none", courseDeg: null });
   });
   it("kompassbortfall: gammal mätning används inte (ingen frusen pil)", () => {
     const f = new HeadingFusion();
@@ -101,17 +108,65 @@ describe("HeadingFusion (GPS + kompass, North Up/Track Up)", () => {
     expect(f.get(COMPASS_MAX_AGE_MS + 500).source).toBe("none");
   });
   it("ingen data alls: okänd riktning, aldrig 0° som gissning", () => {
-    expect(new HeadingFusion().get(0)).toEqual({ deg: null, source: "none" });
+    expect(new HeadingFusion().get(0)).toEqual({ deg: null, source: "none", courseDeg: null });
   });
-  it("växling mellan stilla och rörelse ger ingen mellanliggande felvinkel", () => {
+  it("kompassvyn av: växling mellan stilla och rörelse ger ingen mellanliggande felvinkel", () => {
     const f = new HeadingFusion();
+    f.compassView = false;
     f.pushCompass(40, 0);
     f.pushGps(100, 0.2, 0);
     expect(f.get(0).source).toBe("compass");
     f.pushGps(100, 1.5, 1000);
     f.pushCompass(40, 1000);
-    expect(f.get(1000)).toEqual({ deg: 100, source: "gps" });
+    expect(f.get(1000)).toEqual({ deg: 100, source: "gps", courseDeg: 100 });
     f.pushGps(100, 0.2, 5000); f.pushCompass(100, 5000);
     expect(f.get(5200).source).toBe("compass");
+  });
+});
+
+describe("HeadingFusion: kompassen vrider kartan även i rörelse (till fots och cykel)", () => {
+  /** Rörelse i `gps` grader med kompassen på `compass` i `secs` sekunder: kompass 30 Hz, GPS 1 Hz. */
+  function ride(f: HeadingFusion, t0: number, secs: number, gps: number, compass: number | ((t: number) => number)) {
+    for (let t = t0; t <= t0 + secs * 1000; t += 33) {
+      f.pushCompass(typeof compass === "number" ? compass : compass(t), t);
+      if ((t - t0) % 990 === 0) f.pushGps(gps, 4, t);
+    }
+    return t0 + secs * 1000;
+  }
+  it("ett huvudvridning följs direkt: kartan vrids lika mycket som telefonen inom ett par tiondels sekunder, pilen visar fortfarande färdriktningen", () => {
+    const f = new HeadingFusion();
+    let t = ride(f, 0, 5, 90, 90);
+    expect(Math.abs(wrap180(f.get(t).deg! - 90))).toBeLessThan(2);
+    // Vrider 60° åt höger på 0,3 s (200°/s).
+    for (let i = 1; i <= 9; i++) { t += 33; f.pushCompass(90 + (60 * i) / 9, t); }
+    for (let i = 0; i < 6; i++) { t += 33; f.pushCompass(150, t); }
+    expect(Math.abs(wrap180(f.get(t).deg! - 150))).toBeLessThan(8);
+    expect(f.get(t).courseDeg).toBe(90);
+  });
+  it("ett konstant kompassfel (missvisning, hållare) lärs bort från GPS i rörelse", () => {
+    const f = new HeadingFusion();
+    const t = ride(f, 0, 4 * BIAS_TAU_S, 90, 72); // kompassen visar 18° fel
+    expect(Math.abs(wrap180(f.get(t).deg! - 90))).toBeLessThan(2);
+    expect(f.compassBiasDeg).toBeCloseTo(18, 0);
+  });
+  it("en kort blick åt sidan lärs inte in (korrektionen ändras inte)", () => {
+    const f = new HeadingFusion();
+    let t = ride(f, 0, 5, 90, 90);
+    t = ride(f, t + 33, 4, 90, 160); // tittar 70° åt sidan i 4 s
+    expect(Math.abs(f.compassBiasDeg)).toBeLessThan(0.5);
+    expect(Math.abs(wrap180(f.get(t).deg! - 160))).toBeLessThan(3);
+  });
+  it("ett stort men stadigt fel (magnet i hållaren) tas in efter en stund i rörelse", () => {
+    const f = new HeadingFusion();
+    const t = ride(f, 0, BIAS_SNAP_S + 3, 90, 250);
+    expect(Math.abs(wrap180(f.get(t).deg! - 90))).toBeLessThan(3);
+  });
+  it("kompassbrus i vila jämnas ut (ingen darrning), men ingen fördröjning vid vridning", () => {
+    const f = new HeadingFusion();
+    let seed = 1;
+    const noise = () => { seed = (seed * 16807) % 2147483647; return (seed / 2147483647 - 0.5) * 6; }; // ±3°
+    let max = 0;
+    for (let t = 0; t < 5000; t += 16) { f.pushCompass(40 + noise(), t); if (t > 2000) max = Math.max(max, Math.abs(wrap180(f.get(t).deg! - 40))); }
+    expect(max).toBeLessThan(1.5);
   });
 });

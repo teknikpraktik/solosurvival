@@ -5,8 +5,8 @@ interface IosOrientationEvent extends DeviceOrientationEvent {
   webkitCompassAccuracy?: number;
 }
 
-/** Högsta antal kompassmätningar per sekund som skickas vidare (sensorn ger 30–60). */
-const MAX_HZ = 15;
+/** Highest number of compass readings per second passed on (the sensor gives 30–60): enough for the map to turn with the phone. */
+const MAX_HZ = 60;
 
 /**
  * Kompass via webbläsarens rörelsesensorer. iOS (Safari/PWA) kräver en användargest och ett uttryckligt tillstånd
@@ -34,7 +34,7 @@ export function createBrowserCompass(): CompassSource | undefined {
       handler = (ev: Event) => {
         const e = ev as IosOrientationEvent;
         const now = Date.now();
-        if (now - lastMs < 1000 / MAX_HZ) return;
+        if (now - lastMs < 1000 / MAX_HZ - 4) return; // margin: event timing jitters, a 60 Hz sensor must not lose every other reading
         lastMs = now;
         const angle = (typeof screen !== "undefined" && screen.orientation?.angle) || 0;
         const h = headingFromOrientation({ alpha: e.alpha, beta: e.beta, gamma: e.gamma, absolute: e.absolute || eventName === "deviceorientationabsolute", webkitCompassHeading: e.webkitCompassHeading, webkitCompassAccuracy: e.webkitCompassAccuracy }, angle);

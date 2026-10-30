@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { exportAllLogs, type FieldLogData } from "@/play/fieldlog";
 import { MatchStorage } from "@/play/storage";
 import { errorText } from "@/gps/provider/provider";
-import { useSessionCtx, useSessionView, setTraceEnabled, traceEnabled } from "../_client/SessionProvider";
+import { useSessionCtx, useSessionView, setTraceEnabled, traceEnabled, compassViewEnabled, setCompassViewEnabled } from "../_client/SessionProvider";
 import { BUILD_ID } from "../_client/build";
 
 function download(name: string, text: string) {
@@ -22,13 +22,14 @@ export default function Field() {
   const view = useSessionView(ctx?.session);
   const [logs, setLogs] = useState<FieldLogData[]>([]);
   const [trace, setTrace] = useState(false);
+  const [compassView, setCompassView] = useState(true);
   const [battery, setBattery] = useState<string>("No Battery API in this browser (iPhone): read the percentage manually before and after.");
   const [storage, setStorage] = useState("");
   const [secure, setSecure] = useState(true);
   const [wakeLock, setWakeLock] = useState<boolean | null>(null);
 
   const load = useCallback(async () => { setLogs(ctx?.db ? await ctx.db.store<FieldLogData>("logs").all() : []); }, [ctx?.db]);
-  useEffect(() => { setTrace(traceEnabled()); setSecure(window.isSecureContext); setWakeLock("wakeLock" in navigator); void load(); }, [load]);
+  useEffect(() => { setTrace(traceEnabled()); setCompassView(compassViewEnabled()); setSecure(window.isSecureContext); setWakeLock("wakeLock" in navigator); void load(); }, [load]);
   useEffect(() => {
     const nav = navigator as Navigator & { getBattery?: () => Promise<{ level: number; charging: boolean }> };
     nav.getBattery?.().then((b) => setBattery(`Battery ${Math.round(b.level * 100)} %${b.charging ? " (charging)" : ""} – note it before/after the session.`)).catch(() => undefined);
@@ -52,6 +53,12 @@ export default function Field() {
         <div className="stat"><span>Version</span><b>{BUILD_ID}</b></div>
         <div className="muted">{battery}</div>
       </div>
+
+      <h2>Map</h2>
+      <label className="muted" style={{ display: "flex", gap: 10, alignItems: "center", minHeight: 44 }}>
+        <input type="checkbox" checked={compassView} style={{ width: 22, height: 22 }} onChange={(e) => { setCompassView(e.target.checked); setCompassViewEnabled(e.target.checked); ctx?.session.setCompassView(e.target.checked); }} />
+        Compass turns the map, also while moving (turn the phone and the map turns with it; the arrow shows your direction of travel). On by default. Off: the map follows the GPS direction while moving.
+      </label>
 
       <h2>Logging</h2>
       <label className="muted" style={{ display: "flex", gap: 10, alignItems: "center", minHeight: 44 }}>
