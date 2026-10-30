@@ -1,4 +1,5 @@
 import { RULES_VERSION } from "@/config/game-rules";
+import type { RecapStats } from "./recap";
 import type { GameResult, GameState } from "@/engine/core/types";
 import type { LatLon } from "@/geo/geometry";
 import { objectiveProgress } from "@/engine/objectives/objectives";
@@ -33,6 +34,8 @@ export interface HistoryRecord {
   timeLimitS: number;
   result: HistoryResult;
   checkpoints: { reached: number; total: number } | null;
+  /** Numbers from the match recap (no positions, so they are kept with the history; the tracks are deleted after a week). */
+  stats?: RecapStats;
 }
 
 interface MatchRecord {
@@ -176,10 +179,18 @@ export class MatchStorage {
     await this.matches.delete(id);
     await this.matches.delete(`${id}:graph`);
     await this.db.store("logs").delete(id);
+    await this.db.store("recapChunks").deleteRange(`${id}:`);
+    await this.db.store("recaps").delete(id);
     if ((await this.meta.get(ACTIVE_KEY)) === id) await this.meta.delete(ACTIVE_KEY);
   }
 
+  /** The finished match's numbers, from the recap. */
+  async setStats(id: string, stats: RecapStats): Promise<void> {
+    const h = await this.history.get(id);
+    if (h) await this.history.put(id, { ...h, stats });
+  }
+
   async deleteAll(): Promise<void> {
-    for (const n of ["history", "matches", "logs", "meta"] as const) await this.db.store(n).clear();
+    for (const n of ["history", "matches", "logs", "meta", "recaps", "recapChunks"] as const) await this.db.store(n).clear();
   }
 }

@@ -2,16 +2,22 @@
 
 import { PageHeader } from "../_client/Modal";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { MatchStorage, type HistoryRecord } from "@/play/storage";
+import { RecapStore } from "@/play/recap";
 import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_LABEL, RESULT_LABEL, fmtDate, fmtKm, fmtTime } from "../_client/format";
 import { useSessionCtx } from "../_client/SessionProvider";
 
 export default function History() {
   const ctx = useSessionCtx();
   const [items, setItems] = useState<HistoryRecord[] | null>(null);
+  const [maps, setMaps] = useState<Set<string>>(new Set());
   const st = ctx?.db ? new MatchStorage(ctx.db) : null;
 
-  const load = useCallback(async () => { setItems(st ? await st.listHistory() : []); }, [ctx?.db]); // eslint-disable-line react-hooks/exhaustive-deps
+  const load = useCallback(async () => {
+    setItems(st ? await st.listHistory() : []);
+    if (ctx?.db) { const r = new RecapStore(ctx.db); await r.purge(Date.now()); setMaps(await r.ids()); }
+  }, [ctx?.db]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (ctx) void load(); }, [ctx, load]);
 
   return (
@@ -27,6 +33,7 @@ export default function History() {
             <div className="muted">{fmtDate(h.startedAt)}</div>
             <div className="muted" style={{ textAlign: "right" }}>{fmtTime(h.elapsedS)} · {fmtKm(h.measuredDistanceM)}</div>
             <div className="muted">{h.plannedLengthM ? `Route ${fmtKm(h.plannedLengthM)}` : "No route"}{h.checkpoints ? (h.mode === "escape" ? ` · B ${h.checkpoints.reached >= h.checkpoints.total ? "reached" : "not reached"}` : ` · checkpoints ${h.checkpoints.reached}/${h.checkpoints.total}`) : ""}</div>
+            <div>{maps.has(h.id) && <Link className="link" href={`/recap?id=${encodeURIComponent(h.id)}`}>Show match</Link>}</div>
             <div style={{ textAlign: "right" }}>
               <button className="link" onClick={async () => { if (st && confirm("Delete this match from the device?")) { await st.deleteMatch(h.id); await load(); } }}>Delete</button>
             </div>

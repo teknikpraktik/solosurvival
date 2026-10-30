@@ -106,6 +106,8 @@ export interface GameState {
   objectives?: ObjectiveSet;
   /** Cykel: läge och budget för spelare utanför nätet. Saknas i matcher sparade före 2.3. */
   offNetwork?: OffNetworkState;
+  /** Bike: riding through a zombie right now (so `pass_through` is sent once per encounter). */
+  passingThrough?: boolean;
 }
 
 export type GameEvent =
@@ -118,6 +120,8 @@ export type GameEvent =
   | { type: "spawn_relaxed" }
   | { type: "zombie_detected"; zombieId: string }
   | { type: "infection_contact" }
+  /** Bike: a zombie was in contact but the player was fast enough to ride through it (once per encounter). */
+  | { type: "pass_through" }
   | { type: "extraction_opened"; nodeId: string }
   | { type: "extraction_unavailable" }
   | { type: "objective_reached"; targetId: string; index: number }

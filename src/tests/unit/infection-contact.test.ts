@@ -149,3 +149,21 @@ describe("cykel: tillräckligt snabb spelare cyklar igenom en zombie", () => {
     expect(resolveRules("mtb", "normal", 3000).passThroughMps).toBeCloseTo(25 / 3.6, 6);
   });
 });
+
+describe("cykel: genomcykling ger en händelse per möte", () => {
+  it("pass_through skickas en gång när man cyklar igenom en zombie, inte varje steg", () => {
+    const g = twoWalks();
+    const rules = { ...resolveRules("mtb", "normal", 3000), headStartS: 0, initialZombies: 1, maxZombies: 1, magnetic: false, detectionRadiusM: 0, revealIntervalS: 1e9, sprintRadiusM: 0 };
+    const { state } = createGame({ g, config: { activity: "mtb", difficulty: "normal", durationSeconds: 3000, areaId: "t", seed: 1, rulesVersion: RULES_VERSION }, rules, start: ll([-100, 0]) });
+    state.zombies = [zAt(g, [0, 0])];
+    const v = 30 / 3.6;
+    let n = 0;
+    let pos = ll([-100, 0]);
+    for (let i = 0; i * STEP_S * v <= 200 && state.result === undefined; i++) {
+      if (i % 5 === 0) pos = ll([-100 + i * STEP_S * v, 0]);
+      n += stepGame(g, state, rules, { position: pos, quality: "ok", accuracyM: 5 }).filter((e) => e.type === "pass_through").length;
+    }
+    expect(state.result).toBeUndefined();
+    expect(n).toBe(1);
+  });
+});

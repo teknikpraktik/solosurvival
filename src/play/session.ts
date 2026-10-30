@@ -14,6 +14,7 @@ import { applyProfile, proximityRadiusM, START_MAX_ACCURACY_M, START_MOVED_LIMIT
 import type { ProductProfile } from "@/config/product";
 import { FieldLog } from "./fieldlog";
 import { HeadingFusion, HeadingTracker, type FusedHeading, type HeadingSource } from "./heading";
+import { RecapRecorder, RecapStore, type RecapStats } from "./recap";
 import type { CompassSource, CompassStatus } from "./compass";
 import { SpeedTracker } from "./speed";
 import { LiveGame } from "./live-game";
@@ -139,6 +140,8 @@ export interface MatchView {
   gpsLostLong: boolean;
   /** Cykel: spelaren är varaktigt utanför det kartlagda nätet. `exposed` = budgeten är slut och zombier som väntar vid vägen kan smitta. */
   offNetwork: { active: boolean; exposed: boolean; budgetLeftS: number } | null;
+  /** Numbers for the end of the match (recap); null without a recording. */
+  stats: RecapStats | null;
   frozen: boolean;
   needsFix: boolean;
   proposal: RouteProposal | null;
@@ -165,6 +168,10 @@ export class PlaySession {
   private dataVersion = "";
   private startedAt = 0;
   private storage: MatchStorage | null;
+  private readonly recaps: RecapStore | null;
+  private recorder: RecapRecorder | null = null;
+  /** Recap to continue when a restored match is attached (loaded in restoreActive). */
+  private resumeRecap: RecapRecorder | null = null;
   private log: FieldLog | null = null;
   private timer: unknown = null;
   private lastSaveMs = 0;
@@ -200,6 +207,9 @@ export class PlaySession {
     this.now = d.now ?? Date.now;
     this.provider = new GpsProvider(d.geo, this.now);
     this.storage = d.db ? new MatchStorage(d.db) : null;
+    this.recaps = d.db ? new RecapStore(d.db) : null;
+    // Match recaps (tracks) are kept a week, then deleted.
+    void this.recaps?.purge(this.now()).catch(() => undefined);
   }
 
   // --- abonnemang (React useSyncExternalStore) ---
@@ -389,6 +399,8 @@ export class PlaySession {
     this.lastCheckMs = 0;
     this.lastSampleMs = 0;
     this.silentFirstCheck = !fresh;
+    this.recorder = fresh || !this.resumeRecap ? RecapRecorder.fresh(live, params, this.startedAt) : this.resumeRecap;
+    this.resumeRecap = null;
     // Slumpade skrämmor (aldrig på cykel och bara om påslaget). Återställd match: planera om från nuvarande speltid.
     const random = this.d.random ?? Math.random;
     this.scareTimes = this.d.jumpScares?.() && (this.d.profile?.jumpScares ?? true) && params.activity !== "mtb" ? planScares(random).map((x) => x + (fresh ? 0 : live.state.elapsedSeconds)) : [];
@@ -503,6 +515,7 @@ export class PlaySession {
       this.messages = ["The app was inactive for a while and the game paused. Tap Continue."];
     }
     if (events.length) this.endMatch(events);
+    if (!live.finished) this.recorder?.tick(live);
     if (this.stage === "playing" && !live.state.paused && t - this.lastCheckMs >= CHECK_MS) { this.lastCheckMs = t; this.checkZombies(live, t); }
     if (this.stage === "playing" && t - this.lastSaveMs > SAVE_EVERY_MS) void this.persist();
     // React-vyn uppdateras ungefär 2 gånger per sekund; kartan ritar själv från live-objektet.
@@ -513,6 +526,7 @@ export class PlaySession {
     const live = this.live!;
     const t = this.now();
     let finished = false;
+    this.recorder?.events(events);
     for (const e of events) {
       switch (e.type) {
         case "objective_reached": this.cue("goal", this.objectiveMessage(live, e.index)); this.log?.add(t, "objective", { id: e.targetId, atS: Math.round(live.state.elapsedSeconds) }); break;
@@ -608,8 +622,14 @@ export class PlaySession {
     try {
       if (this.storage && this.params) {
         const storage = this.storage, params = this.params, proposal = this.proposal;
+        const rec = this.recorder;
+        rec?.finish(live, live.state.result ?? "incomplete");
         await this.enqueue(async () => {
           await storage.finish(live, params, proposal);
+          if (rec) {
+            await storage.setStats(live.state.id, { ...rec.stats });
+            if (this.recaps) await this.recaps.write(rec.take());
+          }
           const h = (await storage.listHistory()).find((x) => x.id === live.state.id) ?? null;
           if (this.live === live) this.history = h; // inte om spelaren redan gått vidare (reset)
           if (h && this.log && this.d.db && this.live === live) {
@@ -645,6 +665,8 @@ export class PlaySession {
         if (live.finished || this.live !== live) return; // matchen hann avslutas innan det blev vår tur
         if (first) await storage.begin(live, params, proposal, start, dataVersion, startedAt);
         else await storage.save(live, params, proposal, start, dataVersion);
+        const rec = this.recorder;
+        if (rec?.pending && this.recaps && !live.finished) await this.recaps.write(rec.take());
         if (this.log && this.d.db) await this.log.save(this.d.db);
       });
     } catch {
@@ -673,6 +695,10 @@ export class PlaySession {
       this.emit();
       return { ok: false, reason };
     }
+    try {
+      const meta = await this.recaps?.meta(r.live.state.id);
+      this.resumeRecap = meta ? RecapRecorder.resume(meta, await this.recaps!.lastChunk(meta.id, meta.chunks), r.live) : null;
+    } catch { this.resumeRecap = null; }
     this.live = r.live;
     this.params = r.params;
     this.proposal = r.proposal;
@@ -708,6 +734,7 @@ export class PlaySession {
   reset(): void {
     this.stopTicker();
     this.live = null;
+    this.recorder = null;
     this.proposal = null;
     this.log = null;
     this.prepared = null;
@@ -798,6 +825,7 @@ export class PlaySession {
       extraction: s.extractionNodeId ? (live.g.nodes.get(s.extractionNodeId) ?? null) : null,
       gpsLost: st.quality === "unavailable" || st.quality === "warning",
       gpsLostLong: s.gpsLostLong,
+      stats: this.recorder ? { ...this.recorder.stats } : null,
       offNetwork: s.offNetwork && live.rules.offNetworkExposure ? { active: s.offNetwork.active, exposed: s.offNetwork.active && s.offNetwork.budgetS <= 0, budgetLeftS: Math.ceil(s.offNetwork.budgetS) } : null,
       frozen: live.frozen,
       needsFix: !live.filter.position,

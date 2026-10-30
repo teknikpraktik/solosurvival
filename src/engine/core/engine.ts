@@ -351,7 +351,10 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
       if (waiting <= OFF_WAIT_M) nearest = Math.min(nearest, INFECTION_RADIUS_M);
     }
     // Bike: fast enough and the player rides through the zombie; the contact does not count (and the timer starts over).
-    if (rules.passThroughMps !== undefined && speedMps !== null && speedMps >= rules.passThroughMps) nearest = Infinity;
+    const passing = rules.passThroughMps !== undefined && speedMps !== null && speedMps >= rules.passThroughMps;
+    if (passing && nearest <= INFECTION_RADIUS_M && !s.passingThrough) events.push({ type: "pass_through" });
+    s.passingThrough = passing && nearest <= INFECTION_RADIUS_M;
+    if (passing) nearest = Infinity;
     const before = s.infectionProgressSeconds;
     const r = updateInfection(before, {
       dtS: STEP_S,

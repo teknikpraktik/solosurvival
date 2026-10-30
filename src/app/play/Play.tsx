@@ -11,6 +11,9 @@ import { COUNTDOWN_START_M, nextCountdown, type CountdownStep } from "@/play/cou
 import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, nextApproaching, nextClose, nextGoalClose, viewProfile } from "@/play/camera-view";
 import { Modal } from "../_client/Modal";
 import { BIKE_SVG, WALK_SVG } from "../_client/symbols";
+import { RecapStatsList } from "../_client/RecapStats";
+import { personalRecord } from "@/play/recap";
+import { MatchStorage } from "@/play/storage";
 import { Scare } from "../_client/Scare";
 import { JumpScare } from "../_client/JumpScare";
 import type { MapMarker } from "../_client/GameMap";
@@ -127,6 +130,15 @@ export default function Play() {
   }, [m?.proposal, m?.mode]);
   const zombies = useMemo(() => (m?.zombiesNear ?? []).map((z) => ({ id: z.id, edgeId: z.edgeId, distM: z.distM, speedMps: z.speedMps, chasing: z.state === "chase" || z.state === "intercept", sprinting: z.sprinting })), [m?.zombiesNear]);
   useEffect(() => { if (m && !m.paused) setPauseDismissed(false); }, [m?.paused]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Personal record, once the finished match is in the history.
+  const [record, setRecord] = useState<string | null>(null);
+  const finishedRec = session?.history ?? null;
+  useEffect(() => {
+    if (!finishedRec || !ctx?.db || finishedRec.result === "active") { setRecord(null); return; }
+    let on = true;
+    void new MatchStorage(ctx.db).listHistory().then((all) => { if (on) setRecord(personalRecord(finishedRec, all)); }, () => undefined);
+    return () => { on = false; };
+  }, [finishedRec, ctx?.db]);
 
   if (restoreMsg) {
     return (
@@ -140,6 +152,7 @@ export default function Play() {
   if (!view || !m || !session) return <main className="center"><p className="hint">Loading…</p></main>;
 
   const finished = view.stage === "finished" || m.phase === "finished";
+  const savedHistory = session.history;
   // Captured: a short scary full-screen image (with the scream sound) before the result dialog.
   const scare = finished && m.result === "infected" && !scareDone;
   const home = m.objectives?.next;
@@ -267,13 +280,19 @@ export default function Play() {
           actions={
             <>
               <Link className="btn primary" href="/" onClick={() => session.reset()}>HOME</Link>
+              {m.result !== "aborted" && savedHistory && ctx?.db && <Link className="btn" href={`/recap?id=${encodeURIComponent(m.id)}`} onClick={() => session.reset()}>SHOW MATCH</Link>}
               {m.result !== "aborted" && <Link className="btn" href="/history" onClick={() => session.reset()}>PREVIOUS GAMES</Link>}
             </>
           }
         >
           {m.result === "infected" && <div className="stat"><span>Result</span><b>Captured</b></div>}
-          <div className="stat"><span>Match time</span><b>{fmtTime(m.elapsedS)}</b></div>
-          <div className="stat"><span>Distance moved</span><b>{fmtKm(m.distanceM)}</b></div>
+          {record && <div className="stat record"><b>{record}</b></div>}
+          {m.stats ? <RecapStatsList stats={m.stats} elapsedS={m.elapsedS} distanceM={m.distanceM} activity={m.activity} /> : (
+            <>
+              <div className="stat"><span>Match time</span><b>{fmtTime(m.elapsedS)}</b></div>
+              <div className="stat"><span>Distance moved</span><b>{fmtKm(m.distanceM)}</b></div>
+            </>
+          )}
           {m.objectives && m.mode === "mission" && <div className="stat"><span>Checkpoints</span><b>{m.objectives.progress.primaryReached}/{m.objectives.progress.primaryTotal}</b></div>}
           {m.objectives && m.objectives.progress.hasHome && <div className="stat"><span>Back home</span><b>{m.objectives.progress.homeReached ? "Yes" : "No"}</b></div>}
           {m.objectives && m.mode === "escape" && <div className="stat"><span>Destination B</span><b>{m.objectives.progress.primaryReached >= m.objectives.progress.primaryTotal ? "Reached" : "Not reached"}</b></div>}

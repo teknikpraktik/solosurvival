@@ -1,7 +1,8 @@
 /** Minimal IndexedDB-omslutning (inga beroenden). En databas, flera objektlager med string-nycklar. */
 export const DB_NAME = "outbreak";
-export const DB_VERSION = 1;
-export const STORES = ["tiles", "matches", "history", "logs", "meta"] as const;
+export const DB_VERSION = 2;
+/** v2: `recaps` and `recapChunks` (match recap, play/recap.ts). */
+export const STORES = ["tiles", "matches", "history", "logs", "meta", "recaps", "recapChunks"] as const;
 export type StoreName = (typeof STORES)[number];
 
 export interface KvStore<T = unknown> {
@@ -9,6 +10,10 @@ export interface KvStore<T = unknown> {
   put(key: string, value: T): Promise<void>;
   delete(key: string): Promise<void>;
   all(): Promise<T[]>;
+  /** Values whose key starts with `prefix`, in key order. */
+  range(prefix: string): Promise<T[]>;
+  /** Deletes every entry whose key starts with `prefix`. */
+  deleteRange(prefix: string): Promise<void>;
   clear(): Promise<void>;
 }
 
@@ -45,6 +50,8 @@ export function openDb(factory: IDBFactory = indexedDB, name = DB_NAME): Promise
             put: async (k, v) => void (await req(tx("readwrite").put(v, k))),
             delete: async (k) => void (await req(tx("readwrite").delete(k))),
             all: () => req(tx("readonly").getAll()) as Promise<T[]>,
+            range: (prefix) => req(tx("readonly").getAll(IDBKeyRange.bound(prefix, prefix + "\uffff"))) as Promise<T[]>,
+            deleteRange: async (prefix) => void (await req(tx("readwrite").delete(IDBKeyRange.bound(prefix, prefix + "\uffff")))),
             clear: async () => void (await req(tx("readwrite").clear())),
           };
         },

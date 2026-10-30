@@ -192,3 +192,14 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 /* AUTO (map follows, Track Up, auto zoom): green when on, plain when off (the map is the player's). Replaces centre, auto zoom and compass. */
 .controls .autobtn { flex: 1.1; color: #8b98a5; }
 .controls .autobtn[aria-pressed="true"] { background: #14532d; border-color: #22c55e; color: #dcfce7; }
+
+/* Match recap (after the match, from the history). */
+.recapmap { position: relative; height: min(58vh, 520px); border-radius: 12px; overflow: hidden; border: 1px solid #243040; flex-shrink: 0; }
+.recapmap .map-canvas, .recapmap .maplibregl-map { position: absolute; inset: 0; }
+.recapbar { display: flex; gap: 10px; align-items: center; }
+.recapbar .btn { width: auto; min-width: 52px; padding: 10px 14px; }
+.recapbar input[type="range"] { flex: 1; min-width: 0; accent-color: #ef4444; height: 32px; }
+.recaptime { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; font-size: 0.9rem; }
+.recapopt { display: flex; gap: 10px; align-items: center; min-height: 44px; }
+.recapopt input { width: 22px; height: 22px; flex-shrink: 0; }
+.stat.record b { color: #fbbf24; }
