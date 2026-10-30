@@ -167,9 +167,6 @@ export default function Play() {
             <span className={`pill${critterClose ? " zclose" : ""}`} aria-label="Nearest critter">👀 {m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>
           </div>
         )}
-        {!finished && !m.paused && auto && view.heading == null && (
-          <div className="line"><span className="pill warn" aria-live="polite">{view.compass === "denied" ? "Direction unknown · allow motion sensors for a compass" : "Direction unknown · walk a few steps"}</span></div>
-        )}
         {m.infection > 0 && <div className="infect" aria-label="Critter is very close"><div style={{ width: `${Math.min(100, (m.infection / 3) * 100)}%` }} /></div>}
       </div>
 

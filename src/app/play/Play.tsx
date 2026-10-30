@@ -199,9 +199,6 @@ export default function Play() {
         {!finished && !m.paused && m.offNetwork?.active && (
           <div className="line"><span className="pill warn" role="status" aria-live="polite">{m.offNetwork.exposed ? "Off the road · zombies can reach you. Return to a road!" : `Off the road network · ${m.offNetwork.budgetLeftS} s until zombies find you`}</span></div>
         )}
-        {!finished && !m.paused && auto && view.heading == null && (
-          <div className="line"><span className="pill warn" aria-live="polite">{view.compass === "denied" ? "Direction unknown · allow motion sensors for a compass" : "Direction unknown · walk a few steps"}</span></div>
-        )}
         {m.infection > 0 && <div className="infect" aria-label="Smittrisk"><div style={{ width: `${Math.min(100, (m.infection / 3) * 100)}%` }} /></div>}
       </div>
 
