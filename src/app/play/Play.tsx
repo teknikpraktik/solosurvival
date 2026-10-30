@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DIFFICULTY_LABEL, RESULT_LABEL, MODE_LABEL, fmtKm, fmtTime, objectiveLabel } from "../_client/format";
+import { DIFFICULTY_LABEL, MODE_LABEL, fmtKm, fmtTime, objectiveLabel } from "../_client/format";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio, type CountdownLine } from "../_client/cues";
 import { COUNTDOWN_START_M, nextCountdown, type CountdownStep } from "@/play/countdown";
@@ -136,6 +136,7 @@ export default function Play() {
   useEffect(() => { if (m && !m.paused) setPauseDismissed(false); }, [m?.paused]); // eslint-disable-line react-hooks/exhaustive-deps
   // Personal record, once the finished match is in the history.
   const [record, setRecord] = useState<string | null>(null);
+  const [allStats, setAllStats] = useState(false);
   const finishedRec = session?.history ?? null;
   useEffect(() => {
     if (!finishedRec || !ctx?.db || finishedRec.result === "active") { setRecord(null); return; }
@@ -279,31 +280,74 @@ export default function Play() {
       {jump && !finished && <JumpScare onDone={() => setJump(false)} />}
       {scare && <Scare onDone={() => setScareDone(true)} />}
       {/* Match over is a mandatory decision: no X, the player chooses where to go. */}
-      {finished && !scare && (
-        <Modal
-          title={m.result === "infected" ? "GAME OVER" : RESULT_LABEL[m.result ?? "incomplete"]?.toUpperCase() ?? "MATCH OVER"}
-          actions={
-            <>
-              <Link className="btn primary" href="/" onClick={() => session.reset()}>HOME</Link>
-              {m.result !== "aborted" && savedHistory && ctx?.db && <Link className="btn" href={`/recap?id=${encodeURIComponent(m.id)}`} onClick={() => session.reset()}>SHOW MATCH</Link>}
-              {m.result !== "aborted" && <Link className="btn" href="/history" onClick={() => session.reset()}>PREVIOUS GAMES</Link>}
-            </>
-          }
-        >
-          {m.result === "infected" && <div className="stat"><span>Result</span><b>Captured</b></div>}
-          {record && <div className="stat record"><b>{record}</b></div>}
-          {m.stats ? <RecapStatsList stats={m.stats} elapsedS={m.elapsedS} distanceM={m.distanceM} activity={m.activity} /> : (
-            <>
-              <div className="stat"><span>Match time</span><b>{fmtTime(m.elapsedS)}</b></div>
-              <div className="stat"><span>Distance moved</span><b>{fmtKm(m.distanceM)}</b></div>
-            </>
-          )}
-          {m.objectives && m.mode === "mission" && <div className="stat"><span>Checkpoints</span><b>{m.objectives.progress.primaryReached}/{m.objectives.progress.primaryTotal}</b></div>}
-          {m.objectives && m.objectives.progress.hasHome && <div className="stat"><span>Back home</span><b>{m.objectives.progress.homeReached ? "Yes" : "No"}</b></div>}
-          {m.objectives && m.mode === "escape" && <div className="stat"><span>Destination B</span><b>{m.objectives.progress.primaryReached >= m.objectives.progress.primaryTotal ? "Reached" : "Not reached"}</b></div>}
-          {view.storageWarning && <div className="muted">The result could not be saved locally.</div>}
-        </Modal>
-      )}
+      {finished && !scare && (() => {
+        const R = t().result;
+        const res = m.result ?? "incomplete";
+        const won = res === "survived";
+        const p = m.objectives?.progress;
+        const title = won ? R.title[m.mode] : res === "infected" ? R.title.captured : res === "failed" ? R.title.failed : res === "aborted" ? R.title.aborted : R.title.incomplete;
+        const tone = won ? "won" : res === "infected" ? "lost" : res === "failed" ? "late" : "neutral";
+        // One sentence that says what happened, with the mode's own result in it (it used to come last, after all the numbers).
+        const line = res === "aborted" ? R.aborted
+          : won ? (m.mode === "mission" ? R.missionDone(p?.primaryTotal ?? 0, fmtTime(m.elapsedS)) : m.mode === "escape" ? R.escapeDone(fmtTime(m.elapsedS)) : R.survivalDone(fmtTime(Math.max(0, m.limitS - m.elapsedS))))
+          : res === "infected" ? (m.mode === "mission" && p ? R.capturedProgress(fmtTime(m.elapsedS), p.primaryReached, p.primaryTotal) : R.captured(fmtTime(m.elapsedS)))
+          : res === "failed" ? (m.mode === "mission" && p ? R.failedMission(p.primaryReached, p.primaryTotal, p.homeReached) : m.mode === "escape" ? R.failedEscape : R.failedSurvival)
+          : "";
+        const st = m.stats;
+        const avg = st && st.movingS >= 30 ? `${((m.distanceM / st.movingS) * 3.6).toFixed(1)} km/h` : "–";
+        const highlights = st && res !== "aborted" ? [
+          // After a capture the closest zombie is the one that caught you: nothing to tell.
+          res !== "infected" && st.closestM !== null && st.closestAtS !== null ? R.closest(st.closestM, fmtTime(st.closestAtS)) : null,
+          st.nearMisses > 0 ? R.closeCalls(st.nearMisses) : null,
+          m.activity === "mtb" && st.passThroughs > 0 ? R.riddenThrough(st.passThroughs) : null,
+        ].filter((x): x is string => !!x) : [];
+        const canShow = res !== "aborted" && !!savedHistory && !!ctx?.db;
+        return (
+          <Modal
+            title={title}
+            actions={res === "aborted" ? (
+              <>
+                <Link className="btn primary cta" href="/" onClick={() => session.reset()}>{R.home.toUpperCase()}</Link>
+                <button className="btn" aria-label={R.playAgainLabel} onClick={() => { session.playAgain(); router.push("/new"); }}>{R.playAgain}</button>
+              </>
+            ) : (
+              <>
+                {canShow
+                  ? <Link className="btn primary cta" href={`/recap?id=${encodeURIComponent(m.id)}`} onClick={() => session.reset()}>{R.showMatch}</Link>
+                  : null}
+                <button className={canShow ? "btn" : "btn primary cta"} aria-label={R.playAgainLabel} onClick={() => { session.playAgain(); router.push("/new"); }}>{R.playAgain}</button>
+                <div className="resultlinks">
+                  <Link className="link" href="/" onClick={() => session.reset()}>{R.home}</Link>
+                  <Link className="link" href="/history" onClick={() => session.reset()}>{R.previousGames}</Link>
+                </div>
+              </>
+            )}
+          >
+            <div className={`outcome ${tone}`} role="status">
+              <span className="outcomeicon" aria-hidden="true">{tone === "won" ? "✓" : tone === "lost" ? "✕" : tone === "late" ? "⏱" : "■"}</span>
+              <p>{line}</p>
+            </div>
+            {record && <div className="recordline">★ {record}</div>}
+            {res !== "aborted" && (
+              <dl className="pvstats statcells">
+                <div><dt>{R.time}</dt><dd>{fmtTime(m.elapsedS)}</dd></div>
+                <div><dt>{R.distance}</dt><dd>{fmtKm(m.distanceM)}</dd></div>
+                <div><dt>{R.avgSpeed}</dt><dd>{avg}</dd></div>
+              </dl>
+            )}
+            {highlights.length > 0 && <ul className="highlights">{highlights.map((h) => <li key={h}>{h}</li>)}</ul>}
+            {st && res !== "aborted" && (
+              <>
+                <button className="pvtoggle allstats" aria-expanded={allStats} aria-controls="all-stats" onClick={() => setAllStats((x) => !x)}>
+                  {allStats ? R.hideStats : R.allStats} <span className="chev" aria-hidden="true">⌄</span>
+                </button>
+                {allStats && <div id="all-stats" className="allstatslist"><RecapStatsList stats={st} elapsedS={m.elapsedS} distanceM={m.distanceM} activity={m.activity} /></div>}
+              </>
+            )}
+            {view.storageWarning && <div className="muted">{R.notSaved}</div>}
+          </Modal>
+        );
+      })()}
     </div>
   );
 }

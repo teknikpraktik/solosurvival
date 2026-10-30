@@ -341,3 +341,19 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .hudbar .line.end { justify-content: flex-end; }
 /* QUIT is a confirmed, rare action: present but quieter than PAUSE and AUTO. */
 .controls button.quit { color: #9fb0c0; flex: .85; font-size: .85rem; }
+
+/* ---------- After the match: the outcome first, three numbers, a few highlights, the rest one tap away ---------- */
+.outcome { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 12px; border: 1.5px solid #2d3b4d; background: #0f151c; }
+.outcome p { margin: 0; font-size: 1.02rem; font-weight: 700; line-height: 1.35; }
+.outcomeicon { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; font-size: 1.25rem; font-weight: 800; color: #fff; background: #334155; }
+/* Same meanings as on the map: green = done, red = captured (danger), amber = out of time. The icon carries it too, not only the colour. */
+.outcome.won { border-color: #16a34a; background: #0d1f14; } .outcome.won .outcomeicon { background: #16a34a; }
+.outcome.lost { border-color: #ef4444; background: #2a0f0f; } .outcome.lost .outcomeicon { background: #b91c1c; }
+.outcome.late { border-color: #f59e0b; background: #2a1d08; } .outcome.late .outcomeicon { background: #b45309; }
+.recordline { font-weight: 800; color: #fbbf24; font-size: .95rem; }
+.highlights { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: .9rem; color: #c3ced9; }
+.highlights li::before { content: "• "; color: #64748b; }
+.pvtoggle.allstats { align-self: flex-start; }
+.allstatslist { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #243040; padding-top: 8px; }
+.resultlinks { display: flex; justify-content: center; gap: 28px; }
+.resultlinks .link { min-height: 44px; display: inline-flex; align-items: center; padding: 0 6px; }

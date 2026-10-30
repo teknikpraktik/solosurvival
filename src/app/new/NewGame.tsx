@@ -111,7 +111,14 @@ export default function NewGame() {
     if (!session) return;
     if (session.getView().stage === "finished") session.reset();
     session.startLocating();
-  }, [session]);
+    // PLAY AGAIN: the same settings with a new course. A to B starts from here, so B is picked again; the others go straight to the preview.
+    const again = session.takeAgain();
+    if (again) {
+      const next = clampParams(again.mode === "escape" ? { ...again, pointB: null } : again);
+      setP(next);
+      if (next.mode !== "escape" && session.currentStart()) void run(() => session.prepare(next));
+    }
+  }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stage = view?.stage ?? "idle";
   const preview = stage === "preview" || stage === "preparing";

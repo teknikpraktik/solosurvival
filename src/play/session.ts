@@ -730,6 +730,19 @@ export class PlaySession {
     this.lock = null;
   }
 
+  /** PLAY AGAIN: the finished match's settings, for New game to pick up and make a new course from. */
+  private again: MatchParams | null = null;
+  playAgain(): void {
+    this.again = this.params ? { ...this.params, pointA: null, seed: Math.floor(Math.random() * 1e9) } : null;
+    this.reset();
+  }
+  /** The settings PLAY AGAIN left (once). */
+  takeAgain(): MatchParams | null {
+    const a = this.again;
+    this.again = null;
+    return a;
+  }
+
   /** Återställer sessionen till startläge (efter avslutad match). */
   reset(): void {
     this.stopTicker();
