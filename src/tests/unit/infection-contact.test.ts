@@ -120,3 +120,32 @@ describe("GPS-brus gör inte infektion orimligt svår", () => {
     expect(infectedShare(4, 20, 30, 12)).toBeLessThanOrEqual(0.1);
   });
 });
+
+describe("cykel: tillräckligt snabb spelare cyklar igenom en zombie", () => {
+  const g = twoWalks();
+  const base = { headStartS: 0, initialZombies: 1, maxZombies: 1, magnetic: false, detectionRadiusM: 0, revealIntervalS: 1e9, sprintRadiusM: 0 };
+  /** Spelaren färdas längs stråk A från x = -100 till +100 i `kmh`, ny GPS-fix varje sekund; zombien står still vid x = 0. */
+  function rideThrough(activity: "mtb" | "walk", kmh: number) {
+    const rules = { ...resolveRules(activity, "normal", 3000), ...base };
+    const { state } = createGame({ g, config: { activity, difficulty: "normal", durationSeconds: 3000, areaId: "t", seed: 1, rulesVersion: RULES_VERSION }, rules, start: ll([-100, 0]) });
+    state.zombies = [zAt(g, [0, 0])];
+    const v = kmh / 3.6;
+    let pos = ll([-100, 0]);
+    for (let i = 0; (i * STEP_S) * v <= 200 && state.result === undefined; i++) {
+      if (i % 5 === 0) pos = ll([-100 + i * STEP_S * v, 0]);
+      stepGame(g, state, rules, { position: pos, quality: "ok", accuracyM: 5 });
+    }
+    return state.result;
+  }
+
+  it("cykel i 28 km/h förbi en zombie: ingen smitta", () => {
+    expect(rideThrough("mtb", 28)).toBeUndefined();
+  });
+  it("cykel i 18 km/h förbi en zombie: smittad", () => {
+    expect(rideThrough("mtb", 18)).toBe("infected");
+  });
+  it("gående omfattas inte av regeln", () => {
+    expect(resolveRules("walk", "normal", 3000).passThroughMps).toBeUndefined();
+    expect(resolveRules("mtb", "normal", 3000).passThroughMps).toBeCloseTo(25 / 3.6, 6);
+  });
+});

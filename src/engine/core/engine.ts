@@ -3,6 +3,7 @@ import {
   EXTRACTION_RADIUS_M,
   GPS_LOST_LONG_S,
   INFECTION_RADIUS_M,
+  PASS_THROUGH_WINDOW_S,
   RESUME_NEUTRAL_S,
   STEP_S,
   sprintFactorAt,
@@ -162,6 +163,20 @@ function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos,
 }
 
 /**
+ * Records the player's position in `speedTrail` and returns the speed (m/s) over the last `PASS_THROUGH_WINDOW_S` of game time, or null
+ * until that much history exists. Measured over a few seconds rather than per step: positions only change on a new GPS fix (about 1 Hz).
+ */
+function trackPlayerSpeed(s: GameState, pos: LatLon, t: number): number | null {
+  const trail = (s.player.speedTrail ??= []);
+  trail.push({ t, lat: pos.lat, lon: pos.lon });
+  // Keep exactly one sample at least a window old as the anchor.
+  while (trail.length > 2 && t - trail[1].t >= PASS_THROUGH_WINDOW_S) trail.shift();
+  const a = trail[0];
+  const dt = t - a.t;
+  return dt >= PASS_THROUGH_WINDOW_S - 1e-9 ? haversineM(a, pos) / dt : null;
+}
+
+/**
  * Terminal state. The first result wins and can never be changed: a finished match ignores later GPS, zombie or abort input.
  * Order of evaluation within one engine step (STEP_S), which is the rule for events that happen at (almost) the same time:
  *   1. capture (infection timer completes)  2. goal reached (last objective / extraction held)  3. time limit.
@@ -223,6 +238,7 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   s.player.position = input.position;
   s.elapsedSeconds += STEP_S;
   const t = s.elapsedSeconds;
+  const speedMps = trackPlayerSpeed(s, input.position, t);
 
   // Fasövergångar.
   if (s.phase === "head_start" && t >= rules.headStartS) setPhase(s, "survival", events);
@@ -334,6 +350,8 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
       const waiting = infectionContactM(g, edgeLatLon(g, exposedAt), exposedAt, s.zombies);
       if (waiting <= OFF_WAIT_M) nearest = Math.min(nearest, INFECTION_RADIUS_M);
     }
+    // Bike: fast enough and the player rides through the zombie; the contact does not count (and the timer starts over).
+    if (rules.passThroughMps !== undefined && speedMps !== null && speedMps >= rules.passThroughMps) nearest = Infinity;
     const before = s.infectionProgressSeconds;
     const r = updateInfection(before, {
       dtS: STEP_S,

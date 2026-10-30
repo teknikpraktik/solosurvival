@@ -11,6 +11,11 @@ export const INFECTION_TIME_S = 3;
 /** Vid GPS-noggrannhet 10–20 m krävs ytterligare verifiering (PRD 6.3). */
 export const INFECTION_TIME_VERIFY_S = 5;
 
+/** Bike: a player faster than this (km/h) rides through a zombie instead of being infected (field test). */
+export const BIKE_PASS_THROUGH_KMH = 25;
+/** Window (s) of game time over which the player's speed is measured for the pass-through rule. */
+export const PASS_THROUGH_WINDOW_S = 3;
+
 export const EXTRACTION_OPEN_FRACTION = 0.8;
 
 /**
@@ -89,6 +94,8 @@ export interface Rules {
   magnetic: boolean;
   /** Cykel: en spelare som varaktigt är utanför nätet blir exponerad när budgeten är slut (engine/offnetwork.ts). */
   offNetworkExposure: boolean;
+  /** Bike: at or above this player speed (m/s) a zombie in contact does not infect (the player rides through). Missing = never (foot, old saves). */
+  passThroughMps?: number;
   /** Fartfaktor på terrängkanter (1 = ingen skillnad). Bara terrängläget har sådana kanter; cykel är alltid vägbunden. */
   offTrailFactor: number;
   sprintRadiusM: number;
@@ -143,6 +150,7 @@ export function resolveRules(
     magnetRangeM: a.magnetRangeM,
     magnetic: true,
     offNetworkExposure: activity === "mtb",
+    passThroughMps: activity === "mtb" ? BIKE_PASS_THROUGH_KMH / 3.6 : undefined,
     offTrailFactor: activity === "mtb" ? 1 : Math.min(1, OFF_TRAIL_KMH[difficulty] / 3.6 / ((ZOMBIE_SPEED_KMH[activity]?.[difficulty] ?? a.zombieSpeedKmh * d.speedMultiplier) / 3.6)),
     sprintRadiusM: SPRINT_RADIUS_M,
     sprintDurationS: d.sprint.holdS,

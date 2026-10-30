@@ -67,6 +67,8 @@ export interface PlayerState {
   lastObservation?: Observation;
   /** Magnet-jakt: spelarens snappade position, uppdaterad ca varje sekund. Delas av alla zombier (ett nätsnap i stället för ett per zombie). */
   magnetObservation?: Observation;
+  /** Recent positions (game time) for the pass-through speed; the oldest is at least `PASS_THROUGH_WINDOW_S` old once available. */
+  speedTrail?: { t: number; lat: number; lon: number }[];
 }
 
 export interface GameState {
