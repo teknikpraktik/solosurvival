@@ -1,15 +1,18 @@
 import { cumulativeLengths, fromLocal, haversineM, pointAlong, toLocal, type LatLon } from "../geometry";
 import type { GraphNode, RawEdge, SerializedGraph } from "./types";
 import { GRAPH_VERSION } from "./graph";
+import type { Blockers } from "../blockers";
 
 /**
- * Terrängnät för A TO B till fots: ett regelbundet gitter av syntetiska kanter (`offtrail`) i en korridor kring linjen A–B.
+ * Terrängnät: ett regelbundet gitter av syntetiska kanter (`offtrail`) i en korridor kring linjen A–B (A TO B till fots), eller över hela
+ * spelområdet (alla lägen: korridoren läggs då som en kvadrat runt mitten, se play/prepare.ts).
  * Zombier är bundna till grafen; utan stigar eller längs mellanrum mellan dem ger gittret dem något att gå på, långsammare än på stig.
  * - Gittret ligger längs A–B (u) och tvärs (v), 8 grannar (rakt och diagonalt), så sträckor blir högst ca 8 % längre än fågelvägen.
  * - Avståndet mellan noder anpassas efter ytan (högst `maxNodes` noder, 45–70 m). Med 8 grannar ligger varje punkt i korridoren
  *   högst ca 0,2 × avståndet från närmaste kant, alltså under infektionsradien, så en spelare mitt i en gitterruta kan alltid nås.
  * - Stigar (om sådana finns) behålls oförändrade och kopplas till gittret vid varje stignod som ligger inom 0,8 × avståndet från en gitternod.
- * Gittret vet inget om vatten, vägar eller byggnader; zombier går alltså över dem. Spelaren väljer själv sin väg och kan inte föras dit av spelet.
+ * Med `blockers` (byggnader och vatten ur bakgrundskartan, geo/blockers.ts) får gittret inga noder i dem och inga kanter över dem; vägar
+ * och järnvägar korsas. Utan `blockers` vet gittret inget om dem. Spelaren väljer själv sin väg och förs aldrig dit av spelet.
  */
 export interface TerrainMeshOptions {
   a: LatLon;
@@ -19,6 +22,10 @@ export interface TerrainMeshOptions {
   /** Förlängning (m) bortom A och B. */
   marginM?: number;
   maxNodes?: number;
+  /** Coarsest node spacing (m); larger areas (Bike) need more than the corridor's 70 m. */
+  maxSpacingM?: number;
+  /** Buildings and water: no node inside them, no edge across them (see geo/blockers.ts). Without it the lattice ignores them. */
+  blockers?: Blockers;
 }
 
 export interface TerrainMesh {
@@ -37,6 +44,8 @@ export const MESH_MARGIN_M = 500;
 export const MESH_MAX_NODES = 7000;
 /** Långa stigkanter delas så här (m) så att zombier kan gå på och av stigen var som helst, inte bara i dess ändar. */
 export const TRAIL_CHUNK_M = 120;
+/** Edges are checked against buildings and water at points this far apart (m). */
+const SEGMENT_STEP_M = 8;
 
 const NEIGHBOURS: [number, number][] = [[1, 0], [0, 1], [1, 1], [1, -1]];
 
@@ -51,7 +60,7 @@ export function buildTerrainMesh(trails: SerializedGraph | null, o: TerrainMeshO
   let W = o.halfWidthM ?? MESH_HALF_WIDTH_M;
   const uLen = L + 2 * margin;
   // Spacing from the area; if even the coarsest lattice would be too big, narrow the corridor.
-  let s = Math.min(MESH_MAX_SPACING_M, Math.max(MESH_MIN_SPACING_M, Math.sqrt((uLen * 2 * W) / maxNodes)));
+  let s = Math.min(o.maxSpacingM ?? MESH_MAX_SPACING_M, Math.max(MESH_MIN_SPACING_M, Math.sqrt((uLen * 2 * W) / maxNodes)));
   if ((uLen / s + 1) * ((2 * W) / s + 1) > maxNodes) W = Math.max(150, ((maxNodes * s * s) / uLen - s * 2) / 2);
   const nu = Math.floor(uLen / s) + 1, nv = Math.floor((2 * W) / s) + 1;
   const at = (i: number, j: number): LatLon => {
@@ -60,21 +69,28 @@ export function buildTerrainMesh(trails: SerializedGraph | null, o: TerrainMeshO
   };
   const id = (i: number, j: number) => `T${i}_${j}`;
 
+  const bl = o.blockers;
   const nodes: GraphNode[] = [];
   const grid: LatLon[][] = [];
+  const open: boolean[][] = [];
   for (let i = 0; i < nu; i++) {
     grid.push([]);
+    open.push([]);
     for (let j = 0; j < nv; j++) {
       const p = at(i, j);
       grid[i].push(p);
-      nodes.push({ id: id(i, j), lat: p.lat, lon: p.lon });
+      const ok = !bl?.blocked(p);
+      open[i].push(ok);
+      if (ok) nodes.push({ id: id(i, j), lat: p.lat, lon: p.lon });
     }
   }
   const edges: RawEdge[] = [];
   for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
+    if (!open[i][j]) continue;
     for (const [di, dj] of NEIGHBOURS) {
       const i2 = i + di, j2 = j + dj;
-      if (i2 >= nu || j2 < 0 || j2 >= nv) continue;
+      if (i2 >= nu || j2 < 0 || j2 >= nv || !open[i2][j2]) continue;
+      if (bl?.segmentBlocked(grid[i][j], grid[i2][j2], SEGMENT_STEP_M)) continue;
       edges.push({ id: `T:${i}_${j}>${i2}_${j2}`, from: id(i, j), to: id(i2, j2), geometry: [grid[i][j], grid[i2][j2]], type: "other", offtrail: true });
     }
   }
@@ -101,9 +117,9 @@ export function buildTerrainMesh(trails: SerializedGraph | null, o: TerrainMeshO
       const l = toLocal(o.a, n);
       const u = l.x * ux + l.y * uy, v = l.x * vx + l.y * vy;
       const i = Math.round((u + margin) / s), j = Math.round((v + W) / s);
-      if (i < 0 || i >= nu || j < 0 || j >= nv) continue;
+      if (i < 0 || i >= nu || j < 0 || j >= nv || !open[i][j]) continue;
       const d = haversineM(n, grid[i][j]);
-      if (d > 0.8 * s) continue;
+      if (d > 0.8 * s || bl?.segmentBlocked(n, grid[i][j], SEGMENT_STEP_M)) continue;
       edges.push({ id: `TL:${n.id}`, from: n.id, to: id(i, j), geometry: d > 0.5 ? [{ lat: n.lat, lon: n.lon }, grid[i][j]] : [{ lat: n.lat, lon: n.lon }, { lat: n.lat + 1e-6, lon: n.lon }], type: "other", offtrail: true });
       links++;
     }

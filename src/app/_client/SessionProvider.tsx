@@ -7,6 +7,7 @@ import { PlaySession } from "@/play/session";
 import { IdbTileCache } from "@/play/tile-cache";
 import type { Db } from "@/play/idb";
 import { playCue, speak } from "./cues";
+import { openFreeMapFetcher } from "@/geo/blockers";
 import { createBrowserCompass } from "./compass";
 
 interface Ctx {
@@ -40,6 +41,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         store,
         userAgent: navigator.userAgent,
         compass: createBrowserCompass(),
+        terrainTiles: openFreeMapFetcher(),
         traceEnabled,
         compassView: compassViewEnabled,
         jumpScares: () => true, // hidden feature: always on (never on Bike, decided by the session)

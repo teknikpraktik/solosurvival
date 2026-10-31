@@ -141,11 +141,9 @@ describe("zombier i terräng", () => {
     expect(objectives.targets[0].lat).toBe(b.lat);
   });
 
-  it("bara terrängläget har terrängkanter: Survival och Mission till fots och allt på cykel bygger inga", () => {
-    for (const m of ["survival", "mission"] as const) expect(resolveModeRules(m, "walk", "normal", 3000).offTrailFactor).toBeGreaterThan(0);
-    expect(resolveRules("mtb", "hard", 3000).offTrailFactor).toBe(1);
-    expect(resolveRules("walk", "hard", 3000).offTrailFactor).toBeCloseTo(4.5 / 13, 6);
-    expect(resolveRules("walk", "easy", 3000).offTrailFactor).toBeCloseTo(2.5 / 4.5, 6);
+  it("utanför stigarna går zombier i halva farten, för alla aktiviteter och nivåer", () => {
+    for (const a of ["walk", "mtb"] as const) for (const d of ["easy", "normal", "hard"] as const) expect(resolveRules(a, d, 3000).offTrailFactor).toBe(0.5);
+    for (const m of ["survival", "mission"] as const) expect(resolveModeRules(m, "walk", "normal", 3000).offTrailFactor).toBe(0.5);
     void edgeLatLon;
   });
 });

@@ -11,7 +11,7 @@ import { LiveGame } from "@/play/live-game";
 import { openDb, tryOpenDb, DB_NAME } from "@/play/idb";
 import { MatchStorage } from "@/play/storage";
 import { PlaySession } from "@/play/session";
-import { applyEnemySpeedMultiplier, resolveRules, sprintFactorAt, OFF_TRAIL_KMH } from "@/config/game-rules";
+import { applyEnemySpeedMultiplier, resolveRules, sprintFactorAt, OFF_TRAIL_FACTOR } from "@/config/game-rules";
 import { resolveModeRules } from "@/config/modes";
 import { OUTBREAK_PROFILE, type ProductProfile } from "@/config/product";
 import { haversineM, pointAlong, type LatLon } from "@/geo/geometry";
@@ -48,9 +48,9 @@ describe("fiendefart per produkt (applyEnemySpeedMultiplier)", () => {
       // Allt annat är identiskt (spelarens fart, antal, radier, tider).
       expect({ ...mini, zombieSpeedMps: 0 }).toEqual({ ...adult, zombieSpeedMps: 0 });
     }
-    // Terrängfarten i vuxenappen (A TO B till fots) är absolut OFF_TRAIL_KMH; i barnversionen 80 % av den.
+    // Terrängfarten är halva stigfarten; i barnversionen 80 % av vuxenappens.
     const w = resolveRules("walk", "normal", 1800);
-    expect(applyEnemySpeedMultiplier(w, 0.8).zombieSpeedMps * w.offTrailFactor * 3.6).toBeCloseTo(OFF_TRAIL_KMH.normal * 0.8, 9);
+    expect(applyEnemySpeedMultiplier(w, 0.8).zombieSpeedMps * w.offTrailFactor).toBeCloseTo(w.zombieSpeedMps * OFF_TRAIL_FACTOR * 0.8, 9);
   });
 
   it("ogiltig multiplikator avvisas", () => {

@@ -67,10 +67,10 @@ export const GPS_LOST_LONG_S = 60;
 export const GPS_ACCURACY = { okM: 10, verifyM: 20, infectionPausedM: 35 } as const;
 
 /**
- * Zombiers fart (km/h) utanför stigar i terrängläget (A TO B till fots), samma absoluta värde oavsett aktivitet.
- * Preliminära värden från docs/OFFTRAIL-BIKE-ADDENDUM.md; används bara på terrängkanter (`GraphEdge.offtrail`), som bara finns i terrängläget.
+ * Zombie speed off the trails (terrain edges, `GraphEdge.offtrail`), as a share of their trail speed, for every activity and level.
+ * Field test: zombies should cut through terrain (never buildings or water), but slower. Before: a fixed km/h, and only in A to B on foot.
  */
-export const OFF_TRAIL_KMH: Record<Difficulty, number> = { easy: 2, normal: 2.8, hard: 3.6 }; // 2.7: 20 % lower (was 2.5 / 3.5 / 4.5)
+export const OFF_TRAIL_FACTOR = 0.5;
 
 export interface Rules {
   rulesVersion: string;
@@ -154,7 +154,8 @@ export function resolveRules(
     offNetworkExposure: activity === "mtb",
     // Riding through a zombie was removed after field testing (not believable); the mechanism stays, off for every activity.
     passThroughMps: undefined,
-    offTrailFactor: activity === "mtb" ? 1 : Math.min(1, OFF_TRAIL_KMH[difficulty] / 3.6 / ((ZOMBIE_SPEED_KMH[activity]?.[difficulty] ?? a.zombieSpeedKmh * d.speedMultiplier) / 3.6)),
+    // Off the trails (terrain lattice, see play/prepare.ts) zombies move at half their trail speed, for every activity and level.
+    offTrailFactor: OFF_TRAIL_FACTOR,
     sprintRadiusM: SPRINT_RADIUS_M,
     sprintDurationS: d.sprint.holdS,
     sprintSpeedFactor: d.sprint.peakFactor,

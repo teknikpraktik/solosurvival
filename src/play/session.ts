@@ -14,6 +14,7 @@ import { applyProfile, proximityRadiusM, START_MAX_ACCURACY_M, START_MOVED_LIMIT
 import type { ProductProfile } from "@/config/product";
 import { FieldLog } from "./fieldlog";
 import { HeadingFusion, HeadingTracker, type FusedHeading, type HeadingSource } from "./heading";
+import type { TileFetcher } from "@/geo/blockers";
 import { RecapRecorder, RecapStore, type RecapStats } from "./recap";
 import type { CompassSource, CompassStatus } from "./compass";
 import { SpeedTracker } from "./speed";
@@ -55,6 +56,8 @@ export interface SessionDeps {
   wakeLock?: { request(): Promise<{ release(): Promise<void> } | null> };
   userAgent?: string;
   traceEnabled?: () => boolean;
+  /** Background map tiles for buildings and water, so zombies can go off the trails (not through them). Without it they stay on the trails. */
+  terrainTiles?: TileFetcher;
   /** The compass turns the map also while moving (the arrow shows the GPS direction of travel). Read when the compass is turned on. Default on. */
   compassView?: () => boolean;
   /** Slumpade skrämmor (standard av om utelämnat). Aldrig på cykel, och aldrig om produktprofilen stänger av dem. */
@@ -333,7 +336,7 @@ export class PlaySession {
     this.emit();
     const t0 = performance.now();
     try {
-      this.prepared = await prepareMatch(this.d.store, start, params);
+      this.prepared = await prepareMatch(this.d.store, start, params, { terrainTiles: this.d.terrainTiles });
     } catch (err) {
       this.prepared = { status: "no_route", message: `Map data could not be loaded: ${(err as Error).message}`, proposals: [], notes: [], timing: { loadMs: 0, graphMs: 0, routeMs: 0, totalMs: 0 } };
     }

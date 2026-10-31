@@ -1,6 +1,7 @@
 import { ACTIVITIES } from "@/config/activities";
 import { buildRegionGraph, MAX_START_SNAP_M, networkPieces, type ComponentPolicy, type RegionGraph } from "@/data/region-graph";
 import { buildTerrainMesh, MESH_HALF_WIDTH_M, MESH_MARGIN_M } from "@/geo/graph/terrain-mesh";
+import { BLOCKER_ZOOM, loadBlockers, type TileFetcher } from "@/geo/blockers";
 import type { LoadStats, TileStore } from "@/data/store";
 import type { LatLon } from "@/geo/geometry";
 import { indexGraph } from "@/geo/graph/graph";
@@ -9,7 +10,7 @@ import { generateCourse } from "@/routes/course";
 import type { RouteProposal } from "@/routes/types";
 import { A_TO_B_MIN_STRAIGHT_M, atoBMaxStraightM, dataCenter, dataRadiusM, type MatchParams } from "./config";
 import { generateAtoB } from "@/routes/atob";
-import { haversineM } from "@/geo/geometry";
+import { fromLocal, haversineM } from "@/geo/geometry";
 
 export type PrepareStatus =
   | "ok"
@@ -37,11 +38,15 @@ export interface Prepared {
 const emptyTiming = { loadMs: 0, graphMs: 0, routeMs: 0, totalMs: 0 };
 
 
+/** Terrain lattice over a whole play area: at most this many nodes, spaced at most this far (m; a large Bike area gets the coarser lattice). */
+const AREA_MESH_MAX_NODES = 12_000;
+const AREA_MESH_MAX_SPACING_M = 120;
+
 /**
  * Hämtar regionala tiles, bygger aktivitetens stignät och genererar ruttförslag från den verkliga startpositionen.
  * Hellre ett tydligt avslag med förklaring än en dålig rutt (säkerhetsprincip).
  */
-export async function prepareMatch(store: TileStore, start: LatLon, p: MatchParams, opts: { component?: ComponentPolicy } = {}): Promise<Prepared> {
+export async function prepareMatch(store: TileStore, start: LatLon, p: MatchParams, opts: { component?: ComponentPolicy; terrainTiles?: TileFetcher } = {}): Promise<Prepared> {
   const t0 = performance.now();
   const base = { proposals: [], notes: [] as string[], timing: { ...emptyTiming } };
   const manifest = await store.loadManifest();
@@ -63,7 +68,7 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
       return { ...base, status: "outside_region", message: "B is outside the area the game has map data for (Värmland, Sweden).", dataVersion: manifest.dataVersion };
     }
   }
-  if (terrain) return prepareTerrainAtoB(store, start, p.pointB!, p, base, manifest.dataVersion, t0);
+  if (terrain) return prepareTerrainAtoB(store, start, p.pointB!, p, base, manifest.dataVersion, t0, opts.terrainTiles);
   const radius = dataRadiusM(p);
   const center = dataCenter(p, start);
   const t1 = performance.now();
@@ -89,7 +94,20 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
   }
   // Two networks: routes and checkpoints are laid out on the strict one (never across a major road); the game itself (zombies, spawns,
   // infection) runs on the play network, where mapped pedestrian crossings are connected so that zombies can follow the player across a road.
-  const graph = indexGraph({ ...region.play.graph, crossingNodes: [...region.play.crossingNodes] });
+  const playGraph = { ...region.play.graph, crossingNodes: [...region.play.crossingNodes] };
+  let graph = indexGraph(playGraph);
+  // Zombies also go off the trails (at half speed), but never through buildings or water: a terrain lattice over the whole play area,
+  // without the cells that buildings and water cover (from the background map's tiles). Without those tiles they stay on the trails.
+  if (opts.terrainTiles) {
+    const tb = performance.now();
+    const blockers = await loadBlockers(center, radius, BLOCKER_ZOOM, opts.terrainTiles).catch(() => null);
+    if (blockers) {
+      const R = radius;
+      const mesh = buildTerrainMesh(playGraph, { a: fromLocal(center, { x: -R, y: 0 }), b: fromLocal(center, { x: R, y: 0 }), halfWidthM: R, marginM: 0, maxNodes: AREA_MESH_MAX_NODES, maxSpacingM: AREA_MESH_MAX_SPACING_M, blockers });
+      graph = indexGraph(mesh.graph);
+      base.notes.push(`terrain: ${mesh.meshNodes} nodes, spacing ${mesh.spacingM.toFixed(0)} m, ${blockers.polygons} buildings/water, ${Math.round(performance.now() - tb)} ms`);
+    } else base.notes.push("terrain: no map tiles, zombies stay on the trails");
+  }
   const routeGraph = p.mode === "survival" ? graph : indexGraph(region.graph);
   if (p.mode === "survival") {
     if (region.stats.componentKm < 3) {
@@ -140,7 +158,7 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
  * Ingen rutt läggs ut: målet är exakt den punkt spelaren valde (inte snappad till en stig), och linjen A–B är bara en hjälplinje.
  * Fungerar var som helst (stigar tas bara från kartdata där det finns); en tom karta ger ett rent terrängnät.
  */
-async function prepareTerrainAtoB(store: TileStore, start: LatLon, b: LatLon, p: MatchParams, base: { proposals: RouteProposal[]; notes: string[]; timing: Prepared["timing"] }, dataVersion: string, t0: number): Promise<Prepared> {
+async function prepareTerrainAtoB(store: TileStore, start: LatLon, b: LatLon, p: MatchParams, base: { proposals: RouteProposal[]; notes: string[]; timing: Prepared["timing"] }, dataVersion: string, t0: number, terrainTiles?: TileFetcher): Promise<Prepared> {
   const dist = haversineM(start, b);
   const center = { lat: (start.lat + b.lat) / 2, lon: (start.lon + b.lon) / 2 };
   const radius = dist / 2 + MESH_HALF_WIDTH_M + MESH_MARGIN_M + 300;
@@ -148,7 +166,9 @@ async function prepareTerrainAtoB(store: TileStore, start: LatLon, b: LatLon, p:
   const { ways, stats } = await store.loadAround(center, radius);
   const t2 = performance.now();
   const trails = ways.length ? networkPieces(ways, p.activity, center, radius).graph : null;
-  const mesh = buildTerrainMesh(trails, { a: start, b });
+  // Buildings and water from the background map: the lattice leaves them out (without the tiles it covers everything, as before).
+  const blockers = terrainTiles ? await loadBlockers(center, dist / 2 + MESH_HALF_WIDTH_M + MESH_MARGIN_M, BLOCKER_ZOOM, terrainTiles).catch(() => null) : null;
+  const mesh = buildTerrainMesh(trails, { a: start, b, blockers: blockers ?? undefined });
   const graph = indexGraph(mesh.graph);
   const t3 = performance.now();
   const dest = { id: "B", kind: "destination" as const, nodeId: "", lat: b.lat, lon: b.lon };
