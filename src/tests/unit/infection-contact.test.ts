@@ -121,7 +121,7 @@ describe("GPS-brus gör inte infektion orimligt svår", () => {
   });
 });
 
-describe("cykel: tillräckligt snabb spelare cyklar igenom en zombie", () => {
+describe("cykel: genomcykling är borttagen (fälttest: inte trovärdigt)", () => {
   const g = twoWalks();
   const base = { headStartS: 0, initialZombies: 1, maxZombies: 1, magnetic: false, detectionRadiusM: 0, revealIntervalS: 1e9, sprintRadiusM: 0 };
   /** Spelaren färdas längs stråk A från x = -100 till +100 i `kmh`, ny GPS-fix varje sekund; zombien står still vid x = 0. */
@@ -138,22 +138,22 @@ describe("cykel: tillräckligt snabb spelare cyklar igenom en zombie", () => {
     return state.result;
   }
 
-  it("cykel i 28 km/h förbi en zombie: ingen smitta", () => {
-    expect(rideThrough("mtb", 28)).toBeUndefined();
+  it("cykel i 28 km/h förbi en zombie: smittad, som i alla farter", () => {
+    expect(rideThrough("mtb", 28)).toBe("infected");
   });
   it("cykel i 18 km/h förbi en zombie: smittad", () => {
     expect(rideThrough("mtb", 18)).toBe("infected");
   });
-  it("gående omfattas inte av regeln", () => {
+  it("ingen aktivitet har genomcykling", () => {
     expect(resolveRules("walk", "normal", 3000).passThroughMps).toBeUndefined();
-    expect(resolveRules("mtb", "normal", 3000).passThroughMps).toBeCloseTo(25 / 3.6, 6);
+    expect(resolveRules("mtb", "normal", 3000).passThroughMps).toBeUndefined();
   });
 });
 
-describe("cykel: genomcykling ger en händelse per möte", () => {
-  it("pass_through skickas en gång när man cyklar igenom en zombie, inte varje steg", () => {
+describe("genomcyklingens mekanism (avstängd i reglerna, kvar i motorn)", () => {
+  it("påslagen i reglerna: pass_through skickas en gång per möte, inte varje steg", () => {
     const g = twoWalks();
-    const rules = { ...resolveRules("mtb", "normal", 3000), headStartS: 0, initialZombies: 1, maxZombies: 1, magnetic: false, detectionRadiusM: 0, revealIntervalS: 1e9, sprintRadiusM: 0 };
+    const rules = { ...resolveRules("mtb", "normal", 3000), passThroughMps: 25 / 3.6, headStartS: 0, initialZombies: 1, maxZombies: 1, magnetic: false, detectionRadiusM: 0, revealIntervalS: 1e9, sprintRadiusM: 0 };
     const { state } = createGame({ g, config: { activity: "mtb", difficulty: "normal", durationSeconds: 3000, areaId: "t", seed: 1, rulesVersion: RULES_VERSION }, rules, start: ll([-100, 0]) });
     state.zombies = [zAt(g, [0, 0])];
     const v = 30 / 3.6;

@@ -56,7 +56,7 @@ for (const mode of ["SURVIVAL", "CHECKPOINTS"]) {
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
   await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match
   for (let i = 0; i < 8; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(1000); }
-  const t = await page.locator('[aria-label="Time left"]').innerText();
+  const t = await page.locator(".pill.timeleft span").last().innerText();
   check(`${mode}: match går`, /\d+:\d\d/.test(t), t);
   await page.locator(".controls").getByRole("button", { name: "PAUSE" }).click();
   check(`${mode}: paus`, (await page.getByText("Paused").count()) > 0);

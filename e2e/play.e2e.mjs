@@ -66,7 +66,7 @@ try {
   await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match
   await page.waitForTimeout(500);
   for (let i = 0; i < 12; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(1000); }
-  const timeText = await page.locator('[aria-label="Time left"]').innerText();
+  const timeText = await page.locator(".pill.timeleft span").last().innerText();
   check("matchen går (tid återstår)", /\d+:\d\d/.test(timeText), timeText);
   await page.screenshot({ path: `${OUT}/04-play.png` });
 

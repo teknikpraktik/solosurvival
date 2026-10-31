@@ -79,6 +79,8 @@ export interface Rules {
   durationS: number;
   headStartS: number;
   extractionOpensAtS: number;
+  /** Zombie speed factor once extraction is open (Survival: the final rush to the helicopter). Missing = 1. */
+  extractionRushFactor?: number;
   zombieSpeedMps: number;
   initialZombies: number;
   maxZombies: number;
@@ -150,7 +152,8 @@ export function resolveRules(
     magnetRangeM: a.magnetRangeM,
     magnetic: true,
     offNetworkExposure: activity === "mtb",
-    passThroughMps: activity === "mtb" ? BIKE_PASS_THROUGH_KMH / 3.6 : undefined,
+    // Riding through a zombie was removed after field testing (not believable); the mechanism stays, off for every activity.
+    passThroughMps: undefined,
     offTrailFactor: activity === "mtb" ? 1 : Math.min(1, OFF_TRAIL_KMH[difficulty] / 3.6 / ((ZOMBIE_SPEED_KMH[activity]?.[difficulty] ?? a.zombieSpeedKmh * d.speedMultiplier) / 3.6)),
     sprintRadiusM: SPRINT_RADIUS_M,
     sprintDurationS: d.sprint.holdS,

@@ -93,6 +93,8 @@ export interface GameMapProps {
   zombieEdgeDots?: boolean;
   /** Zombies farther away than this (m) get no edge pointer. Default 1000. */
   zombieEdgeMaxM?: number;
+  /** Faint short arcs at these distances (m) ahead of the player, for a feel of distance. Omitted = none. */
+  rangeArcs?: number[];
   /** Skalstock längst ner till vänster (sätts vid start). */
   scale?: boolean;
   /** Följ spelaren (game view: AUTO on). Any touch on the map then hands it to the player at once: `onUserMove` is called and the game stops moving the camera. */
@@ -134,6 +136,8 @@ const TONE = { next: "#c026d3", done: "#16a34a", todo: "#475569" } as const;
 const ZOMBIE_NEAR_M = 100;
 /** At most this many edge pointers (the nearest zombies off screen). */
 const EDGE_POINTERS = 4;
+/** Width of a range arc (degrees). */
+const RANGE_ARC_DEG = 10;
 /** The player is "at" the home marker within this distance (m). */
 const AT_HOME_M = 30;
 const ZOMBIE_FAR_M = 600;
@@ -360,10 +364,43 @@ export default function GameMap(props: GameMapProps) {
         }
       }
       if (el.current) el.current.dataset.bearing = String(Math.round(bearingRef.current));
+      drawRangeArcs(map, course != null ? arrowShown : 0);
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
   }, [loaded]);
+
+  // --- Range arcs: two faint short arcs ahead of the player (e.g. 200 and 400 m), to give a feel for distance on the map ---
+  const arcsRef = useRef<SVGSVGElement | null>(null);
+  const drawRangeArcs = (map: MapLibreMap, aheadDeg: number) => {
+    const P = propsRef.current;
+    const radii = P.rangeArcs ?? [];
+    let svg = arcsRef.current;
+    if (!radii.length || !P.player) { if (svg) svg.style.display = "none"; return; }
+    if (!svg) {
+      svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("class", "rangearcs");
+      svg.setAttribute("aria-hidden", "true");
+      svg.innerHTML = radii.map(() => `<path fill="none"/><text text-anchor="middle"></text>`).join("");
+      map.getContainer().appendChild(svg);
+      arcsRef.current = svg;
+    }
+    svg.style.display = "";
+    const p = map.project([P.player.lon, P.player.lat]);
+    const mpp = (40075016.686 * Math.cos((P.player.lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom());
+    const half = (RANGE_ARC_DEG / 2) * (Math.PI / 180);
+    const a = (aheadDeg * Math.PI) / 180;
+    const pt = (r: number, t: number) => `${(p.x + r * Math.sin(t)).toFixed(1)} ${(p.y - r * Math.cos(t)).toFixed(1)}`;
+    const paths = svg.querySelectorAll("path"), texts = svg.querySelectorAll("text");
+    radii.forEach((m, i) => {
+      const r = m / mpp;
+      const show = r >= 24 && r <= 4000;
+      paths[i].setAttribute("d", show ? `M ${pt(r, a - half)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 0 1 ${pt(r, a + half)}` : "");
+      const [tx, ty] = pt(r + 9, a).split(" ");
+      texts[i].setAttribute("x", tx); texts[i].setAttribute("y", ty);
+      texts[i].textContent = show ? (m >= 1000 ? `${m / 1000} km` : `${m} m`) : "";
+    });
+  };
 
   // --- Zombier: en enda rAF-loop som animerar mellan motorns uppdateringar ---
   const animRef = useRef<ZombieAnimator | null>(null);

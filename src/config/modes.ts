@@ -17,9 +17,12 @@ export const AB_ZOMBIES_PER_KM: Record<Activity, number> = { walk: 2.5, run: 2.5
  */
 export const SURVIVAL_SPEED_FACTOR: Partial<Record<Activity, number>> = { mtb: 1.2, walk: 1.2 };
 
+/** Survival: when extraction opens (the helicopter lands) every zombie runs 50 % faster, so the last stretch is a race. */
+export const EXTRACTION_RUSH_FACTOR = 1.5;
+
 export function resolveModeRules(mode: GameMode, activity: Activity, difficulty: Difficulty, durationS: number, spawnCapacity?: number, straightM?: number): Rules {
   const r = resolveRules(activity, difficulty, durationS, spawnCapacity);
-  if (mode === "survival") return { ...r, zombieSpeedMps: r.zombieSpeedMps * (SURVIVAL_SPEED_FACTOR[activity] ?? 1) };
+  if (mode === "survival") return { ...r, zombieSpeedMps: r.zombieSpeedMps * (SURVIVAL_SPEED_FACTOR[activity] ?? 1), extractionRushFactor: EXTRACTION_RUSH_FACTOR };
   const base: Rules = { ...r, extractionOpensAtS: Infinity };
   if (mode !== "escape" || !straightM) return base;
   // A TO B: the population follows the distance, not the (long) time limit, but never beyond the level's maximum (ZOMBIE_COUNT, at most 20).

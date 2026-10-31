@@ -196,6 +196,7 @@ export default function Play() {
         zombieEdgeDots={!finished}
         zombieEdgeMaxM={m.activity === "mtb" ? 2000 : 1000}
         homeStepsBack
+        rangeArcs={finished ? undefined : [200, 400]}
         scale
         follow={auto}
         viewAheadM={vp.aheadM}
@@ -211,7 +212,7 @@ export default function Play() {
             <span className="pill mode" aria-label="Mode and difficulty"><span>{MODE_LABEL[m.mode]}</span> <span>· {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span></span>
             <span className="pill activity" role="img" aria-label={m.activity === "mtb" ? "Bike" : "On foot"} dangerouslySetInnerHTML={{ __html: m.activity === "mtb" ? BIKE_SVG : WALK_SVG }} />
           </span>
-          <span className="pill" aria-label="Time left">{fmtTime(remaining)}</span>
+          <span className="pill timeleft" aria-label={`Time left ${fmtTime(remaining)}`}><span className="tl" aria-hidden="true">TIME LEFT</span><span aria-hidden="true">{fmtTime(remaining)}</span></span>
         </div>
         {/* Goal and nearest zombie share a row: the top of the map is what the player is heading for, so the HUD covers as little of it as it can. */}
         <div className="line">

@@ -95,8 +95,8 @@ describe("spelmotor med mål", () => {
       }
     }
   });
-  it("Survival är oförändrat: samma regler och extraction öppnar", () => {
-    expect(resolveModeRules("survival", "run", "normal", 2700)).toEqual(resolveRules("run", "normal", 2700));
+  it("Survival: samma regler plus slutrusningen när extraction öppnar", () => {
+    expect(resolveModeRules("survival", "run", "normal", 2700)).toEqual({ ...resolveRules("run", "normal", 2700), extractionRushFactor: 1.5 });
     expect(resolveModeRules("escape", "run", "normal", 2700).extractionOpensAtS).toBe(Infinity);
   });
   it("zombier får inte tillgång till målen: AI-koden läser inte objectives", async () => {
@@ -139,5 +139,35 @@ describe("mål med riktiga GPS-fixar (Etapp 3)", () => {
     let r;
     for (let i = 0; i < 5; i++) r = updateObjectives(o, near(5), "ok", 1, i + 1);
     expect(r!.reached?.id).toBe("C1");
+  });
+});
+
+describe("Survival: slutrusningen när extraction öppnar", () => {
+  it("zombierna rör sig 50 % fortare efter att extraction öppnat, inte före", async () => {
+    const { createGame, stepGame } = await import("@/engine/core/engine");
+    const { lineGraph, ORIGIN } = await import("@/sim/test-graphs");
+    const { zombieLatLon } = await import("@/engine/core/movement");
+    const { haversineM } = await import("@/geo/geometry");
+    const { RULES_VERSION, STEP_S } = await import("@/config/game-rules");
+    const g = lineGraph(4000);
+    const moved = (rush: number) => {
+      const rules = { ...resolveModeRules("survival", "walk", "normal", 3000), extractionRushFactor: rush, headStartS: 0, extractionOpensAtS: 20, initialZombies: 1, maxZombies: 1, sprintRadiusM: 0 };
+      const { state } = createGame({ g, config: { activity: "walk", difficulty: "normal", durationSeconds: 3000, areaId: "t", seed: 4, rulesVersion: RULES_VERSION, mode: "survival" }, rules, start: ORIGIN });
+      state.neutralUntilS = 1e9;
+      const step = () => stepGame(g, state, rules, { position: ORIGIN, quality: "ok", accuracyM: 5 });
+      for (let i = 0; i < 10 / STEP_S; i++) step();
+      const z = state.zombies[0]; const a0 = zombieLatLon(g, z);
+      for (let i = 0; i < 5 / STEP_S; i++) step();
+      const before = haversineM(a0, zombieLatLon(g, z));
+      for (let i = 0; i < 6 / STEP_S; i++) step(); // extraction opens at 20 s
+      expect(state.phase).toBe("extraction");
+      const b0 = zombieLatLon(g, z);
+      for (let i = 0; i < 5 / STEP_S; i++) step();
+      return { before, after: haversineM(b0, zombieLatLon(g, z)) };
+    };
+    const off = moved(1), on = moved(1.5);
+    expect(on.before).toBeCloseTo(off.before, 3);
+    expect(on.after / off.after).toBeGreaterThan(1.4);
+    expect(on.after / off.after).toBeLessThan(1.6);
   });
 });

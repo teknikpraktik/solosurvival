@@ -54,7 +54,15 @@ const place = (page, list) => page.evaluate((list) => {
   check("QUIT quieter than PAUSE", (await page.locator(".controls .quit").count()) === 1);
   const fill = await page.evaluate(() => { const r = document.querySelector(".map-shell").getBoundingClientRect(); return { bottom: Math.round(r.bottom), vh: window.innerHeight }; });
   check("map reaches the bottom of the screen", fill.bottom >= fill.vh, JSON.stringify(fill));
+  check("match clock is captioned TIME LEFT", (await page.locator(".pill.timeleft .tl").innerText()) === "TIME LEFT");
+  const arcs = await page.evaluate(() => [...document.querySelectorAll(".rangearcs path")].filter((p) => p.getAttribute("d")).length + "/" + [...document.querySelectorAll(".rangearcs text")].map((t) => t.textContent).join(","));
+  check("faint range arcs ahead of the player (200 m, 400 m)", /^[12]\/200 m,400 m$|^[12]\/200 m,$|^[12]\/,400 m$/.test(arcs), arcs);
   await page.screenshot({ path: `${OUT}/survival.png` });
+  // Extraction opens: a helicopter on the map.
+  await page.evaluate(() => { const l = window.__outbreak.live; l.rules.extractionOpensAtS = l.state.elapsedSeconds + 1; });
+  await fixes(6);
+  check("extraction open: a helicopter marker on the map", (await page.locator('[aria-label="Extraction point (helicopter)"] svg ellipse').count()) === 1 && /^Extraction open/.test(await page.locator(".pill.goal").innerText()));
+  await page.screenshot({ path: `${OUT}/extraction.png` });
   await ctx.close();
 }
 

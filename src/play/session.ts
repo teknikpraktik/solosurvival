@@ -544,7 +544,8 @@ export class PlaySession {
           break;
         case "spawn_relaxed": this.log?.add(t, "spawn_relaxed", { n: live.state.zombies.length }); break;
         case "spawn_skipped": this.log?.add(t, "spawn_skipped", { n: live.state.zombies.length, atS: Math.round(live.state.elapsedSeconds) }); break;
-        case "extraction_opened": this.cue("info", "Extraction open"); this.log?.add(t, "extraction_opened"); break;
+        // The helicopter has landed and every zombie rushes (EXTRACTION_RUSH_FACTOR): the sprint shriek and "Run!" say so without a look at the screen.
+        case "extraction_opened": this.cue("sprint", "Extraction open – run!"); this.log?.add(t, "extraction_opened"); break;
         case "gps_lost_long": this.cue("alert", "Location lost for a while"); this.log?.add(t, "gps_lost_long"); break;
         case "off_network":
           this.log?.add(t, "off_network", { change: e.change, budgetS: Math.round(live.state.offNetwork?.budgetS ?? 0), offsetM: Math.round(live.state.offNetwork?.offsetM ?? 0) });

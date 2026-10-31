@@ -298,7 +298,8 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
       }
       // Terrängkant: zombien går långsammare. Hastigheten avgörs av kanten den står på i stegets början (högst ett steg fel vid kantbyte).
       const offTrail = g.hasOfftrail && g.edges.get(z.edgeId)?.offtrail;
-      const speed = z.speedMps * zombieSpeedFactor(rules, z, t) * (offTrail ? rules.offTrailFactor : 1);
+      const rush = s.phase === "extraction" ? (rules.extractionRushFactor ?? 1) : 1;
+      const speed = z.speedMps * zombieSpeedFactor(rules, z, t) * (offTrail ? rules.offTrailFactor : 1) * rush;
       const arrived = advanceZombie(g, z, speed * STEP_S, s);
       updateZombieAI(
         {
