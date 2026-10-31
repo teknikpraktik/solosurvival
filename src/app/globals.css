@@ -18,8 +18,10 @@ a { color: inherit; }
 .btn[aria-disabled="true"] { opacity: 0.45; }
 /* Edge to edge: on iPhone (home-screen app, translucent status bar) inset 0 can stop short of the bottom and leave a black band
    under the map; the large viewport height reaches the screen's edge. Controls keep their own safe-area margins. */
-.map-shell { position: fixed; top: 0; left: 0; right: 0; bottom: 0; height: 100vh; height: 100lvh; }
-.map-shell .maplibregl-map { position: absolute; inset: 0; }
+/* The shell is the visible screen: panels and buttons are placed against its bottom edge, so they are never under the browser's bar.
+   Only the map itself reaches further down (large viewport height), so no black band shows under it on an iPhone home-screen app. */
+.map-shell { position: fixed; inset: 0; }
+.map-shell .maplibregl-map { position: absolute; top: 0; left: 0; right: 0; bottom: auto; height: 100%; min-height: 100lvh; }
 .hud { position: absolute; left: 0; right: 0; top: 0; display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: max(10px, env(safe-area-inset-top)) 12px 10px; background: linear-gradient(#0b0f14ee, #0b0f1400); z-index: 2; pointer-events: none; }
 .hud > * { pointer-events: auto; }
 .hud button.pill { cursor: pointer; min-height: 44px; min-width: 44px; }
@@ -280,8 +282,10 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .backbtn:disabled { opacity: .5; }
 .sheet.pvsheet { gap: 8px; padding-top: 12px; max-height: 66dvh; }
 /* The buttons stay at the bottom of the panel while longer details scroll above them. */
-.pvactions { position: sticky; bottom: calc(-1 * max(14px, env(safe-area-inset-bottom)) - 12px); margin-bottom: calc(-1 * max(14px, env(safe-area-inset-bottom)) - 12px);
-  padding: 8px 0 calc(max(14px, env(safe-area-inset-bottom)) + 12px); background: #0f151c; z-index: 1; }
+/* A little more room under the buttons than other sheets, so START GAME and REGENERATE never look cut off at the screen's edge. */
+.sheet.pvsheet { padding-bottom: calc(max(14px, env(safe-area-inset-bottom)) + 20px); }
+.pvactions { position: sticky; bottom: calc(-1 * max(14px, env(safe-area-inset-bottom)) - 20px); margin-bottom: calc(-1 * max(14px, env(safe-area-inset-bottom)) - 20px);
+  padding: 8px 0 calc(max(14px, env(safe-area-inset-bottom)) + 20px); background: #0f151c; z-index: 1; }
 /* Map attribution: top right in the preview, so it never sits on the panel's buttons. */
 .map-shell.preview .attrib { left: auto; right: 8px; bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 28px + 50px); }
 .pvhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }

@@ -89,7 +89,8 @@ export default function NewGame() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [sheetH, setSheetH] = useState(0);
   const previewInsets = useCallback(() => {
-    const map = sheetRef.current?.parentElement?.getBoundingClientRect();
+    // Measured against the map itself, which may reach below the visible screen (see .map-shell in globals.css).
+    const map = sheetRef.current?.parentElement?.querySelector(".maplibregl-map, .map-canvas")?.getBoundingClientRect() ?? sheetRef.current?.parentElement?.getBoundingClientRect();
     const top = topRef.current?.getBoundingClientRect();
     const sheet = sheetRef.current?.getBoundingClientRect();
     if (!map) return { top: 0, bottom: 0 };

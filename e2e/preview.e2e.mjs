@@ -105,7 +105,7 @@ for (const vp of [{ width: 320, height: 568 }, { width: 375, height: 667 }, { wi
     hscroll: document.documentElement.scrollWidth > window.innerWidth,
     small: [...document.querySelectorAll(".backbtn, .pvtoggle, .pvactions .btn")].filter((e) => { const b = e.getBoundingClientRect(); return b.height < 44 || b.width < 44; }).length,
     cut: [...document.querySelectorAll(".pvstats dd, .pvstats dt, .pvactions .btn")].filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent),
-    startVisible: (() => { const b = document.querySelector(".pvstart").getBoundingClientRect(); return b.bottom <= window.innerHeight && b.top >= 0; })(),
+    startVisible: (() => { const b = document.querySelector(".pvstart").getBoundingClientRect(); return b.bottom <= window.innerHeight - 20 && b.top >= 0; })(), // with room under it, not at the edge
   }));
   check(`${vp.width}×${vp.height}: markers visible, nothing cut, targets ≥ 44 px, START GAME on screen`, allIn(ms) && !r.hscroll && !r.small && !r.cut.length && r.startVisible, JSON.stringify({ hidden: ms.filter((m) => !m.in).map((m) => m.label), ...r }));
   await ctx.close();
