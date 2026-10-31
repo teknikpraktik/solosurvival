@@ -290,9 +290,7 @@ export default function Play() {
               <button className="btn" onClick={() => setConfirmEnd(false)}>KEEP PLAYING</button>
             </>
           }
-        >
-          <div className="muted">The match is saved as aborted.</div>
-        </Modal>
+        />
       )}
 
       {jump && !finished && <JumpScare onDone={() => setJump(false)} />}
@@ -306,7 +304,7 @@ export default function Play() {
         const title = won ? R.title[m.mode] : res === "infected" ? R.title.captured : res === "failed" ? R.title.failed : res === "aborted" ? R.title.aborted : R.title.incomplete;
         const tone = won ? "won" : res === "infected" ? "lost" : res === "failed" ? "late" : "neutral";
         // One sentence that says what happened, with the mode's own result in it (it used to come last, after all the numbers).
-        const line = res === "aborted" ? R.aborted
+        const line = res === "aborted" ? ""
           : won ? (m.mode === "mission" ? R.missionDone(p?.primaryTotal ?? 0, fmtTime(m.elapsedS)) : m.mode === "escape" ? R.escapeDone(fmtTime(m.elapsedS)) : R.survivalDone(fmtTime(Math.max(0, m.limitS - m.elapsedS))))
           : res === "infected" ? (m.mode === "mission" && p ? R.capturedProgress(fmtTime(m.elapsedS), p.primaryReached, p.primaryTotal) : R.captured(fmtTime(m.elapsedS)))
           : res === "failed" ? (m.mode === "mission" && p ? R.failedMission(p.primaryReached, p.primaryTotal, p.homeReached) : m.mode === "escape" ? R.failedEscape : R.failedSurvival)
@@ -341,10 +339,10 @@ export default function Play() {
               </>
             )}
           >
-            <div className={`outcome ${tone}`} role="status">
+            {line && <div className={`outcome ${tone}`} role="status">
               <span className="outcomeicon" aria-hidden="true">{tone === "won" ? "✓" : tone === "lost" ? "✕" : tone === "late" ? "⏱" : "■"}</span>
               <p>{line}</p>
-            </div>
+            </div>}
             {record && <div className="recordline">★ {record}</div>}
             {res !== "aborted" && (
               <dl className="pvstats statcells">

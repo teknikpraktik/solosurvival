@@ -76,7 +76,7 @@ const waitEnd = (page) => page.locator(".outcome").waitFor({ timeout: 30000 }).t
   const { ctx, page } = await play("SURVIVAL", { width: 320, height: 568 });
   await page.getByRole("button", { name: "QUIT" }).click(); await page.waitForTimeout(300);
   await dialog(page).getByRole("button", { name: "QUIT" }).click();
-  check("aborted: short dialog with HOME, no numbers", await waitEnd(page) && (await dialog(page).getAttribute("aria-label")) === "MATCH ABORTED" && (await page.locator(".statcells").count()) === 0 && (await page.locator(".modal-actions .cta").innerText()) === "HOME");
+  check("aborted: short dialog with HOME, no numbers and no 'saved as aborted' text", await dialog(page).getByText("MATCH ABORTED").waitFor({ timeout: 30000 }).then(() => true, () => false) && (await page.getByText(/saved as aborted/).count()) === 0 && (await dialog(page).getAttribute("aria-label")) === "MATCH ABORTED" && (await page.locator(".statcells").count()) === 0 && (await page.locator(".modal-actions .cta").innerText()) === "HOME");
   await page.screenshot({ path: `${OUT}/aborted.png` });
   await ctx.close();
 }

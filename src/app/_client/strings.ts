@@ -61,7 +61,6 @@ const en = {
     failedMission: (reached: number, total: number, home: boolean) => reached >= total && !home ? "All checkpoints, but time ran out before you got home." : `${reached} of ${total} checkpoints when time ran out.`,
     failedEscape: "Time ran out before you reached B.",
     failedSurvival: "Time ran out before you reached extraction.",
-    aborted: "The match is saved as aborted.",
     time: "Time",
     distance: "Distance",
     avgSpeed: "Avg speed",
