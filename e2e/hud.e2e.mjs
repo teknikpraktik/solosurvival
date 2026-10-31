@@ -46,7 +46,10 @@ const place = (page, list) => page.evaluate((list) => {
   check("zombie beyond 600 m: dimmed ('far')", cls.some((c) => c.includes("far")));
   check("nearest-zombie pill red within 100 m", (await page.locator(".zpill").getAttribute("class")).includes("zclose"));
   check("a hunting zombie's label shows it closing in", (await page.locator(".zlabel.closing").count()) >= 1, `${await page.locator(".zlabel.closing").count()} closing`);
-  check("edge dots on foot for zombies outside the visible map", (await page.locator(".zedge").count()) >= 1, `${await page.locator(".zedge").count()} dots`);
+  const ptr = await page.evaluate(() => ({ n: document.querySelectorAll(".zedge").length, faces: document.querySelectorAll(".zedge .zface svg").length, labels: [...document.querySelectorAll(".zedge .zedist")].filter((e) => e.textContent).length, ring: getComputedStyle(document.querySelector(".zedge .zface")).borderTopColor }));
+  check("edge pointers on foot: red badge with the zombie face, at most 4, only the nearest shows its distance", ptr.n >= 1 && ptr.n <= 4 && ptr.faces === ptr.n && ptr.labels === 1 && ptr.ring === "rgb(255, 59, 59)", JSON.stringify(ptr));
+  const ring = await page.evaluate(() => [...document.querySelectorAll(".zmark .zring")].map((e) => getComputedStyle(e).stroke));
+  check("zombies are red (no amber)", ring.length > 0 && ring.every((c) => !c.includes("245, 158, 11")), JSON.stringify([...new Set(ring)]));
   check("QUIT quieter than PAUSE", (await page.locator(".controls .quit").count()) === 1);
   const fill = await page.evaluate(() => { const r = document.querySelector(".map-shell").getBoundingClientRect(); return { bottom: Math.round(r.bottom), vh: window.innerHeight }; });
   check("map reaches the bottom of the screen", fill.bottom >= fill.vh, JSON.stringify(fill));

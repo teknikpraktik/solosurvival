@@ -91,6 +91,8 @@ export interface GameMapProps {
   homeStepsBack?: boolean;
   /** A small dot at the edge of the free map area towards each zombie outside it (or under the HUD or the controls). */
   zombieEdgeDots?: boolean;
+  /** Zombies farther away than this (m) get no edge pointer. Default 1000. */
+  zombieEdgeMaxM?: number;
   /** Skalstock längst ner till vänster (sätts vid start). */
   scale?: boolean;
   /** Följ spelaren (game view: AUTO on). Any touch on the map then hands it to the player at once: `onUserMove` is called and the game stops moving the camera. */
@@ -130,6 +132,8 @@ export interface GameMapProps {
 const TONE = { next: "#c026d3", done: "#16a34a", todo: "#475569" } as const;
 /** Zombie threat levels on the map: within NEAR_M red and larger, chasing amber, beyond FAR_M dimmed (with magnet hunting nearly all chase). */
 const ZOMBIE_NEAR_M = 100;
+/** At most this many edge pointers (the nearest zombies off screen). */
+const EDGE_POINTERS = 4;
 /** The player is "at" the home marker within this distance (m). */
 const AT_HOME_M = 30;
 const ZOMBIE_FAR_M = 600;
@@ -433,24 +437,47 @@ export default function GameMap(props: GameMapProps) {
     const map = mapRef.current;
     const dots = edgeDots.current;
     const on = !!map && !!propsRef.current.zombieEdgeDots;
-    const area = on ? freeArea(map!, 10) : null;
+    const area = on ? freeArea(map!, 22) : null;
     const me = propsRef.current.player;
     const from = area && me ? map!.project([me.lon, me.lat]) : undefined;
     const seen = new Set<string>();
-    if (area) for (const f of framesRef.current) {
+    // Only the nearest few within range: twenty pointers around the edge would say nothing. The nearest also shows its distance.
+    const maxM = propsRef.current.zombieEdgeMaxM ?? 1000;
+    const shown: { f: { id: string; lat: number; lon: number }; e: { x: number; y: number; deg: number }; d: number }[] = [];
+    if (area && me) for (const f of framesRef.current) {
+      const d = haversineM(f, me);
+      if (d > maxM) continue;
       const p = map!.project([f.lon, f.lat]);
       const e = edgePoint(area, p.x, p.y, from);
-      if (!e) continue;
+      if (e) shown.push({ f, e, d });
+    }
+    // Zombies from the same direction share one pointer (with a count) instead of stacking badges on top of each other.
+    shown.sort((a, b) => a.d - b.d);
+    const groups: { f: { id: string; lat: number; lon: number }; e: { x: number; y: number; deg: number }; d: number; n: number }[] = [];
+    for (const x of shown) {
+      const g = groups.find((g) => Math.hypot(g.e.x - x.e.x, g.e.y - x.e.y) < 34);
+      if (g) g.n++;
+      else if (groups.length < EDGE_POINTERS) groups.push({ ...x, n: 1 });
+    }
+    groups.forEach(({ f, e, d: dist, n }, i) => {
       seen.add(f.id);
       let d = dots.get(f.id);
       if (!d) {
         d = document.createElement("div");
         d.className = "zedge";
+        d.innerHTML = `<span class="ztip"></span><span class="zface">${propsRef.current.enemySvg?.(f.id) ?? ZOMBIE_SVG}</span><span class="zcount"></span><span class="zedist"></span>`;
         map!.getContainer().appendChild(d);
         dots.set(f.id, d);
       }
       d.style.transform = `translate(${e.x.toFixed(1)}px, ${e.y.toFixed(1)}px) translate(-50%, -50%)`;
-    }
+      (d.firstElementChild as HTMLElement).style.transform = `rotate(${e.deg.toFixed(1)}deg)`;
+      const count = d.querySelector(".zcount") as HTMLElement;
+      const ct = n > 1 ? String(n) : "";
+      if (count.textContent !== ct) count.textContent = ct;
+      const label = d.lastElementChild as HTMLElement;
+      const text = i === 0 ? (dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist / 10) * 10} m`) : "";
+      if (label.textContent !== text) label.textContent = text;
+    });
     for (const [id, d] of dots) if (!seen.has(id)) { d.remove(); dots.delete(id); }
   };
   useEffect(() => {

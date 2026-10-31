@@ -194,6 +194,7 @@ export default function Play() {
         extraction={m.extraction}
         pointTo={!finished ? (m.objectives?.next ?? m.extraction) : null}
         zombieEdgeDots={!finished}
+        zombieEdgeMaxM={m.activity === "mtb" ? 2000 : 1000}
         homeStepsBack
         scale
         follow={auto}
