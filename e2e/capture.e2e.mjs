@@ -17,7 +17,7 @@ await page.getByRole("button", { name: "START", exact: true }).click(); // Survi
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 await page.waitForURL("**/play", { timeout: 90000 });
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-await page.getByRole("dialog").getByRole("button", { name: "START" }).click();
+await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match
 await page.waitForTimeout(800);
 // Zombie ~3 m från spelaren.
 await page.evaluate(() => {

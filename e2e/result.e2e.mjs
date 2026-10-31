@@ -20,7 +20,7 @@ async function play(mode, vp = { width: 390, height: 844 }, setup) {
   await page.locator(".ngfoot .btn").click();
   if (mode !== "SURVIVAL") { await page.locator(".pvstats").waitFor({ timeout: 90000 }); await fixes(); await page.getByRole("button", { name: "START GAME" }).click(); }
   await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(800);
-  await page.getByRole("dialog").getByRole("button", { name: "START" }).click(); await page.waitForTimeout(1200); await fixes(2);
+  await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match await page.waitForTimeout(1200); await fixes(2);
   return { ctx, page, fixes };
 }
 const dialog = (page) => page.getByRole("dialog");

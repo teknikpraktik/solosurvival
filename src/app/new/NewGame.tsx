@@ -157,6 +157,7 @@ export default function NewGame() {
   const direct = p.mode === "survival";
   const startWith = (params: MatchParams) => run(async () => {
     unlockAudio();
+    void session!.enableCompass(); // iOS asks for motion sensors only from a tap: the game itself starts without another one
     const r = await session!.prepare(clampParams({ ...params, seed: Math.floor(Math.random() * 1e9) }));
     if (r?.status !== "ok") return;
     setStarting(true);
@@ -243,7 +244,7 @@ export default function NewGame() {
             <button
               className="btn primary big cta pvstart"
               disabled={!ok || loading || view.movedFromPreview || !session!.currentStart() || starting}
-              onClick={() => run(async () => { unlockAudio(); setStarting(true); if (await session!.startMatch()) router.push("/play"); else setStarting(false); })}
+              onClick={() => run(async () => { unlockAudio(); void session!.enableCompass(); setStarting(true); if (await session!.startMatch()) router.push("/play"); else setStarting(false); })}
             >
               {P.startGame}
             </button>

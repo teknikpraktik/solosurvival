@@ -42,7 +42,7 @@ if (ok) {
   await page.getByRole("button", { name: "START", exact: true }).click();
   await page.waitForURL("**/play");
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-  await page.getByRole("dialog").getByRole("button", { name: "START" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match
   await page.waitForTimeout(1500);
   check("A TO B-match går, målet visas som \"Get to B\"", (await page.getByText(/Get to B/).count()) === 1);
   await page.screenshot({ path: `${OUT}/play.png` });

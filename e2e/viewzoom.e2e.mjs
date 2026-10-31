@@ -18,7 +18,7 @@ await page.getByRole("button", { name: FOOT ? "On foot" : "Bike", exact: true })
 await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
 await page.getByRole("button", { name: "START", exact: true }).click(); await tick(); // Survival: START on the settings page goes straight to the game (no preview)
 await page.waitForURL("**/play", { timeout: 90000 }); await tick();
-await page.getByRole("dialog").getByRole("button", { name: "START" }).click();
+await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match
 await page.waitForTimeout(1500); await tick(2);
 const map = page.locator('[data-testid="map"]');
 const zoom = async () => Number(await map.getAttribute("data-zoom"));

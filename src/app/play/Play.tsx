@@ -134,6 +134,16 @@ export default function Play() {
   }, [m?.proposal, m?.mode]);
   const zombies = useMemo(() => (m?.zombiesNear ?? []).map((z) => ({ id: z.id, edgeId: z.edgeId, distM: z.distM, speedMps: z.speedMps, chasing: z.state === "chase" || z.state === "intercept", sprinting: z.sprinting })), [m?.zombiesNear]);
   useEffect(() => { if (m && !m.paused) setPauseDismissed(false); }, [m?.paused]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A new match started with START GAME begins by itself as soon as the location is fresh: no "Ready to start" dialog in between.
+  // (Audio and the compass were unlocked by that tap on the previous page; a restored match still asks to CONTINUE.)
+  const autoReady = !!m && m.paused && m.elapsedS < 0.5 && !m.needsFix && !m.gpsLost && !!session?.autoStartPending;
+  useEffect(() => {
+    if (!autoReady || !session?.takeAutoStart()) return;
+    unlockAudio();
+    speak("Game on");
+    session.resume();
+    setAuto(true);
+  }, [autoReady]); // eslint-disable-line react-hooks/exhaustive-deps
   // Personal record, once the finished match is in the history.
   const [record, setRecord] = useState<string | null>(null);
   const [allStats, setAllStats] = useState(false);
@@ -234,7 +244,7 @@ export default function Play() {
         </div>
       )}
 
-      {!finished && m.paused && !pauseDismissed && !confirmEnd && (
+      {!finished && m.paused && !pauseDismissed && !confirmEnd && !(ready && session.autoStartPending) && (
         <Modal
           title={ready ? "Ready to start" : "Paused"}
           onClose={() => setPauseDismissed(true)}
@@ -308,14 +318,14 @@ export default function Play() {
             actions={res === "aborted" ? (
               <>
                 <Link className="btn primary cta" href="/" onClick={() => session.reset()}>{R.home.toUpperCase()}</Link>
-                <button className="btn" aria-label={R.playAgainLabel} onClick={() => { session.playAgain(); router.push("/new"); }}>{R.playAgain}</button>
+                <button className="btn" aria-label={R.playAgainLabel} onClick={() => { void session.enableCompass(); session.playAgain(); router.push("/new"); }}>{R.playAgain}</button>
               </>
             ) : (
               <>
                 {canShow
                   ? <Link className="btn primary cta" href={`/recap?id=${encodeURIComponent(m.id)}`} onClick={() => session.reset()}>{R.showMatch}</Link>
                   : null}
-                <button className={canShow ? "btn" : "btn primary cta"} aria-label={R.playAgainLabel} onClick={() => { session.playAgain(); router.push("/new"); }}>{R.playAgain}</button>
+                <button className={canShow ? "btn" : "btn primary cta"} aria-label={R.playAgainLabel} onClick={() => { void session.enableCompass(); session.playAgain(); router.push("/new"); }}>{R.playAgain}</button>
                 <div className="resultlinks">
                   <Link className="link" href="/" onClick={() => session.reset()}>{R.home}</Link>
                   <Link className="link" href="/history" onClick={() => session.reset()}>{R.previousGames}</Link>

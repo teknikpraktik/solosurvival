@@ -19,7 +19,7 @@ async function play(mode) {
   await page.locator(".ngfoot .btn").click();
   if (mode !== "SURVIVAL") { await page.locator(".pvstats").waitFor({ timeout: 90000 }); await fixes(); await page.getByRole("button", { name: "START GAME" }).click(); }
   await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(800);
-  await page.getByRole("dialog").getByRole("button", { name: "START" }).click(); await page.waitForTimeout(1500); await fixes(2);
+  await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match await page.waitForTimeout(1500); await fixes(2);
   return { ctx, page, fixes };
 }
 /** Puts zombie i at about `m` metres from the player along the network; speed 0 keeps it there, otherwise it hunts. */
@@ -35,6 +35,7 @@ const place = (page, list) => page.evaluate((list) => {
 // --- Survival on foot ---
 {
   const { ctx, page, fixes } = await play("SURVIVAL");
+  check("START: straight into the game (no 'Ready to start' dialog, match running)", (await page.getByRole("dialog").count()) === 0 && (await page.getByRole("button", { name: "PAUSE" }).count()) === 1);
   const lines = await page.locator(".hudbar > .line").count();
   check("HUD: two rows on foot (mode/time, goal/zombie)", lines === 2, `${lines} rows`);
   check("Survival: 'Extraction in m:ss' instead of 'Survive'", /^Extraction in \d+:\d\d$/.test((await page.locator(".pill.goal").innerText()).trim()), await page.locator(".pill.goal").innerText());
@@ -56,6 +57,7 @@ const place = (page, list) => page.evaluate((list) => {
 // --- Checkpoints: home under the player, magenta goal ---
 {
   const { ctx, page } = await play("CHECKPOINTS");
+  check("START GAME from the preview: straight into the game", (await page.getByRole("dialog").count()) === 0 && (await page.getByRole("button", { name: "PAUSE" }).count()) === 1);
   await page.waitForTimeout(1500);
   const hm = await page.evaluate(() => { const h = document.querySelector(".goalmark.home"); const p = document.querySelector(".pmark"); if (!h || !p) return null; const a = h.getBoundingClientRect(), b = p.getBoundingClientRect(); return { at: h.classList.contains("atplayer"), dx: Math.round(a.left + a.width / 2 - b.left - b.width / 2), dy: Math.round(a.top + a.height / 2 - b.top - b.height / 2) }; });
   check("standing at home: home marker steps back and stays where home is (under the player)", hm && hm.at && Math.abs(hm.dx) <= 2 && Math.abs(hm.dy) <= 2, JSON.stringify(hm));
@@ -75,7 +77,7 @@ const place = (page, list) => page.evaluate((list) => {
   await page.getByRole("button", { name: "Bike", exact: true }).click();
   await page.getByRole("group", { name: "Mode" }).getByRole("button", { name: "SURVIVAL", exact: true }).click();
   await page.locator(".ngfoot .btn").click(); await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(800);
-  await page.getByRole("dialog").getByRole("button", { name: "START" }).click(); await page.waitForTimeout(1200);
+  await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match await page.waitForTimeout(1200);
   check("Bike: speed shown, HUD at most three rows", (await page.getByLabel("Your speed").count()) === 1 && (await page.locator(".hudbar > .line").count()) <= 3);
   await page.screenshot({ path: `${OUT}/bike.png` });
   await ctx.close();

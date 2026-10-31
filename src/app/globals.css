@@ -108,8 +108,10 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .modal-actions { padding: 10px 16px 16px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #243040; background: var(--panel); }
 .modal-actions .btn { width: 100%; }
 /* The one close button used everywhere (dialogs, page headers, course preview): large, red, white ✕. */
-.xbtn { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 52px; min-height: 52px; padding: 0; border-radius: 50%; border: 2px solid #fca5a5; background: #991b1b; color: #fff; font-size: 1.7rem; line-height: 1; text-decoration: none; box-shadow: 0 2px 10px #000a; cursor: pointer; pointer-events: auto; }
-.xbtn:active { background: #b91c1c; }
+/* Close (✕) in dialogs: present but quiet, dark like the other secondary controls (it used to be a large red disc). */
+.xbtn { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 44px; min-height: 44px; padding: 0; border-radius: 12px; border: 1px solid #2d3b4d; background: #131a22; color: #cbd5e1; font-size: 1.15rem; line-height: 1; text-decoration: none; cursor: pointer; pointer-events: auto; }
+.xbtn:active { background: #1b2430; }
+.xbtn:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
 .controls .iconbtn { flex: 0 0 48px; padding: 0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
 .controls .iconbtn[aria-pressed="false"] { color: #f87171; }
 .controls .wide { flex: 2; }
@@ -218,7 +220,7 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 /* Darker overlay than the other pages: the zombie art sets the mood but never competes with the text (also in daylight). */
 .page.newgame { gap: 10px; padding-bottom: 0; }
 .page.newgame::before { background: linear-gradient(#0b0f14e0, #0b0f14c8 35%, #0b0f14f0 75%), url("/img/backdrop.jpg") 60% 20% / cover no-repeat; }
-.page.newgame .topbar { margin-bottom: -10px; }
+.page.newgame .topbar { margin-bottom: -4px; }
 .ngsec { display: flex; flex-direction: column; gap: 5px; }
 .page .nglabel { margin: 0; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #a9b6c4; }
 .ngnote { margin: 0; font-size: 0.82rem; line-height: 1.35; color: #b6c2cf; }
@@ -352,3 +354,8 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .allstatslist { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #243040; padding-top: 8px; }
 .resultlinks { display: flex; justify-content: center; gap: 28px; }
 .resultlinks .link { min-height: 44px; display: inline-flex; align-items: center; padding: 0 6px; }
+
+/* Page header: BACK before the title, same quiet style as EDIT SETUP. */
+.backbtn.pageback { text-decoration: none; box-shadow: none; flex: none; }
+.backbtn.pageback:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
+.page .topbar h1 { margin: 0; }

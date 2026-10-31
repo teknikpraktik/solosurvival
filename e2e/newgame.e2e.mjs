@@ -15,6 +15,7 @@ const pressed = (loc) => loc.getAttribute("aria-pressed").then((v) => v === "tru
   await page.goto(BASE + "/new"); await page.waitForTimeout(2000);
   const card = (n) => page.getByRole("group", { name: "Mode" }).getByRole("button", { name: n, exact: true });
   check("Checkpoints is chosen by default", await pressed(card("CHECKPOINTS")));
+  check("page header: a quiet BACK button, no big red ✕", (await page.getByRole("link", { name: "Back" }).count()) === 1 && (await page.locator(".xbtn").count()) === 0);
   check("mode cards have their subtitles", (await page.locator(".opts.cards").innerText()).includes("Collect & return") && (await page.locator(".opts.cards").innerText()).includes("Stay alive & escape"));
   check("no sound setting on New game", (await page.getByText(/Sound and vibration/).count()) === 0);
   for (const [n, what] of [["A TO B", null], ["SURVIVAL", "#dur"], ["CHECKPOINTS", "#dist"]]) {
@@ -49,7 +50,7 @@ async function startSurvival(page) {
   await page.getByRole("group", { name: "Mode" }).getByRole("button", { name: "SURVIVAL", exact: true }).click();
   await page.locator(".ngfoot").getByRole("button", { name: "START" }).click();
   await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(1000);
-  await page.getByRole("dialog").getByRole("button", { name: "START" }).click(); await page.waitForTimeout(800);
+  await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match await page.waitForTimeout(800);
 }
 const soundBtn = (page) => page.locator(".controls .iconbtn");
 {

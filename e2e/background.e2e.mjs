@@ -14,7 +14,7 @@ await page.getByRole("button", { name: "On foot", exact: true }).click();
 await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
 await page.getByRole("button", { name: "START", exact: true }).click(); await tick(); // Survival: START on the settings page goes straight to the game (no preview)
 await page.waitForURL("**/play", { timeout: 90000 }); await tick();
-await page.getByRole("dialog").getByRole("button", { name: "START" }).click();
+await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match
 for (let i = 0; i < 6; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(1000); }
 const elapsed = () => page.evaluate(() => window.__outbreak.live.state.elapsedSeconds);
 const paused = () => page.evaluate(() => window.__outbreak.live.state.paused);

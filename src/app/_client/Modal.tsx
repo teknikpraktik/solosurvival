@@ -34,12 +34,13 @@ export function CloseButton({ onClick, href, disabled, label = "Close" }: { onCl
   return <button className="xbtn" onClick={onClick} disabled={disabled} aria-label={label}>✕</button>;
 }
 
-/** Sidhuvud med rubrik och ✕ uppe till höger (stänger till startsidan). */
+/** Sidhuvud: BACK (till startsidan, eller `href`) och rubriken. */
 export function PageHeader({ title, href = "/" }: { title: string; href?: string }) {
+  // A quiet back button before the title (not a big red ✕): it should be easy to find, not the first thing the eye lands on.
   return (
     <div className="topbar">
+      <a className="backbtn pageback" href={href} aria-label="Back"><span aria-hidden="true">‹</span> BACK</a>
       <h1 style={{ flex: 1 }}>{title}</h1>
-      <CloseButton href={href} />
     </div>
   );
 }

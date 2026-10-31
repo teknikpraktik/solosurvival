@@ -383,6 +383,7 @@ export class PlaySession {
     this.live = createLiveMatch({ id, params, start, proposal, graph: prep.graph, dataVersion: this.dataVersion });
     if (this.lastRaw) this.live.pushFix(this.lastRaw, t);
     this.attachMatch(true);
+    this.autoStart = true;
     return true;
   }
 
@@ -730,6 +731,16 @@ export class PlaySession {
     this.lock = null;
   }
 
+  /** A match started by the player's tap (START GAME / START) begins at once on /play, without a "Ready to start" step. */
+  private autoStart = false;
+  get autoStartPending(): boolean { return this.autoStart; }
+  /** Whether /play should start the new match by itself (once). */
+  takeAutoStart(): boolean {
+    const a = this.autoStart;
+    this.autoStart = false;
+    return a;
+  }
+
   /** PLAY AGAIN: the finished match's settings, for New game to pick up and make a new course from. */
   private again: MatchParams | null = null;
   playAgain(): void {
@@ -748,6 +759,7 @@ export class PlaySession {
     this.stopTicker();
     this.live = null;
     this.recorder = null;
+    this.autoStart = false;
     this.proposal = null;
     this.log = null;
     this.prepared = null;
