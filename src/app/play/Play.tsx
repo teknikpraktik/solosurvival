@@ -10,7 +10,7 @@ import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio, type Countdow
 import { COUNTDOWN_START_M, nextCountdown, type CountdownStep } from "@/play/countdown";
 import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, nextApproaching, nextClose, nextGoalClose, viewProfile } from "@/play/camera-view";
 import { Modal } from "../_client/Modal";
-import { BIKE_SVG, SOUND_OFF_SVG, SOUND_ON_SVG, WALK_SVG } from "../_client/symbols";
+import { BIKE_SVG, HELI_SVG, SOUND_OFF_SVG, SOUND_ON_SVG, WALK_SVG } from "../_client/symbols";
 import { t } from "../_client/strings";
 import { RecapStatsList } from "../_client/RecapStats";
 import { personalRecord } from "@/play/recap";
@@ -218,7 +218,15 @@ export default function Play() {
           {m.objectives ? (
             <span className="pill goal">{objectiveLabel(m.objectives.progress)}{dHome !== null ? ` · ${dHome} m` : ""}{m.objectives.holdS > 0 ? ` · ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
           ) : (
-            <span className="pill goal">{m.extraction ? `Extraction open${dExtraction !== null ? ` · ${fmtDist(dExtraction)}` : ""}` : m.phase === "head_start" ? `Head start ${fmtTime(m.headStartLeftS)}` : `Extraction in ${fmtTime(Math.max(0, extractionOpensAtS(m.limitS) - m.elapsedS))}`}</span>
+            m.extraction || m.phase === "head_start" ? (
+              <span className="pill goal">{m.extraction ? `Extraction open${dExtraction !== null ? ` · ${fmtDist(dExtraction)}` : ""}` : `Head start ${fmtTime(m.headStartLeftS)}`}</span>
+            ) : (
+              // Countdown to extraction: a helicopter and the time, no words.
+              <span className="pill goal heli" aria-label={`Extraction in ${fmtTime(Math.max(0, extractionOpensAtS(m.limitS) - m.elapsedS))}`}>
+                <span className="heliicon" aria-hidden="true" dangerouslySetInnerHTML={{ __html: HELI_SVG }} />
+                <span aria-hidden="true">{fmtTime(Math.max(0, extractionOpensAtS(m.limitS) - m.elapsedS))}</span>
+              </span>
+            )
           )}
           {!finished && <span className={`pill zpill${zombieClose ? " zclose" : zombieWarn ? " zwarn" : ""}`} aria-label="Nearest zombie">💀 {m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>}
         </div>

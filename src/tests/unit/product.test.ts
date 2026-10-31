@@ -135,7 +135,7 @@ describe("PlaySession med produktprofil (simulerad GPS)", () => {
     expect(await s.startMatch()).toBe(false);
     s.params = { ...s.params!, activity: "walk" };
     expect(await s.startMatch()).toBe(true);
-    expect(s.live!.rules.zombieSpeedMps).toBeCloseTo(resolveRules("walk", "normal", s.params!.durationS).zombieSpeedMps * 0.8, 12);
+    expect(s.live!.rules.zombieSpeedMps).toBeCloseTo(resolveModeRules("survival", "walk", "normal", s.params!.durationS).zombieSpeedMps * 0.8, 12);
   }, 60000);
 
   it("utan profil (vuxenappen): cykel fungerar som förut och farten är oförändrad", async () => {

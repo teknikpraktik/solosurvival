@@ -247,13 +247,14 @@ describe("off-network i motorn (cykel)", () => {
   });
 });
 
-describe("SURVIVE på cykel är 20 % svårare", () => {
+describe("Survival är 20 % svårare, på cykel och till fots", () => {
   it("zombierna är 20 % snabbare i Survive på cykel, oförändrade i övriga lägen och till fots", () => {
     for (const d of ["easy", "normal", "hard"] as const) {
       const base = resolveRules("mtb", d, 3000).zombieSpeedMps;
       expect(resolveModeRules("survival", "mtb", d, 3000).zombieSpeedMps).toBeCloseTo(base * 1.2, 9);
       expect(resolveModeRules("mission", "mtb", d, 3000).zombieSpeedMps).toBeCloseTo(base, 9);
-      expect(resolveModeRules("survival", "walk", d, 3000).zombieSpeedMps).toBeCloseTo(resolveRules("walk", d, 3000).zombieSpeedMps, 9);
+      expect(resolveModeRules("survival", "walk", d, 3000).zombieSpeedMps).toBeCloseTo(resolveRules("walk", d, 3000).zombieSpeedMps * 1.2, 9);
+      expect(resolveModeRules("mission", "walk", d, 3000).zombieSpeedMps).toBeCloseTo(resolveRules("walk", d, 3000).zombieSpeedMps, 9);
     }
   });
 });

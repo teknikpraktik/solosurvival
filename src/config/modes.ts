@@ -11,12 +11,15 @@ import type { GameMode } from "@/engine/objectives/objectives";
 /** A TO B: zombies per km of straight A–B distance at Normal (scaled by difficulty); a long way needs many zombies along it. */
 export const AB_ZOMBIES_PER_KM: Record<Activity, number> = { walk: 2.5, run: 2.5, mtb: 1.5 };
 
-/** SURVIVE on Bike felt too easy in field testing: zombies 20 % faster there (sprint follows, it is a factor of the base speed). */
-export const SURVIVAL_BIKE_SPEED_FACTOR = 1.2;
+/**
+ * Survival felt too easy in field testing, first on the bike, then on foot: zombies 20 % faster in Survival (sprint follows, it is a factor
+ * of the base speed). Checkpoints and A to B are unchanged.
+ */
+export const SURVIVAL_SPEED_FACTOR: Partial<Record<Activity, number>> = { mtb: 1.2, walk: 1.2 };
 
 export function resolveModeRules(mode: GameMode, activity: Activity, difficulty: Difficulty, durationS: number, spawnCapacity?: number, straightM?: number): Rules {
   const r = resolveRules(activity, difficulty, durationS, spawnCapacity);
-  if (mode === "survival") return activity === "mtb" ? { ...r, zombieSpeedMps: r.zombieSpeedMps * SURVIVAL_BIKE_SPEED_FACTOR } : r;
+  if (mode === "survival") return { ...r, zombieSpeedMps: r.zombieSpeedMps * (SURVIVAL_SPEED_FACTOR[activity] ?? 1) };
   const base: Rules = { ...r, extractionOpensAtS: Infinity };
   if (mode !== "escape" || !straightM) return base;
   // A TO B: the population follows the distance, not the (long) time limit, but never beyond the level's maximum (ZOMBIE_COUNT, at most 20).

@@ -38,7 +38,8 @@ const place = (page, list) => page.evaluate((list) => {
   check("START: straight into the game (no 'Ready to start' dialog, match running)", (await page.getByRole("dialog").count()) === 0 && (await page.getByRole("button", { name: "PAUSE" }).count()) === 1);
   const lines = await page.locator(".hudbar > .line").count();
   check("HUD: two rows on foot (mode/time, goal/zombie)", lines === 2, `${lines} rows`);
-  check("Survival: 'Extraction in m:ss' instead of 'Survive'", /^Extraction in \d+:\d\d$/.test((await page.locator(".pill.goal").innerText()).trim()), await page.locator(".pill.goal").innerText());
+  const heli = { label: await page.locator(".pill.goal").getAttribute("aria-label"), text: (await page.locator(".pill.goal").innerText()).trim(), icon: await page.locator(".pill.goal svg").count() };
+  check("Survival: a helicopter and the countdown to extraction (no words), named for screen readers", heli.icon === 1 && /^\d+:\d\d$/.test(heli.text) && /^Extraction in \d+:\d\d$/.test(heli.label ?? ""), JSON.stringify(heli));
   await place(page, [[0, 60, false], [1, 350, true], [2, 900, false]]);
   await fixes(8);
   const cls = await page.evaluate(() => [...document.querySelectorAll(".zmark")].map((e) => e.className));

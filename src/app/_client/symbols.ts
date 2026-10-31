@@ -106,3 +106,11 @@ export const SOUND_OFF_SVG = `<svg viewBox="0 0 24 24" width="24" height="24" xm
 export const REGENERATE_SVG = `<svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
 <path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4.5V11h-6.5"/>
 </svg>`;
+
+/** HUD (Survival): a helicopter, before the countdown to extraction. currentColor. */
+export const HELI_SVG = `<svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+<path d="M3 5h15" fill="none" stroke-width="2"/><path d="M10.5 5v3" fill="none" stroke-width="2"/>
+<path d="M5.5 12.5c0-2.6 2.1-4.5 5-4.5h2c1.9 0 3.5 1.6 3.5 3.5v2c0 1.1-.9 2-2 2h-6c-1.4 0-2.5-1.3-2.5-3z" stroke="none"/>
+<path d="M15.5 11.5l5.5-.5" fill="none" stroke-width="1.8"/><path d="M21 9v4.5" fill="none" stroke-width="1.6"/>
+<path d="M8 15.5v2.5M13 15.5v2.5M6 18h9" fill="none" stroke-width="1.6"/>
+</svg>`;
