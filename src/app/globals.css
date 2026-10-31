@@ -217,11 +217,6 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .page.newgame { gap: 10px; padding-bottom: 0; }
 .page.newgame::before { background: linear-gradient(#0b0f14e0, #0b0f14c8 35%, #0b0f14f0 75%), url("/img/backdrop.jpg") 60% 20% / cover no-repeat; }
 .page.newgame .topbar { margin-bottom: -10px; }
-.steps { display: flex; gap: 14px; margin: 0; padding: 0; list-style: none; font-size: 0.78rem; color: var(--muted); letter-spacing: 0.04em; }
-.steps li { display: flex; align-items: center; gap: 6px; }
-.steps li span { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid #3a4a5e; font-size: 0.7rem; font-weight: 700; }
-.steps li[aria-current="step"] { color: var(--text); font-weight: 700; }
-.steps li[aria-current="step"] span { background: #b91c1c; border-color: #ef4444; color: #fff; }
 .ngsec { display: flex; flex-direction: column; gap: 5px; }
 .page .nglabel { margin: 0; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #a9b6c4; }
 .ngnote { margin: 0; font-size: 0.82rem; line-height: 1.35; color: #b6c2cf; }

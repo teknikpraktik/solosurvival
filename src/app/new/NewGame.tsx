@@ -17,8 +17,6 @@ import { matchDurationS } from "@/play/match";
 import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_LABEL, fmtKm } from "../_client/format";
 import { BIKE_SVG, MODE_ATOB_SVG, MODE_CHECKPOINTS_SVG, MODE_SURVIVAL_SVG, REGENERATE_SVG, WALK_SVG } from "../_client/symbols";
 import { t } from "../_client/strings";
-import { resolveModeRules } from "@/config/modes";
-import { applyEnemySpeedMultiplier } from "@/config/game-rules";
 import type { MapMarker } from "../_client/GameMap";
 import { unlockAudio } from "../_client/cues";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
@@ -50,7 +48,7 @@ function Choice<T extends string>({ id, label, value, options, onChange, variant
 }
 
 /** A slider with its value to the right of the heading, Short/Long under the ends and a short note. */
-function RangeField({ id, label, shown, min, max, step, value, onChange, note }: { id: string; label: string; shown: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void; note: string }) {
+function RangeField({ id, label, shown, min, max, step, value, onChange, note }: { id: string; label: string; shown: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void; note?: string }) {
   const S = t().newGame;
   return (
     <section className="ngsec">
@@ -63,7 +61,7 @@ function RangeField({ id, label, shown, min, max, step, value, onChange, note }:
         <input id={id} className="ngrange" type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} aria-valuetext={shown} />
         <span aria-hidden="true">{S.long}</span>
       </div>
-      <p className="ngnote">{note}</p>
+      {note && <p className="ngnote">{note}</p>}
     </section>
   );
 }
@@ -272,30 +270,22 @@ export default function NewGame() {
   }
 
   const S = t().newGame;
-  // Difficulty line from the rules this match would get (zombie speed and how many at most), never a made-up description.
-  const rules = applyEnemySpeedMultiplier(resolveModeRules(p.mode, p.activity, p.difficulty, p.durationS), p.enemySpeedMultiplier);
-  const steps = direct ? [S.steps.setup, S.steps.start] : [S.steps.setup, S.steps.preview, S.steps.start];
   return (
     <main className="page newgame">
       <PageHeader title={S.title} />
-      <ol className="steps" aria-label="Steps">
-        {steps.map((x, i) => <li key={x} aria-current={i === 0 ? "step" : undefined}><span>{i + 1}</span>{x}</li>)}
-      </ol>
       {gps && <div className={`card ${gps.tone}`} role="status">{gps.text}</div>}
       <Choice<GameMode> id="mode" label={S.mode} variant="cards" value={p.mode} onChange={(mode) => set({ mode })}
         options={(["mission", "escape", "survival"] as GameMode[]).map((m) => ({ v: m, t: MODE_LABEL[m], sub: S.modeSubtitle[m], icon: MODE_ICON[m] }))} />
       <Choice<Activity> id="activity" label={S.activity} variant="row" value={p.activity} onChange={(a) => setP(withActivity(p, a))}
         options={(["walk", "mtb"] as Activity[]).map((a) => ({ v: a, t: ACTIVITY_LABEL[a], icon: a === "mtb" ? BIKE_SVG : WALK_SVG }))} />
       <Choice<Difficulty> id="difficulty" label={S.difficulty} variant="seg" value={p.difficulty} onChange={(difficulty) => set({ difficulty })}
-        options={(["easy", "normal", "hard"] as Difficulty[]).map((d) => ({ v: d, t: DIFFICULTY_LABEL[d] }))}>
-        <p className="ngnote" aria-live="polite">{S.difficultyLine(p.difficulty, (rules.zombieSpeedMps * 3.6).toFixed(1), rules.maxZombies)}</p>
-      </Choice>
+        options={(["easy", "normal", "hard"] as Difficulty[]).map((d) => ({ v: d, t: DIFFICULTY_LABEL[d] }))} />
       {p.mode === "survival" ? (
         <RangeField id="dur" label={S.matchLength} shown={`${Math.round(p.durationS / 60)} min`} min={dur.minMin} max={dur.maxMin} step={dur.stepMin} value={Math.round(p.durationS / 60)}
           onChange={(v) => set({ durationS: v * 60 })} note={S.extractionNote(Math.round(extractionOpensAtS(p.durationS) / 60))} />
       ) : p.mode === "mission" ? (
         <RangeField id="dist" label={S.courseDistance} shown={km1(p.targetLengthM)} min={limit.min} max={limit.max} step={limit.step} value={p.targetLengthM}
-          onChange={(v) => set({ targetLengthM: v })} note={S.courseNote} />
+          onChange={(v) => set({ targetLengthM: v })} />
       ) : (
         <section className="ngsec">
           <h2 className="nglabel">{S.destination}</h2>

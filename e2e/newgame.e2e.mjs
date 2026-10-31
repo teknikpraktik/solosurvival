@@ -8,7 +8,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 const newCtx = (vp = { width: 390, height: 844 }) => browser.newContext({ viewport: vp, isMobile: true, hasTouch: true, permissions: ["geolocation"], geolocation: START });
 const pressed = (loc) => loc.getAttribute("aria-pressed").then((v) => v === "true");
 
-// --- Choices, difficulty line, slider ---
+// --- Choices, slider ---
 {
   const ctx = await newCtx();
   const page = await ctx.newPage();
@@ -22,22 +22,15 @@ const pressed = (loc) => loc.getAttribute("aria-pressed").then((v) => v === "tru
     const others = await Promise.all(["CHECKPOINTS", "A TO B", "SURVIVAL"].filter((x) => x !== n).map((x) => pressed(card(x))));
     check(`mode ${n}: chosen alone, its setting shown`, (await pressed(card(n))) && !others.some(Boolean) && (await page.locator(what === "pickmap" ? '[data-testid="pickmap"]' : what).count()) === 1);
   }
-  check("Checkpoints: steps Setup · Preview · Start", (await page.locator(".steps li").count()) === 3);
-  await card("SURVIVAL").click(); await page.waitForTimeout(200);
-  check("Survival: steps Setup · Start (no preview)", (await page.locator(".steps li").count()) === 2);
-  await card("CHECKPOINTS").click();
+  check("no step indicator, difficulty line or straight-line note (game internals are not shown)", (await page.locator(".steps").count()) === 0 && (await page.getByText(/km\/h|Straight-line distance/).count()) === 0);
   const val = () => page.locator(".rangeval").innerText();
   check("course distance shown with one decimal", /^\d+\.\d km$/.test(await val()), await val());
-  check("straight-line note shown", (await page.getByText(/Straight-line distance/).count()) === 1);
   await page.locator("#dist").fill("4000"); await page.waitForTimeout(200);
   check("slider updates the value", (await val()) === "4.0 km", await val());
   await page.getByRole("button", { name: "Bike", exact: true }).click(); await page.waitForTimeout(200);
   check("Bike chosen; distance back to the Bike default (10.0 km), limits unchanged (4–30 km)", (await pressed(page.getByRole("button", { name: "Bike", exact: true }))) && (await val()) === "10.0 km" && (await page.locator("#dist").getAttribute("max")) === "30000" && (await page.locator("#dist").getAttribute("min")) === "4000");
-  const line = () => page.locator(".ngsec").filter({ has: page.getByRole("group", { name: "Difficulty" }) }).locator(".ngnote").innerText();
-  const lines = {};
-  for (const d of ["Easy", "Normal", "Hard"]) { await page.getByRole("button", { name: d, exact: true }).click(); await page.waitForTimeout(150); lines[d] = await line(); }
-  // Bike zombie speeds (km/h) from src/config/game-rules.ts; Checkpoints mode (no Survival factor).
-  check("difficulty line follows the real rules", lines.Easy.includes("7.8 km/h") && lines.Normal.includes("9.5 km/h") && lines.Hard.includes("13.4 km/h"), JSON.stringify(lines));
+  for (const d of ["Easy", "Hard"]) await page.getByRole("button", { name: d, exact: true }).click();
+  check("difficulty can be chosen", await pressed(page.getByRole("button", { name: "Hard", exact: true })));
   await page.getByRole("button", { name: "Normal", exact: true }).click();
   await page.getByRole("button", { name: "On foot", exact: true }).click(); await page.waitForTimeout(200);
   // Preview. The emulated GPS sends one fix; send fresh ones as a phone would, so the start position is current.
