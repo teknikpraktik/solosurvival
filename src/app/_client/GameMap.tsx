@@ -136,8 +136,8 @@ const RANGE_ARC_DEG = 10;
 const AT_HOME_M = 30;
 const ZOMBIE_FAR_M = 600;
 /** Closing or opening: the distance has changed by more than this (m) over the last CLOSING_WINDOW_MS. */
-const CLOSING_M = 3;
-const CLOSING_WINDOW_MS = 3000;
+const CLOSING_M = 2; // a zombie crossing terrain at half speed (0.6–0.9 m/s on foot) must still show as closing in
+const CLOSING_WINDOW_MS = 4000;
 
 export default function GameMap(props: GameMapProps) {
   const el = useRef<HTMLDivElement>(null);
