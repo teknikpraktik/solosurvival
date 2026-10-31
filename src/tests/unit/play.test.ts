@@ -286,3 +286,19 @@ describe("prestanda", () => {
     expect(perStepMs).toBeLessThan(5);
   });
 });
+
+describe("en ny match stänger en gammal sparad pågående match", () => {
+  it("den gamla blir 'interrupted' i historiken och dess tillstånd och graf tas bort", async () => {
+    const db = await openDb(new IDBFactory());
+    const st = new MatchStorage(db);
+    const a = mk("survival");
+    await st.begin(a.live, a.params, a.proposal, START, "test");
+    const b = mk("mission");
+    await st.begin(b.live, b.params, b.proposal, START, "test");
+    const hist = await st.listHistory();
+    expect(hist.find((h) => h.id === a.live.state.id)?.result).toBe("interrupted");
+    expect(hist.find((h) => h.id === b.live.state.id)?.result).toBe("active");
+    expect(await db.store("matches").get(a.live.state.id)).toBeUndefined();
+    expect(await db.store("matches").get(`${a.live.state.id}:graph`)).toBeUndefined();
+  });
+});

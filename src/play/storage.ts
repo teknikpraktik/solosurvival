@@ -95,6 +95,14 @@ export class MatchStorage {
 
   /** Första sparningen: skriver grafen (stor, ändras inte) och matchens tillstånd. */
   async begin(live: LiveGame, params: MatchParams, proposal: RouteProposal | null, start: LatLon, dataVersion: string, startedAt = Date.now()): Promise<void> {
+    // An earlier match still saved as in progress (the home page no longer offers to continue it) is closed as interrupted, not left "active".
+    const prevId = await this.meta.get(ACTIVE_KEY);
+    if (prevId && prevId !== live.state.id) {
+      const h = await this.history.get(prevId);
+      if (h && h.result === "active") await this.history.put(prevId, { ...h, result: "interrupted", endedAt: Date.now() });
+      await this.matches.delete(prevId);
+      await this.matches.delete(`${prevId}:graph`);
+    }
     await this.matches.put(`${live.state.id}:graph`, serializeGraph(live.g, "openstreetmap"));
     await this.meta.put(ACTIVE_KEY, live.state.id);
     await this.history.put(live.state.id, this.summarize(live, params, proposal, startedAt, "active"));
