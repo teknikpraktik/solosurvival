@@ -293,6 +293,13 @@ export default function Play() {
 
       {jump && !finished && <JumpScare onDone={() => setJump(false)} />}
       {scare && <Scare onDone={() => setScareDone(true)} />}
+      {/* Captured: the scare picture stays behind the result dialog (still, dimmed by the dialog's backdrop). */}
+      {finished && m.result === "infected" && scareDone && (
+        <div className="capturedbg" aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/img/captured.jpg" alt="" onError={(e) => { (e.target as HTMLImageElement).src = "/img/captured.svg"; }} />
+        </div>
+      )}
       {/* Match over is a mandatory decision: no X, the player chooses where to go. */}
       {finished && !scare && (() => {
         const R = t().result;

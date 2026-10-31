@@ -64,6 +64,7 @@ const waitEnd = (page) => page.locator(".outcome").waitFor({ timeout: 30000 }).t
   await page.waitForTimeout(6000); // the scare screen comes first
   check("captured: the result dialog opens after the scare", await waitEnd(page));
   await page.screenshot({ path: `${OUT}/captured.png` });
+  check("captured: the scare picture stays behind the dialog", (await page.locator(".capturedbg img").count()) === 1);
   check("title CAPTURED, red outcome 'Captured at m:ss.'", (await dialog(page).getAttribute("aria-label")) === "CAPTURED" && (await page.locator(".outcome.lost").count()) === 1 && /^Captured at \d+:\d\d\.$/.test(await page.locator(".outcome p").innerText()));
   const fit = await page.evaluate(() => ({ hscroll: document.documentElement.scrollWidth > window.innerWidth, small: [...document.querySelectorAll(".modal-actions .btn, .resultlinks .link, .pvtoggle")].filter((e) => e.getBoundingClientRect().height < 44).length, cut: [...document.querySelectorAll(".statcells dd, .statcells dt")].filter((e) => e.scrollWidth > e.clientWidth + 1).length }));
   check("375×667: nothing cut, targets ≥ 44 px, no sideways scroll", !fit.hscroll && !fit.small && !fit.cut, JSON.stringify(fit));
