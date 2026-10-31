@@ -38,8 +38,7 @@ const waitEnd = (page) => page.locator(".outcome").waitFor({ timeout: 30000 }).t
   check("three numbers: time, distance, average speed", (await page.locator(".statcells dd").count()) === 3);
   check("no duplicated 'Result' row", (await dialog(page).getByText("Result", { exact: true }).count()) === 0);
   check("SHOW MATCH is the primary action, PLAY AGAIN second, Home and Previous games as links", (await page.locator(".modal-actions .cta").innerText()) === "SHOW MATCH" && (await dialog(page).getByRole("button", { name: /Play again/ }).count()) === 1 && (await page.locator(".resultlinks a").count()) === 2);
-  await page.getByRole("button", { name: "All numbers" }).click(); await page.waitForTimeout(300);
-  check("all numbers on request; no top speed on foot", (await page.locator("#all-stats .stat").count()) >= 4 && (await page.locator("#all-stats").getByText("Top speed").count()) === 0);
+  check("no 'All numbers' toggle after the match", (await page.getByRole("button", { name: /All numbers|Fewer numbers/ }).count()) === 0);
   await page.getByRole("button", { name: /Play again/ }).click();
   await page.waitForURL("**/new"); await fixes(4);
   const opened = await page.locator(".pvstats").waitFor({ timeout: 90000 }).then(() => true, () => false);

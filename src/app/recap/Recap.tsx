@@ -6,7 +6,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RECAP_KEEP_MS, RecapStore, nearZombies, tracksOf, type RecapChunk, type RecapMeta } from "@/play/recap";
 import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_LABEL, RESULT_LABEL, fmtDate, fmtTime } from "../_client/format";
 import { PageHeader } from "../_client/Modal";
-import { RecapStatsList } from "../_client/RecapStats";
 import { useSessionCtx } from "../_client/SessionProvider";
 
 const RecapMap = dynamic(() => import("../_client/RecapMap"), { ssr: false });
@@ -23,7 +22,6 @@ export default function Recap() {
   const [data, setData] = useState<{ meta: RecapMeta; chunks: RecapChunk[] } | null | undefined>(undefined);
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [all, setAll] = useState(false);
 
   useEffect(() => {
     if (!ctx) return;
@@ -33,7 +31,7 @@ export default function Recap() {
 
   const tracks = useMemo(() => (data ? tracksOf(data.chunks) : null), [data]);
   const near = useMemo(() => (tracks ? nearZombies(tracks.player, tracks.zombies, NEAR_M) : []), [tracks]);
-  const shown = all ? (tracks?.zombies ?? []) : near;
+  const shown = near;
   const end = data?.meta.elapsedS ?? 0;
 
   // Playback: requestAnimationFrame, the whole match in about PLAY_S seconds.
@@ -63,7 +61,6 @@ export default function Recap() {
     );
   }
   const m = data.meta;
-  const splits = m.targets.filter((x) => x.reachedAtS !== null);
   return (
     <main className="page recap">
       <PageHeader title="MATCH" href="/history" />
@@ -74,17 +71,6 @@ export default function Recap() {
         <input type="range" aria-label="Time in the match" min={0} max={Math.max(1, end)} step={1} value={Math.round(t)} onChange={(e) => { setPlaying(false); setT(Number(e.target.value)); }} />
         <span className="recaptime">{fmtTime(t)} / {fmtTime(end)}</span>
       </div>
-      <label className="muted recapopt">
-        <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
-        Show all zombies ({tracks.zombies.length}); otherwise those that came within {NEAR_M} m ({near.length})
-      </label>
-      <div className="card">
-        <RecapStatsList stats={m.stats} elapsedS={m.elapsedS} distanceM={m.distanceM} activity={m.activity} />
-        {splits.map((x, i) => (
-          <div className="stat" key={i}><span>{x.kind === "home" ? "Home" : x.kind === "destination" ? "B" : `Checkpoint ${m.targets.slice(0, m.targets.indexOf(x) + 1).filter((y) => y.kind === "checkpoint").length}`}</span><b>{fmtTime(x.reachedAtS!)}</b></div>
-        ))}
-      </div>
-      <div className="muted">Kept on this device only, and deleted automatically {Math.round(RECAP_KEEP_MS / 86_400_000)} days after the match.</div>
     </main>
   );
 }

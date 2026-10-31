@@ -67,8 +67,6 @@ const en = {
     closest: (m: number, at: string) => `Closest zombie ${m} m at ${at}`,
     closeCalls: (n: number) => `${n} close call${n === 1 ? "" : "s"}`,
     riddenThrough: (n: number) => `${n} zombie${n === 1 ? "" : "s"} ridden through`,
-    allStats: "All numbers",
-    hideStats: "Fewer numbers",
     showMatch: "SHOW MATCH",
     playAgain: "PLAY AGAIN",
     playAgainLabel: "Play again with the same settings (a new course)",

@@ -210,8 +210,6 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .recapbar .btn { width: auto; min-width: 52px; padding: 10px 14px; }
 .recapbar input[type="range"] { flex: 1; min-width: 0; accent-color: #ef4444; height: 32px; }
 .recaptime { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; font-size: 0.9rem; }
-.recapopt { display: flex; gap: 10px; align-items: center; min-height: 44px; }
-.recapopt input { width: 22px; height: 22px; flex-shrink: 0; }
 .stat.record b { color: #fbbf24; }
 
 /* ---------- New game ---------- */
@@ -349,8 +347,6 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .recordline { font-weight: 800; color: #fbbf24; font-size: .95rem; }
 .highlights { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: .9rem; color: #c3ced9; }
 .highlights li::before { content: "• "; color: #64748b; }
-.pvtoggle.allstats { align-self: flex-start; }
-.allstatslist { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #243040; padding-top: 8px; }
 .resultlinks { display: flex; justify-content: center; gap: 28px; }
 .resultlinks .link { min-height: 44px; display: inline-flex; align-items: center; padding: 0 6px; }
 

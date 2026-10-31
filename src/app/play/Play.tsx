@@ -12,7 +12,6 @@ import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, nextApproaching, nextClose, ne
 import { Modal } from "../_client/Modal";
 import { BIKE_SVG, HELI_SVG, SOUND_OFF_SVG, SOUND_ON_SVG, WALK_SVG } from "../_client/symbols";
 import { t } from "../_client/strings";
-import { RecapStatsList } from "../_client/RecapStats";
 import { personalRecord } from "@/play/recap";
 import { extractionOpensAtS } from "@/config/game-rules";
 import { MatchStorage } from "@/play/storage";
@@ -146,7 +145,6 @@ export default function Play() {
   }, [autoReady]); // eslint-disable-line react-hooks/exhaustive-deps
   // Personal record, once the finished match is in the history.
   const [record, setRecord] = useState<string | null>(null);
-  const [allStats, setAllStats] = useState(false);
   const finishedRec = session?.history ?? null;
   useEffect(() => {
     if (!finishedRec || !ctx?.db || finishedRec.result === "active") { setRecord(null); return; }
@@ -352,14 +350,6 @@ export default function Play() {
               </dl>
             )}
             {highlights.length > 0 && <ul className="highlights">{highlights.map((h) => <li key={h}>{h}</li>)}</ul>}
-            {st && res !== "aborted" && (
-              <>
-                <button className="pvtoggle allstats" aria-expanded={allStats} aria-controls="all-stats" onClick={() => setAllStats((x) => !x)}>
-                  {allStats ? R.hideStats : R.allStats} <span className="chev" aria-hidden="true">⌄</span>
-                </button>
-                {allStats && <div id="all-stats" className="allstatslist"><RecapStatsList stats={st} elapsedS={m.elapsedS} distanceM={m.distanceM} activity={m.activity} /></div>}
-              </>
-            )}
             {view.storageWarning && <div className="muted">{R.notSaved}</div>}
           </Modal>
         );
