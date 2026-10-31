@@ -17,10 +17,11 @@ const pressed = (loc) => loc.getAttribute("aria-pressed").then((v) => v === "tru
   check("Checkpoints is chosen by default", await pressed(card("CHECKPOINTS")));
   check("mode cards have their subtitles", (await page.locator(".opts.cards").innerText()).includes("Collect & return") && (await page.locator(".opts.cards").innerText()).includes("Stay alive & escape"));
   check("no sound setting on New game", (await page.getByText(/Sound and vibration/).count()) === 0);
-  for (const [n, what] of [["A TO B", "pickmap"], ["SURVIVAL", "#dur"], ["CHECKPOINTS", "#dist"]]) {
+  for (const [n, what] of [["A TO B", null], ["SURVIVAL", "#dur"], ["CHECKPOINTS", "#dist"]]) {
     await card(n).click(); await page.waitForTimeout(300);
     const others = await Promise.all(["CHECKPOINTS", "A TO B", "SURVIVAL"].filter((x) => x !== n).map((x) => pressed(card(x))));
-    check(`mode ${n}: chosen alone, its setting shown`, (await pressed(card(n))) && !others.some(Boolean) && (await page.locator(what === "pickmap" ? '[data-testid="pickmap"]' : what).count()) === 1);
+    const shown = what ? (await page.locator(what).count()) === 1 : (await page.locator(".ngrange").count()) === 0 && (await page.locator(".ngfoot .btn").innerText()) === "SHOW COURSE";
+    check(`mode ${n}: chosen alone, its setting shown`, (await pressed(card(n))) && !others.some(Boolean) && shown);
   }
   check("no step indicator, difficulty line or straight-line note (game internals are not shown)", (await page.locator(".steps").count()) === 0 && (await page.getByText(/km\/h|Straight-line distance/).count()) === 0);
   const val = () => page.locator(".rangeval").innerText();

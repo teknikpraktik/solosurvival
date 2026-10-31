@@ -82,8 +82,9 @@ export default function NewGame() {
   const [starting, setStarting] = useState(false);
   // A TO B på terräng: varför senaste tryckta B avvisades (vatten, byggnad, större väg, järnväg).
   const [pickProblem, setPickProblem] = useState<string | null>(null);
-  // Course preview: details open, and the parts of the map covered by the top bar and the panel (so the course is fitted into the rest).
-  const [details, setDetails] = useState(false);
+  // Course preview (and A to B's map for B): the parts of the map covered by the top bar and the panel (so the course is fitted into the rest).
+  // A to B: SHOW COURSE first opens a full map to set B on.
+  const [picking, setPicking] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const [sheetH, setSheetH] = useState(0);
@@ -114,7 +115,8 @@ export default function NewGame() {
     if (again) {
       const next = clampParams(again.mode === "escape" ? { ...again, pointB: null } : again);
       setP(next);
-      if (next.mode !== "escape" && session.currentStart()) void run(() => session.prepare(next));
+      if (next.mode === "mission" && session.currentStart()) void run(() => session.prepare(next));
+      else if (next.mode === "survival" && session.currentStart()) startWith(next);
     }
   }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -134,7 +136,7 @@ export default function NewGame() {
   }, [view]);
 
   const isAB = p.mode === "escape";
-  const canPrepare = !!session?.currentStart() && (!isAB || !!p.pointB) && !busy && stage !== "preparing";
+  const canPrepare = (isAB || !!session?.currentStart()) && !busy && stage !== "preparing";
   const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
 
   const limit = DISTANCE_LIMITS[p.activity];
@@ -152,14 +154,15 @@ export default function NewGame() {
   // Survival has no course to look at (the area is the same whatever you choose), so START on the settings page goes straight into the game.
   // The preview is only shown if preparing failed (it carries the message and the alternatives).
   const direct = p.mode === "survival";
-  const startDirect = () => run(async () => {
+  const startWith = (params: MatchParams) => run(async () => {
     unlockAudio();
-    const r = await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) }));
+    const r = await session!.prepare(clampParams({ ...params, seed: Math.floor(Math.random() * 1e9) }));
     if (r?.status !== "ok") return;
     setStarting(true);
     if (await session!.startMatch()) router.push("/play");
     else setStarting(false);
   });
+  const startDirect = () => startWith(p);
 
   if ((preview || starting) && view && !(direct && (busy || starting))) {
     const P = t().preview;
@@ -167,26 +170,21 @@ export default function NewGame() {
     const ok = status === "ok" || status === "alternative";
     const loading = stage === "preparing";
     const checkpoints = proposal ? proposal.waypoints.filter((w) => w.kind === "checkpoint").length : 0;
-    const detourPct = Math.round((COURSE_DETOUR_FACTOR - 1) * 100);
     const extractionMin = Math.round(extractionOpensAtS(p.durationS) / 60);
     // The three numbers, the time limit and the goal text for this mode (all from the prepared course and the same functions the game uses).
-    type Cell = { k: string; v: string; mark?: boolean };
-    const summary: { title: string; cells: Cell[]; limit: string; goal: string; distanceNote: string | null } | null = !loading && ok && proposal ? {
+    type Cell = { k: string; v: string };
+    const summary: { title: string; cells: Cell[]; limit: string } | null = !loading && ok && proposal ? {
       title: isAB ? P.yourRoute : P.yourCourse,
       cells: [
-        { k: P.distance, v: fmtKm(isAB && abA && abB ? haversineM(abA, abB) : proposal.lengthM), mark: true },
+        { k: P.distance, v: fmtKm(isAB && abA && abB ? haversineM(abA, abB) : proposal.lengthM) },
         { k: P.estTime, v: P.minutes(estimatedMinutes(proposal.lengthM * (p.mode === "mission" || proposal.terrain ? COURSE_DETOUR_FACTOR : 1), p)) },
         isAB ? { k: P.goal, v: P.pointB } : { k: P.checkpoints, v: P.checkpointsValue(checkpoints) },
       ],
       limit: fmtHM(matchDurationS(p, proposal)),
-      goal: isAB ? (proposal.terrain ? P.goalEscapeTerrain : P.goalEscape) : P.goalMission(checkpoints),
-      distanceNote: isAB ? P.distanceNoteEscape : P.distanceNoteMission(detourPct),
     } : !loading && ok && p.mode === "survival" ? {
       title: P.yourMatch,
       cells: [{ k: P.matchLength, v: P.minutes(Math.round(p.durationS / 60)) }, { k: P.extraction, v: P.afterMin(extractionMin) }, { k: P.goal, v: P.reachExtraction }],
       limit: fmtHM(p.durationS),
-      goal: P.goalSurvival(extractionMin),
-      distanceNote: null,
     } : null;
     const fitPts = isAB && abA && abB ? [abA, { lat: abB.lat, lon: abB.lon }] : proposal ? proposal.waypoints.map((w) => ({ lat: w.lat, lon: w.lon })).concat(view.position ? [view.position] : []) : (view.position ? [view.position] : null);
     return (
@@ -194,7 +192,7 @@ export default function NewGame() {
         <GameMap graph={prepared?.graph} routes={routes} markers={markers} player={view.position} accuracyM={view.accuracyM} fit={fitPts} fitInsets={previewInsets} refitKey={sheetH} />
         <div className="hudbar pvtop" ref={topRef}>
           <div className="line">
-            <button className="backbtn" aria-label={P.editSetupLabel} disabled={busy || starting} onClick={() => { setDetails(false); session!.backToConfig(); }}>
+            <button className="backbtn" aria-label={P.editSetupLabel} disabled={busy || starting} onClick={() => session!.backToConfig()}>
               <span aria-hidden="true">‹</span> {P.editSetup}
             </button>
           </div>
@@ -205,11 +203,6 @@ export default function NewGame() {
               <div className="pvkicker">{MODE_LABEL[p.mode]} · {ACTIVITY_LABEL[p.activity]}</div>
               <h2 className="pvtitle">{summary?.title ?? P.yourCourse}</h2>
             </div>
-            {summary && (
-              <button className="pvtoggle" aria-expanded={details} aria-controls="pv-details" onClick={() => setDetails((d) => !d)}>
-                {details ? P.detailsHide : P.details} <span className="chev" aria-hidden="true">⌄</span>
-              </button>
-            )}
           </div>
           {loading && <div className="card" role="status">{P.loading}</div>}
           {!loading && prepared && !ok && (
@@ -228,21 +221,11 @@ export default function NewGame() {
           {summary && (
             <>
               <dl className="pvstats">
-                {summary.cells.map((c) => <div key={c.k}><dt>{c.k}{c.mark ? <span aria-hidden="true">*</span> : null}</dt><dd>{c.v}</dd></div>)}
+                {summary.cells.map((c) => <div key={c.k}><dt>{c.k}</dt><dd>{c.v}</dd></div>)}
               </dl>
               <div className="pvlimit"><span>{P.timeLimit}</span><b>{summary.limit}</b></div>
-              {details && (
-                <div className="pvdetails" id="pv-details">
-                  <p>{summary.goal}</p>
-                  {summary.distanceNote && <p><span aria-hidden="true">* </span>{summary.distanceNote}</p>}
-                  {proposal && <p>{P.estNote}</p>}
-                  {proposal && proposal.quality.flags.length > 0 && <p>{proposal.quality.flags.join(" · ")}</p>}
-                  <p>{P.safetyMore}</p>
-                </div>
-              )}
             </>
           )}
-          <p className="pvsafety"><span className="warnicon" aria-hidden="true">⚠</span>{P.safety}</p>
           {view.movedFromPreview && (
             <div className="card warn">
               {isAB ? `You have moved ${view.distToPreviewStartM ?? "?"} m from A. Update the route from your position.` : "You have moved from the start point. Update the route."}
@@ -270,6 +253,46 @@ export default function NewGame() {
   }
 
   const S = t().newGame;
+  // A to B, step 2: a full map to set B on (A is where the player is). SHOW COURSE then plans the route and opens the preview.
+  if (picking && isAB && view) {
+    const K = t().pick;
+    return (
+      <div className="map-shell preview pick">
+        <GameMap
+          zoom={14}
+          player={view.position}
+          accuracyM={view.accuracyM}
+          markers={[...(view.position ? [{ id: "A", label: "A", lat: view.position.lat, lon: view.position.lon, tone: "done" as const }] : []), ...(p.pointB ? [{ id: "B", label: "B", lat: p.pointB.lat, lon: p.pointB.lon, tone: "next" as const }] : [])]}
+          validatePick={p.activity !== "mtb"}
+          onPickRejected={setPickProblem}
+          onPick={(pt) => { setPickProblem(null); set({ pointB: pt }); }}
+        />
+        <div className="hudbar pvtop" ref={topRef}>
+          <div className="line">
+            <button className="backbtn" aria-label={t().preview.editSetupLabel} disabled={busy} onClick={() => { setPickProblem(null); setPicking(false); }}>
+              <span aria-hidden="true">‹</span> {t().preview.editSetup}
+            </button>
+          </div>
+        </div>
+        <div className="sheet pvsheet" ref={sheetRef} data-testid="pickmap">
+          <div className="pvhead">
+            <div>
+              <div className="pvkicker">{MODE_LABEL[p.mode]} · {ACTIVITY_LABEL[p.activity]}</div>
+              <h2 className="pvtitle">{p.pointB ? K.bSet : K.tapForB}</h2>
+            </div>
+          </div>
+          {gps && <div className={`card ${gps.tone}`} role="status">{gps.text}</div>}
+          {pickProblem && <div className="card warn" role="status">{pickProblem}</div>}
+          <div className="pvactions">
+            <button className="btn primary big cta pvstart" disabled={!p.pointB || !session?.currentStart() || busy}
+              onClick={() => run(async () => { unlockAudio(); await session!.prepare(clampParams({ ...p, pointA: null, seed: Math.floor(Math.random() * 1e9) })); setPicking(false); })}>
+              {S.showCourse}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <main className="page newgame">
       <PageHeader title={S.title} />
@@ -286,29 +309,10 @@ export default function NewGame() {
       ) : p.mode === "mission" ? (
         <RangeField id="dist" label={S.courseDistance} shown={km1(p.targetLengthM)} min={limit.min} max={limit.max} step={limit.step} value={p.targetLengthM}
           onChange={(v) => set({ targetLengthM: v })} />
-      ) : (
-        <section className="ngsec">
-          <h2 className="nglabel">{S.destination}</h2>
-          <div className="stat"><span>{S.pointA}</span><b>{S.pointAValue}</b></div>
-          <div className="stat"><span>{S.pointB}</span><b>{p.pointB ? S.pointBPicked : S.pointBTap}</b></div>
-          <div className="pickmap" data-testid="pickmap">
-            <GameMap
-              zoom={14}
-              player={view?.position}
-              accuracyM={view?.accuracyM}
-              fit={view?.position && p.pointB ? [view.position, p.pointB] : null}
-              markers={[...(view?.position ? [{ id: "A", label: "A", lat: view.position.lat, lon: view.position.lon, tone: "done" as const }] : []), ...(p.pointB ? [{ id: "B", label: "B", lat: p.pointB.lat, lon: p.pointB.lon, tone: "next" as const }] : [])]}
-              validatePick={p.activity !== "mtb"}
-              onPickRejected={setPickProblem}
-              onPick={(pt) => { setPickProblem(null); set({ pointB: pt }); }}
-            />
-          </div>
-          {pickProblem && <div className="card warn" role="status">{pickProblem}</div>}
-        </section>
-      )}
+      ) : null}
       <div className="ngfoot">
-        <button className="btn primary big cta" disabled={!canPrepare || starting} onClick={direct ? startDirect : () => run(async () => { unlockAudio(); await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) })); })}>
-          {direct ? (busy || starting ? S.loadingMap : S.start) : isAB && !p.pointB ? S.pickB : isAB ? S.showRoute : S.showCourse}
+        <button className="btn primary big cta" disabled={!canPrepare || starting} onClick={direct ? startDirect : isAB ? () => setPicking(true) : () => run(async () => { unlockAudio(); await session!.prepare(clampParams({ ...p, seed: Math.floor(Math.random() * 1e9) })); })}>
+          {direct ? (busy || starting ? S.loadingMap : S.start) : S.showCourse}
         </button>
       </div>
       {!ctx && <div className="muted">{S.loading}</div>}

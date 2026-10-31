@@ -297,10 +297,6 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .pvstats dd { margin: 2px 0 0; font-size: 1.08rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pvlimit { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.9rem; color: #c3ced9; padding: 0 2px; }
 .pvlimit b { color: var(--text); font-size: 1rem; font-variant-numeric: tabular-nums; }
-.pvsafety { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: 0.82rem; line-height: 1.35; color: #fde68a; }
-.pvsafety .warnicon { flex-shrink: 0; }
-.pvdetails { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #243040; padding-top: 8px; }
-.pvdetails p { margin: 0; font-size: 0.85rem; line-height: 1.4; color: #c3ced9; }
 .pvactions { display: flex; gap: 8px; }
 .pvactions .btn { width: auto; }
 .pvregen { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 0 0 auto; padding: 0 14px; min-height: 56px; font-size: 0.82rem; letter-spacing: 0.04em; }

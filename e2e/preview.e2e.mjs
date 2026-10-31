@@ -7,7 +7,7 @@ const START = { latitude: 59.40731, longitude: 13.46753, accuracy: 6 };
 const res = []; const check = (n, ok, i = "") => { res.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${i ? " – " + i : ""}`); };
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 
-async function open(vp, setup) {
+async function open(vp, setup, afterShow) {
   const ctx = await browser.newContext({ viewport: vp, isMobile: true, hasTouch: true, permissions: ["geolocation"], geolocation: START });
   await ctx.addInitScript(() => { try { localStorage.setItem("outbreak.debug", "on"); } catch {} });
   const page = await ctx.newPage();
@@ -16,6 +16,7 @@ async function open(vp, setup) {
   if (setup) await setup(page);
   await fixes();
   await page.locator(".ngfoot .btn").click();
+  if (afterShow) await afterShow(page, fixes);
   await page.locator(".pvstats").waitFor({ timeout: 90000 });
   await page.waitForTimeout(1500);
   return { ctx, page, fixes };
@@ -48,21 +49,15 @@ const allIn = (ms) => ms.length > 0 && ms.every((m) => m.in);
   check("checkpoints numbered 1…n in the game's order", labels.length === nCp && labels.every((n, i) => n === i + 1), `${labels.join(",")} of ${nCp}`);
   check("compact panel: every marker in the visible map", allIn(ms), JSON.stringify(ms.filter((m) => !m.in)));
   check("summary: distance, est. time, checkpoints and time limit", (await page.locator(".pvstats dd").count()) === 3 && /\d+ \+ home/.test(await page.locator(".pvstats").innerText()) && /\d+ (h \d+ )?min/.test(await page.locator(".pvlimit b").innerText()));
-  check("safety line always shown", (await page.getByText("Never cross a road or railway just because the game suggests it.").count()) === 1);
-  await page.getByRole("button", { name: "Details" }).click(); await page.waitForTimeout(800);
-  check("details: goal, straight-line note, safety", (await page.locator("#pv-details").innerText()).includes("straight line") && (await page.getByRole("button", { name: "Hide details" }).getAttribute("aria-expanded")) === "true");
-  check("expanded panel: every marker still in the visible map", allIn(await markers(page)), JSON.stringify((await markers(page)).filter((m) => !m.in)));
-  await page.getByRole("button", { name: "Hide details" }).click(); await page.waitForTimeout(600);
+  check("no warnings and no Details button in the preview", (await page.getByText(/Never cross|railway|private land/).count()) === 0 && (await page.getByRole("button", { name: /Details/ }).count()) === 0);
   // Pan by hand: the view stays where the player put it (GPS updates, panel changes).
   const before = await markers(page);
   await page.mouse.move(200, 300); await page.mouse.down(); await page.mouse.move(260, 360, { steps: 8 }); await page.mouse.up();
   await page.waitForTimeout(400);
   const moved = await markers(page);
-  await fixes(6);
-  await page.getByRole("button", { name: "Details" }).click(); await page.waitForTimeout(600);
+  await fixes(6); await page.waitForTimeout(600);
   const later = await markers(page);
   check("manual pan moves the map and is kept (no re-centring)", Math.abs(moved[0].x - before[0].x) > 20 && Math.abs(later[0].x - moved[0].x) < 3 && Math.abs(later[0].y - moved[0].y) < 3, `${before[0].x}→${moved[0].x}→${later[0].x}`);
-  await page.getByRole("button", { name: "Hide details" }).click();
   // Regenerate: a new course with the same settings, fitted again.
   const oldWp = await page.evaluate(() => JSON.stringify(window.__outbreak.getView().prepared.proposals[0].waypoints.map((w) => [w.lat, w.lon])));
   await page.getByRole("button", { name: /Regenerate/ }).click();
@@ -82,10 +77,20 @@ const allIn = (ms) => ms.length > 0 && ms.every((m) => m.in);
 
 // --- A to B ---
 {
+  let pickOk = false;
   const { ctx, page } = await open({ width: 390, height: 844 }, async (p) => {
-    await p.getByRole("group", { name: "Mode" }).getByRole("button", { name: "A TO B", exact: true }).click(); await p.waitForTimeout(1500);
-    const m = await p.locator('[data-testid="pickmap"]').boundingBox(); await p.mouse.click(m.x + m.width * 0.8, m.y + m.height * 0.25); await p.waitForTimeout(500);
+    await p.getByRole("group", { name: "Mode" }).getByRole("button", { name: "A TO B", exact: true }).click(); await p.waitForTimeout(500);
+  }, async (p, fixes) => {
+    // SHOW COURSE opens a full map; tap B on it, then SHOW COURSE plans the route.
+    await p.getByText("Tap the map to set B").waitFor({ timeout: 10000 });
+    const showDisabled = await p.locator(".pick .pvstart").isDisabled();
+    await p.waitForTimeout(1500);
+    const m = await p.locator('[data-testid="map"]').boundingBox(); await p.mouse.click(m.x + m.width * 0.75, m.y + m.height * 0.3); await p.waitForTimeout(500);
+    pickOk = showDisabled && (await p.getByText(/B is set/).count()) === 1;
+    await fixes();
+    await p.locator(".pick .pvstart").click();
   });
+  check("A to B: SHOW COURSE opens a full map; SHOW COURSE there is off until B is tapped", pickOk);
   const txt = await page.locator(".pvsheet").innerText();
   check("A to B: route summary with Point B, no Regenerate", /Point B/.test(txt) && (await page.getByRole("button", { name: /Regenerate/ }).count()) === 0 && (await page.getByRole("button", { name: "START GAME" }).count()) === 1);
   await ctx.close();
@@ -94,13 +99,7 @@ const allIn = (ms) => ms.length > 0 && ms.every((m) => m.in);
 // --- Phone sizes and landscape ---
 for (const vp of [{ width: 320, height: 568 }, { width: 375, height: 667 }, { width: 430, height: 932 }, { width: 844, height: 390 }]) {
   const { ctx, page } = await open(vp);
-  if (vp.height === 667) {
-    await page.getByRole("button", { name: "Details" }).click(); await page.waitForTimeout(800);
-    const b = await page.locator(".pvstart").boundingBox();
-    check("375×667 expanded: START GAME and REGENERATE stay fully on screen", b && b.y >= 0 && b.y + b.height <= 667 && (await page.locator(".pvregen").boundingBox()).y + 44 <= 667);
-    if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
-    await page.getByRole("button", { name: "Hide details" }).click(); await page.waitForTimeout(800);
-  }
+  if (vp.height === 667 && process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
   const ms = await markers(page);
   const r = await page.evaluate(() => ({
     hscroll: document.documentElement.scrollWidth > window.innerWidth,
