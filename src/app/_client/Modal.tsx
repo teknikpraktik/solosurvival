@@ -36,10 +36,10 @@ export function CloseButton({ onClick, href, disabled, label = "Close" }: { onCl
 
 /** Sidhuvud: BACK (till startsidan, eller `href`) och rubriken. */
 export function PageHeader({ title, href = "/" }: { title: string; href?: string }) {
-  // A quiet back button before the title (not a big red ✕): it should be easy to find, not the first thing the eye lands on.
+  // A small back chevron before the title (44 px to tap, but only the chevron shows): the page's title is what the eye should land on.
   return (
     <div className="topbar">
-      <a className="backbtn pageback" href={href} aria-label="Back"><span aria-hidden="true">‹</span> BACK</a>
+      <a className="pageback" href={href} aria-label="Back"><span aria-hidden="true">‹</span></a>
       <h1 style={{ flex: 1 }}>{title}</h1>
     </div>
   );

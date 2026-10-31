@@ -220,7 +220,7 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 /* Darker overlay than the other pages: the zombie art sets the mood but never competes with the text (also in daylight). */
 .page.newgame { gap: 10px; padding-bottom: 0; }
 .page.newgame::before { background: linear-gradient(#0b0f14e0, #0b0f14c8 35%, #0b0f14f0 75%), url("/img/backdrop.jpg") 60% 20% / cover no-repeat; }
-.page.newgame .topbar { margin-bottom: -4px; }
+.page.newgame .topbar { margin-bottom: 0; }
 .ngsec { display: flex; flex-direction: column; gap: 5px; }
 .page .nglabel { margin: 0; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #a9b6c4; }
 .ngnote { margin: 0; font-size: 0.82rem; line-height: 1.35; color: #b6c2cf; }
@@ -355,7 +355,11 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .resultlinks { display: flex; justify-content: center; gap: 28px; }
 .resultlinks .link { min-height: 44px; display: inline-flex; align-items: center; padding: 0 6px; }
 
-/* Page header: BACK before the title, same quiet style as EDIT SETUP. */
-.backbtn.pageback { text-decoration: none; box-shadow: none; flex: none; }
-.backbtn.pageback:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
-.page .topbar h1 { margin: 0; }
+/* Page header: a bare back chevron (full 44 px tap target, no box) and a large title with a short red rule under it. */
+.page .topbar { gap: 4px; margin-left: -10px; }
+.pageback { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 44px; height: 44px; border-radius: 12px; color: #cbd5e1; text-decoration: none; }
+.pageback span { font-size: 2.1rem; line-height: 1; margin-top: -4px; }
+.pageback:active { background: #ffffff14; }
+.pageback:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
+.page .topbar h1 { margin: 0; font-size: 1.6rem; letter-spacing: 0.05em; }
+.page .topbar h1::after { content: ""; display: block; width: 36px; height: 3px; margin-top: 6px; border-radius: 2px; background: #ef4444; }
