@@ -4,12 +4,12 @@ import { SessionProvider } from "./_client/SessionProvider";
 import { ServiceWorker } from "./_client/ServiceWorker";
 
 export const metadata: Metadata = {
-  title: "OUTBREAK – Solo Survival",
+  title: "Solo Survival",
   description: "GPS-based zombie survival game along real trails.",
-  applicationName: "OUTBREAK – Solo Survival",
+  applicationName: "Solo Survival",
   manifest: "/manifest.webmanifest",
   icons: { icon: [{ url: "/icons/icon-192.png?v=5", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png?v=5" },
-  appleWebApp: { capable: true, title: "OUTBREAK", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Solo Survival", statusBarStyle: "black-translucent" },
   formatDetection: { telephone: false },
 };
 

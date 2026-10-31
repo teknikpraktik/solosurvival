@@ -73,14 +73,14 @@ export default function Field() {
             <div><b>{s?.mode ?? "?"}</b> · {s?.activity} · {s?.result ?? "in progress"} · {l.startedAtIso.slice(0, 16).replace("T", " ")}</div>
             <div className="muted">{s?.gps ? `${s.gps.fixes} fixes, mean ±${s.gps.meanAccuracyM ?? "–"} m, ${s.gps.dropouts} dropouts` : ""} · {l.entries.length} events{l.trace ? ` · trace ${l.trace.length} pts` : ""}</div>
             <div className="row">
-              <button className="btn" onClick={() => download(`outbreak-${l.matchId}.json`, JSON.stringify(l, null, 1))}>Export</button>
+              <button className="btn" onClick={() => download(`solo-survival-${l.matchId}.json`, JSON.stringify(l, null, 1))}>Export</button>
               <button className="btn" onClick={async () => { if (ctx?.db && confirm("Delete this log?")) { await ctx.db.store("logs").delete(l.matchId); await load(); } }}>Delete</button>
             </div>
           </div>
         );
       })}
       <div className="row">
-        <button className="btn" disabled={!logs.length || !ctx?.db} onClick={async () => download("outbreak-test-logs.json", await exportAllLogs(ctx!.db!))}>Export all</button>
+        <button className="btn" disabled={!logs.length || !ctx?.db} onClick={async () => download("solo-survival-test-logs.json", await exportAllLogs(ctx!.db!))}>Export all</button>
         <button className="btn" disabled={!ctx?.db} onClick={async () => { if (ctx?.db && confirm("Delete ALL matches, logs and cached map data from the device?")) { await new MatchStorage(ctx.db).deleteAll(); await ctx.db.store("tiles").clear(); await load(); } }}>Delete all</button>
       </div>
       <p className="muted">Field protocol: see docs/ETAPP-3.md. Always note device, OS, browser (or installed PWA), weather, forest density and whether the screen was locked.</p>

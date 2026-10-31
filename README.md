@@ -1,4 +1,4 @@
-# OUTBREAK – Solo Survival
+# Solo Survival
 
 GPS-baserat överlevnadsspel (PWA) där zombier jagar spelaren längs verkliga stigar. Se produktspecifikationen (PRD v1.0).
 
