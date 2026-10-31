@@ -1,4 +1,4 @@
-// Game view: two-row HUD, extraction countdown, zombie threat levels (amber/red/dim) and closing labels, edge dots on foot,
+// Game view: two-row HUD, extraction countdown, zombie threat levels (red, size, pulse) and closing labels, no edge indicators,
 // home marker stepping back under the player, magenta goal, map edge to edge, quieter QUIT.
 // BASE_URL=http://localhost:3100 CHROMIUM_PATH=… E2E_OUT=dir node e2e/hud.e2e.mjs
 import { chromium } from "playwright-core";
@@ -47,8 +47,7 @@ const place = (page, list) => page.evaluate((list) => {
   check("zombie beyond 600 m: dimmed ('far')", cls.some((c) => c.includes("far")));
   check("nearest-zombie pill red within 100 m", (await page.locator(".zpill").getAttribute("class")).includes("zclose"));
   check("a hunting zombie's label shows it closing in", (await page.locator(".zlabel.closing").count()) >= 1, `${await page.locator(".zlabel.closing").count()} closing`);
-  const ptr = await page.evaluate(() => ({ n: document.querySelectorAll(".zedge").length, faces: document.querySelectorAll(".zedge .zface svg").length, labels: [...document.querySelectorAll(".zedge .zedist")].filter((e) => e.textContent).length, ring: getComputedStyle(document.querySelector(".zedge .zface")).borderTopColor }));
-  check("edge pointers on foot: red badge with the zombie face, at most 4, only the nearest shows its distance", ptr.n >= 1 && ptr.n <= 4 && ptr.faces === ptr.n && ptr.labels === 1 && ptr.ring === "rgb(255, 59, 59)", JSON.stringify(ptr));
+  check("no zombie indicators along the screen edge (only the zombies themselves)", (await page.locator(".zedge").count()) === 0);
   const ring = await page.evaluate(() => [...document.querySelectorAll(".zmark .zring")].map((e) => getComputedStyle(e).stroke));
   check("zombies are red (no amber)", ring.length > 0 && ring.every((c) => !c.includes("245, 158, 11")), JSON.stringify([...new Set(ring)]));
   check("QUIT quieter than PAUSE", (await page.locator(".controls .quit").count()) === 1);

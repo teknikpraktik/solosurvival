@@ -193,8 +193,6 @@ export default function Play() {
         zoom={16}
         extraction={m.extraction}
         pointTo={!finished ? (m.objectives?.next ?? m.extraction) : null}
-        zombieEdgeDots={!finished}
-        zombieEdgeMaxM={m.activity === "mtb" ? 2000 : 1000}
         homeStepsBack
         rangeArcs={finished ? undefined : [200, 400]}
         scale
