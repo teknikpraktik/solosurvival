@@ -18,7 +18,10 @@ const PLAY_S = 30;
 /** After a match: the tracks on a map with a time slider, and the numbers. Kept a week on the device. */
 export default function Recap() {
   const ctx = useSessionCtx();
-  const id = useSearchParams().get("id") ?? "";
+  const search = useSearchParams();
+  const id = search.get("id") ?? "";
+  // From the result dialog (SHOW MATCH) back goes to it; from Previous games back to the list.
+  const back = search.get("from") === "play" ? "/play" : "/history";
   const [data, setData] = useState<{ meta: RecapMeta; chunks: RecapChunk[] } | null | undefined>(undefined);
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -51,11 +54,11 @@ export default function Recap() {
     return () => cancelAnimationFrame(raf);
   }, [playing, end]);
 
-  if (data === undefined) return <main className="page"><PageHeader title="MATCH" href="/history" /><div className="muted">Loading…</div></main>;
+  if (data === undefined) return <main className="page"><PageHeader title="MATCH" href={back} /><div className="muted">Loading…</div></main>;
   if (!data || !tracks) {
     return (
       <main className="page">
-        <PageHeader title="MATCH" href="/history" />
+        <PageHeader title="MATCH" href={back} />
         <div className="card">This match has no saved map. Maps are kept on this device for {Math.round(RECAP_KEEP_MS / 86_400_000)} days after the match and then deleted.</div>
       </main>
     );
@@ -63,7 +66,7 @@ export default function Recap() {
   const m = data.meta;
   return (
     <main className="page recap">
-      <PageHeader title="MATCH" href="/history" />
+      <PageHeader title="MATCH" href={back} />
       <div className="muted">{MODE_LABEL[m.mode]} · {ACTIVITY_LABEL[m.activity]} · {DIFFICULTY_LABEL[m.difficulty]} · <b>{RESULT_LABEL[m.result] ?? m.result}</b> · {fmtDate(m.startedAt)}</div>
       <RecapMap player={tracks.player} zombies={shown} t={t} start={m.start} end={m.end} captured={m.captured} targets={m.targets} extraction={m.extraction} />
       <div className="recapbar">

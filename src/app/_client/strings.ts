@@ -53,8 +53,7 @@ const en = {
   },
   result: {
     title: { captured: "CAPTURED", failed: "OUT OF TIME", aborted: "MATCH ABORTED", incomplete: "MATCH OVER", mission: "COURSE COMPLETE", escape: "YOU MADE IT", survival: "EXTRACTED" },
-    captured: (at: string) => `Captured at ${at}.`,
-    capturedProgress: (at: string, reached: number, total: number) => `Captured at ${at}, with ${reached} of ${total} checkpoints.`,
+    capturedProgress: (reached: number, total: number) => `${reached} of ${total} checkpoints.`,
     missionDone: (n: number, time: string) => `All ${n} checkpoints and home in ${time}.`,
     escapeDone: (time: string) => `Reached B in ${time}.`,
     survivalDone: (spare: string) => `Extracted with ${spare} to spare.`,
@@ -70,7 +69,7 @@ const en = {
     showMatch: "SHOW MATCH",
     playAgain: "PLAY AGAIN",
     playAgainLabel: "Play again with the same settings (a new course)",
-    home: "Home",
+    home: "Main menu",
     previousGames: "Previous games",
     notSaved: "The result could not be saved locally.",
   },

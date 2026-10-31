@@ -735,6 +735,9 @@ export class PlaySession {
     this.lock = null;
   }
 
+  /** The captured scare has been shown for the finished match (coming back from SHOW MATCH must not play it again). */
+  scareShown = false;
+
   /** A match started by the player's tap (START GAME / START) begins at once on /play, without a "Ready to start" step. */
   private autoStart = false;
   get autoStartPending(): boolean { return this.autoStart; }
@@ -764,6 +767,7 @@ export class PlaySession {
     this.live = null;
     this.recorder = null;
     this.autoStart = false;
+    this.scareShown = false;
     this.proposal = null;
     this.log = null;
     this.prepared = null;

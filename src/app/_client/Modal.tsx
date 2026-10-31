@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, type ReactNode } from "react";
 
 /**
@@ -39,7 +40,8 @@ export function PageHeader({ title, href = "/" }: { title: string; href?: string
   // A small back chevron before the title (44 px to tap, but only the chevron shows): the page's title is what the eye should land on.
   return (
     <div className="topbar">
-      <a className="pageback" href={href} aria-label="Back"><span aria-hidden="true">‹</span></a>
+      {/* In-app navigation (not a page load), so the session survives: e.g. back from SHOW MATCH to the result dialog. */}
+      <Link className="pageback" href={href} aria-label="Back"><span aria-hidden="true">‹</span></Link>
       <h1 style={{ flex: 1 }}>{title}</h1>
     </div>
   );

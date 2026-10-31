@@ -37,7 +37,8 @@ export default function Play() {
   const [pauseDismissed, setPauseDismissed] = useState(false);
   const [gpsDismissed, setGpsDismissed] = useState(false);
   const [sound, setSound] = useState(true);
-  const [scareDone, setScareDone] = useState(false);
+  // Back from SHOW MATCH: the scare (and the spoken "Captured") was already shown for this match.
+  const [scareDone, setScareDone] = useState(() => !!ctx?.session?.scareShown);
   const [jump, setJump] = useState(false);
   const lastScare = useRef(0);
   // Preload the jump-scare photo so it appears instantly when it fires.
@@ -107,7 +108,7 @@ export default function Play() {
   // Captured: spoken a moment after the scream starts, when the scare screen opens.
   const capturedNow = m?.phase === "finished" && m.result === "infected";
   useEffect(() => {
-    if (!capturedNow) return;
+    if (!capturedNow || session?.scareShown) return;
     const t = setTimeout(() => speak("Captured"), 700);
     return () => clearTimeout(t);
   }, [capturedNow]);
@@ -292,7 +293,7 @@ export default function Play() {
       )}
 
       {jump && !finished && <JumpScare onDone={() => setJump(false)} />}
-      {scare && <Scare onDone={() => setScareDone(true)} />}
+      {scare && <Scare onDone={() => { session.scareShown = true; setScareDone(true); }} />}
       {/* Captured: the scare picture stays behind the result dialog (still, dimmed by the dialog's backdrop). */}
       {finished && m.result === "infected" && scareDone && (
         <div className="capturedbg" aria-hidden="true">
@@ -311,7 +312,7 @@ export default function Play() {
         // One sentence that says what happened, with the mode's own result in it (it used to come last, after all the numbers).
         const line = res === "aborted" ? ""
           : won ? (m.mode === "mission" ? R.missionDone(p?.primaryTotal ?? 0, fmtTime(m.elapsedS)) : m.mode === "escape" ? R.escapeDone(fmtTime(m.elapsedS)) : R.survivalDone(fmtTime(Math.max(0, m.limitS - m.elapsedS))))
-          : res === "infected" ? (m.mode === "mission" && p ? R.capturedProgress(fmtTime(m.elapsedS), p.primaryReached, p.primaryTotal) : R.captured(fmtTime(m.elapsedS)))
+          : res === "infected" ? (m.mode === "mission" && p ? R.capturedProgress(p.primaryReached, p.primaryTotal) : "") // the title already says CAPTURED
           : res === "failed" ? (m.mode === "mission" && p ? R.failedMission(p.primaryReached, p.primaryTotal, p.homeReached) : m.mode === "escape" ? R.failedEscape : R.failedSurvival)
           : "";
         const st = m.stats;
@@ -334,7 +335,7 @@ export default function Play() {
             ) : (
               <>
                 {canShow
-                  ? <Link className="btn primary cta" href={`/recap?id=${encodeURIComponent(m.id)}`} onClick={() => session.reset()}>{R.showMatch}</Link>
+                  ? <Link className="btn primary cta" href={`/recap?id=${encodeURIComponent(m.id)}&from=play`}>{R.showMatch}</Link>
                   : null}
                 <button className={canShow ? "btn" : "btn primary cta"} aria-label={R.playAgainLabel} onClick={() => { void session.enableCompass(); session.playAgain(); router.push("/new"); }}>{R.playAgain}</button>
                 <div className="resultlinks">
