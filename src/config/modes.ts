@@ -12,17 +12,30 @@ import type { GameMode } from "@/engine/objectives/objectives";
 export const AB_ZOMBIES_PER_KM: Record<Activity, number> = { walk: 2.5, run: 2.5, mtb: 1.5 };
 
 /**
- * Survival felt too easy in field testing, first on the bike, then on foot: zombies 20 % faster in Survival (sprint follows, it is a factor
+ * Survival felt too easy in field testing, first on the bike (twice), then on foot: zombies faster in Survival (sprint follows, it is a factor
  * of the base speed). Checkpoints and A to B are unchanged.
  */
-export const SURVIVAL_SPEED_FACTOR: Partial<Record<Activity, number>> = { mtb: 1.2, walk: 1.2 };
+export const SURVIVAL_SPEED_FACTOR: Partial<Record<Activity, number>> = { mtb: 1.44, walk: 1.2 }; // Bike: 1.2, then 1.2 again (second field test)
+/** Survival: more zombies (start and most at once), rounded; Bike after the second field test. */
+export const SURVIVAL_COUNT_FACTOR: Partial<Record<Activity, number>> = { mtb: 1.2 };
 
 /** Survival: when extraction opens (the helicopter lands) every zombie runs 50 % faster, so the last stretch is a race. */
 export const EXTRACTION_RUSH_FACTOR = 1.5;
 
 export function resolveModeRules(mode: GameMode, activity: Activity, difficulty: Difficulty, durationS: number, spawnCapacity?: number, straightM?: number): Rules {
   const r = resolveRules(activity, difficulty, durationS, spawnCapacity);
-  if (mode === "survival") return { ...r, zombieSpeedMps: r.zombieSpeedMps * (SURVIVAL_SPEED_FACTOR[activity] ?? 1), extractionRushFactor: EXTRACTION_RUSH_FACTOR };
+  if (mode === "survival") {
+    const k = SURVIVAL_COUNT_FACTOR[activity] ?? 1;
+    const cap = spawnCapacity ?? Infinity;
+    const maxZombies = Math.max(1, Math.min(Math.round(r.maxZombies * k), cap));
+    const initialZombies = Math.max(1, Math.min(Math.round(r.initialZombies * k), maxZombies));
+    // Same growth window as before, so the extra zombies come in at the same pace up to the new maximum.
+    const windowMin = r.growthPerMin > 0 ? (r.maxZombies - r.initialZombies) / r.growthPerMin : Math.max(1, (r.extractionOpensAtS - r.headStartS) / 60);
+    return {
+      ...r, initialZombies, maxZombies, growthPerMin: (maxZombies - initialZombies) / Math.max(1, windowMin),
+      zombieSpeedMps: r.zombieSpeedMps * (SURVIVAL_SPEED_FACTOR[activity] ?? 1), extractionRushFactor: EXTRACTION_RUSH_FACTOR,
+    };
+  }
   const base: Rules = { ...r, extractionOpensAtS: Infinity };
   if (mode !== "escape" || !straightM) return base;
   // A TO B: the population follows the distance, not the (long) time limit, but never beyond the level's maximum (ZOMBIE_COUNT, at most 20).

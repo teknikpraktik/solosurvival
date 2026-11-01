@@ -131,7 +131,7 @@ const TONE = { next: "#c026d3", done: "#16a34a", todo: "#475569" } as const;
 /** Zombie threat levels on the map: within NEAR_M red and larger, chasing amber, beyond FAR_M dimmed (with magnet hunting nearly all chase). */
 const ZOMBIE_NEAR_M = 100;
 /** Width of a range arc (degrees). */
-const RANGE_ARC_DEG = 10;
+const RANGE_ARC_DEG = 14;
 /** The player is "at" the home marker within this distance (m). */
 const AT_HOME_M = 30;
 const ZOMBIE_FAR_M = 600;
@@ -386,11 +386,13 @@ export default function GameMap(props: GameMapProps) {
     const a = (aheadDeg * Math.PI) / 180;
     const pt = (r: number, t: number) => `${(p.x + r * Math.sin(t)).toFixed(1)} ${(p.y - r * Math.cos(t)).toFixed(1)}`;
     const paths = svg.querySelectorAll("path"), texts = svg.querySelectorAll("text");
+    const top = freeArea(map, 6).y0; // an arc whose number would sit under the HUD is left out rather than half hidden
     radii.forEach((m, i) => {
       const r = m / mpp;
-      const show = r >= 24 && r <= 4000;
+      const labelY = p.y - (r + 12) * Math.cos(a);
+      const show = r >= 24 && r <= 4000 && labelY - 8 >= top;
       paths[i].setAttribute("d", show ? `M ${pt(r, a - half)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 0 1 ${pt(r, a + half)}` : "");
-      const [tx, ty] = pt(r + 9, a).split(" ");
+      const [tx, ty] = pt(r + 12, a).split(" ");
       texts[i].setAttribute("x", tx); texts[i].setAttribute("y", ty);
       texts[i].textContent = show ? (m >= 1000 ? `${m / 1000} km` : `${m} m`) : "";
     });

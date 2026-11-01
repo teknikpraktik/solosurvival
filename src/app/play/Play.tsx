@@ -193,7 +193,7 @@ export default function Play() {
         extraction={m.extraction}
         pointTo={!finished ? (m.objectives?.next ?? m.extraction) : null}
         homeStepsBack
-        rangeArcs={finished ? undefined : [200, 400]}
+        rangeArcs={finished ? undefined : viewClose || goalClose ? [100, 200] : [250, 500]} // close view (zombie or goal near): 100/200 m; wide: 250/500 m
         scale
         follow={auto}
         viewAheadM={vp.aheadM}

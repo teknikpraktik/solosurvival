@@ -247,14 +247,23 @@ describe("off-network i motorn (cykel)", () => {
   });
 });
 
-describe("Survival är 20 % svårare, på cykel och till fots", () => {
-  it("zombierna är 20 % snabbare i Survive på cykel, oförändrade i övriga lägen och till fots", () => {
+describe("Survival är svårare: cykel 1,44 × fart och 1,2 × antal, till fots 1,2 × fart", () => {
+  it("fart och antal i Survival; Checkpoints oförändrat", () => {
     for (const d of ["easy", "normal", "hard"] as const) {
-      const base = resolveRules("mtb", d, 3000).zombieSpeedMps;
-      expect(resolveModeRules("survival", "mtb", d, 3000).zombieSpeedMps).toBeCloseTo(base * 1.2, 9);
-      expect(resolveModeRules("mission", "mtb", d, 3000).zombieSpeedMps).toBeCloseTo(base, 9);
-      expect(resolveModeRules("survival", "walk", d, 3000).zombieSpeedMps).toBeCloseTo(resolveRules("walk", d, 3000).zombieSpeedMps * 1.2, 9);
-      expect(resolveModeRules("mission", "walk", d, 3000).zombieSpeedMps).toBeCloseTo(resolveRules("walk", d, 3000).zombieSpeedMps, 9);
+      const bike = resolveRules("mtb", d, 3000), walk = resolveRules("walk", d, 3000);
+      const sb = resolveModeRules("survival", "mtb", d, 3000), sw = resolveModeRules("survival", "walk", d, 3000);
+      expect(sb.zombieSpeedMps).toBeCloseTo(bike.zombieSpeedMps * 1.44, 9);
+      expect(sb.initialZombies).toBe(Math.round(bike.initialZombies * 1.2));
+      expect(sb.maxZombies).toBe(Math.round(bike.maxZombies * 1.2));
+      expect(sb.growthPerMin).toBeGreaterThan(0);
+      expect(resolveModeRules("mission", "mtb", d, 3000).zombieSpeedMps).toBeCloseTo(bike.zombieSpeedMps, 9);
+      expect(resolveModeRules("mission", "mtb", d, 3000).maxZombies).toBe(bike.maxZombies);
+      expect(sw.zombieSpeedMps).toBeCloseTo(walk.zombieSpeedMps * 1.2, 9);
+      expect(sw.maxZombies).toBe(walk.maxZombies);
+      expect(resolveModeRules("mission", "walk", d, 3000).zombieSpeedMps).toBeCloseTo(walk.zombieSpeedMps, 9);
     }
+  });
+  it("antalet begränsas av områdets kapacitet", () => {
+    expect(resolveModeRules("survival", "mtb", "hard", 3000, 12).maxZombies).toBe(12);
   });
 });
