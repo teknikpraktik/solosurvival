@@ -58,7 +58,7 @@ export interface SessionDeps {
   traceEnabled?: () => boolean;
   /** Background map tiles for buildings and water, so zombies can go off the trails (not through them). Without it they stay on the trails. */
   terrainTiles?: TileFetcher;
-  /** The compass turns the map also while moving (the arrow shows the GPS direction of travel). Read when the compass is turned on. Default on. */
+  /** The compass turns the map also while moving (the arrow shows the GPS direction of travel). Read when the compass is turned on. Default off: Track Up follows the direction of travel. */
   compassView?: () => boolean;
   /** Slumpade skrämmor (standard av om utelämnat). Aldrig på cykel, och aldrig om produktprofilen stänger av dem. */
   jumpScares?: () => boolean;
@@ -266,7 +266,7 @@ export class PlaySession {
    * Utan kompass fungerar Track Up ändå med GPS-riktningen när man rör sig.
    */
   async enableCompass(): Promise<CompassStatus> {
-    this.fusion.compassView = this.d.compassView?.() ?? true;
+    this.fusion.compassView = this.d.compassView?.() ?? false;
     if (this.compassStatus === "on") return "on";
     if (!this.d.compass) { this.compassStatus = "unsupported"; this.emit(); return this.compassStatus; }
     try {
