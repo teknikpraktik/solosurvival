@@ -36,6 +36,6 @@ Tänkt som ett eget Vercel-projekt från samma repo: Root Directory `apps/mini`,
 ## Tillfällig grafik och ljud
 
 - Startbild: `public/brand/splash.webp` (+ `splash.jpg` som reserv), levererad av beställaren och nedskalad till 1080 px. Visas av `src/client/Splash.tsx` i cirka 2,5 s vid första start per session (tryck hoppar över, aldrig på `/play`).
-- App-ikonen (`public/icons/`, ritad med `scripts/make-icons.mts`) är en förenklad version av startbildens stil: nattblå himmel, fullmåne och ett glödande spöke.
+- App-ikonen (`public/icons/`, skapad med `scripts/make-icons.mts`): den levererade zombiefiguren (`assets/icon-zombie.png`, beskuren och med rensad alfakanal) på startbildens nattblå himmel.
 - Fiendefigurerna och illustrationerna i appen (`src/client/enemies.ts`) är enkla platshållare som ska ersättas av slutliga illustrationer (fyra fiendetyper, kartmarkör cirka 38 px och illustration).
 - Ljud: bara `public/audio/checkpoint.wav` (samma glada klang som i OUTBREAK). Barnvänliga ljud för fiende nära, fångad, vinst och match slut läggs till i `MINI_SOUNDS` (`src/client/sounds.ts`).

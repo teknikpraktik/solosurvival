@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "A friendly GPS game: walk real paths and dodge cute critters.",
   applicationName: "Mini Outbreak Solo Survival",
   manifest: "/manifest.webmanifest",
-  icons: { icon: [{ url: "/icons/icon-192.png?v=4", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png?v=4" },
+  icons: { icon: [{ url: "/icons/icon-192.png?v=5", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png?v=5" },
   appleWebApp: { capable: true, title: "Mini Outbreak", statusBarStyle: "default" },
   formatDetection: { telephone: false },
 };
