@@ -21,9 +21,8 @@ export const DATA_BASE = "/data/v1/varmland";
 const TRACE_KEY = "outbreak.trace";
 export const traceEnabled = () => { try { return localStorage.getItem(TRACE_KEY) === "on"; } catch { return false; } };
 export const setTraceEnabled = (on: boolean) => { try { localStorage.setItem(TRACE_KEY, on ? "on" : "off"); } catch { /* ignoreras */ } };
-// Off unless chosen on the Test mode page: AUTO is Track Up (direction of travel). A new key, so an earlier "on" (when it was the default) is not kept.
-const COMPASS_VIEW_KEY = "outbreak.compassViewMoving";
-export const compassViewEnabled = () => { try { return localStorage.getItem(COMPASS_VIEW_KEY) === "on"; } catch { return false; } };
+const COMPASS_VIEW_KEY = "outbreak.compassView";
+export const compassViewEnabled = () => { try { return localStorage.getItem(COMPASS_VIEW_KEY) !== "off"; } catch { return true; } };
 export const setCompassViewEnabled = (on: boolean) => { try { localStorage.setItem(COMPASS_VIEW_KEY, on ? "on" : "off"); } catch { /* ignoreras */ } };
 
 /** Skapar en enda PlaySession för hela appen så att GPS och match överlever sidbyten. */

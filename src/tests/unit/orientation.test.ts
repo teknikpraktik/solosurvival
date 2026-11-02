@@ -73,7 +73,6 @@ describe("HeadingFusion (GPS + kompass, North Up/Track Up)", () => {
   });
   it("kompassvyn på: i rörelse vrids kartan efter kompassen och pilen visar GPS-färdriktningen", () => {
     const f = new HeadingFusion();
-    f.compassView = true;
     f.pushCompass(200, 1000);
     f.pushGps(75, FUSION_MOVING_MPS + 0.3, 1000);
     expect(f.get(1000)).toEqual({ deg: 200, source: "compass", courseDeg: 75 });
@@ -136,7 +135,6 @@ describe("HeadingFusion: kompassen vrider kartan även i rörelse (till fots och
   }
   it("ett huvudvridning följs direkt: kartan vrids lika mycket som telefonen inom ett par tiondels sekunder, pilen visar fortfarande färdriktningen", () => {
     const f = new HeadingFusion();
-    f.compassView = true;
     let t = ride(f, 0, 5, 90, 90);
     expect(Math.abs(wrap180(f.get(t).deg! - 90))).toBeLessThan(2);
     // Vrider 60° åt höger på 0,3 s (200°/s).
@@ -147,14 +145,12 @@ describe("HeadingFusion: kompassen vrider kartan även i rörelse (till fots och
   });
   it("ett konstant kompassfel (missvisning, hållare) lärs bort från GPS i rörelse", () => {
     const f = new HeadingFusion();
-    f.compassView = true;
     const t = ride(f, 0, 4 * BIAS_TAU_S, 90, 72); // kompassen visar 18° fel
     expect(Math.abs(wrap180(f.get(t).deg! - 90))).toBeLessThan(2);
     expect(f.compassBiasDeg).toBeCloseTo(18, 0);
   });
   it("en kort blick åt sidan lärs inte in (korrektionen ändras inte)", () => {
     const f = new HeadingFusion();
-    f.compassView = true;
     let t = ride(f, 0, 5, 90, 90);
     t = ride(f, t + 33, 4, 90, 160); // tittar 70° åt sidan i 4 s
     expect(Math.abs(f.compassBiasDeg)).toBeLessThan(0.5);
@@ -162,7 +158,6 @@ describe("HeadingFusion: kompassen vrider kartan även i rörelse (till fots och
   });
   it("ett stort men stadigt fel (magnet i hållaren) tas in efter en stund i rörelse", () => {
     const f = new HeadingFusion();
-    f.compassView = true;
     const t = ride(f, 0, BIAS_SNAP_S + 3, 90, 250);
     expect(Math.abs(wrap180(f.get(t).deg! - 90))).toBeLessThan(3);
   });
@@ -173,20 +168,5 @@ describe("HeadingFusion: kompassen vrider kartan även i rörelse (till fots och
     let max = 0;
     for (let t = 0; t < 5000; t += 16) { f.pushCompass(40 + noise(), t); if (t > 2000) max = Math.max(max, Math.abs(wrap180(f.get(t).deg! - 40))); }
     expect(max).toBeLessThan(1.5);
-  });
-});
-
-describe("HeadingFusion: standard är Track Up (färdriktningen)", () => {
-  it("i rörelse följer kartan GPS-kursen och pilen pekar rakt upp, även om telefonen pekar åt ett annat håll", () => {
-    const f = new HeadingFusion();
-    for (let t = 0; t <= 3000; t += 100) f.pushCompass(200, t);
-    f.pushGps(75, FUSION_MOVING_MPS + 0.5, 3000);
-    expect(f.get(3000)).toEqual({ deg: 75, source: "gps", courseDeg: 75 });
-  });
-  it("stillastående: kompassen vrider kartan", () => {
-    const f = new HeadingFusion();
-    f.pushGps(75, 0.1, 0);
-    for (let t = 0; t <= 2000; t += 100) f.pushCompass(200, t);
-    expect(f.get(2000).source).toBe("compass");
   });
 });

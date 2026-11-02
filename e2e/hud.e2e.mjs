@@ -56,8 +56,6 @@ const place = (page, list) => page.evaluate((list) => {
   check("match clock is captioned TIME LEFT", (await page.locator(".pill.timeleft .tl").innerText()) === "TIME LEFT");
   const arcs = await page.evaluate(() => [...document.querySelectorAll(".rangearcs path")].filter((p) => p.getAttribute("d")).length + "/" + [...document.querySelectorAll(".rangearcs text")].map((t) => t.textContent).join(","));
   check("range arcs ahead of the player: 100/200 m in the close view, 250/500 m wide", /^[12]\/(100 m,200 m|250 m,500 m|100 m,|,200 m|250 m,|,500 m)$/.test(arcs), arcs);
-  const above = await page.evaluate(() => { const pm = document.querySelector(".pmark").getBoundingClientRect(); const cx = pm.left + pm.width / 2; return [...document.querySelectorAll(".rangearcs text")].filter((t) => t.textContent).map((t) => Math.round(Number(t.getAttribute("x")) - cx)); });
-  check("AUTO: the arcs sit fixed straight above the player", above.length > 0 && above.every((dx) => Math.abs(dx) <= 2), JSON.stringify(above));
   await page.screenshot({ path: `${OUT}/survival.png` });
   // Extraction opens: a helicopter on the map.
   await page.evaluate(() => { const l = window.__outbreak.live; l.rules.extractionOpensAtS = l.state.elapsedSeconds + 1; });

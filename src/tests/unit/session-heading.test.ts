@@ -52,12 +52,11 @@ describe("riktning i sessionen: GPS i rörelse, kompass stilla, okänd när den 
     expect(Math.abs(session.liveHeading().deg! - 5)).toBeLessThan(3);
   });
 
-  it("kompassvyn på: pilen visar GPS-kursen; kartan följer kompassen, och ett stadigt kompassfel lärs bort", async () => {
+  it("i rörelse: pilen visar GPS-kursen; kartan följer kompassen, och ett stadigt kompassfel lärs bort", async () => {
     const c = fakeCompass("granted");
     const { session, fix, advance } = await make(c.src);
     session.startLocating();
     await session.enableCompass();
-    session.setCompassView(true);
     let p = START;
     for (let i = 0; i < 25; i++) {
       p = destinationPoint(p, 1.6, 90);
@@ -70,7 +69,7 @@ describe("riktning i sessionen: GPS i rörelse, kompass stilla, okänd när den 
     expect(Math.abs(session.liveHeading().deg! - 90)).toBeLessThan(15);
   });
 
-  it("standard (kompassvyn av): i rörelse gäller GPS-kursen även om kompassen visar något annat", async () => {
+  it("kompassvyn av: i rörelse gäller GPS-kursen även om kompassen visar något annat", async () => {
     const c = fakeCompass("granted");
     const { session, fix, advance } = await make(c.src);
     session.startLocating();

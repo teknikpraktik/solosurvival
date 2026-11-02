@@ -358,8 +358,7 @@ export default function GameMap(props: GameMapProps) {
         }
       }
       if (el.current) el.current.dataset.bearing = String(Math.round(bearingRef.current));
-      // AUTO (follow + Track Up): the arcs sit fixed straight above the player. Map held by the player: they point the way of travel.
-      drawRangeArcs(map, P.follow && P.trackUp && !manual.current ? 0 : course != null ? arrowShown : 0);
+      drawRangeArcs(map, course != null ? arrowShown : 0);
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
