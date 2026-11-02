@@ -22,7 +22,7 @@ export default function Field() {
   const view = useSessionView(ctx?.session);
   const [logs, setLogs] = useState<FieldLogData[]>([]);
   const [trace, setTrace] = useState(false);
-  const [compassView, setCompassView] = useState(true);
+  const [compassView, setCompassView] = useState(false);
   const [battery, setBattery] = useState<string>("No Battery API in this browser (iPhone): read the percentage manually before and after.");
   const [storage, setStorage] = useState("");
   const [secure, setSecure] = useState(true);
@@ -57,7 +57,7 @@ export default function Field() {
       <h2>Map</h2>
       <label className="muted" style={{ display: "flex", gap: 10, alignItems: "center", minHeight: 44 }}>
         <input type="checkbox" checked={compassView} style={{ width: 22, height: 22 }} onChange={(e) => { setCompassView(e.target.checked); setCompassViewEnabled(e.target.checked); ctx?.session.setCompassView(e.target.checked); }} />
-        Compass turns the map, also while moving (turn the phone and the map turns with it; the arrow shows your direction of travel). On by default. Off: the map follows the GPS direction while moving.
+        Compass turns the map, also while moving (turn the phone and the map turns with it; the arrow shows your direction of travel). Off by default: AUTO is Track Up (the map follows your direction of travel while moving, the compass when you stand still).
       </label>
 
       <h2>Logging</h2>

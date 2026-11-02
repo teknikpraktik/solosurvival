@@ -159,7 +159,7 @@ class AngleFilter {
  */
 export class HeadingFusion {
   /** Compass turns the map also while moving (the setting "Compass turns the map"). Off: the map follows GPS while moving, as before. */
-  compassView = true;
+  compassView = false;
   private compass: { deg: number; tMs: number } | null = null;
   private readonly filter = new AngleFilter();
   private gps: { deg: number; tMs: number } | null = null;
