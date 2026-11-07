@@ -52,7 +52,7 @@ describe("riktning i sessionen: GPS i rörelse, kompass stilla, okänd när den 
     expect(Math.abs(session.liveHeading().deg! - 5)).toBeLessThan(3);
   });
 
-  it("i rörelse: pilen visar GPS-kursen; kartan följer kompassen, och ett stadigt kompassfel lärs bort", async () => {
+  it("i rörelse med kompass: kartan och pilen följer kompassen (inte GPS-kursen)", async () => {
     const c = fakeCompass("granted");
     const { session, fix, advance } = await make(c.src);
     session.startLocating();
@@ -65,25 +65,8 @@ describe("riktning i sessionen: GPS i rörelse, kompass stilla, okänd när den 
       advance(1000);
     }
     expect(session.liveHeading().source).toBe("compass");
-    expect(Math.abs(session.liveHeading().courseDeg! - 90)).toBeLessThan(15);
-    expect(Math.abs(session.liveHeading().deg! - 90)).toBeLessThan(15);
-  });
-
-  it("kompassvyn av: i rörelse gäller GPS-kursen även om kompassen visar något annat", async () => {
-    const c = fakeCompass("granted");
-    const { session, fix, advance } = await make(c.src);
-    session.startLocating();
-    await session.enableCompass();
-    session.setCompassView(false);
-    let p = START;
-    for (let i = 0; i < 25; i++) {
-      p = destinationPoint(p, 1.6, 90);
-      fix(p, { speed: 1.6, heading: 90 });
-      c.sample(250);
-      advance(1000);
-    }
-    expect(session.liveHeading().source).toBe("gps");
-    expect(Math.abs(session.liveHeading().deg! - 90)).toBeLessThan(15);
+    expect(Math.abs(session.liveHeading().deg! - 250)).toBeLessThan(3);
+    expect(session.liveHeading().courseDeg).toBe(session.liveHeading().deg);
   });
 
   it("nekad åtkomst till rörelsesensorer: status 'denied', GPS-riktning fungerar ändå; saknade sensorer: 'unsupported'", async () => {

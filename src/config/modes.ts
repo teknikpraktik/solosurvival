@@ -19,6 +19,12 @@ export const SURVIVAL_SPEED_FACTOR: Partial<Record<Activity, number>> = { mtb: 1
 /** Survival: more zombies (start and most at once), rounded; Bike after the second field test. */
 export const SURVIVAL_COUNT_FACTOR: Partial<Record<Activity, number>> = { mtb: 1.2 };
 
+/**
+ * Survival on the bike: most new zombies appear ahead of the rider (field test: they came mostly from behind and formed a tail). The rest
+ * appear anywhere, so it stays unpredictable.
+ */
+export const SURVIVAL_AHEAD_SPAWN: Partial<Record<Activity, number>> = { mtb: 0.7 };
+
 /** Survival: when extraction opens (the helicopter lands) every zombie runs 50 % faster, so the last stretch is a race. */
 export const EXTRACTION_RUSH_FACTOR = 1.5;
 
@@ -34,6 +40,7 @@ export function resolveModeRules(mode: GameMode, activity: Activity, difficulty:
     return {
       ...r, initialZombies, maxZombies, growthPerMin: (maxZombies - initialZombies) / Math.max(1, windowMin),
       zombieSpeedMps: r.zombieSpeedMps * (SURVIVAL_SPEED_FACTOR[activity] ?? 1), extractionRushFactor: EXTRACTION_RUSH_FACTOR,
+      aheadSpawnShare: SURVIVAL_AHEAD_SPAWN[activity],
     };
   }
   const base: Rules = { ...r, extractionOpensAtS: Infinity };

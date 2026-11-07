@@ -7,10 +7,10 @@ walk normal mission: infected@791.2 infected@1045.0 infected@414.2 infected@506.
 walk hard survival: infected@189.8 infected@174.0 infected@158.8 infected@276.4 infected@70.6 infected@229.6
 walk hard escape: infected@103.8 infected@104.8 infected@145.4 infected@109.0 infected@114.6 infected@130.0
 walk hard mission: infected@201.8 infected@178.8 infected@160.8 infected@376.4 infected@98.2 infected@308.8
-mtb easy survival: infected@811.8 infected@1065.6 failed@1500.0 failed@1500.0 failed@1500.0 infected@251.8
+mtb easy survival: infected@811.8 infected@1295.2 infected@352.6 failed@1500.0 infected@967.6 infected@251.8
 mtb easy escape: survived@91.6 survived@91.6 survived@91.6 survived@91.6 survived@91.6 survived@91.6
 mtb easy mission: survived@451.6 survived@931.4 survived@558.2 survived@504.8 survived@451.6 survived@1251.4
-mtb normal survival: infected@255.8 infected@783.2 infected@914.2 infected@993.4 infected@308.0 infected@1079.0
+mtb normal survival: infected@254.4 infected@865.2 infected@399.0 infected@1079.4 infected@707.8 infected@1223.8
 mtb normal escape: survived@91.6 survived@91.6 survived@91.6 survived@91.6 survived@91.6 survived@464.8
 mtb normal mission: failed@1500.0 survived@824.8 survived@984.8 survived@1251.4 survived@504.8 survived@984.8
 mtb hard survival: infected@146.0 infected@197.8 infected@163.0 infected@187.2 infected@198.8 infected@97.4

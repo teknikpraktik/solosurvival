@@ -78,3 +78,15 @@ describe("nextApproaching (spoken warning)", () => {
     expect(nextApproaching(true, null)).toBe(false);
   });
 });
+
+describe("Bike close view: a zombie coming from the side is seen", () => {
+  it("at least 230 m to each side of the rider on a 390 px wide phone", () => {
+    const v = viewProfile("mtb");
+    expect(v.closeSideM).toBe(230);
+    const lat = 59.4, h = 844, w = 390;
+    const z = Math.min(viewZoom(lat, h, v.closeAheadM, v.playerY), viewZoom(lat, w, v.closeSideM!, 0.5));
+    const mpp = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / (512 * 2 ** z);
+    expect((w / 2) * mpp).toBeGreaterThanOrEqual(229);
+    expect(v.enterM).toBeLessThan(v.closeSideM!); // the zombie that triggers the close view (200 m) fits
+  });
+});

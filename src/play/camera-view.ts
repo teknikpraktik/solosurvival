@@ -10,6 +10,8 @@ export interface ViewProfile {
   aheadM: number;
   /** Zoomed-in view (zombie or goal near): metres from the player to the top edge. */
   closeAheadM: number;
+  /** Zoomed-in view: at least this many metres visible to each side of the player (zoomed out further if needed). Omitted = no minimum. */
+  closeSideM?: number;
   /** Player's height on the screen as a fraction from the top (0.5 = middle). */
   playerY: number;
   /** Zoom in when the nearest zombie is within this distance (m)… */
@@ -24,7 +26,8 @@ export interface ViewProfile {
 
 /** On foot is slower than Bike, so it needs fewer metres of view (50 % wider than 400 / 150 m after field testing). Bike normal view 50 % wider (1000 → 1500 m) after field test on bike. */
 const FOOT: ViewProfile = { aheadM: 600, closeAheadM: 225, playerY: 0.6, enterM: 100, exitM: 130, goalEnterM: 120, goalExitM: 160 };
-const BIKE: ViewProfile = { aheadM: 1500, closeAheadM: 300, playerY: 0.6, enterM: 200, exitM: 260, goalEnterM: 250, goalExitM: 320 };
+// Bike: zooming in for a zombie within 200 m must still show it, also when it comes from the side (field test): 230 m each side.
+const BIKE: ViewProfile = { aheadM: 1500, closeAheadM: 300, closeSideM: 230, playerY: 0.6, enterM: 200, exitM: 260, goalEnterM: 250, goalExitM: 320 };
 
 export const viewProfile = (a: Activity): ViewProfile => (a === "mtb" ? BIKE : FOOT);
 

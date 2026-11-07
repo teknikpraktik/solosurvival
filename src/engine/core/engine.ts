@@ -98,6 +98,17 @@ export function createGame({ g, config, rules, start, id, objectives }: CreateGa
   return { state, events };
 }
 
+/** Half angle of the "ahead" cone for new zombies: cos 60°. */
+const AHEAD_MIN_COS = 0.5;
+/** The player's direction of travel over the last few seconds (unit vector, x east, y north), or null when barely moving. */
+function travelDirection(s: GameState): { dx: number; dy: number } | null {
+  const trail = s.player.speedTrail;
+  if (!trail || trail.length < 2) return null;
+  const v = toLocal(trail[0], s.player.position);
+  const len = Math.hypot(v.x, v.y);
+  return len >= 8 ? { dx: v.x / len, dy: v.y / len } : null;
+}
+
 function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos, events: GameEvent[], opt: { initial?: boolean; near?: { p: LatLon; minR: number; maxR: number }; band?: { i: number; n: number } } = {}): boolean {
   const ctx = {
     player: s.player.position,
@@ -132,6 +143,11 @@ function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos,
   // Spread start without checkpoints (Survival): anywhere in the area, spaced out, from the start distance outwards.
   if (!spawn && opt.initial && rules.spreadStart && !dest) spawn = findSpawn(g, { ...ctx, minSpacingM: rules.startSpacingM }, s);
   if (!spawn && opt.initial && rules.startMinDistanceM > rules.spawnMinDistanceM) spawn = findSpawn(g, { ...ctx, minDistanceM: rules.spawnMinDistanceM, maxDistanceM: rules.spawnMaxDistanceM }, s);
+  // Ahead of a moving player (Survival on the bike): within 60 degrees of the direction of travel, for a share of the new zombies.
+  if (!spawn && !opt.initial && !dest && (rules.aheadSpawnShare ?? 0) > 0) {
+    const dir = travelDirection(s);
+    if (dir && rand(s) < rules.aheadSpawnShare!) spawn = findSpawn(g, { ...ctx, maxDistanceM: rules.spawnMaxDistanceM, ahead: { ...dir, minCos: AHEAD_MIN_COS }, tries: 600 }, s);
+  }
   if (!spawn) spawn = findSpawn(g, { ...ctx, maxDistanceM: rules.spawnMaxDistanceM }, s);
   if (!spawn) {
     // Inget säkert ställe inom bandet (t.ex. spelaren långt från nätet): släpp övre gränsen hellre än att inga zombier alls tillkommer.

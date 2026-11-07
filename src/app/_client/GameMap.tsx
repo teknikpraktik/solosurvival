@@ -96,6 +96,10 @@ export interface GameMapProps {
   /** Game view: player centred, zoom fitted so that `viewAheadM` (`viewCloseAheadM` when `viewClose`) is visible ahead of and behind the player (top/bottom edge). */
   viewAheadM?: number;
   viewCloseAheadM?: number;
+  /** Close view: at least this many metres visible to each side of the player (Bike: a zombie coming from the side is seen). */
+  viewCloseSideM?: number;
+  /** A small red dot at the edge of the free map area towards each zombie outside it (or under the HUD or the controls). */
+  zombieEdgeDots?: boolean;
   /** Zoomed in on the surroundings (zombie or goal near) instead of the wide view. */
   viewClose?: boolean;
   /** Game view: the player's height on the screen as a fraction from the top (standard 0.5 = middle). */
@@ -210,7 +214,7 @@ export default function GameMap(props: GameMapProps) {
 
   const src = (id: string, data: GeoJSON.FeatureCollection) => (mapRef.current?.getSource(id) as GeoJSONSource | undefined)?.setData(data);
 
-  const { graph, routes, markers, player, accuracyM, start, zombies, extraction, pointTo, follow, fit, frozen, viewAheadM, viewCloseAheadM, viewClose, viewPlayerY } = props;
+  const { graph, routes, markers, player, accuracyM, start, zombies, extraction, pointTo, follow, fit, frozen, viewAheadM, viewCloseAheadM, viewCloseSideM, viewClose, viewPlayerY } = props;
   useEffect(() => { if (loaded) src("net", fc(graph ? [...graph.edges.values()].filter((e) => !e.offtrail).map((e) => line(e.geometry)) : [])); }, [loaded, graph]);
   useEffect(() => { if (loaded) src("routes", fc((routes ?? []).map((r) => line(r.points, { sel: r.selected, faint: !!r.faint })))); }, [loaded, routes]);
   useEffect(() => { if (loaded) src("start", fc(start ? [pt(start)] : [])); }, [loaded, start]);
@@ -296,6 +300,8 @@ export default function GameMap(props: GameMapProps) {
         const y = Math.min(0.8, Math.max(0.2, viewPlayerY ?? 0.5));
         cam.padding = { top: Math.round(Math.max(0, 2 * y - 1) * h), bottom: Math.round(Math.max(0, 1 - 2 * y) * h), left: 0, right: 0 };
         cam.zoom = viewZoom(player.lat, h, viewClose ? (viewCloseAheadM ?? viewAheadM) : viewAheadM, y);
+        // Close view with a side width: zoom out further if needed, so that much is visible to the left and right of the player.
+        if (viewClose && viewCloseSideM) cam.zoom = Math.min(cam.zoom, viewZoom(player.lat, map.getContainer().clientWidth, viewCloseSideM, 0.5));
         // Coming back to AUTO, or switching between the wide and the close view: ease smoothly.
         returning = !wasFollowing.current || lastClose.current !== !!viewClose;
         lastClose.current = !!viewClose;
@@ -420,7 +426,43 @@ export default function GameMap(props: GameMapProps) {
       z.label.style.transform = `translate(-50%, -50%) translate(${(Math.sin(a) * 40).toFixed(1)}px, ${(-Math.cos(a) * 40).toFixed(1)}px)`;
     }
     for (const [id, z] of zMarkers.current) if (!live.has(id)) { z.m.remove(); zMarkers.current.delete(id); closingHist.current.delete(id); }
+    framesRef.current = frames;
+    drawEdgeDots();
   };
+  // Edge dots: one per zombie outside the free map area, on the line from the player towards it. Redrawn when the zombies move (the
+  // loop above) and when the camera moves (map render).
+  const framesRef = useRef<{ id: string; lat: number; lon: number }[]>([]);
+  const edgeDots = useRef(new Map<string, HTMLDivElement>());
+  const drawEdgeDots = () => {
+    const map = mapRef.current;
+    const dots = edgeDots.current;
+    const area = map && propsRef.current.zombieEdgeDots ? freeArea(map, 10) : null;
+    const me = propsRef.current.player;
+    const from = area && me ? map!.project([me.lon, me.lat]) : undefined;
+    const seen = new Set<string>();
+    if (area) for (const f of framesRef.current) {
+      const p = map!.project([f.lon, f.lat]);
+      const e = edgePoint(area, p.x, p.y, from);
+      if (!e) continue;
+      seen.add(f.id);
+      let d = dots.get(f.id);
+      if (!d) {
+        d = document.createElement("div");
+        d.className = "zedge";
+        map!.getContainer().appendChild(d);
+        dots.set(f.id, d);
+      }
+      d.style.transform = `translate(${e.x.toFixed(1)}px, ${e.y.toFixed(1)}px) translate(-50%, -50%)`;
+    }
+    for (const [id, d] of dots) if (!seen.has(id)) { d.remove(); dots.delete(id); }
+  };
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!loaded || !map) return;
+    map.on("render", drawEdgeDots);
+    drawEdgeDots();
+    return () => { map.off("render", drawEdgeDots); edgeDots.current.forEach((d) => d.remove()); edgeDots.current.clear(); };
+  }, [loaded, props.zombieEdgeDots]); // eslint-disable-line react-hooks/exhaustive-deps
   const ensureLoop = () => {
     const L = loopRef.current;
     if (L.running) return;
@@ -440,7 +482,7 @@ export default function GameMap(props: GameMapProps) {
   useEffect(() => {
     if (!loaded || !graph) return;
     animRef.current = new ZombieAnimator(graph);
-    return () => { cancelAnimationFrame(loopRef.current.raf); loopRef.current.running = false; animRef.current = null; zMarkers.current.forEach((z) => z.m.remove()); zMarkers.current.clear(); };
+    return () => { cancelAnimationFrame(loopRef.current.raf); loopRef.current.running = false; animRef.current = null; zMarkers.current.forEach((z) => z.m.remove()); zMarkers.current.clear(); framesRef.current = []; drawEdgeDots(); };
   }, [loaded, graph]);
   useEffect(() => {
     if (!animRef.current) return;

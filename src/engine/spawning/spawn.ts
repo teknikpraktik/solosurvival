@@ -22,6 +22,8 @@ export interface SpawnContext {
   corridor?: { a: LatLon; b: LatLon; halfWidthM: number; minT: number; maxT: number };
   /** Spread start: spawn within [minR, maxR] metres of this point (e.g. a mission checkpoint). */
   near?: { p: LatLon; minR: number; maxR: number };
+  /** Only ahead of the player: within the cone around this direction of travel (unit vector, local x = east, y = north; cos of the half angle). */
+  ahead?: { dx: number; dy: number; minCos: number };
   /** Zoner där zombier inte får spawna (t.ex. runt checkpoints och destination). */
   avoid?: { p: LatLon; r: number }[];
 }
@@ -72,6 +74,11 @@ export function findSpawn(g: TrailGraph, ctx: SpawnContext, rng: RngHolder): Edg
     if (ctx.maxDistanceM !== undefined && net > ctx.maxDistanceM * 1.5) continue;
     if (ctx.near) { const dn = haversineM(ll, ctx.near.p); if (dn < ctx.near.minR || dn > ctx.near.maxR) continue; }
     if (ctx.corridor && !inCorridor(ll, ctx.corridor)) continue;
+    if (ctx.ahead) {
+      const v = toLocal(ctx.player, ll);
+      const len = Math.hypot(v.x, v.y) || 1;
+      if ((v.x * ctx.ahead.dx + v.y * ctx.ahead.dy) / len < ctx.ahead.minCos) continue;
+    }
     if (ctx.zombiePositions.some((z) => haversineM(z, ll) < spacing)) continue;
     if (ctx.avoid?.some((a) => haversineM(a.p, ll) < a.r)) continue;
     return pos;

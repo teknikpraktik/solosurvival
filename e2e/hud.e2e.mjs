@@ -1,4 +1,4 @@
-// Game view: two-row HUD, extraction countdown, zombie threat levels (red, size, pulse) and closing labels, no edge indicators,
+// Game view: two-row HUD, extraction countdown, zombie threat levels (red, size, pulse) and closing labels, small red edge dots,
 // home marker stepping back under the player, magenta goal, map edge to edge, quieter QUIT.
 // BASE_URL=http://localhost:3100 CHROMIUM_PATH=… E2E_OUT=dir node e2e/hud.e2e.mjs
 import { chromium } from "playwright-core";
@@ -47,10 +47,14 @@ const place = (page, list) => page.evaluate((list) => {
   check("zombie beyond 600 m: dimmed ('far')", cls.some((c) => c.includes("far")));
   check("nearest-zombie pill red within 100 m", (await page.locator(".zpill").getAttribute("class")).includes("zclose"));
   check("a hunting zombie's label shows it closing in", (await page.locator(".zlabel.closing").count()) >= 1, `${await page.locator(".zlabel.closing").count()} closing`);
-  check("no zombie indicators along the screen edge (only the zombies themselves)", (await page.locator(".zedge").count()) === 0);
+  const dot = await page.evaluate(() => { const d = document.querySelector(".zedge"); return d ? { n: document.querySelectorAll(".zedge").length, bg: getComputedStyle(d).backgroundColor } : { n: 0 }; });
+  check("small red dots at the edge for zombies outside the visible map", dot.n >= 1 && dot.bg === "rgb(255, 42, 42)", JSON.stringify(dot));
   const ring = await page.evaluate(() => [...document.querySelectorAll(".zmark .zring")].map((e) => getComputedStyle(e).stroke));
   check("zombies are red (no amber)", ring.length > 0 && ring.every((c) => !c.includes("245, 158, 11")), JSON.stringify([...new Set(ring)]));
   check("QUIT quieter than PAUSE", (await page.locator(".controls .quit").count()) === 1);
+  await page.locator(".controls .iconbtn").click(); await page.waitForTimeout(200);
+  check("sound off: the icon is not red", (await page.locator(".controls .iconbtn").evaluate((e) => getComputedStyle(e).color)) !== "rgb(248, 113, 113)");
+  await page.locator(".controls .iconbtn").click();
   const fill = await page.evaluate(() => { const r = document.querySelector(".map-shell").getBoundingClientRect(); return { bottom: Math.round(r.bottom), vh: window.innerHeight }; });
   check("map reaches the bottom of the screen", fill.bottom >= fill.vh, JSON.stringify(fill));
   check("match clock is captioned TIME LEFT", (await page.locator(".pill.timeleft .tl").innerText()) === "TIME LEFT");

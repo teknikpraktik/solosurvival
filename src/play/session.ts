@@ -58,8 +58,6 @@ export interface SessionDeps {
   traceEnabled?: () => boolean;
   /** Background map tiles for buildings and water, so zombies can go off the trails (not through them). Without it they stay on the trails. */
   terrainTiles?: TileFetcher;
-  /** The compass turns the map also while moving (the arrow shows the GPS direction of travel). Read when the compass is turned on. Default on. */
-  compassView?: () => boolean;
   /** Slumpade skrämmor (standard av om utelämnat). Aldrig på cykel, och aldrig om produktprofilen stänger av dem. */
   jumpScares?: () => boolean;
   /** Produktprofil (src/config/product.ts): tillåtna aktiviteter och lägen, fiendefart, skrämmor. Utelämnad = vuxenappens beteende. */
@@ -266,7 +264,6 @@ export class PlaySession {
    * Utan kompass fungerar Track Up ändå med GPS-riktningen när man rör sig.
    */
   async enableCompass(): Promise<CompassStatus> {
-    this.fusion.compassView = this.d.compassView?.() ?? true;
     if (this.compassStatus === "on") return "on";
     if (!this.d.compass) { this.compassStatus = "unsupported"; this.emit(); return this.compassStatus; }
     try {
@@ -279,10 +276,6 @@ export class PlaySession {
     return this.compassStatus;
   }
 
-  /** The setting "Compass turns the map" changed: applies at once. */
-  setCompassView(on: boolean): void {
-    this.fusion.compassView = on;
-  }
 
   /** Aktuell riktning utan att vänta på nästa vy-uppdatering (kartan läser den varje bildruta). */
   liveHeading(): FusedHeading {
@@ -297,7 +290,7 @@ export class PlaySession {
     if (!d) return;
     this.lastHeadingLogMs = t;
     const r = (x: number) => Math.round(x);
-    this.log.add(t, "heading", { gps: r(d.gpsDeg), compass: r(d.compassDeg), bias: r(d.biasDeg), err: r(d.errDeg), view: this.fusion.compassView });
+    this.log.add(t, "heading", { gps: r(d.gpsDeg), compass: r(d.compassDeg), err: r(d.errDeg) });
   }
 
   /** Aktuell startposition för förhandsvisning: filtrerad position med tillräcklig noggrannhet. */

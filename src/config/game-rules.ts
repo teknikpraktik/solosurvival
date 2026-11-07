@@ -79,6 +79,8 @@ export interface Rules {
   durationS: number;
   headStartS: number;
   extractionOpensAtS: number;
+  /** Share (0–1) of new zombies placed ahead of a moving player (in the direction of travel), the rest anywhere. Missing = 0. */
+  aheadSpawnShare?: number;
   /** Zombie speed factor once extraction is open (Survival: the final rush to the helicopter). Missing = 1. */
   extractionRushFactor?: number;
   zombieSpeedMps: number;

@@ -193,10 +193,12 @@ export default function Play() {
         extraction={m.extraction}
         pointTo={!finished ? (m.objectives?.next ?? m.extraction) : null}
         homeStepsBack
+        zombieEdgeDots={!finished}
         scale
         follow={auto}
         viewAheadM={vp.aheadM}
         viewCloseAheadM={vp.closeAheadM}
+        viewCloseSideM={vp.closeSideM}
         viewClose={viewClose || goalClose}
         viewPlayerY={vp.playerY}
         onUserMove={onUserMove}
