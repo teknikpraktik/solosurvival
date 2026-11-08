@@ -76,7 +76,7 @@ const place = (page, list) => page.evaluate((list) => {
   const hm = await page.evaluate(() => { const h = document.querySelector(".goalmark.home"); const p = document.querySelector(".pmark"); if (!h || !p) return null; const a = h.getBoundingClientRect(), b = p.getBoundingClientRect(); return { at: h.classList.contains("atplayer"), dx: Math.round(a.left + a.width / 2 - b.left - b.width / 2), dy: Math.round(a.top + a.height / 2 - b.top - b.height / 2) }; });
   check("standing at home: home marker steps back and stays where home is (under the player)", hm && hm.at && Math.abs(hm.dx) <= 2 && Math.abs(hm.dy) <= 2, JSON.stringify(hm));
   const next = await page.evaluate(() => [...document.querySelectorAll('[aria-label^="Objective"]')].map((e) => getComputedStyle(e).backgroundColor));
-  const ptr = await page.locator(".goalptr svg path").nth(1).getAttribute("fill").catch(() => null);
+  const ptr = await page.locator(".goalptr svg path").nth(1).getAttribute("stroke").catch(() => null);
   check("next checkpoint and goal pointer are magenta (goal colour)", next.includes("rgb(192, 38, 211)") || ptr === "#c026d3", JSON.stringify({ next, ptr }));
   await page.screenshot({ path: `${OUT}/checkpoints.png` });
   await ctx.close();
@@ -93,6 +93,8 @@ const place = (page, list) => page.evaluate((list) => {
   await page.locator(".ngfoot .btn").click(); await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(800);
   await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match await page.waitForTimeout(1200);
   check("Bike: speed shown, HUD at most three rows", (await page.getByLabel("Your speed").count()) === 1 && (await page.locator(".hudbar > .line").count()) <= 3);
+  const bs = await page.evaluate(() => { const g = document.querySelector(".pill.bikestats"); if (!g) return null; const r = g.getBoundingClientRect(); return { cells: g.querySelectorAll(".cell").length, bike: g.querySelectorAll(".bikeicon svg").length, top: Math.round(r.top), w: Math.round(r.width), dup: document.querySelectorAll(".pill.activity").length, labels: [...g.querySelectorAll(".cell")].map((c) => c.getAttribute("aria-label")) }; });
+  check("Bike: speed, distance and elapsed time grouped with the bike icon (no second bike icon)", bs && bs.cells === 3 && bs.bike === 1 && bs.dup === 0 && /^Distance /.test(bs.labels[1]) && /^Elapsed \d/.test(bs.labels[2]) && bs.w < 260, JSON.stringify(bs));
   await page.screenshot({ path: `${OUT}/bike.png` });
   await ctx.close();
 }

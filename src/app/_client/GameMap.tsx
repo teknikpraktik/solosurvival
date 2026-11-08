@@ -67,7 +67,7 @@ export interface MapMarker {
 
 export interface GameMapProps {
   graph?: TrailGraph | null;
-  routes?: { points: LatLon[]; selected: boolean; faint?: boolean }[];
+  routes?: { points: LatLon[]; selected: boolean; faint?: boolean; hint?: boolean }[];
   markers?: MapMarker[];
   player?: LatLon | null;
   accuracyM?: number | null;
@@ -188,7 +188,9 @@ export default function GameMap(props: GameMapProps) {
       map.addLayer({ id: "net", type: "line", source: "net", paint: { "line-color": "#64748b", "line-width": 1.8, "line-opacity": 0.85 } });
       map.addSource("routes", { type: "geojson", data: fc() });
       map.addLayer({ id: "routes-faint", type: "line", source: "routes", filter: ["==", ["get", "faint"], true], paint: { "line-color": "#e2e8f0", "line-width": 2, "line-opacity": 0.4, "line-dasharray": [2, 3] } });
-      map.addLayer({ id: "routes", type: "line", source: "routes", filter: ["!=", ["get", "faint"], true], paint: { "line-color": ["case", ["get", "sel"], "#22d3ee", "#64748b"], "line-width": ["case", ["get", "sel"], 5, 2.5], "line-opacity": ["case", ["get", "sel"], 0.95, 0.5] } });
+      // Checkpoints: a thin goal-coloured line start → 1 → 2 → … → home, only a hint of where the next one lies.
+      map.addLayer({ id: "routes-hint", type: "line", source: "routes", filter: ["==", ["get", "hint"], true], layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#c026d3", "line-width": 1.6, "line-opacity": 0.7 } });
+      map.addLayer({ id: "routes", type: "line", source: "routes", filter: ["all", ["!=", ["get", "faint"], true], ["!=", ["get", "hint"], true]], paint: { "line-color": ["case", ["get", "sel"], "#22d3ee", "#64748b"], "line-width": ["case", ["get", "sel"], 5, 2.5], "line-opacity": ["case", ["get", "sel"], 0.95, 0.5] } });
       map.addSource("acc", { type: "geojson", data: fc() });
       map.addLayer({ id: "acc", type: "fill", source: "acc", paint: { "fill-color": "#3b82f6", "fill-opacity": 0.15 } });
       map.addSource("start", { type: "geojson", data: fc() });
@@ -216,7 +218,7 @@ export default function GameMap(props: GameMapProps) {
 
   const { graph, routes, markers, player, accuracyM, start, zombies, extraction, pointTo, follow, fit, frozen, viewAheadM, viewCloseAheadM, viewCloseSideM, viewClose, viewPlayerY } = props;
   useEffect(() => { if (loaded) src("net", fc(graph ? [...graph.edges.values()].filter((e) => !e.offtrail).map((e) => line(e.geometry)) : [])); }, [loaded, graph]);
-  useEffect(() => { if (loaded) src("routes", fc((routes ?? []).map((r) => line(r.points, { sel: r.selected, faint: !!r.faint })))); }, [loaded, routes]);
+  useEffect(() => { if (loaded) src("routes", fc((routes ?? []).map((r) => line(r.points, { sel: r.selected, faint: !!r.faint, hint: !!r.hint })))); }, [loaded, routes]);
   useEffect(() => { if (loaded) src("start", fc(start ? [pt(start)] : [])); }, [loaded, start]);
   // Extraction: egen flaggikon (inte samma som hem eller checkpoint).
   const extractionMarker = useRef<Marker | null>(null);

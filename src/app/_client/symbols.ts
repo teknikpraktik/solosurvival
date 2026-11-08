@@ -55,12 +55,9 @@ export const EXTRACTION_SVG = `<svg viewBox="0 0 40 40" width="42" height="42" x
  * Visare i kartans kant mot nästa mål utanför bild: vit rund bricka med magenta ring och måltavla (samma magenta som nästa mål), med en liten spets
  * som pekar mot målet (spetsen uppåt, roteras med CSS). Medvetet en annan form än spelarens blå pilspets, så att de inte förväxlas.
  */
-export const GOAL_POINTER_SVG = `<svg viewBox="0 0 32 32" width="30" height="30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-<path d="M16 1.5 L21.2 9.4 A10.4 10.4 0 1 1 10.8 9.4 Z" fill="none" stroke="#0b0f14" stroke-width="3.6" stroke-linejoin="round" opacity=".75"/>
-<path d="M16 1.5 L21.2 9.4 A10.4 10.4 0 1 1 10.8 9.4 Z" fill="#c026d3" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
-<circle cx="16" cy="18.4" r="6.6" fill="#ffffff"/>
-<circle cx="16" cy="18.4" r="3.6" fill="#c026d3"/>
-<circle cx="16" cy="18.4" r="1.4" fill="#ffffff"/>
+export const GOAL_POINTER_SVG = `<svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 21V4M6 10l6-6 6 6" stroke="#0b0f14" stroke-width="4.4" opacity=".7"/>
+<path d="M12 21V4M6 10l6-6 6 6" stroke="#c026d3" stroke-width="2.4"/>
 </svg>`;
 
 /** HUD: on foot, a walking person (currentColor, so it follows the pill's text colour). */

@@ -122,7 +122,8 @@ export default function Play() {
       tone: i < m.objectives!.index ? "done" : i === m.objectives!.index ? "next" : "todo",
     }));
   }, [m?.proposal, m?.objectives?.index]);
-  // A TO B: any route counts, so only a faint straight line from A to B is drawn. Mission: no line at all.
+  // A TO B: any route counts, so only a faint straight line from A to B is drawn. Mission: a thin goal-coloured line joins
+  // start → 1 → 2 → … → home, a hint of the direction of the next checkpoint (straight lines, not a route to follow).
   const route = useMemo(() => {
     const pr = m?.proposal;
     if (!pr) return [];
@@ -130,7 +131,8 @@ export default function Play() {
       const b = pr.waypoints[0];
       return [{ points: [pr.geometry[0], { lat: b.lat, lon: b.lon }], selected: false, faint: true }];
     }
-    return []; // Mission: no route is drawn, only the checkpoints (markers)
+    if (m?.mode === "mission" && pr.waypoints.length) return [{ points: [pr.geometry[0], ...pr.waypoints.map((w) => ({ lat: w.lat, lon: w.lon }))], selected: false, hint: true }];
+    return [];
   }, [m?.proposal, m?.mode]);
   const zombies = useMemo(() => (m?.zombiesNear ?? []).map((z) => ({ id: z.id, edgeId: z.edgeId, distM: z.distM, speedMps: z.speedMps, chasing: z.state === "chase" || z.state === "intercept", sprinting: z.sprinting })), [m?.zombiesNear]);
   useEffect(() => { if (m && !m.paused) setPauseDismissed(false); }, [m?.paused]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -208,7 +210,8 @@ export default function Play() {
         <div className="line">
           <span className="modegroup">
             <span className="pill mode" aria-label="Mode and difficulty"><span>{MODE_LABEL[m.mode]}</span> <span>· {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span></span>
-            <span className="pill activity" role="img" aria-label={m.activity === "mtb" ? "Bike" : "On foot"} dangerouslySetInnerHTML={{ __html: m.activity === "mtb" ? BIKE_SVG : WALK_SVG }} />
+            {/* On a bike the bike sits with the speed/distance/time group instead (below); a finished match shows it here. */}
+            {(m.activity !== "mtb" || finished) && <span className="pill activity" role="img" aria-label={m.activity === "mtb" ? "Bike" : "On foot"} dangerouslySetInnerHTML={{ __html: m.activity === "mtb" ? BIKE_SVG : WALK_SVG }} />}
           </span>
           <span className="pill timeleft" aria-label={`Time left ${fmtTime(remaining)}`}><span className="tl" aria-hidden="true">TIME LEFT</span><span aria-hidden="true">{fmtTime(remaining)}</span></span>
         </div>
@@ -229,8 +232,16 @@ export default function Play() {
           )}
           {!finished && <span className={`pill zpill${zombieClose ? " zclose" : zombieWarn ? " zwarn" : ""}`} aria-label="Nearest zombie">💀 {m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>}
         </div>
+        {/* Bike: speed, distance ridden and time since the start, grouped in one compact pill with the bike at its side. */}
         {!finished && m.activity === "mtb" && (
-          <div className="line end"><span className="pill" aria-label="Your speed">{view.speedMps === null ? "– km/h" : `${(view.speedMps * 3.6).toFixed(1)} km/h`}</span></div>
+          <div className="line end">
+            <span className="pill bikestats">
+              <span className="bikeicon" role="img" aria-label="Bike" dangerouslySetInnerHTML={{ __html: BIKE_SVG }} />
+              <span className="cell" aria-label="Your speed"><span className="tl" aria-hidden="true">KM/H</span><span aria-hidden="true">{view.speedMps === null ? "–" : (view.speedMps * 3.6).toFixed(1)}</span></span>
+              <span className="cell" aria-label={`Distance ${fmtKm(m.distanceM)}`}><span className="tl" aria-hidden="true">KM</span><span aria-hidden="true">{(m.distanceM / 1000).toFixed(m.distanceM < 10_000 ? 2 : 1)}</span></span>
+              <span className="cell" aria-label={`Elapsed ${fmtTime(m.elapsedS)}`}><span className="tl" aria-hidden="true">TIME</span><span aria-hidden="true">{fmtTime(m.elapsedS)}</span></span>
+            </span>
+          </div>
         )}
         {!finished && !m.paused && m.offNetwork?.active && (
           <div className="line"><span className="pill warn" role="status" aria-live="polite">{m.offNetwork.exposed ? "Off the road · zombies can reach you. Return to a road!" : `Off the road network · ${m.offNetwork.budgetLeftS} s until zombies find you`}</span></div>
