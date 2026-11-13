@@ -23,6 +23,27 @@ const en = {
     gpsFinding: "Finding your location… Move to open sky.",
     gpsWaiting: "Waiting for a better location signal…",
     loading: "Loading…",
+    // Three steps: activity, mode, then the setup with the map.
+    activityPrompt: "How will you travel?",
+    modeTitle: "GAME MODE",
+    modePrompt: "Choose how you win.",
+    activityCard: { walk: "ON FOOT", mtb: "BY BIKE" } as Record<"walk" | "mtb", string>,
+    activitySub: { walk: "Walk or run on paths and trails", mtb: "Ride roads and gravel tracks" } as Record<"walk" | "mtb", string>,
+    // The win condition of each mode, as the game decides it (all modes: being caught ends the match).
+    modeWin: {
+      mission: "Take every checkpoint in order, then get home before time runs out.",
+      escape: "Choose B on the map and reach it before time runs out. Any way goes.",
+      survival: "Stay free until extraction opens, then reach it before time runs out.",
+    } satisfies Record<GameMode, string>,
+    lastSetup: "LAST SETUP",
+    lastSetupLabel: (what: string) => `Last setup: ${what}. Opens the match setup.`,
+    back: "Back",
+    backTo: { activity: "Back to activity", mode: "Back to game mode" } as Record<"activity" | "mode", string>,
+    changeActivity: (a: string) => `Activity: ${a}. Change`,
+    changeMode: (m: string) => `Game mode: ${m}. Change`,
+    settings: "Settings",
+    settingsLabel: (open: boolean) => (open ? "Hide settings" : "Show settings"),
+    waitingForCourse: "Waiting for your location to plan the course…",
   },
   preview: {
     editSetup: "EDIT SETUP",

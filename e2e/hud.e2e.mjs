@@ -15,8 +15,9 @@ async function play(mode) {
   const page = await ctx.newPage();
   const fixes = async (n = 3) => { for (let i = 0; i < n; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); } };
   await page.goto(BASE + "/new"); await page.waitForTimeout(1500); await fixes();
-  await page.getByRole("group", { name: "Mode" }).getByRole("button", { name: mode, exact: true }).click(); await fixes();
-  await page.locator(".ngfoot .btn").click();
+  await page.getByRole("button", { name: "ON FOOT", exact: true }).click();
+  await page.getByRole("button", { name: mode, exact: true }).click(); await fixes();
+  if (mode === "SURVIVAL") await page.getByRole("button", { name: "START GAME" }).click();
   if (mode !== "SURVIVAL") { await page.locator(".pvstats").waitFor({ timeout: 90000 }); await fixes(); await page.getByRole("button", { name: "START GAME" }).click(); }
   await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(800);
   await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match await page.waitForTimeout(1500); await fixes(2);
@@ -88,9 +89,10 @@ const place = (page, list) => page.evaluate((list) => {
   const page = await ctx.newPage();
   await page.goto(BASE + "/new"); await page.waitForTimeout(1500);
   for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-  await page.getByRole("button", { name: "Bike", exact: true }).click();
-  await page.getByRole("group", { name: "Mode" }).getByRole("button", { name: "SURVIVAL", exact: true }).click();
-  await page.locator(".ngfoot .btn").click(); await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(800);
+  await page.getByRole("button", { name: "BY BIKE", exact: true }).click();
+  await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
+  for (let i = 0; i < 2; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
+  await page.getByRole("button", { name: "START GAME" }).click(); await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(800);
   await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match await page.waitForTimeout(1200);
   check("Bike: speed shown, HUD at most three rows", (await page.getByLabel("Your speed").count()) === 1 && (await page.locator(".hudbar > .line").count()) <= 3);
   const bs = await page.evaluate(() => { const g = document.querySelector(".pill.bikestats"); if (!g) return null; const r = g.getBoundingClientRect(); return { cells: g.querySelectorAll(".cell").length, bike: g.querySelectorAll(".bikeicon svg").length, top: Math.round(r.top), w: Math.round(r.width), dup: document.querySelectorAll(".pill.activity").length, labels: [...g.querySelectorAll(".cell")].map((c) => c.getAttribute("aria-label")) }; });

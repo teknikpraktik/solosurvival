@@ -4,7 +4,7 @@ const BASE = process.env.BASE_URL;
 const START = { latitude: 59.40731, longitude: 13.46753, accuracy: 6 };
 const res = [];
 const check = (n, ok, i = "") => { res.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${i ? " – " + i : ""}`); };
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, permissions: ["geolocation"], geolocation: START, locale: "sv-SE" });
 const page = await ctx.newPage();
 const failed = [], bad = [], hosts = new Map();
@@ -34,16 +34,16 @@ for (const mode of ["SURVIVAL", "CHECKPOINTS"]) {
   await page.goto(BASE + "/new");
   for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
   await page.waitForTimeout(800);
+  await page.getByRole("button", { name: "ON FOOT", exact: true }).click();
   await page.getByRole("button", { name: mode, exact: true }).click();
   if (mode === "SURVIVAL") {
-    // Survival has no preview: START on the settings page goes straight to the game.
-    await page.getByRole("button", { name: "START", exact: true }).click();
+    // Survival has no course: START GAME on the setup step goes straight to the game.
+    await page.getByRole("button", { name: "START GAME", exact: true }).click();
     await page.waitForURL("**/play", { timeout: 90000 });
     check("SURVIVAL: START leder direkt till spelet", true);
     await page.goto(BASE + "/");
     continue;
   }
-  await page.getByRole("button", { name: /SHOW (ROUTE|COURSE)/ }).click();
   await page.getByText(mode === "SURVIVAL" ? /Match length/ : /Distance|Straight line/).first().waitFor({ timeout: 60000 });
   await page.waitForSelector('[data-testid="map"][data-loaded="true"]', { timeout: 20000 });
   await page.waitForTimeout(2500);

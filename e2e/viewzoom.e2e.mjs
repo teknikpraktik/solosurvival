@@ -14,9 +14,9 @@ await ctx.addInitScript(() => { try { localStorage.setItem("outbreak.debug", "on
 const page = await ctx.newPage();
 const tick = async (n = 3) => { for (let i = 0; i < n; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); } };
 await page.goto(BASE + "/new"); await tick(4);
-await page.getByRole("button", { name: FOOT ? "On foot" : "Bike", exact: true }).click();
-await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
-await page.getByRole("button", { name: "START", exact: true }).click(); await tick(); // Survival: START on the settings page goes straight to the game (no preview)
+await page.getByRole("button", { name: FOOT ? "ON FOOT" : "BY BIKE", exact: true }).click();
+await page.getByRole("button", { name: "SURVIVAL", exact: true }).click(); await tick(2);
+await page.getByRole("button", { name: "START GAME", exact: true }).click(); await tick(); // Survival: START GAME on the setup step goes straight to the game
 await page.waitForURL("**/play", { timeout: 90000 }); await tick();
 await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match
 await page.waitForTimeout(1500); await tick(2);

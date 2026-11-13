@@ -7,17 +7,19 @@ const START = { latitude: 59.40731, longitude: 13.46753, accuracy: 6 };
 const res = []; const check = (n, ok, i = "") => { res.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${i ? " – " + i : ""}`); };
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 
-async function open(vp, setup, afterShow) {
+async function open(vp, setup, afterShow, mode = "CHECKPOINTS") {
   const ctx = await browser.newContext({ viewport: vp, isMobile: true, hasTouch: true, permissions: ["geolocation"], geolocation: START });
   await ctx.addInitScript(() => { try { localStorage.setItem("outbreak.debug", "on"); } catch {} });
   const page = await ctx.newPage();
   const fixes = async (n = 3) => { for (let i = 0; i < n; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); } };
   await page.goto(BASE + "/new"); await page.waitForTimeout(1500); await fixes();
-  if (setup) await setup(page);
+  await page.getByRole("button", { name: "ON FOOT", exact: true }).click();
+  await page.getByRole("button", { name: mode, exact: true }).click();
+  if (setup) await setup(page); // on the setup step
   await fixes();
-  await page.locator(".ngfoot .btn").click();
   if (afterShow) await afterShow(page, fixes);
   await page.locator(".pvstats").waitFor({ timeout: 90000 });
+  await page.waitForFunction(() => window.__outbreak?.getView().stage === "preview", null, { timeout: 90000 });
   await page.waitForTimeout(1500);
   return { ctx, page, fixes };
 }
@@ -40,6 +42,7 @@ const allIn = (ms) => ms.length > 0 && ms.every((m) => m.in);
   const { ctx, page, fixes } = await open({ width: 390, height: 844 }, async (p) => {
     await p.getByRole("button", { name: "Hard", exact: true }).click();
     await p.locator("#dist").fill("4000");
+    await p.waitForFunction(() => { const v = window.__outbreak?.getView(); return v?.params?.targetLengthM === 4000 && v.stage === "preview"; }, null, { timeout: 90000 });
   });
   const ms = await markers(page);
   const wp = await page.evaluate(() => { const v = window.__outbreak.getView(); return v.prepared.proposals[v.selected].waypoints.map((w) => w.kind); });
@@ -65,11 +68,13 @@ const allIn = (ms) => ms.length > 0 && ms.every((m) => m.in);
   await page.waitForTimeout(1500);
   const params = await page.evaluate(() => window.__outbreak.getView().params);
   check("REGENERATE: a new course, same settings, fitted", (await page.evaluate(() => JSON.stringify(window.__outbreak.getView().prepared.proposals[0].waypoints.map((w) => [w.lat, w.lon])))) !== oldWp && params.difficulty === "hard" && params.targetLengthM === 4000 && allIn(await markers(page)));
-  // Back to New game: settings kept.
-  await page.getByRole("button", { name: /Edit setup/ }).click(); await page.waitForTimeout(800);
-  check("EDIT SETUP: back on New game with the settings kept", (await page.getByRole("heading", { name: "NEW GAME" }).count()) === 1 && (await page.getByRole("button", { name: "Hard", exact: true }).getAttribute("aria-pressed")) === "true" && (await page.locator(".rangeval").innerText()) === "4.0 km");
+  // Back to the mode step and the same mode again: settings and course kept.
+  await page.getByRole("button", { name: "Back to game mode" }).click(); await page.waitForTimeout(800);
+  const onMode = (await page.getByRole("heading", { name: "GAME MODE" }).count()) === 1;
+  await page.getByRole("button", { name: "CHECKPOINTS", exact: true }).click(); await page.waitForTimeout(800);
+  check("back to the mode step and in again: the settings are kept", onMode && (await page.getByRole("button", { name: "Hard", exact: true }).getAttribute("aria-pressed")) === "true" && (await page.locator(".rangeval").innerText()) === "4.0 km");
   // Start.
-  await fixes(); await page.locator(".ngfoot .btn").click(); await page.locator(".pvstats").waitFor({ timeout: 90000 }); await page.waitForTimeout(800); await fixes();
+  await page.locator(".pvstats").waitFor({ timeout: 90000 }); await page.waitForTimeout(800); await fixes();
   await page.getByRole("button", { name: "START GAME" }).click();
   check("START GAME starts the match", await page.waitForURL("**/play", { timeout: 60000 }).then(() => true, () => false));
   await ctx.close();
@@ -78,19 +83,16 @@ const allIn = (ms) => ms.length > 0 && ms.every((m) => m.in);
 // --- A to B ---
 {
   let pickOk = false;
-  const { ctx, page } = await open({ width: 390, height: 844 }, async (p) => {
-    await p.getByRole("group", { name: "Mode" }).getByRole("button", { name: "A TO B", exact: true }).click(); await p.waitForTimeout(500);
-  }, async (p, fixes) => {
-    // SHOW COURSE opens a full map; tap B on it, then SHOW COURSE plans the route.
+  const { ctx, page } = await open({ width: 390, height: 844 }, null, async (p, fixes) => {
+    // B is set on the setup step's map; the route is planned in the same view.
     await p.getByText("Tap the map to set B").waitFor({ timeout: 10000 });
-    const showDisabled = await p.locator(".pick .pvstart").isDisabled();
+    const startOff = await p.locator(".pvstart").isDisabled();
     await p.waitForTimeout(1500);
     const m = await p.locator('[data-testid="map"]').boundingBox(); await p.mouse.click(m.x + m.width * 0.75, m.y + m.height * 0.3); await p.waitForTimeout(500);
-    pickOk = showDisabled && (await p.getByText(/B is set/).count()) === 1;
+    pickOk = startOff && (await p.getByText(/B is set/).count()) === 1;
     await fixes();
-    await p.locator(".pick .pvstart").click();
-  });
-  check("A to B: SHOW COURSE opens a full map; SHOW COURSE there is off until B is tapped", pickOk);
+  }, "A TO B");
+  check("A to B: START GAME is off until B is tapped on the setup map", pickOk);
   const txt = await page.locator(".pvsheet").innerText();
   check("A to B: route summary with Point B, no Regenerate", /Point B/.test(txt) && (await page.getByRole("button", { name: /Regenerate/ }).count()) === 0 && (await page.getByRole("button", { name: "START GAME" }).count()) === 1);
   await ctx.close();

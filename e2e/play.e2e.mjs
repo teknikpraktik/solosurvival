@@ -42,7 +42,9 @@ try {
   await page.waitForTimeout(800);
     await page.screenshot({ path: `${OUT}/02-new.png` });
 
-  await page.getByText("SHOW COURSE").click();
+  // New game in three steps: activity, mode, then the setup with the course on the map.
+  await page.getByRole("button", { name: "ON FOOT", exact: true }).click();
+  await page.getByRole("button", { name: "CHECKPOINTS", exact: true }).click();
   await page.getByText(/Distance|Straight line/).first().waitFor({ timeout: 60000 });
   await page.waitForSelector('[data-testid="map"][data-loaded="true"]', { timeout: 20000 });
   check("förhandsvisning med rutt och karta", true);

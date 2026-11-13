@@ -304,7 +304,10 @@ export class PlaySession {
   }
 
   // --- förberedelse ---
+  /** Increased by every prepare and by backToConfig/reset: a prepare that finishes after a newer one (or after the choices were dropped) is discarded. */
+  private prepareSeq = 0;
   async prepare(params: MatchParams): Promise<Prepared | null> {
+    const seq = ++this.prepareSeq;
     const allowed = applyProfile(params, this.d.profile);
     if (!allowed) {
       this.messages = ["This option is not available in this app."];
@@ -328,11 +331,15 @@ export class PlaySession {
     this.messages = [];
     this.emit();
     const t0 = performance.now();
+    let prepared: Prepared;
     try {
-      this.prepared = await prepareMatch(this.d.store, start, params, { terrainTiles: this.d.terrainTiles });
+      prepared = await prepareMatch(this.d.store, start, params, { terrainTiles: this.d.terrainTiles });
     } catch (err) {
-      this.prepared = { status: "no_route", message: `Map data could not be loaded: ${(err as Error).message}`, proposals: [], notes: [], timing: { loadMs: 0, graphMs: 0, routeMs: 0, totalMs: 0 } };
+      prepared = { status: "no_route", message: `Map data could not be loaded: ${(err as Error).message}`, proposals: [], notes: [], timing: { loadMs: 0, graphMs: 0, routeMs: 0, totalMs: 0 } };
     }
+    // A late answer: newer choices were made while this one was being planned. It must not overwrite them.
+    if (seq !== this.prepareSeq) return null;
+    this.prepared = prepared;
     this.routeGenMs = performance.now() - t0;
     this.selected = 0;
     this.stage = "preview";
@@ -351,7 +358,15 @@ export class PlaySession {
     await this.prepare({ ...this.params, seed: (this.params.seed * 1664525 + 1013904223) >>> 0 });
   }
 
+  /** Difficulty changes no course: New game hands it over before START instead of planning the course again. */
+  setDifficulty(difficulty: MatchParams["difficulty"]): void {
+    if (!this.params || this.params.difficulty === difficulty) return;
+    this.params = { ...this.params, difficulty };
+    this.emit();
+  }
+
   backToConfig(): void {
+    this.prepareSeq++;
     this.stage = this.provider.running ? "locating" : "idle";
     this.prepared = null;
     this.emit();
@@ -756,6 +771,7 @@ export class PlaySession {
 
   /** Återställer sessionen till startläge (efter avslutad match). */
   reset(): void {
+    this.prepareSeq++;
     this.stopTicker();
     this.live = null;
     this.recorder = null;

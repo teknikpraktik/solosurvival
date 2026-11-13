@@ -374,3 +374,62 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .hudbar .pill.bikestats .bikeicon { display: flex; color: #9fb0c0; }
 .hudbar .pill.bikestats .cell { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.05; }
 .hudbar .pill.bikestats .tl { font-size: .56rem; font-weight: 700; letter-spacing: .08em; color: #9fb0c0; }
+
+/* ---------- New game in three steps: picture cards (activity, mode), then the setup on the map ---------- */
+.page.newgame.ngstep { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+.ngprompt { margin: 0; font-size: 0.95rem; color: #c3ced9; }
+.ngprompt-k { font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text); }
+/* The cards share the height that is left, within limits, so all choices are visible without scrolling on ordinary phones. */
+.imgcards { display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; min-height: 0; }
+.imgcards.two .imgcard { flex: 1 1 0; min-height: 150px; max-height: 300px; }
+.imgcards.three .imgcard { flex: 1 1 0; min-height: 118px; max-height: 210px; }
+.imgcard { position: relative; display: flex; align-items: flex-end; width: 100%; padding: 0; overflow: hidden; border-radius: 14px; cursor: pointer; text-align: left;
+  border: 1px solid #2d3b4d; color: var(--text); font: inherit; isolation: isolate;
+  background: radial-gradient(120% 140% at 85% 40%, #24303d 0%, #121922 55%, #0b0f14 100%); box-shadow: 0 6px 18px #0008; }
+/* The picture: a background, so a missing file leaves the gradient above (no broken-image icon) and nothing is read aloud. */
+.imgcard-bg { position: absolute; inset: 0; z-index: -2; background-repeat: no-repeat; background-size: cover; background-position: var(--pos, 75% 50%); transition: transform .25s ease-out; }
+/* Darker behind the text (left and bottom) so the real text stays readable on any picture, also in daylight. */
+.imgcard::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, #0b0f14f0 0%, #0b0f14b8 42%, #0b0f1433 72%, #0b0f1400 100%), linear-gradient(0deg, #0b0f14cc 0%, #0b0f1400 55%); }
+.imgcard[data-card="foot"] .imgcard-bg { background-image: url("/img/card-foot.jpg"); --pos: 72% 45%; }
+.imgcard[data-card="bike"] .imgcard-bg { background-image: url("/img/card-bike.jpg"); --pos: 82% 45%; }
+.imgcard[data-card="checkpoints"] .imgcard-bg { background-image: url("/img/card-checkpoints.jpg"); --pos: 68% 55%; }
+.imgcard[data-card="atob"] .imgcard-bg { background-image: url("/img/card-atob.jpg"); --pos: 82% 60%; }
+.imgcard[data-card="survival"] .imgcard-bg { background-image: url("/img/card-survival.jpg"); --pos: 72% 55%; }
+.imgcard-text { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; max-width: 68%; }
+.imgcard-title { font-size: 1.35rem; font-weight: 900; letter-spacing: 0.08em; line-height: 1.1; text-shadow: 0 2px 8px #000; }
+.imgcard-sub { font-size: 0.82rem; font-weight: 500; line-height: 1.3; color: #d5dde6; text-shadow: 0 1px 6px #000; }
+.imgcard-mark { position: absolute; top: 10px; right: 10px; display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%;
+  background: #b91c1c; border: 1px solid #ef4444; color: #fff; font-size: 0.8rem; font-weight: 800; }
+.imgcard[data-current] { border-color: #ef4444; }
+.imgcard:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
+.imgcard:active .imgcard-bg { transform: scale(1.04); }
+@media (hover: hover) { .imgcard:hover { border-color: #4b5d73; } .imgcard[data-current]:hover { border-color: #f87171; } }
+@media (max-width: 359px) { .imgcard-title { font-size: 1.15rem; } .imgcard-sub { font-size: 0.76rem; } .imgcard-text { max-width: 78%; padding: 10px 12px; } }
+@media (max-height: 640px) { .imgcards.three .imgcard { min-height: 104px; } .imgcards.two .imgcard { min-height: 130px; } .imgcards.three .imgcard-sub { font-size: 0.74rem; } }
+/* Returning players: one tap to the setup with the last choices (never straight into a match). */
+.lastsetup { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 8px 14px; border-radius: 12px; cursor: pointer; text-align: left;
+  background: #131a22e6; border: 1px solid #b91c1c; color: var(--text); font: inherit; }
+.lastsetup-k { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; color: #fca5a5; flex: none; }
+.lastsetup-v { flex: 1; min-width: 0; font-weight: 700; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lastsetup-go { font-size: 1.6rem; line-height: 1; color: #fca5a5; flex: none; }
+.lastsetup:active { background: #1b2430; }
+.lastsetup:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
+/* Setup: the chosen activity and mode as buttons in the top bar; the panel scrolls on its own and never hands the gesture to the map. */
+.ngchips { gap: 6px; flex-wrap: nowrap; min-width: 0; }
+.ngchip { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: uppercase; }
+.ngchip::after { content: "✎"; margin-left: 6px; font-size: 0.8rem; opacity: .7; }
+.sheet.ngpanel { overscroll-behavior: contain; }
+.ngsettings { display: flex; flex-direction: column; gap: 10px; }
+.ngsettings[hidden] { display: none; }
+.ngpanel .pvtoggle { max-width: 55%; }
+.ngpanel .pvtoggle > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .imgcard-bg { transition: none; } .imgcard:active .imgcard-bg { transform: none; } }
+/* The back chevron of step 2 is a button (one step back), styled like the page header's link. */
+button.pageback { background: transparent; border: 0; padding: 0; font: inherit; cursor: pointer; }
+/* The settings in the setup panel use the same small labels as the New game page. */
+.ngpanel .nglabel { margin: 0; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #a9b6c4; }
+.ngpanel .ngnote { margin: 0; font-size: 0.82rem; line-height: 1.35; color: #b6c2cf; }
+/* Landscape: the setup panel is a column on the right; the map attribution moves left of it instead of covering its buttons. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .map-shell.ngsetup .attrib { right: calc(min(380px, 48vw) + 8px); }
+}

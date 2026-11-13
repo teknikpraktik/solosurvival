@@ -14,10 +14,11 @@ async function play(mode, vp = { width: 390, height: 844 }, setup) {
   const page = await ctx.newPage();
   const fixes = async (n = 3, pos = START) => { for (let i = 0; i < n; i++) { await ctx.setGeolocation(pos); await page.waitForTimeout(300); } };
   await page.goto(BASE + "/new"); await page.waitForTimeout(1500); await fixes();
-  await page.getByRole("group", { name: "Mode" }).getByRole("button", { name: mode, exact: true }).click();
-  if (setup) await setup(page);
+  await page.getByRole("button", { name: "ON FOOT", exact: true }).click();
+  await page.getByRole("button", { name: mode, exact: true }).click();
+  if (setup) await setup(page); // on the setup step
   await fixes();
-  await page.locator(".ngfoot .btn").click();
+  if (mode === "SURVIVAL") await page.getByRole("button", { name: "START GAME" }).click();
   if (mode !== "SURVIVAL") { await page.locator(".pvstats").waitFor({ timeout: 90000 }); await fixes(); await page.getByRole("button", { name: "START GAME" }).click(); }
   await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(800);
   await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match await page.waitForTimeout(1200); await fixes(2);

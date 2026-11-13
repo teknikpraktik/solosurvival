@@ -11,7 +11,7 @@ import { mkdirSync } from "node:fs"; mkdirSync(OUT, { recursive: true });
 const res = [];
 const check = (n, ok, i = "") => { res.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${i ? " – " + i : ""}`); };
 
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 const ctx = await browser.newContext({ viewport: { width: VW, height: VH }, isMobile: true, hasTouch: true, permissions: ["geolocation"], geolocation: START, locale: "sv-SE" });
 await ctx.addInitScript(() => { try { localStorage.setItem("outbreak.debug", "on"); } catch {} });
 const page = await ctx.newPage();
@@ -30,8 +30,10 @@ const reachable = async (locator) => locator.evaluate((el) => {
 await page.goto(BASE + "/new");
 for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 await page.waitForTimeout(800);
+await page.getByRole("button", { name: "ON FOOT", exact: true }).click();
 await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
-await page.getByRole("button", { name: "START", exact: true }).click(); // Survival: START on the settings page goes straight to the game (no preview)
+for (let i = 0; i < 2; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
+await page.getByRole("button", { name: "START GAME", exact: true }).click(); // Survival: START GAME on the setup step goes straight to the game
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 await page.waitForURL("**/play", { timeout: 90000 });
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }

@@ -5,7 +5,7 @@ import { destPoint } from "./geo.mjs";
 const BASE = process.env.BASE_URL;
 const START = { latitude: 59.40731, longitude: 13.46753, accuracy: 6 };
 const WALK_S = Number(process.env.WALK_S ?? 120);
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, permissions: ["geolocation"], geolocation: START });
 const page = await ctx.newPage();
 const reqs = [];
@@ -17,8 +17,10 @@ cdp.on("Network.loadingFinished", (e) => { const u = urls.get(e.requestId); if (
 await page.goto(BASE + "/new");
 for (let i = 0; i < 4; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 await page.waitForTimeout(800);
+await page.getByRole("button", { name: "ON FOOT", exact: true }).click();
 await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
-await page.getByRole("button", { name: "START", exact: true }).click(); // Survival: START on the settings page goes straight to the game (no preview)
+for (let i = 0; i < 2; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
+await page.getByRole("button", { name: "START GAME", exact: true }).click(); // Survival: START GAME on the setup step goes straight to the game
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 await page.waitForURL("**/play", { timeout: 90000 });
 await page.waitForSelector('[data-testid="map"][data-loaded="true"]');
