@@ -24,9 +24,11 @@ export default function HowToPlay() {
 
       <h2>Sound and voice</h2>
       <ul>
-        <li>A short sound warns you when a new zombie comes close.</li>
-        <li>When a zombie is within 100 m its distance is shown larger and spoken: 100, 50, 40, 30, 20, 10.</li>
-        <li>A taken checkpoint gives a bright chime and a spoken &quot;Checkpoint&quot;.</li>
+        <li>A low pulse plays while zombies are near (about 200 m on foot, 400 m on a bike) and fades when you have got away.</li>
+        <li>A zombie at close range gives a short sound. When a zombie is within 100 m its distance is shown larger and spoken: 100, 50, 40, 30, 20, 10.</li>
+        <li>A radio click comes before the operator speaks. A taken checkpoint gives a chime and a spoken &quot;Checkpoint&quot;.</li>
+        <li>In Survival you hear the helicopter approach, wait at the extraction point and take off when you make it.</li>
+        <li>Music, effects and voice have their own levels under <b>SOUND</b> on the start page.</li>
       </ul>
 
       <h2>Buttons</h2>

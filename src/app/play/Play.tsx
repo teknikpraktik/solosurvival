@@ -8,7 +8,8 @@ import { DIFFICULTY_LABEL, MODE_LABEL, fmtKm, fmtTime, objectiveLabel } from "..
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio, type CountdownLine } from "../_client/cues";
 import { COUNTDOWN_START_M, nextCountdown, type CountdownStep } from "@/play/countdown";
-import { APPROACH_COOLDOWN_S, TENSION_COOLDOWN_S, nextApproaching, nextClose, nextGoalClose, viewProfile } from "@/play/camera-view";
+import { APPROACH_COOLDOWN_S, nextApproaching, nextClose, nextGoalClose, viewProfile } from "@/play/camera-view";
+import { matchAudio } from "../_client/audio";
 import { Modal } from "../_client/Modal";
 import { BIKE_SVG, HELI_SVG, SOUND_OFF_SVG, SOUND_ON_SVG, WALK_SVG } from "../_client/symbols";
 import { t } from "../_client/strings";
@@ -91,17 +92,18 @@ export default function Play() {
 
   const m = view?.match ?? null;
   const vp = viewProfile(m?.activity ?? "walk");
-  // Close state: zombie within 200 m (Bike) / 100 m (on foot); back out beyond 260 / 130 m. Auto zoom closes in; entering plays an uneasy sound (with a cooldown).
+  // Close state: zombie within 200 m (Bike) / 100 m (on foot); back out beyond 260 / 130 m. Auto zoom closes in (the close-zombie sound
+  // follows the same distances, in the soundscape).
   const [viewClose, setViewClose] = useState(false);
-  const lastTension = useRef(-Infinity);
   const nearestM = m && !m.paused && m.phase !== "finished" ? m.nearestZombieM : null;
   const wantClose = nextClose(viewClose, nearestM, vp);
+  useEffect(() => { if (wantClose !== viewClose) setViewClose(wantClose); }, [wantClose, viewClose]);
+  // The match's soundscape (threat pulses, close zombie, helicopter) follows what the HUD shows. Leaving the game screen ends it.
+  const finishedNow = !m || view?.stage === "finished" || m.phase === "finished";
   useEffect(() => {
-    if (wantClose === viewClose) return;
-    setViewClose(wantClose);
-    const now = Date.now();
-    if (wantClose && now - lastTension.current >= TENSION_COOLDOWN_S * 1000) { lastTension.current = now; playCue("tension"); }
-  }, [wantClose, viewClose]);
+    matchAudio().update(m ? { id: m.id, mode: m.mode, activity: m.activity, phase: m.phase, paused: m.paused, finished: finishedNow, nearestM: m.nearestZombieM } : null);
+  }, [m?.id, m?.mode, m?.activity, m?.phase, m?.paused, finishedNow, m?.nearestZombieM]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => matchAudio().end(), []);
   // Goal near: auto zoom also closes in when the next checkpoint (or home, B, extraction) is near, and widens again once it is taken. No sound.
   const [goalClose, setGoalClose] = useState(false);
   const goal = m && !m.paused && m.phase !== "finished" ? (m.objectives?.next ?? m.extraction) : null;

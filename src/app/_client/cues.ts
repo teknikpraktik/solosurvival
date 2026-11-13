@@ -1,5 +1,7 @@
 import type { Cue } from "@/play/session";
 import { createCuePlayer, type SoundPack } from "@/audio/cue-player";
+import { SOUND_RULES } from "@/play/sound-rules";
+import { AUDIO, GAIN, readLevels, soundscape, writeLevels } from "./audio";
 
 export type { CueResult } from "@/audio/cue-player";
 
@@ -9,6 +11,8 @@ export type Line = "Game on" | "Captured" | "Zombies approaching" | "Run!" | "Ch
 export type CountdownLine = "100" | "50" | "40" | "30" | "20" | "10";
 /** Lines said in a brighter voice than the low, menacing default (a reward, not a threat). */
 const BRIGHT = new Set<Line>(["Checkpoint"]);
+/** The operator's lines come over the radio: a short click first (not "Captured": that is the end, not a message). */
+const NO_RADIO = new Set<Line>(["Captured"]);
 
 const PATTERN: Record<Cue, { f: number[]; vib: number[] }> = {
   danger: { f: [880, 660, 880], vib: [200, 100, 200, 100, 200] },
@@ -23,15 +27,74 @@ const PATTERN: Record<Cue, { f: number[]; vib: number[] }> = {
   sprint: { f: [300, 500, 900, 1400], vib: [150, 60, 150, 60, 400] },
 };
 
-/** OUTBREAK's sound pack. Only these cues make sound ("goal" = the rewarding chime when a checkpoint is reached); the others (alerts, extraction, match over) are silent so the game is not noisy. */
+/**
+ * OUTBREAK's cue pack: vibration and speech only. Every sound file is played by the soundscape (./audio.ts), so no cue makes a sound of its
+ * own and nothing is heard twice. Speech shares the soundscape's audio context and lowers the background while it speaks.
+ */
 export const OUTBREAK_SOUNDS: SoundPack<Line> = {
   storageKey: "outbreak.cues",
-  samples: { zombie: "/audio/zombie-near.wav", captured: "/audio/captured-scream.wav", jump: "/audio/jump-scream.wav", tension: "/audio/tension.wav", sprint: "/audio/sprint-shriek.wav", goal: "/audio/checkpoint.wav" },
+  samples: {},
   patterns: PATTERN,
-  audible: new Set<Cue>(["zombie", "captured", "jump", "tension", "goal", "sprint"]),
-  gain: (cue) => (cue === "captured" || cue === "jump" || cue === "goal" || cue === "sprint" ? 1 : 0.7),
+  audible: new Set<Cue>(),
+  gain: () => 0,
   // English in a low voice.
-  voice: { lang: "en-US", pitch: (l) => (BRIGHT.has(l) ? 1.1 : 0.5), rate: (l) => (BRIGHT.has(l) ? 1 : 0.9) },
+  voice: { lang: "en-US", pitch: (l) => (BRIGHT.has(l) ? 1.1 : 0.5), rate: (l) => (BRIGHT.has(l) ? 1 : 0.9), volume: () => readLevels().voice },
+  context: () => soundscape().context(),
+  onSpeech: (on) => soundscape().setDuck("speech", on),
 };
 
-export const { cuesEnabled, setCuesEnabled, speak, preloadCues, playCue, unlockAudio } = createCuePlayer(OUTBREAK_SOUNDS);
+const player = createCuePlayer(OUTBREAK_SOUNDS);
+export const { preloadCues, playCue } = player;
+
+export function cuesEnabled(): boolean { return readLevels().on; }
+/** The master switch: all sound, music and speech. */
+export function setCuesEnabled(on: boolean): void {
+  writeLevels({ on });
+  player.setCuesEnabled(on);
+  const s = soundscape();
+  s.applyLevels(0.3);
+  if (!on) s.stopAll(0.3);
+}
+
+/** Call inside a tap: allows sound and speech from now on. */
+export function unlockAudio(): void {
+  soundscape().unlock();
+  player.unlockAudio();
+}
+
+let lastLineMs = -Infinity;
+let pending: { timer: ReturnType<typeof setTimeout>; due: number } | null = null;
+const hidden = () => typeof document !== "undefined" && document.hidden;
+
+/**
+ * Says a line as the operator: a radio click first unless the channel is already open (a line within the last few seconds), then the voice.
+ * A line that could only come late (busy phone, app in the background) is dropped, never said out of time.
+ */
+export function speak(line: Line): boolean {
+  if (!cuesEnabled() || hidden()) return false;
+  const now = Date.now();
+  const R = SOUND_RULES.radio;
+  const open = now - lastLineMs < R.channelOpenS * 1000;
+  lastLineMs = now;
+  const s = soundscape();
+  if (NO_RADIO.has(line) || open || !s.unlocked) return player.speak(line);
+  if (pending) clearTimeout(pending.timer);
+  s.setDuck("radio", true);
+  void s.play(AUDIO.radio, "fx", GAIN.radio, 300);
+  const due = now + R.leadMs;
+  pending = {
+    due,
+    timer: setTimeout(() => {
+      pending = null;
+      if (Date.now() - due > R.maxLateMs || hidden() || !player.speak(line)) { s.setDuck("radio", false); return; }
+      // Hold the background down until the voice itself has started (it reports that a moment later), so the level does not pump.
+      setTimeout(() => s.setDuck("radio", false), 1500);
+    }, R.leadMs),
+  };
+  return true;
+}
+
+/** Drops a line that is waiting for its radio click (match over, app hidden). */
+export function cancelPendingSpeech(): void {
+  if (pending) { clearTimeout(pending.timer); pending = null; soundscape().setDuck("radio", false); }
+}

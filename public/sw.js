@@ -18,6 +18,11 @@ self.addEventListener("activate", (event) => {
       for (const k of await caches.keys()) {
         if (k !== STATIC && k !== PAGES) await caches.delete(k);
       }
+      // The old generated WAV sounds were replaced by MP3 files: drop them from the static cache.
+      try {
+        const st = await caches.open(STATIC);
+        for (const r of await st.keys()) if (/\/audio\/[^/]+\.wav$/.test(new URL(r.url).pathname)) await st.delete(r);
+      } catch { /* cache not available */ }
       await self.clients.claim();
     })(),
   );
