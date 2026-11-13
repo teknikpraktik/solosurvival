@@ -82,9 +82,18 @@ for (const act of ["ON FOOT", "BY BIKE"]) {
       }
       check(`${tag}: tapping B on the map plans the route in the same view and enables START GAME`, ok, info.slice(0, 200));
     } else {
-      check(`${tag}: no course to plan, the match facts are shown and START GAME is enabled`, ((await page.locator(".pvstats").textContent()) ?? "").includes("Extraction") && (await startBtn(page).isEnabled()));
+      check(`${tag}: no course to plan; match length chosen directly; START GAME is enabled`, (await page.locator("#dur").isVisible()) && (await startBtn(page).isEnabled()));
+      await page.locator("#dur").fill("45"); await page.waitForTimeout(200);
+      check(`${tag}: the match length can be changed`, (await page.locator(".rangeval").innerText()) === "45 min");
       check(`${tag}: no REGENERATE`, (await page.getByRole("button", { name: /Regenerate/ }).count()) === 0);
     }
+    // The simplified setup: difficulty shown directly and working, no summary boxes beyond distance and time limit.
+    await page.getByRole("button", { name: "Hard", exact: true }).click(); await page.waitForTimeout(200);
+    check(`${tag}: difficulty is chosen directly (no expanding)`, (await page.locator(".pvtoggle").count()) === 0 && (await page.getByRole("button", { name: "Hard", exact: true }).getAttribute("aria-pressed")) === "true" && (await page.getByRole("button", { name: "Normal", exact: true }).getAttribute("aria-pressed")) === "false");
+    const panel = (await page.locator(".ngpanel").innerText()).toUpperCase();
+    const facts = await page.locator(".pvstats dt").allInnerTexts();
+    check(`${tag}: no Est. time, Checkpoints, Goal or extraction boxes`, !/EST\. TIME|EXTRACTION|\bGOAL\b|\+ HOME/.test(panel) && (mode === "SURVIVAL" ? facts.length === 0 : facts.map((x) => x.toUpperCase()).join("|") === "DISTANCE|TIME LIMIT"), facts.join("|"));
+    check(`${tag}: no sideways scrolling`, !(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)));
     const st = await sessionStage(page);
     check(`${tag}: no match is running before START GAME`, st !== "playing", String(st));
     // START near the bottom, inside the screen.
@@ -200,18 +209,12 @@ for (const act of ["ON FOOT", "BY BIKE"]) {
   // Abort the match and come back to New game.
   await page.evaluate(() => window.__outbreak?.abort?.());
   await page.goto(BASE + "/new"); await page.waitForTimeout(1500);
-  const last = page.locator(".lastsetup");
-  check("step 1 offers the shortcut with the last choices", (await last.count()) === 1 && /Bike · SURVIVAL · Easy/.test(await last.innerText()), await last.innerText().catch(() => ""));
-  check("the picture cards are still there below it", (await page.locator(".imgcards.two .imgcard").count()) === 2);
-  await last.click(); await page.waitForTimeout(800);
-  const st = await sessionStage(page);
-  check("the shortcut opens the setup step with the saved settings, and no match starts", step(page) === "setup" && (await page.locator(".rangeval").innerText()) === "45 min" && (await page.getByRole("button", { name: "Easy", exact: true }).getAttribute("aria-pressed")) === "true" && st !== "playing" && page.url().includes("/new"), String(st));
-  await page.getByRole("button", { name: "Back to game mode" }).click(); await page.waitForTimeout(400);
-  check("back from a setup opened by the shortcut goes to the mode step", step(page) === "mode");
-  // Broken saved data: no shortcut, defaults.
+  check("step 1: no LAST SETUP box, summary or button for the last choices", (await page.locator(".lastsetup").count()) === 0 && (await page.getByText(/last setup/i).count()) === 0);
+  check("the last choices are the starting point: BY BIKE is the current card", (await card(page, "BY BIKE").getAttribute("data-current")) !== null);
+  // Broken saved data: the flow works with the defaults.
   await page.evaluate(() => localStorage.setItem("outbreak.newgame.last", "{broken"));
   await page.goto(BASE + "/new"); await page.waitForTimeout(1200);
-  check("unreadable saved setup: no shortcut, the flow works with the defaults", (await page.locator(".lastsetup").count()) === 0 && (await card(page, "ON FOOT").getAttribute("data-current")) !== null);
+  check("unreadable saved setup: the flow works with the defaults", (await card(page, "ON FOOT").getAttribute("data-current")) !== null);
   await ctx.close();
 }
 
@@ -228,19 +231,11 @@ for (const act of ["ON FOOT", "BY BIKE"]) {
   check("320×568: the three mode cards are reachable (at most a short scroll)", fit3.bottom <= fit3.h + 140, JSON.stringify(fit3));
   await card(page, "CHECKPOINTS").click();
   await page.locator(".pvstats").waitFor({ timeout: 90000 });
-  check("short screen: the settings start hidden so the map gets room", (await page.locator(".pvtoggle").getAttribute("aria-expanded")) === "false" && !(await page.locator("#ngsettings").isVisible()));
-  const closed = await page.locator(".ngpanel").boundingBox();
-  await page.locator(".pvtoggle").click(); await page.waitForTimeout(400);
-  const open = await page.locator(".ngpanel").boundingBox();
-  check("the settings toggle opens them (difficulty and distance reachable)", open.height > closed.height + 60 && (await page.getByRole("group", { name: "Difficulty" }).isVisible()) && (await page.locator("#dist").isVisible()), `${closed.height} → ${open.height}`);
-  await page.locator(".pvtoggle").click(); await page.waitForTimeout(400);
-  check("…and hides them again; START GAME stays", (await page.locator(".pvtoggle").getAttribute("aria-expanded")) === "false" && (await startBtn(page).isVisible()));
-  const ms = await page.evaluate(() => { const top = document.querySelector(".pvtop").getBoundingClientRect().bottom, bottom = document.querySelector(".ngpanel").getBoundingClientRect().top; return [...document.querySelectorAll('[aria-label^="Objective"], .goalmark.home')].filter((e) => { const r = e.getBoundingClientRect(); const y = r.top + r.height / 2; return y < top || y > bottom; }).length; });
-  check("320×568 with the settings hidden: every course marker in the visible map", ms === 0, `${ms} hidden`);
-  const small = await page.evaluate(() => [...document.querySelectorAll(".backbtn, .pvtoggle, .pvactions .btn")].filter((e) => { const b = e.getBoundingClientRect(); return b.height < 44 || b.width < 44; }).length);
+  check("short screen: difficulty and distance are shown directly (nothing to expand)", (await page.locator(".pvtoggle").count()) === 0 && (await page.getByRole("group", { name: "Difficulty" }).isVisible()) && (await page.locator("#dist").isVisible()));
+  check("START GAME reachable in the panel", await startBtn(page).isVisible() || (await startBtn(page).scrollIntoViewIfNeeded().then(() => startBtn(page).isVisible())));
+  const small = await page.evaluate(() => [...document.querySelectorAll(".backbtn, .pvactions .btn")].filter((e) => { const b = e.getBoundingClientRect(); return b.height < 44 || b.width < 44; }).length);
   check("all setup buttons at least 44×44 px", small === 0);
-  await page.reload(); await page.waitForTimeout(1500);
-  check("after a reload the setup step comes back with the settings hidden as left", step(page) === "setup" && (await page.locator(".pvtoggle").getAttribute("aria-expanded")) === "false");
+  check("320 px: no sideways scrolling", !(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)));
   await ctx.close();
 }
 

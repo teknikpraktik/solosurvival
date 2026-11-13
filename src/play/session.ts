@@ -539,6 +539,20 @@ export class PlaySession {
     this.endMatch(live.abort());
   }
 
+  /**
+   * QUIT confirmed: the match ends as aborted (kept in the history as before), and once that is saved the session is back at the start,
+   * with nothing of the match left (ticker, wake lock, helicopter card, auto start, history). No result is shown in between: the caller
+   * goes to the start page when this resolves.
+   */
+  async quit(): Promise<void> {
+    const live = this.live;
+    if (live && !live.finished) {
+      this.endMatch(live.abort());
+      await this.finishing;
+    }
+    this.reset();
+  }
+
   private startTicker(): void {
     this.stopTicker();
     const si = this.d.setInterval ?? ((fn, ms) => setInterval(fn, ms));
@@ -627,7 +641,7 @@ export class PlaySession {
       // Match over: a helicopter card that is showing goes at once (not when the result has been saved).
       this.heliNow = null;
       this.cached = null;
-      void this.finishMatch();
+      this.finishing = this.finishMatch();
     } else if (events.some((e) => e.type === "objective_reached" || e.type === "phase" || e.type === "infection_contact")) void this.persist();
   }
 
@@ -722,11 +736,15 @@ export class PlaySession {
     this.cueMsgs = [{ text, until: this.now() + CUE_MSG_MS }, ...this.cueMsgs.filter((m) => m.text !== text)].slice(0, 3);
   }
 
+  /** The end of the match being saved (QUIT waits for it before the session is reset). */
+  private finishing: Promise<void> = Promise.resolve();
+
   private async finishMatch(): Promise<void> {
     const live = this.live!;
     this.stopTicker();
     await this.releaseWakeLock();
-    this.stage = "finished";
+    // Reset meanwhile (QUIT): the session is already back at the start and must stay there; the match is still saved below.
+    if (this.live === live) this.stage = "finished";
     try {
       if (this.storage && this.params) {
         const storage = this.storage, params = this.params, proposal = this.proposal;

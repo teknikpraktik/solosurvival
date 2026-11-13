@@ -96,8 +96,7 @@ async function startMatch(o, mode) {
   await wait(2000);
   const a2 = await audio(page);
   check("quit: nothing of the match keeps sounding", a2.threat === null && a2.voices === 0, JSON.stringify(a2));
-  await page.getByRole("link", { name: "MAIN MENU" }).click();
-  await page.waitForURL(BASE + "/"); await wait(2000);
+  await page.waitForURL(BASE + "/"); await wait(2000); // QUIT goes straight to the start page
   mu = await music(page);
   check("back to the menu: the music comes back", mu.playing && mu.els.some((e) => !e.paused), JSON.stringify(mu));
   await o.ctx.close();

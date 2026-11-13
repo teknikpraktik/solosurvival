@@ -38,7 +38,7 @@ const place = (page, list) => page.evaluate((list) => {
   const { ctx, page, fixes } = await play("SURVIVAL");
   check("START: straight into the game (no 'Ready to start' dialog, match running)", (await page.getByRole("dialog").count()) === 0 && (await page.getByRole("button", { name: "PAUSE" }).count()) === 1);
   const lines = await page.locator(".hudbar > .line").count();
-  check("HUD: two rows on foot (mode/time, goal/zombie)", lines === 2, `${lines} rows`);
+  check("HUD: three rows on foot (mode/time, goal/zombie, distance/time on the left)", lines === 3, `${lines} rows`);
   const heli = { label: await page.locator(".pill.goal").getAttribute("aria-label"), text: (await page.locator(".pill.goal").innerText()).trim(), icon: await page.locator(".pill.goal svg").count() };
   check("Survival: a helicopter and the countdown to extraction (no words), named for screen readers", heli.icon === 1 && /^\d+:\d\d$/.test(heli.text) && /^Extraction in \d+:\d\d$/.test(heli.label ?? ""), JSON.stringify(heli));
   await place(page, [[0, 60, false], [1, 350, true], [2, 900, false]]);
@@ -83,7 +83,7 @@ const place = (page, list) => page.evaluate((list) => {
   await ctx.close();
 }
 
-// --- Bike: speed on its own row at the right ---
+// --- Bike: speed, distance and time in one field on the left ---
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, permissions: ["geolocation"], geolocation: START });
   const page = await ctx.newPage();
@@ -95,8 +95,8 @@ const place = (page, list) => page.evaluate((list) => {
   await page.getByRole("button", { name: "START GAME" }).click(); await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(800);
   await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match await page.waitForTimeout(1200);
   check("Bike: speed shown, HUD at most three rows", (await page.getByLabel("Your speed").count()) === 1 && (await page.locator(".hudbar > .line").count()) <= 3);
-  const bs = await page.evaluate(() => { const g = document.querySelector(".pill.bikestats"); if (!g) return null; const r = g.getBoundingClientRect(); return { cells: g.querySelectorAll(".cell").length, bike: g.querySelectorAll(".bikeicon svg").length, top: Math.round(r.top), w: Math.round(r.width), dup: document.querySelectorAll(".pill.activity").length, labels: [...g.querySelectorAll(".cell")].map((c) => c.getAttribute("aria-label")) }; });
-  check("Bike: speed, distance and elapsed time grouped with the bike icon (no second bike icon)", bs && bs.cells === 3 && bs.bike === 1 && bs.dup === 0 && /^Distance /.test(bs.labels[1]) && /^Elapsed \d/.test(bs.labels[2]) && bs.w < 260, JSON.stringify(bs));
+  const bs = await page.evaluate(() => { const g = document.querySelector(".pill.tripstats"); if (!g) return null; const r = g.getBoundingClientRect(); return { cells: g.querySelectorAll(".cell").length, bike: g.querySelectorAll(".tripicon svg").length, top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width), dup: document.querySelectorAll(".pill.activity").length, labels: [...g.querySelectorAll(".cell")].map((c) => c.getAttribute("aria-label")) }; });
+  check("Bike: speed, distance and elapsed time grouped with the bike icon (no second bike icon)", bs && bs.cells === 3 && bs.bike === 1 && bs.dup === 0 && /^Distance /.test(bs.labels[1]) && /^Elapsed \d/.test(bs.labels[2]) && bs.w < 260 && bs.left <= 16, JSON.stringify(bs));
   await page.screenshot({ path: `${OUT}/bike.png` });
   await ctx.close();
 }
