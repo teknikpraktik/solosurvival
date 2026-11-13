@@ -211,10 +211,10 @@ describe("ljudpaket", () => {
     expect([OUTBREAK_SOUNDS.voice.pitch("Run!"), OUTBREAK_SOUNDS.voice.pitch("Checkpoint"), OUTBREAK_SOUNDS.voice.rate("Run!"), OUTBREAK_SOUNDS.voice.rate("Checkpoint")]).toEqual([0.5, 1.1, 0.9, 1]);
   });
   it("ljudbildens filer finns i public/audio, de gamla WAV-ljuden är borta och inga WAV-original ligger i appen", async () => {
-    const { AUDIO } = await import("@/app/_client/audio");
+    const { AUDIO, VOICE } = await import("@/app/_client/audio");
     const { existsSync, readdirSync } = await import("node:fs");
     const pub = path.resolve(import.meta.dirname, "../../../public/audio");
-    const urls = Object.values(AUDIO).flat();
+    const urls = [...Object.values(AUDIO).flat(), ...Object.values(VOICE).map((v) => v.url)];
     for (const u of urls) expect(existsSync(path.join(pub, u.replace(/^\/audio\//, ""))), u).toBe(true);
     const files = readdirSync(pub);
     expect(files.filter((f) => !f.endsWith(".mp3"))).toEqual([]);

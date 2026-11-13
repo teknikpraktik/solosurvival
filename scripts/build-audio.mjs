@@ -32,6 +32,15 @@ const FILES = [
   { name: "checkpoint-reached", measure: "M", target: -14 },
   { name: "radio-open", measure: "M", target: -16 },
   { name: "safe-door-close", measure: "M", target: -17, limiter: true },
+  // Operator voices (radio effect, static and squelch already in the files): integrated speech level, the same for all eight.
+  { name: "keep-moving", measure: "I", target: -17 },
+  { name: "safehouse-on-map", measure: "I", target: -17 },
+  { name: "checkpoint-secured", measure: "I", target: -17 },
+  { name: "get-to-safehouse", measure: "I", target: -17 },
+  { name: "rescue-inbound", measure: "I", target: -17 },
+  { name: "get-to-helicopter", measure: "I", target: -17 },
+  { name: "lifting-off", measure: "I", target: -17 },
+  { name: "inside-safehouse", measure: "I", target: -17 },
 ];
 const MUSIC = "theme-outbreak.mp3";
 

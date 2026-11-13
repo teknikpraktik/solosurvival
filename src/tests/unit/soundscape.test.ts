@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Soundscape, type Levels } from "@/audio/soundscape";
-import { AUDIO, DUCK, MIX, MatchAudio, type MatchSoundInput } from "@/app/_client/audio";
+import { AUDIO, DUCK, MIX, MatchAudio, VOICE, type MatchSoundInput } from "@/app/_client/audio";
 import { SOUND_RULES } from "@/play/sound-rules";
 import { fakeEnv, flush, type FakeGain } from "./audio-fakes";
 
@@ -9,6 +9,8 @@ const DUR: Record<string, number> = {
   ...Object.fromEntries(AUDIO.threat.map((u) => [u, 15])),
   [AUDIO.heliLoop]: 30, [AUDIO.heliApproach]: 25, [AUDIO.heliSuccess]: 7, [AUDIO.captured]: 4, [AUDIO.safeDoor]: 5,
   [AUDIO.zombieNear]: 3, [AUDIO.revealed]: 2, [AUDIO.checkpoint]: 2, [AUDIO.radio]: 0.49,
+  [VOICE.keepMoving.url]: 8, [VOICE.safehouseOnMap.url]: 8, [VOICE.checkpointSecured.url]: 5, [VOICE.getToSafehouse.url]: 7,
+  [VOICE.rescueInbound.url]: 6, [VOICE.getToHelicopter.url]: 7, [VOICE.liftingOff.url]: 5, [VOICE.insideSafehouse.url]: 7,
 };
 const MUSIC = { url: AUDIO.music, startS: 4, endS: 210.6, crossfadeS: 3.5, fadeInS: 3, fadeOutS: 2.5 };
 
@@ -95,7 +97,7 @@ describe("soundscape engine", () => {
     t.s.setDuck("radio", false);
     expect(duck.gain.target).toBe(1);
     t.s.setDuck("speech", true); // the voice never reports its end…
-    await t.advance(8200);
+    await t.advance(12_200);
     expect(duck.gain.target).toBe(1); // …released anyway
     const fx = (t.s as unknown as { buses: Map<string, FakeGain> }).buses.get("fx")!;
     expect(fx.connected.has(duck as never)).toBe(false);
@@ -263,7 +265,7 @@ describe("match sounds", () => {
     await t.m.onEvent({ type: "finished", result: "survived", mode: "survival", stale: false }); // a repeat is ignored
     t.m.update(base({ ...S, phase: "finished", finished: true }));
     await t.advance(1500);
-    expect(urlsLive(t.ctx)).toEqual([AUDIO.heliSuccess]);
+    expect(urlsLive(t.ctx).sort()).toEqual([AUDIO.heliSuccess, VOICE.liftingOff.url].sort());
     expect(t.ctx.sources.filter((x) => x.buffer?.url === AUDIO.heliSuccess)).toHaveLength(1);
     await t.advance(8000);
     expect(t.ctx.live()).toHaveLength(0);
@@ -284,7 +286,9 @@ describe("match sounds", () => {
       t.m.update(base({ mode, finished: true, phase: "finished" }));
       await t.advance(1500);
       expect(t.m.state.threat).toBeNull();
-      expect(urlsLive(t.ctx), `${result}/${mode}`).toEqual(url ? [url] : []);
+      // A win also has the operator's line (Survival: lifting off; home or B: inside the safe house).
+      const voice = result === "survived" ? (mode === "survival" ? VOICE.liftingOff.url : VOICE.insideSafehouse.url) : null;
+      expect(urlsLive(t.ctx).sort(), `${result}/${mode}`).toEqual([url, voice].filter((x): x is string => !!x).sort());
     }
   });
 
@@ -292,12 +296,14 @@ describe("match sounds", () => {
     const t = setup();
     t.s.unlock();
     await run(t, 1);
-    await t.m.onEvent({ type: "checkpoint", stale: false });
-    await t.m.onEvent({ type: "checkpoint", stale: true });
-    await t.m.onEvent({ type: "revealed", reason: "hunt", stale: false });
+    await t.m.onEvent({ type: "checkpoint", last: false, stale: false });
+    await t.m.onEvent({ type: "checkpoint", last: false, stale: true });
+    const rv = t.m.onEvent({ type: "revealed", reason: "hunt", stale: false }); // waits for the checkpoint line
     await t.m.onEvent({ type: "revealed", reason: "exposed", stale: false }); // within the cooldown
+    await t.advance(6000);
+    expect(await rv).toBe("played");
     const n = (u: string) => t.ctx.sources.filter((x) => x.buffer?.url === u).length;
-    expect([n(AUDIO.checkpoint), n(AUDIO.revealed)]).toEqual([1, 1]);
+    expect([n(VOICE.checkpointSecured.url), n(AUDIO.checkpoint), n(AUDIO.revealed)]).toEqual([1, 0, 1]); // the line replaces the chime
     await run(t, SOUND_RULES.revealed.cooldownS + 1);
     await t.m.onEvent({ type: "revealed", reason: "exposed", stale: false });
     expect(n(AUDIO.revealed)).toBe(2);
@@ -334,7 +340,7 @@ describe("match sounds", () => {
     expect(t.ctx.sources.length).toBe(n); // no timer brings anything back
     await run(t, 2, { id: "m2", mode: "mission", nearestM: 900 });
     expect(t.ctx.live()).toHaveLength(0);
-    expect(t.m.state).toEqual({ threat: null, heliLoop: false, approach: false });
+    expect(t.m.state).toEqual({ threat: null, heliLoop: false, approach: false, voice: null });
   });
 
   it("pause and the app in the background stop the loops; nothing old plays on return", async () => {
@@ -350,7 +356,7 @@ describe("match sounds", () => {
     t.m.setHidden(true);
     await t.advance(1000);
     expect(t.ctx.live()).toHaveLength(0);
-    await t.m.onEvent({ type: "checkpoint", stale: false }); // while hidden
+    await t.m.onEvent({ type: "checkpoint", last: false, stale: false }); // while hidden
     t.s.setSuppressed(false);
     t.m.setHidden(false);
     await t.advance(500);
@@ -361,8 +367,185 @@ describe("match sounds", () => {
     const t = setup({ on: false });
     t.s.unlock();
     await run(t, 10, { mode: "survival", phase: "extraction", nearestM: 50 });
-    await t.m.onEvent({ type: "checkpoint", stale: false });
+    await t.m.onEvent({ type: "checkpoint", last: false, stale: false });
     await t.m.onEvent({ type: "finished", result: "infected", mode: "survival", stale: false });
     expect(t.ctx.sources).toHaveLength(0);
+  });
+});
+
+describe("operator's radio lines", () => {
+  const spoken = (t: ReturnType<typeof setup>) => { const said: string[] = []; t.m.speak = (l) => { said.push(l); }; return said; };
+  const live = (t: ReturnType<typeof setup>) => t.ctx.live().map((x) => x.buffer?.url).filter((u) => Object.values(VOICE).some((v) => v.url === u));
+  /** Samples the voice bus every 100 ms for `ms`: the most lines heard at the same moment. */
+  async function maxTogether(t: ReturnType<typeof setup>, ms: number) { let m = 0; for (let i = 0; i < ms; i += 100) { await t.advance(100); m = Math.max(m, live(t).length); } return m; }
+
+  it("each mode opens with its line when the match starts; Checkpoints keeps the spoken \"Game on\"", async () => {
+    for (const [mode, url] of [["survival", VOICE.keepMoving.url], ["escape", VOICE.safehouseOnMap.url], ["mission", null]] as const) {
+      const t = setup();
+      t.s.unlock();
+      const said = spoken(t);
+      await t.m.onEvent({ type: "match_started", id: "m1", mode });
+      expect(live(t), mode).toEqual(url ? [url] : []);
+      expect(said, mode).toEqual(url ? [] : ["Game on"]);
+    }
+  });
+
+  it("checkpoint: \"Checkpoint secured\", the last one \"Get to the safe house\" instead; no chime and no second spoken line", async () => {
+    const t = setup();
+    t.s.unlock();
+    const said = spoken(t);
+    await run(t, 1);
+    await t.m.onEvent({ type: "checkpoint", last: false, stale: false });
+    expect(live(t)).toEqual([VOICE.checkpointSecured.url]);
+    await t.advance(6000);
+    await t.m.onEvent({ type: "checkpoint", last: true, stale: false });
+    expect(live(t)).toEqual([VOICE.getToSafehouse.url]);
+    expect(t.ctx.sources.filter((x) => x.buffer?.url === AUDIO.checkpoint)).toHaveLength(0);
+    expect(said).toEqual([]);
+  });
+
+  it("a missing recording changes nothing in the game: the chime and the spoken line take over", async () => {
+    const t = setup();
+    const fetch0 = t.env.fetchBytes;
+    t.env.fetchBytes = async (u) => { if (u.includes("checkpoint-secured") || u.includes("keep-moving")) throw new Error("404"); return fetch0(u); };
+    t.s.unlock();
+    const said = spoken(t);
+    expect(await t.m.onEvent({ type: "match_started", id: "m1", mode: "survival" })).toBe("missing");
+    await run(t, 1, { mode: "survival" });
+    expect(await t.m.onEvent({ type: "checkpoint", last: false, stale: false })).toBe("missing");
+    expect(said).toEqual(["Game on", "Checkpoint"]);
+    expect(t.ctx.sources.filter((x) => x.buffer?.url === AUDIO.checkpoint)).toHaveLength(1);
+    expect(t.s.ducked).toBe(false); // no duck left behind by a line that never played
+  });
+
+  it("never two lines at once: a line that comes during another waits, and plays after it", async () => {
+    const t = setup();
+    t.s.unlock();
+    await t.m.onEvent({ type: "match_started", id: "m1", mode: "survival" });
+    await run(t, 1, { mode: "survival" });
+    const cp = t.m.onEvent({ type: "heli_approach", stale: false }); // rescue inbound, while "keep moving" (8 s) plays
+    expect(t.m.radio.queued).toBe("rescueInbound");
+    expect(await maxTogether(t, 16_000)).toBe(1);
+    await cp;
+    expect(t.m.radio.log).toEqual(["keepMoving", "rescueInbound"]);
+  });
+
+  it("a waiting line that would come too late is dropped", async () => {
+    const t = setup();
+    t.s.unlock();
+    await t.m.onEvent({ type: "match_started", id: "m1", mode: "escape" }); // 8 s
+    await run(t, 1, { mode: "escape" });
+    await t.advance(500);
+    const late = t.m.radio.say("checkpointSecured");
+    await t.advance(1000);
+    // Shorter queue limit for the test (12 s in the app): the waiting line is older than that when the first one ends.
+    (t.m.radio as unknown as { maxQueueMs: number }).maxQueueMs = 3000;
+    await t.advance(9000);
+    expect(await late).toBe("suppressed");
+    expect(t.m.radio.log).toEqual(["safehouseOnMap"]);
+  });
+
+  it("Survival: rescue inbound before the landing, never after; landing interrupts it with \"Get to the helicopter\"; the win says \"Lifting off\"", async () => {
+    const t = setup();
+    t.s.unlock();
+    const S = { mode: "survival" as const };
+    await t.m.onEvent({ type: "match_started", id: "m1", mode: "survival" });
+    await run(t, 10, S);
+    void t.m.onEvent({ type: "heli_approach", stale: false });
+    await t.advance(1000);
+    expect(t.m.state.voice).toBe("rescueInbound");
+    void t.m.onEvent({ type: "heli_landed", stale: false }); // the landing comes while it still speaks (short lead)
+    await t.advance(300);
+    expect(live(t)).toEqual([VOICE.getToHelicopter.url]);
+    await run(t, 8, { ...S, phase: "extraction" });
+    expect(t.m.radio.log).toEqual(["keepMoving", "rescueInbound", "getToHelicopter"]);
+    // Reaching the extraction area is not the win; only the finished event is.
+    await t.m.onEvent({ type: "finished", result: "survived", mode: "survival", stale: false });
+    await t.advance(300);
+    expect(live(t)).toEqual([VOICE.liftingOff.url]);
+    expect(t.m.radio.log.filter((l) => l === "liftingOff")).toHaveLength(1);
+    // Landing again (restore, repeated event) after the end: nothing.
+    await t.m.onEvent({ type: "heli_landed", stale: false });
+    expect(t.m.radio.log.at(-1)).toBe("liftingOff");
+  });
+
+  it("captured or quit while a line plays or waits: both are dropped, nothing comes later", async () => {
+    for (const how of ["captured", "quit"] as const) {
+      const t = setup();
+      t.s.unlock();
+      await t.m.onEvent({ type: "match_started", id: "m1", mode: "escape" });
+      await run(t, 1, { mode: "escape" });
+      void t.m.onEvent({ type: "checkpoint", last: false, stale: false }); // waits
+      if (how === "captured") await t.m.onEvent({ type: "finished", result: "infected", mode: "escape", stale: false });
+      else t.m.end();
+      await t.advance(300);
+      expect(live(t), how).toEqual([]);
+      await t.advance(15_000);
+      expect(t.m.radio.log, how).toEqual(["safehouseOnMap"]);
+      expect(t.s.ducked, how).toBe(false);
+    }
+  });
+
+  it("the win line is part of the ending: it interrupts a line, and stops when the ending is left", async () => {
+    const t = setup();
+    t.s.unlock();
+    await t.m.onEvent({ type: "match_started", id: "m1", mode: "mission" });
+    await run(t, 1);
+    await t.m.onEvent({ type: "checkpoint", last: true, stale: false });
+    await t.advance(1000);
+    await t.m.onEvent({ type: "finished", result: "survived", mode: "mission", stale: false });
+    await t.advance(300);
+    expect(live(t)).toEqual([VOICE.insideSafehouse.url]);
+    t.m.end(); // SHOW MATCH, PLAY AGAIN or Main menu
+    await t.advance(500);
+    expect(live(t)).toEqual([]);
+    expect(t.s.ducked).toBe(false);
+  });
+
+  it("the app in the background stops the line; muted plays none (and no fallback either)", async () => {
+    const t = setup();
+    t.s.unlock();
+    await t.m.onEvent({ type: "match_started", id: "m1", mode: "survival" });
+    t.s.setSuppressed(true);
+    t.m.setHidden(true);
+    await t.advance(500);
+    expect(live(t)).toEqual([]);
+    const u = setup({ on: false });
+    u.s.unlock();
+    const said = spoken(u);
+    expect(await u.m.onEvent({ type: "match_started", id: "m1", mode: "survival" })).toBe("muted");
+    expect(said).toEqual([]);
+    expect(u.ctx.sources).toHaveLength(0);
+  });
+
+  it("stale moments (worked out on return from the background) get no line; a new match after an ended one starts afresh", async () => {
+    const t = setup();
+    t.s.unlock();
+    await t.m.onEvent({ type: "match_started", id: "m1", mode: "survival" });
+    await t.advance(9000);
+    await t.m.onEvent({ type: "heli_landed", stale: true });
+    expect(t.m.radio.log).toEqual(["keepMoving"]);
+    await t.m.onEvent({ type: "finished", result: "infected", mode: "survival", stale: false });
+    t.m.update(base({ mode: "survival", finished: true, phase: "finished" }));
+    t.m.end();
+    await t.advance(5000);
+    await t.m.onEvent({ type: "match_started", id: "m2", mode: "survival" });
+    expect(live(t)).toEqual([VOICE.keepMoving.url]);
+    expect(t.m.radio.log).toEqual(["keepMoving", "keepMoving"]);
+  });
+
+  it("the background is lowered while a line plays and restored when it ends or is stopped", async () => {
+    const t = setup();
+    t.s.unlock();
+    await t.m.onEvent({ type: "match_started", id: "m1", mode: "survival" });
+    expect(t.s.ducked).toBe(true);
+    await t.advance(8500);
+    expect(t.s.ducked).toBe(false);
+    void t.m.radio.say("checkpointSecured");
+    await flush();
+    expect(t.s.ducked).toBe(true);
+    t.m.radio.stop();
+    await t.advance(300);
+    expect(t.s.ducked).toBe(false);
   });
 });

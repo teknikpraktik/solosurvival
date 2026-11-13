@@ -56,7 +56,10 @@ export type HeliNotice = "approaching" | "landed";
  * background (it happened while the app was away): no event sound should then be played for it, only the result of the match counts.
  */
 export type SoundEvent =
-  | { type: "checkpoint"; stale: boolean }
+  /** The match really begins (START / auto start, once per match; never on resume after a pause, never for a restored match under way). */
+  | { type: "match_started"; id: string; mode: MatchParams["mode"] }
+  /** A checkpoint is confirmed by the game (30 m for 5 s). `last`: the next and final goal is home. */
+  | { type: "checkpoint"; last: boolean; stale: boolean }
   /** The zombies have the player's position: the hunt begins (first detection in the match) or the player is exposed off the road network. */
   | { type: "revealed"; reason: "hunt" | "exposed"; stale: boolean }
   | { type: "heli_approach"; stale: boolean }
@@ -227,6 +230,8 @@ export class PlaySession {
   private lastSprintCueMs = -Infinity;
   /** The hunt has begun in this match (first zombie detection), for the one "position revealed" sound. */
   private huntRevealed = false;
+  /** The match's start has been announced (once per match). */
+  private startAnnounced = false;
   /** Set while events worked out on return from the background are handled (see SoundEvent.stale). */
   private replaying = false;
   private cueMsgs: { text: string; until: number }[] = [];
@@ -440,8 +445,9 @@ export class PlaySession {
     this.lastCheckMs = 0;
     this.lastSampleMs = 0;
     this.silentFirstCheck = !fresh;
-    // A restored match whose hunt has already begun must not announce it again.
+    // A restored match whose hunt has already begun must not announce it again; one already under way has had its start.
     this.huntRevealed = !fresh && live.state.phase !== "head_start";
+    this.startAnnounced = !fresh && live.state.elapsedSeconds >= 0.5;
     this.armHeli(live, params);
     this.recorder = fresh || !this.resumeRecap ? RecapRecorder.fresh(live, params, this.startedAt) : this.resumeRecap;
     this.resumeRecap = null;
@@ -473,6 +479,10 @@ export class PlaySession {
     }
     this.messages = [];
     this.log?.add(t, "resume");
+    if (!this.startAnnounced && this.params) {
+      this.startAnnounced = true;
+      this.sound({ type: "match_started", id: live.state.id, mode: this.params.mode });
+    }
     void this.acquireWakeLock();
     void this.persist();
     this.emit();
@@ -593,7 +603,10 @@ export class PlaySession {
       switch (e.type) {
         case "objective_reached":
           this.cue("goal", this.objectiveMessage(live, e.index));
-          if (live.state.objectives?.targets[e.index]?.kind === "checkpoint") this.sound({ type: "checkpoint", stale: this.replaying });
+          if (live.state.objectives?.targets[e.index]?.kind === "checkpoint") {
+            const o = live.state.objectives;
+            this.sound({ type: "checkpoint", last: objectiveProgress(o).stage === "home", stale: this.replaying });
+          }
           this.log?.add(t, "objective", { id: e.targetId, atS: Math.round(live.state.elapsedSeconds) });
           break;
         case "zombie_detected":

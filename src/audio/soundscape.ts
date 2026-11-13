@@ -6,10 +6,11 @@
  *   music ─┐
  *   threat ┼─ duck ─┐
  *   heli ──┘        ├─ master ─ limiter ─ destination
- *   fx ─────────────┘
+ *   fx ─────────────┤
+ *   voice ──────────┘  (the operator's recorded lines; they duck the others, never themselves)
  */
 
-export type Bus = "music" | "threat" | "heli" | "fx";
+export type Bus = "music" | "threat" | "heli" | "fx" | "voice";
 
 /** The listener's own levels (0–1, multiplied onto the mix) and the master switch. */
 export interface Levels { on: boolean; music: number; fx: number; voice: number }
@@ -103,9 +104,9 @@ export class Soundscape {
       this.master.connect(limiter);
       this.duck = c.createGain();
       this.duck.connect(this.master);
-      for (const b of ["music", "threat", "heli", "fx"] as Bus[]) {
+      for (const b of ["music", "threat", "heli", "fx", "voice"] as Bus[]) {
         const g = c.createGain();
-        g.connect(b === "fx" ? this.master : this.duck);
+        g.connect(b === "fx" || b === "voice" ? this.master : this.duck);
         this.buses.set(b, g);
       }
       this.ctx = c;
@@ -144,7 +145,7 @@ export class Soundscape {
     if (!c || !this.master) return;
     const l = this.o.levels();
     ramp(this.master.gain, l.on ? 1 : 0, c.currentTime, fadeS);
-    for (const [b, g] of this.buses) ramp(g.gain, this.o.mix[b] * (b === "music" ? l.music : l.fx), c.currentTime, fadeS);
+    for (const [b, g] of this.buses) ramp(g.gain, this.o.mix[b] * (b === "music" ? l.music : b === "voice" ? l.voice : l.fx), c.currentTime, fadeS);
     if (!l.on) this.music.want(false, 0.3);
   }
 
@@ -194,7 +195,7 @@ export class Soundscape {
    * A one-shot on a bus. Returns a handle (to fade it out early) once it has started, or the reason it did not play. A file still loading
    * is waited for, but a sound that could only start more than `maxWaitMs` late is dropped rather than played out of time.
    */
-  async play(url: string, bus: Bus, gain: number, maxWaitMs = 1500): Promise<{ result: PlayResult; voice?: Voice }> {
+  async play(url: string, bus: Bus, gain: number, maxWaitMs = 1500, onEnd?: () => void): Promise<{ result: PlayResult; voice?: Voice }> {
     const no = this.canPlay();
     if (no) return { result: no };
     const asked = Date.now();
@@ -207,7 +208,8 @@ export class Soundscape {
     if (late) return { result: late };
     if (Date.now() - asked > maxWaitMs) return { result: "suppressed" };
     try {
-      const v = new VoiceImpl(c, this.buses.get(bus)!, () => this.voices.delete(v));
+      // `onEnd` runs exactly once, whether the sound ends by itself or is stopped (so a duck it holds is always released).
+      const v = new VoiceImpl(c, this.buses.get(bus)!, () => { this.voices.delete(v); try { onEnd?.(); } catch { /* ignored */ } });
       v.oneShot(buf, gain);
       this.voices.add(v);
       return { result: "played", voice: v };
@@ -226,7 +228,7 @@ export class Soundscape {
     const has = this.ducking.size > 0;
     if (this.duckSafety !== null) { this.env.clearTimeout(this.duckSafety); this.duckSafety = null; }
     // A voice that never reports its end (Android's speech engine sometimes does not) must not keep everything low.
-    if (has) this.duckSafety = this.env.setTimeout(() => { this.ducking.clear(); this.duckSafety = null; this.rampDuck(false); }, 8000);
+    if (has) this.duckSafety = this.env.setTimeout(() => { this.ducking.clear(); this.duckSafety = null; this.rampDuck(false); }, 12_000); // longest recorded line: 8 s
     if (had !== has) this.rampDuck(has);
   }
 

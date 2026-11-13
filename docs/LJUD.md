@@ -49,6 +49,41 @@ De gamla genererade ljuden (`captured-scream`, `jump-scream`, `sprint-shriek`, `
 
 Det finns ett separat infektionsskede: `infection_contact` (zombien är i kontakt, infektionen räknas, mätaren `.infect` fylls). Varningen är oförändrad: vibration, texten "Zombie close – move away!" och nedräkningen 10 m i tal. Det finns ingen ljudfil för infektionsstart, och `captured` används inte som tidig varning. **Lucka:** ingen egen ljudsignal när infektionen börjar.
 
+## Operatörens radiorepliker
+
+Åtta inspelade repliker (`VOICE` i `src/app/_client/audio.ts`). Radioeffekten finns redan i filerna: 80–94 % av energin ligger i
+300–3 400 Hz, och brus eller knaster kommer före talet. Därför läggs inget radioklick till. Texten nedan är maskintranskriberad med
+Whisper small.en i den här miljön; ingen har lyssnat.
+
+| Fil | Tal (transkriberat) | Spelhändelse |
+| --- | --- | --- |
+| keep-moving | "You're on your own out there. Keep moving. Stay alive." | Survival: `match_started`, när matchen faktiskt startar. Det sker en gång per match: vid START eller autostart, aldrig vid fortsättning efter paus och aldrig för en återställd match som redan pågår. Den ersätter talet "Game on". |
+| safehouse-on-map | "Safe house marked on your map. Get there alive." | A TO B: `match_started` (B är satt och syns på kartan). Den ersätter "Game on". |
+| checkpoint-secured | "Checkpoint secured. Keep moving." | `objective_reached` för en checkpoint, efter att spelet bekräftat den (30 m i 5 s). Den ersätter checkpoint-klangen och talet "Checkpoint". |
+| get-to-safehouse | "All checkpoints secured. Get to the safe house." | Samma händelse för den sista checkpointen, när nästa mål är hem (`last`). Den ersätter checkpoint-secured. |
+| rescue-inbound | "Rescue inbound. Stand by for the extraction point." | Survival: helikopterkortet "approaching", 60 s speltid före landningen och från samma tick som kortet. |
+| get-to-helicopter | "We're down. Get to the helicopter. We can't stay long." | Survival: `extraction_opened`, med kortet "landed". Den avbryter och ersätter en rescue-inbound som fortfarande spelas eller väntar. Den ersätter talet "Run!" vid landningen. |
+| lifting-off | "Lifting off. You made it." | `finished: survived` i Survival, alltså först när vinstvillkoret (30 m i 5 s vid helikoptern) är uppfyllt. Den spelas med extracted-bilden och helikopterns lyftljud. |
+| inside-safehouse | "You're inside. Lock the door. You made it." | `finished: survived` i Checkpoints (hemma) och A TO B (vid B). Den spelas med safehouse-bilden och dörrsmällen. |
+
+Checkpoints har ingen inspelad startreplik, så där sägs "Game on" som förut.
+
+### Röstkanalen
+
+- **En replik åt gången.** En replik som kommer medan en annan spelar väntar på en enda köplats, där den nyaste vinner. Väntar den mer än 12 s kasseras den.
+- **Inaktuella repliker kasseras på händelser:** matchslut, fångst, Quit, när spelskärmen lämnas, när appen hamnar i bakgrunden, och när landningen ersätter "rescue inbound".
+- **Vinstrepliken är en del av slutsekvensen.** Den avbryter allt annat. Den stoppas när slutet lämnas (SHOW MATCH, PLAY AGAIN, Main menu) och vid fångst.
+- **Inspelad röst och talsyntes delar kanal.** En inspelad replik stoppar pågående tal. Tal som kommer under en replik (nedräkning, "Zombies approaching") sägs efteråt, eller släpps om det skulle komma mer än 9 s sent.
+- **Ljudnivåer:** egen röstbuss. Rösten följer reglagen Voice och "Sound on". Musik, hotpuls och helikopter sänks med ≈ 10 dB medan repliken spelar och återställs när den slutar eller stoppas; det finns en säkerhetsgräns på 12 s. Effekter och varningsljud sänks inte.
+- **Händelser från bakgrunden** (räknade vid återkomst) ger ingen replik.
+- **Saknad eller trasig fil:**
+  - start i Survival eller A TO B: "Game on" sägs i stället;
+  - checkpoint: klangen och talet "Checkpoint" spelas;
+  - landningen: "Run!" sägs.
+
+  Spelets regler påverkas aldrig. Avstängt ljud ger ingen ersättning.
+- **Undertexter:** spelvyn har inget system för undertexter. Sessionens korta meddelanden visas aldrig där, så inga undertexter har lagts till. Repliktexten finns i `VOICE` och i fältloggen (`sound` → `voice`).
+
 ## Hotpuls
 
 - Till fots startar en hotperiod när närmaste zombie har varit inom 200 m i 3 s. Den slutar när zombien har varit bortom 260 m i 10 s och perioden har pågått minst 12 s. 200 m är samma avstånd som "Zombies approaching" redan sägs vid, och motsvarar ungefär 70 s rakt mot varandra mot en Normal-zombie (5,6 km/h) i gångfart.
@@ -103,6 +138,10 @@ Allt nedan har körts här. Ingenting har provlyssnats.
 - `src/tests/unit/sound-events.test.ts`, sessionen på riktig kartdata: helikopterns ankomst och landning en gång, jakten och "exposed", checkpoint men inte hem, slutet i samma ögonblick, `stale` vid återkomst från bakgrunden.
 - `e2e/audio.e2e.mjs`, byggd app i Chromium med mockad GPS: musikens livscykel över sidor, hämtade filer, hotpuls från en placerad zombie, QUIT, Survival-faserna, sparat "ljud av". Skriptet kontrollerar vad som spelar, inte hur det låter.
 
+Radiorepliker: `soundscape.test.ts` (en replik åt gången, kö och kassering, vinstrepliken avbryter, Quit och fångst tystar, saknad fil
+ger ersättning, avstängt ljud, bakgrund, duckning släpps), `sound-events.test.ts` (start en gång, inte efter paus, sista checkpointen) och
+`e2e/audio.e2e.mjs` (A TO B, Checkpoints, Survival, fångst och ny match, Quit medan en replik spelar och en väntar).
+
 ## Provlyssning i riktig telefon (återstår)
 
 1. Nivåbalansen mellan musik, puls, helikopter, händelser och röst, i högtalare och i hörlurar.
@@ -114,3 +153,5 @@ Allt nedan har körts här. Ingenting har provlyssnats.
 7. Positionsljudet vid matchstart: känns det motiverat, eller är det ett ljud för mycket direkt efter "Game on"?
 8. Dörrsmällen är limiterad och ändå ≈ 5 dB svagare än de andra händelseljuden. Är den tillräckligt tydlig?
 9. Cykel: räcker 400 m för hotpulsen, eller kommer den för tidigt eller sent i verklig fart?
+10. Radiorepliker: nivån mot musik, hotpuls och helikopter; att transkriptionen stämmer. Talet börjar 1,6–3,9 s in i filerna efter brus och knaster, så "You're inside" kommer cirka 4 s efter dörrsmällen. Är det rätt tempo?
+11. Survival-vinsten: "Lifting off" spelas samtidigt med helikopterns lyftljud. Hörs rösten tydligt?
