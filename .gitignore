@@ -12,3 +12,4 @@ e2e/out-prod*
 e2e/out-fix*
 e2e/out-atob
 e2e/out-capture
+e2e/out-result
