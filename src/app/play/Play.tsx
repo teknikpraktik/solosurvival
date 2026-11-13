@@ -173,8 +173,7 @@ export default function Play() {
   useEffect(() => {
     if (!autoReady || !session?.takeAutoStart()) return;
     unlockAudio();
-    speak("Game on");
-    session.resume();
+    session.resume(); // the opening line (radio voice, or "Game on" in Checkpoints) follows the session's match_started
     setAuto(true);
   }, [autoReady]); // eslint-disable-line react-hooks/exhaustive-deps
   // Personal record, once the finished match is in the history.
@@ -288,7 +287,7 @@ export default function Play() {
       {!finished && (
         <div className="controls">
           {m.paused ? (
-            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); if (ready) speak("Game on"); session.resume(); setAuto(true); }}>{!canResume ? "WAITING FOR LOCATION…" : ready ? "START" : "CONTINUE"}</button>
+            <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); session.resume(); setAuto(true); }}>{!canResume ? "WAITING FOR LOCATION…" : ready ? "START" : "CONTINUE"}</button>
           ) : (
             <button className="wide" onClick={() => session.pause("manual")}>PAUSE</button>
           )}
@@ -305,7 +304,7 @@ export default function Play() {
           onClose={() => setPauseDismissed(true)}
           actions={
             <>
-              <button className="btn primary big" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); if (ready) speak("Game on"); session.resume(); setAuto(true); }}>{canResume ? (ready ? "START" : "CONTINUE") : "WAITING FOR LOCATION…"}</button>
+              <button className="btn primary big" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); session.resume(); setAuto(true); }}>{canResume ? (ready ? "START" : "CONTINUE") : "WAITING FOR LOCATION…"}</button>
               <button className="btn" onClick={() => setConfirmEnd(true)}>QUIT</button>
             </>
           }

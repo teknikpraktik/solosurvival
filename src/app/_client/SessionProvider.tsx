@@ -43,16 +43,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         traceEnabled,
         jumpScares: () => true, // hidden feature: always on (never on Bike, decided by the session)
         // Cues vibrate and speak; every sound file comes from the soundscape (onSound), so nothing is heard twice.
+        // Checkpoints and the helicopter landing are announced by the operator's recorded lines (MatchAudio), which fall back to the spoken
+        // "Checkpoint" / "Run!" only when a recording cannot play.
         onCue: (c, text) => {
           void playCue(c);
-          // A bright spoken "Checkpoint" follows the chime on its own audio path, so the reward comes through even if Web Audio was interrupted.
-          if (c === "goal" && /^(Checkpoint|All checkpoints)/.test(text)) setTimeout(() => speak("Checkpoint"), 1000);
-          if (c === "sprint") setTimeout(() => speak("Run!"), 250); // zombie sprint (and extraction open): a spoken "Run!"
+          if (c === "sprint" && !/^Extraction open/.test(text)) setTimeout(() => speak("Run!"), 250); // zombie sprint: a spoken "Run!"
         },
         // What came of each event sound goes to the field log (the old checkpoint chime was heard "only sometimes" in the field).
         onSound: (e) => {
           if (e.type === "finished") cancelPendingSpeech();
-          void matchAudio().onEvent(e).then((r) => { if (r !== null) session?.fieldLog?.add(Date.now(), "sound", { event: e.type, result: r, stale: e.stale, ctx: soundscape().context()?.state }); }, () => undefined);
+          void matchAudio().onEvent(e).then((r) => { if (r !== null) session?.fieldLog?.add(Date.now(), "sound", { event: e.type, result: r, stale: "stale" in e ? e.stale : false, voice: matchAudio().radio.log.at(-1) ?? null, ctx: soundscape().context()?.state }); }, () => undefined);
         },
         wakeLock: "wakeLock" in navigator ? { request: () => (navigator as Navigator & { wakeLock: { request(t: "screen"): Promise<{ release(): Promise<void> }> } }).wakeLock.request("screen") } : undefined,
       });

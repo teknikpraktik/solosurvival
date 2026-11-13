@@ -83,9 +83,38 @@ describe("sound moments from the session", () => {
     expect(cp).toBeGreaterThanOrEqual(0);
     expect(home).toBeGreaterThanOrEqual(0);
     t.handle([{ type: "objective_reached", targetId: targets[cp].id, index: cp }]);
-    expect(t.of("checkpoint")).toEqual([{ type: "checkpoint", stale: false }]);
+    expect(t.of("checkpoint")).toEqual([{ type: "checkpoint", last: false, stale: false }]);
     t.handle([{ type: "objective_reached", targetId: targets[home].id, index: home }]);
     expect(t.of("checkpoint")).toHaveLength(1);
+  }, 60_000);
+
+  it("the match start is announced once: at START, not on resume after a pause, and again for the next match", async () => {
+    const t = await make();
+    await t.begin("escape");
+    const first = t.of("match_started");
+    expect(first).toHaveLength(1);
+    expect(first[0]).toMatchObject({ type: "match_started", mode: "escape", id: t.session.live!.state.id });
+    t.play(3);
+    t.session.pause("manual");
+    t.play(2);
+    t.fix();
+    expect(t.session.resume()).toBe(true);
+    t.play(3);
+    expect(t.of("match_started")).toHaveLength(1);
+    await t.session.quit();
+    await t.begin("survival");
+    expect(t.of("match_started").map((e) => e.type === "match_started" && e.mode)).toEqual(["escape", "survival"]);
+  }, 60_000);
+
+  it("the last checkpoint is marked (the next goal is home); earlier ones are not", async () => {
+    const t = await make();
+    await t.begin("mission");
+    t.calm();
+    const targets = t.session.live!.state.objectives!.targets;
+    const cps = targets.map((x, i) => [x, i] as const).filter(([x]) => x.kind === "checkpoint");
+    expect(cps.length).toBeGreaterThanOrEqual(2);
+    for (const [x, i] of cps) { t.session.live!.state.objectives!.index = i + 1; t.handle([{ type: "objective_reached", targetId: x.id, index: i }]); }
+    expect(t.of("checkpoint").map((e) => e.type === "checkpoint" && e.last)).toEqual([...cps.slice(1).map(() => false), true]);
   }, 60_000);
 
   it("the end comes at once, in the same moment as the game decides it (not after the result is saved)", async () => {

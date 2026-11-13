@@ -1,7 +1,7 @@
 import type { Cue } from "@/play/session";
 import { createCuePlayer, type SoundPack } from "@/audio/cue-player";
 import { SOUND_RULES } from "@/play/sound-rules";
-import { AUDIO, GAIN, readLevels, soundscape, writeLevels } from "./audio";
+import { AUDIO, GAIN, matchAudio, readLevels, soundscape, writeLevels } from "./audio";
 
 export type { CueResult } from "@/audio/cue-player";
 
@@ -72,6 +72,8 @@ const hidden = () => typeof document !== "undefined" && document.hidden;
  */
 export function speak(line: Line): boolean {
   if (!cuesEnabled() || hidden()) return false;
+  // One voice at a time: while the operator's recorded line plays, a spoken line waits for it (the newest waiting line wins).
+  if (matchAudio().radio.busy) { afterRadio = { line, at: Date.now() }; return true; }
   const now = Date.now();
   const R = SOUND_RULES.radio;
   const open = now - lastLineMs < R.channelOpenS * 1000;
@@ -94,7 +96,28 @@ export function speak(line: Line): boolean {
   return true;
 }
 
-/** Drops a line that is waiting for its radio click (match over, app hidden). */
+/** Drops a line that is waiting for its radio click or for a recorded line to end (match over, app hidden). */
 export function cancelPendingSpeech(): void {
+  afterRadio = null;
   if (pending) { clearTimeout(pending.timer); pending = null; soundscape().setDuck("radio", false); }
+}
+
+/** A spoken line waiting for the recorded one; said when the channel is free, dropped when it would come this much later. */
+let afterRadio: { line: Line; at: number } | null = null;
+const AFTER_RADIO_MAX_MS = 9000;
+
+// The recorded lines and the speech synthesis share one channel: a recorded line stops speech that is under way, and speech that had to
+// wait is said when the line has ended. The match's soundscape uses speech for lines without a recording, and as their fallback.
+{
+  const m = matchAudio();
+  m.speak = (l) => { speak(l); };
+  m.radio.interrupt = () => {
+    cancelPendingSpeech();
+    try { if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel(); } catch { /* no speech */ }
+  };
+  m.radio.onIdle(() => {
+    const w = afterRadio;
+    afterRadio = null;
+    if (w && Date.now() - w.at <= AFTER_RADIO_MAX_MS) speak(w.line);
+  });
 }
