@@ -44,6 +44,11 @@ export const ZOMBIE_SOUND_COOLDOWN_MS = 12_000;
 const CHECK_MS = 1_000;
 const SAMPLE_MS = 30_000;
 const CUE_MSG_MS = 6_000;
+/** Survival: the approaching card is shown this long (s of game time) before extraction opens. */
+export const HELI_APPROACH_LEAD_S = 60;
+/** How long a helicopter card stays (ms on the session clock). */
+export const HELI_NOTICE_MS = 3_000;
+export type HeliNotice = "approaching" | "landed";
 
 export interface SessionDeps {
   geo: GeoLike | undefined;
@@ -111,6 +116,8 @@ export interface SessionView {
   messages: string[];
   /** Ökar varje gång en slumpad skrämma ska visas. */
   scareNonce: number;
+  /** Survival: the helicopter card to show now (each at most once per match, about 3 s), or null. */
+  heliNotice: HeliNotice | null;
 }
 
 export interface MatchView {
@@ -198,6 +205,9 @@ export class PlaySession {
   private silentFirstCheck = false;
   private scareTimes: number[] = [];
   private scareNonce = 0;
+  /** Survival helicopter cards: which have been shown in this match, and the one showing now (until a time on the session clock). */
+  private heliShown = { approaching: true, landed: true };
+  private heliNow: { kind: HeliNotice; until: number } | null = null;
   private lastDetectCueMs = -Infinity;
   private lastSprintCueMs = -Infinity;
   private cueMsgs: { text: string; until: number }[] = [];
@@ -411,6 +421,7 @@ export class PlaySession {
     this.lastCheckMs = 0;
     this.lastSampleMs = 0;
     this.silentFirstCheck = !fresh;
+    this.armHeli(live, params);
     this.recorder = fresh || !this.resumeRecap ? RecapRecorder.fresh(live, params, this.startedAt) : this.resumeRecap;
     this.resumeRecap = null;
     // Slumpade skrämmor (aldrig på cykel och bara om påslaget). Återställd match: planera om från nuvarande speltid.
@@ -527,6 +538,7 @@ export class PlaySession {
       this.messages = ["The app was inactive for a while and the game paused. Tap Continue."];
     }
     if (events.length) this.endMatch(events);
+    this.updateHeli(live, t);
     if (!live.finished) this.recorder?.tick(live);
     if (this.stage === "playing" && !live.state.paused && t - this.lastCheckMs >= CHECK_MS) { this.lastCheckMs = t; this.checkZombies(live, t); }
     if (this.stage === "playing" && t - this.lastSaveMs > SAVE_EVERY_MS) void this.persist();
@@ -556,7 +568,15 @@ export class PlaySession {
         case "spawn_relaxed": this.log?.add(t, "spawn_relaxed", { n: live.state.zombies.length }); break;
         case "spawn_skipped": this.log?.add(t, "spawn_skipped", { n: live.state.zombies.length, atS: Math.round(live.state.elapsedSeconds) }); break;
         // The helicopter has landed and every zombie rushes (EXTRACTION_RUSH_FACTOR): the sprint shriek and "Run!" say so without a look at the screen.
-        case "extraction_opened": this.cue("sprint", "Extraction open – run!"); this.log?.add(t, "extraction_opened"); break;
+        case "extraction_opened":
+          this.cue("sprint", "Extraction open – run!");
+          this.log?.add(t, "extraction_opened");
+          // The helicopter has landed: its card wins over (and replaces) the approaching one.
+          if (!this.heliShown.landed && this.params?.mode === "survival") {
+            this.heliShown = { approaching: true, landed: true };
+            this.heliNow = { kind: "landed", until: t + HELI_NOTICE_MS };
+          }
+          break;
         case "gps_lost_long": this.cue("alert", "Location lost for a while"); this.log?.add(t, "gps_lost_long"); break;
         case "off_network":
           this.log?.add(t, "off_network", { change: e.change, budgetS: Math.round(live.state.offNetwork?.budgetS ?? 0), offsetM: Math.round(live.state.offNetwork?.offsetM ?? 0) });
@@ -568,8 +588,12 @@ export class PlaySession {
         default: break;
       }
     }
-    if (finished || live.finished) void this.finishMatch();
-    else if (events.some((e) => e.type === "objective_reached" || e.type === "phase" || e.type === "infection_contact")) void this.persist();
+    if (finished || live.finished) {
+      // Match over: a helicopter card that is showing goes at once (not when the result has been saved).
+      this.heliNow = null;
+      this.cached = null;
+      void this.finishMatch();
+    } else if (events.some((e) => e.type === "objective_reached" || e.type === "phase" || e.type === "infection_contact")) void this.persist();
   }
 
   /**
@@ -619,6 +643,37 @@ export class PlaySession {
     const p = objectiveProgress(o);
     if (target?.kind === "checkpoint") return p.stage === "home" ? "All checkpoints found – now head home!" : `Checkpoint ${p.primaryReached}/${p.primaryTotal}`;
     return p.stage === "done" ? "Final objective reached" : "Objective reached";
+  }
+
+  /**
+   * Survival helicopter cards for a match that starts or is restored now. What has already happened is marked as shown, so nothing old is
+   * shown again after a reload, and a match that starts (or comes back) less than HELI_APPROACH_LEAD_S before extraction gets no late
+   * approaching card. Other modes have no helicopter.
+   */
+  private armHeli(live: LiveGame, params: MatchParams): void {
+    const s = live.state;
+    const opens = live.rules.extractionOpensAtS;
+    const survival = params.mode === "survival";
+    this.heliShown = {
+      approaching: !survival || s.elapsedSeconds >= opens - HELI_APPROACH_LEAD_S,
+      landed: !survival || s.phase === "extraction" || s.phase === "finished" || !!s.extractionNodeId || s.elapsedSeconds >= opens,
+    };
+    this.heliNow = null;
+  }
+
+  /**
+   * Approaching: once, when the game's own clock (which stands still while paused or frozen) passes HELI_APPROACH_LEAD_S before
+   * extraction opens. A pause or the end of the match removes a card that is showing; it is never shown again.
+   */
+  private updateHeli(live: LiveGame, t: number): void {
+    if (live.finished || live.state.paused) { this.heliNow = null; return; }
+    if (this.heliNow && this.heliNow.until <= t) this.heliNow = null;
+    const s = live.state;
+    if (!this.heliShown.approaching && s.phase !== "extraction" && s.elapsedSeconds >= live.rules.extractionOpensAtS - HELI_APPROACH_LEAD_S) {
+      this.heliShown.approaching = true;
+      this.heliNow = { kind: "approaching", until: t + HELI_NOTICE_MS };
+      this.log?.add(t, "heli_approaching", { atS: Math.round(s.elapsedSeconds) });
+    }
   }
 
   private cue(c: Cue, text: string) {
@@ -777,6 +832,7 @@ export class PlaySession {
     this.recorder = null;
     this.autoStart = false;
     this.scareShown = false;
+    this.heliNow = null;
     this.proposal = null;
     this.log = null;
     this.prepared = null;
@@ -828,6 +884,7 @@ export class PlaySession {
       match: live ? this.matchView(live, t) : null,
       storageWarning: this.storageWarning,
       scareNonce: this.scareNonce,
+      heliNotice: live && !live.finished && !live.state.paused && this.heliNow && this.heliNow.until > t ? this.heliNow.kind : null,
       messages: [...this.cueMsgs.filter((m) => m.until > t).map((m) => m.text), ...this.messages],
     };
   }

@@ -133,7 +133,9 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .zmark.sprint::after { animation-duration: .6s; border-width: 3px; inset: -9px; }
 .zmark.sprint .zlabel { background: #7f1d1d; }
 /* Start page backdrop */
-.hero { background: linear-gradient(#0b0f1455, #0b0f1422 45%, #0b0f14aa), url("/img/hero.jpg") 70% 100% / auto 135% no-repeat, url("/img/hero.svg") center / cover no-repeat; text-shadow: 0 2px 10px #000; }
+/* hero-v2: red sky at the top, an empty foggy street in the middle (behind the title and buttons), zombies in the lower corners.
+   Covered, centred; a darker band behind the text keeps it readable without hiding the sky or the zombies. hero.svg is the fallback. */
+.hero { background: linear-gradient(#0b0f1426 0%, #0b0f1440 22%, #0b0f149e 42%, #0b0f14a8 62%, #0b0f1440 82%, #0b0f1466 100%), url("/img/hero-v2.jpg") 50% 50% / cover no-repeat, url("/img/hero.svg") center / cover no-repeat; background-color: #0b0f14; text-shadow: 0 2px 10px #000; }
 .hero .title { color: #ff3b2a; text-shadow: 0 0 18px #ff1a0a88, 0 2px 8px #000; }
 .hero .hint, .hero .sub { color: #e2e8f0; text-shadow: 0 1px 6px #000, 0 0 14px #000; }
 .hero .hint a { color: #e2e8f0; }
@@ -141,15 +143,20 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .hero .btn.primary { background: #8b1111e6; }
 /* Captured jump scare */
 .scare { position: fixed; inset: 0; z-index: 60; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; animation: scare-flash .35s steps(2) 6; }
-.scare img { width: 100%; height: 100%; object-fit: cover; animation: scare-shake .12s linear infinite, scare-zoom 3s ease-in forwards; }
+.scare img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; animation: scare-shake .12s linear infinite, scare-zoom 3s ease-in forwards; }
 .scare-text { position: absolute; bottom: 10%; left: 0; right: 0; text-align: center; font-size: 2.6rem; font-weight: 900; letter-spacing: .2em; color: #f4eee8; text-shadow: 0 2px 4px #000, 0 0 18px #000, 0 0 36px #000; }
 @keyframes scare-flash { 0% { filter: none; } 50% { filter: brightness(2.2) saturate(2) hue-rotate(-10deg); } }
 @keyframes scare-shake { 0% { transform: translate(0,0); } 25% { transform: translate(-6px,4px); } 50% { transform: translate(5px,-5px); } 75% { transform: translate(-4px,-3px); } 100% { transform: translate(0,0); } }
 @keyframes scare-zoom { from { scale: 1; } to { scale: 1.35; } }
 @media (prefers-reduced-motion: reduce) { .scare, .scare img { animation: none; } }
 /* After the scare: the same picture, still and at the scare's last zoom, behind the GAME OVER dialog. */
-.capturedbg { position: fixed; inset: 0; z-index: 45; background: #000; overflow: hidden; pointer-events: none; }
-.capturedbg img { width: 100%; height: 100%; object-fit: cover; scale: 1.35; }
+/* The ending's picture behind the result dialog: full screen, still, its subject kept above the dialog (which sits low, see .resultshow). */
+.resultbg { position: fixed; inset: 0; z-index: 45; background: radial-gradient(120% 80% at 50% 25%, #1b2430 0%, #0b0f14 70%); overflow: hidden; pointer-events: none; }
+.resultbg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.resultbg[data-pic="out-of-time"] { background: radial-gradient(120% 80% at 50% 20%, #3a1414 0%, #0b0f14 70%); }
+/* With a picture the result dialog moves to the bottom and the backdrop only darkens behind it, so the picture can be seen. */
+.map-shell.resultshow .modal-backdrop { align-items: flex-end; background: linear-gradient(#0b0f1414 0%, #0b0f1433 38%, #0b0f14c0 62%, #0b0f14ee 100%); }
+.map-shell.resultshow .modal { box-shadow: 0 -6px 28px #000c; }
 /* Random jump scare during a match */
 .jump { position: fixed; inset: 0; z-index: 55; background: #000; pointer-events: none; animation: jump-in 1.3s linear forwards; }
 .jump img { width: 100%; height: 100%; object-fit: cover; animation: scare-shake .09s linear infinite; }
@@ -433,3 +440,25 @@ button.pageback { background: transparent; border: 0; padding: 0; font: inherit;
 @media (orientation: landscape) and (max-height: 520px) {
   .map-shell.ngsetup .attrib { right: calc(min(380px, 48vw) + 8px); }
 }
+
+/* ---------- Survival: helicopter cards (approaching, landed) ---------- */
+/* Above the controls, behind the player (drawn at 60 % of the height): the map ahead stays clear and every touch goes through. */
+.helicard { position: absolute; z-index: 4; left: 12px; right: 12px; margin: 0 auto; max-width: 420px; pointer-events: none;
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 14px + 56px + 10px);
+  display: flex; align-items: stretch; gap: 12px; padding: 6px; border-radius: 14px; background: #0f151cf0; border: 1px solid #2d3b4d; box-shadow: 0 6px 18px #000a;
+  animation: helicard-in .25s ease-out both; }
+.helicard[data-kind="landed"] { border-color: #c026d3; }
+.helicard-thumb { position: relative; flex: none; width: 96px; height: 72px; border-radius: 10px; overflow: hidden; isolation: isolate; background: linear-gradient(#1b2430, #0b0f14); }
+.helicard-icon { position: absolute; inset: 0; z-index: 0; display: flex; align-items: center; justify-content: center; color: #9fb0c0; }
+.helicard-icon svg { width: 30px; height: 30px; }
+.helicard-img { position: absolute; inset: 0; z-index: 1; background-repeat: no-repeat; background-size: cover; }
+.helicard[data-kind="approaching"] .helicard-img { background-image: url("/img/heli-approaching.jpg"); background-position: 50% 38%; }
+.helicard[data-kind="landed"] .helicard-img { background-image: url("/img/heli-landed.jpg"); background-position: 50% 45%; }
+.helicard-text { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; padding-right: 6px; }
+.helicard-text b { font-size: 0.95rem; font-weight: 900; letter-spacing: 0.08em; color: var(--text); }
+.helicard[data-kind="landed"] .helicard-text b { color: #f0abfc; }
+.helicard-text span { font-size: 0.85rem; color: #c3ced9; font-variant-numeric: tabular-nums; }
+@keyframes helicard-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .helicard { animation: none; } }
+.map-shell.bike .helicard-text b { font-size: 1.05rem; }
+.map-shell.bike .helicard-text span { font-size: 0.95rem; }

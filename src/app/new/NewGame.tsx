@@ -23,6 +23,7 @@ import { REGENERATE_SVG } from "../_client/symbols";
 import { t } from "../_client/strings";
 import type { MapMarker } from "../_client/GameMap";
 import { unlockAudio } from "../_client/cues";
+import { preloadMatchPictures } from "../_client/matchImages";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
 
 const GameMap = dynamic(() => import("../_client/GameMap"), { ssr: false });
@@ -210,6 +211,8 @@ export default function NewGame() {
   const proposal = prepared?.proposals[view?.selected ?? 0] ?? null;
   const set = (patch: Partial<MatchParams>) => setP((cur) => clampParams({ ...cur, ...patch }));
   const haveStart = !!session?.currentStart();
+  // The match's pictures (helicopter cards, its possible endings) start loading on the setup step, before START.
+  useEffect(() => { if (step === "setup") preloadMatchPictures(p.mode); }, [step, p.mode]);
 
   // --- Choices: another activity or mode drops a course planned for the old one (and any answer still on its way) ---
   const pickActivity = (a: Activity) => {

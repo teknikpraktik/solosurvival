@@ -94,6 +94,12 @@ const en = {
     previousGames: "Previous games",
     notSaved: "The result could not be saved locally.",
   },
+  heli: {
+    approaching: "HELICOPTER INBOUND",
+    approachingSub: (time: string) => `Extraction opens in ${time}`,
+    landed: "HELICOPTER LANDED",
+    landedSub: (dist: string | null) => (dist ? `Extraction open · ${dist} away` : "Extraction open · reach it"),
+  },
   hud: {
     soundOn: "Sound on (tap to mute)",
     soundOff: "Sound off (tap to turn on)",

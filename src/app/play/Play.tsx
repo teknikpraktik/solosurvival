@@ -17,11 +17,28 @@ import { extractionOpensAtS } from "@/config/game-rules";
 import { MatchStorage } from "@/play/storage";
 import { Scare } from "../_client/Scare";
 import { JumpScare } from "../_client/JumpScare";
+import { HeliCard } from "../_client/HeliCard";
+import { preloadMatchPictures, resultPicture, type ResultPicture } from "../_client/matchImages";
 import type { MapMarker } from "../_client/GameMap";
 
 const fmtDist = (m: number): string => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`);
 
 const GameMap = dynamic(() => import("../_client/GameMap"), { ssr: false });
+
+/**
+ * The picture behind the result: the subject is kept in view above the dialog (which sits low). A missing file falls back to the given
+ * file, or to the dark background alone; the result itself never waits for it.
+ */
+function ResultBackdrop({ pic }: { pic: ResultPicture }) {
+  const [src, setSrc] = useState<string | null>(pic.src);
+  useEffect(() => { setSrc(pic.src); }, [pic.src]);
+  return (
+    <div className="resultbg" data-pic={pic.key} aria-hidden="true">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {src && <img src={src} alt="" style={{ objectPosition: pic.position }} onError={() => setSrc((cur) => (cur === pic.src && pic.fallback ? pic.fallback : null))} />}
+    </div>
+  );
+}
 
 export default function Play() {
   const ctx = useSessionCtx();
@@ -49,6 +66,16 @@ export default function Play() {
     if (n > lastScare.current) { lastScare.current = n; setJump(true); }
   }, [view?.scareNonce]);
   useEffect(() => { setSound(cuesEnabled()); }, []);
+  // The pictures this match may show (helicopter cards, its possible endings) start loading now, in the background.
+  const matchMode = view?.match?.mode;
+  useEffect(() => { if (matchMode) preloadMatchPictures(matchMode); }, [matchMode]);
+  // Helicopter approaching: a vibration as the card appears (the existing "alert" cue; landing already has the extraction sound).
+  const heliNotice = view?.heliNotice ?? null;
+  const lastHeli = useRef<string | null>(null);
+  useEffect(() => {
+    if (heliNotice === "approaching" && lastHeli.current !== "approaching") playCue("alert");
+    lastHeli.current = heliNotice;
+  }, [heliNotice]);
   const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
 
   // Deep link / reload: try to restore a saved match.
@@ -177,9 +204,12 @@ export default function Play() {
   const remaining = Math.max(0, m.limitS - m.elapsedS);
   const ready = m.elapsedS < 0.5;
   const canResume = !m.needsFix && !m.gpsLost;
+  // The picture behind the result, chosen from how the match ended and its mode.
+  const resultPic = finished && !scare ? resultPicture(m.result, m.mode) : null;
+  const opensInS = Math.max(0, extractionOpensAtS(m.limitS) - m.elapsedS);
 
   return (
-    <div className={`map-shell${m.activity === "mtb" ? " bike" : ""}`}>
+    <div className={`map-shell${m.activity === "mtb" ? " bike" : ""}${resultPic ? " resultshow" : ""}`}>
       <GameMap
         graph={live?.g}
         routes={route}
@@ -304,15 +334,18 @@ export default function Play() {
         />
       )}
 
+      {!finished && heliNotice && (
+        <HeliCard
+          key={heliNotice}
+          kind={heliNotice}
+          title={heliNotice === "landed" ? t().heli.landed : t().heli.approaching}
+          sub={heliNotice === "landed" ? t().heli.landedSub(dExtraction !== null ? fmtDist(dExtraction) : null) : t().heli.approachingSub(fmtTime(opensInS))}
+        />
+      )}
       {jump && !finished && <JumpScare onDone={() => setJump(false)} />}
       {scare && <Scare onDone={() => { session.scareShown = true; setScareDone(true); }} />}
-      {/* Captured: the scare picture stays behind the result dialog (still, dimmed by the dialog's backdrop). */}
-      {finished && m.result === "infected" && scareDone && (
-        <div className="capturedbg" aria-hidden="true">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/img/captured.jpg" alt="" onError={(e) => { (e.target as HTMLImageElement).src = "/img/captured.svg"; }} />
-        </div>
-      )}
+      {/* The ending's picture behind the result dialog (captured: after the scare, the same picture, still). */}
+      {resultPic && <ResultBackdrop pic={resultPic} />}
       {/* Match over is a mandatory decision: no X, the player chooses where to go. */}
       {finished && !scare && (() => {
         const R = t().result;

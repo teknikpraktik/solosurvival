@@ -65,7 +65,7 @@ const waitEnd = (page) => page.locator(".outcome").waitFor({ timeout: 30000 }).t
   await page.waitForTimeout(6000); // the scare screen comes first
   check("captured: the result dialog opens after the scare", await dialog(page).getByText("CAPTURED").waitFor({ timeout: 30000 }).then(() => true, () => false));
   await page.screenshot({ path: `${OUT}/captured.png` });
-  check("captured: the scare picture stays behind the dialog", (await page.locator(".capturedbg img").count()) === 1);
+  check("captured: the scare picture stays behind the dialog", (await page.locator(".resultbg[data-pic=\"captured\"] img").count()) === 1);
   const capWords = ((await dialog(page).innerText()).match(/captured/gi) ?? []).length;
   check("'Captured' once (the title), no time stamp sentence", (await dialog(page).getAttribute("aria-label")) === "CAPTURED" && capWords === 1 && (await page.getByText(/Captured at/).count()) === 0, `${capWords}×`);
   const fit = await page.evaluate(() => ({ hscroll: document.documentElement.scrollWidth > window.innerWidth, small: [...document.querySelectorAll(".modal-actions .btn, .resultlinks .link, .pvtoggle")].filter((e) => e.getBoundingClientRect().height < 44).length, cut: [...document.querySelectorAll(".statcells dd, .statcells dt")].filter((e) => e.scrollWidth > e.clientWidth + 1).length }));
@@ -76,7 +76,7 @@ const waitEnd = (page) => page.locator(".outcome").waitFor({ timeout: 30000 }).t
   await page.waitForURL("**/recap**"); await page.waitForTimeout(1500);
   await page.getByRole("link", { name: "Back" }).click();
   await page.waitForURL("**/play"); await page.waitForTimeout(1200);
-  check("back from SHOW MATCH: the CAPTURED dialog again, without the scare", (await dialog(page).getAttribute("aria-label").catch(() => null)) === "CAPTURED" && (await page.locator(".scare").count()) === 0 && (await page.locator(".capturedbg img").count()) === 1);
+  check("back from SHOW MATCH: the CAPTURED dialog again, without the scare", (await dialog(page).getAttribute("aria-label").catch(() => null)) === "CAPTURED" && (await page.locator(".scare").count()) === 0 && (await page.locator(".resultbg[data-pic=\"captured\"] img").count()) === 1);
   await page.getByRole("link", { name: "Main menu" }).click();
   await page.waitForURL((u) => new URL(u).pathname === "/"); 
   check("Main menu leaves to the start page", new URL(page.url()).pathname === "/");
