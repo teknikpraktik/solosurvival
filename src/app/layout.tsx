@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { SessionProvider } from "./_client/SessionProvider";
 import { ServiceWorker } from "./_client/ServiceWorker";
+import { AudioDirector } from "./_client/AudioDirector";
 
 export const metadata: Metadata = {
   title: "OUTBREAK – Solo Survival",
@@ -24,7 +25,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          {children}
+          <AudioDirector />
+        </SessionProvider>
         <ServiceWorker />
       </body>
     </html>

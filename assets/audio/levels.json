@@ -1,0 +1,261 @@
+{
+  "ceilingDbtp": -1,
+  "bitrate": "128k",
+  "files": {
+    "threat-pulse-1": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": 4.5,
+      "limiter": false,
+      "before": {
+        "I": -28.5,
+        "M": -24,
+        "TP": -11.2,
+        "bytes": 2880078
+      },
+      "after": {
+        "I": -24.4,
+        "M": -20,
+        "TP": -7.1,
+        "bytes": 240768
+      },
+      "durationS": 15
+    },
+    "threat-pulse-2": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": -3.4,
+      "limiter": false,
+      "before": {
+        "I": -20.6,
+        "M": -16.2,
+        "TP": -0.9,
+        "bytes": 2880078
+      },
+      "after": {
+        "I": -24.4,
+        "M": -20,
+        "TP": -4.8,
+        "bytes": 240768
+      },
+      "durationS": 15
+    },
+    "threat-pulse-3": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": -0.3,
+      "limiter": false,
+      "before": {
+        "I": -23.7,
+        "M": -22.8,
+        "TP": -9.7,
+        "bytes": 2880078
+      },
+      "after": {
+        "I": -24.5,
+        "M": -23.5,
+        "TP": -10.5,
+        "bytes": 240768
+      },
+      "durationS": 15
+    },
+    "threat-pulse-4": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": 6.1,
+      "limiter": false,
+      "before": {
+        "I": -30.1,
+        "M": -24.4,
+        "TP": -11.1,
+        "bytes": 2880078
+      },
+      "after": {
+        "I": -24.4,
+        "M": -18.8,
+        "TP": -5.4,
+        "bytes": 240768
+      },
+      "durationS": 15
+    },
+    "heli-extraction": {
+      "measure": "I",
+      "target": -20,
+      "gainDb": -3.6,
+      "limiter": false,
+      "before": {
+        "I": -16.4,
+        "M": -14.8,
+        "TP": -0.9,
+        "bytes": 5760078
+      },
+      "after": {
+        "I": -20.5,
+        "M": -18.8,
+        "TP": -4.9,
+        "bytes": 480768
+      },
+      "durationS": 30
+    },
+    "heli-approach": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": -2,
+      "limiter": false,
+      "before": {
+        "I": -21.3,
+        "M": -14,
+        "TP": -0.8,
+        "bytes": 4800078
+      },
+      "after": {
+        "I": -23.7,
+        "M": -16.4,
+        "TP": -3.1,
+        "bytes": 400896
+      },
+      "durationS": 25
+    },
+    "heli-extraction-success": {
+      "measure": "M",
+      "target": -14,
+      "gainDb": -1.5,
+      "limiter": false,
+      "before": {
+        "I": -25,
+        "M": -14.8,
+        "TP": 0,
+        "bytes": 1344078
+      },
+      "after": {
+        "I": -27,
+        "M": -16.7,
+        "TP": -1.6,
+        "bytes": 112896
+      },
+      "durationS": 7
+    },
+    "captured": {
+      "measure": "M",
+      "target": -14,
+      "gainDb": 1.3,
+      "limiter": false,
+      "before": {
+        "I": -18.6,
+        "M": -15.2,
+        "TP": -4.3,
+        "bytes": 768078
+      },
+      "after": {
+        "I": -17.8,
+        "M": -14.4,
+        "TP": -3.4,
+        "bytes": 64896
+      },
+      "durationS": 4
+    },
+    "zombie-near": {
+      "measure": "M",
+      "target": -14,
+      "gainDb": 1.3,
+      "limiter": false,
+      "before": {
+        "I": -17.8,
+        "M": -15.3,
+        "TP": -4.4,
+        "bytes": 576078
+      },
+      "after": {
+        "I": -16.9,
+        "M": -14.4,
+        "TP": -3.5,
+        "bytes": 48768
+      },
+      "durationS": 3
+    },
+    "position-revealed": {
+      "measure": "M",
+      "target": -14,
+      "gainDb": -4,
+      "limiter": false,
+      "before": {
+        "I": -13.4,
+        "M": -10,
+        "TP": -3.7,
+        "bytes": 384078
+      },
+      "after": {
+        "I": -17.8,
+        "M": -14.4,
+        "TP": -8.1,
+        "bytes": 33024
+      },
+      "durationS": 2
+    },
+    "checkpoint-reached": {
+      "measure": "M",
+      "target": -14,
+      "gainDb": -6.7,
+      "limiter": false,
+      "before": {
+        "I": -9,
+        "M": -7.3,
+        "TP": -0.4,
+        "bytes": 384078
+      },
+      "after": {
+        "I": -16.1,
+        "M": -14.4,
+        "TP": -7.6,
+        "bytes": 33024
+      },
+      "durationS": 2
+    },
+    "radio-open": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": -0.2,
+      "limiter": false,
+      "before": {
+        "I": -15.8,
+        "M": -15.8,
+        "TP": -7.6,
+        "bytes": 93486
+      },
+      "after": {
+        "I": -16.4,
+        "M": -16.4,
+        "TP": -7.6,
+        "bytes": 8832
+      },
+      "durationS": 0.487
+    },
+    "safe-door-close": {
+      "measure": "M",
+      "target": -17,
+      "gainDb": 9.8,
+      "limiter": true,
+      "before": {
+        "I": -33.4,
+        "M": -26.8,
+        "TP": -6.9,
+        "bytes": 960078
+      },
+      "after": {
+        "I": -25.8,
+        "M": -19.4,
+        "TP": -2.5,
+        "bytes": 81024
+      },
+      "durationS": 5
+    },
+    "theme-outbreak": {
+      "copied": true,
+      "I": -16,
+      "M": -9.5,
+      "TP": 0,
+      "bytes": 4792224,
+      "durationS": 211.344
+    }
+  }
+}

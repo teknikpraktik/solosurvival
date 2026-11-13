@@ -50,6 +50,19 @@ export const HELI_APPROACH_LEAD_S = 60;
 export const HELI_NOTICE_MS = 3_000;
 export type HeliNotice = "approaching" | "landed";
 
+/**
+ * Game moments the adult app's soundscape follows (src/app/_client/audio.ts), sent at the moment the game decides them, so a sound and the
+ * picture for the same moment (scare, helicopter card, result) start together. `stale` = the moment was worked out on return from the
+ * background (it happened while the app was away): no event sound should then be played for it, only the result of the match counts.
+ */
+export type SoundEvent =
+  | { type: "checkpoint"; stale: boolean }
+  /** The zombies have the player's position: the hunt begins (first detection in the match) or the player is exposed off the road network. */
+  | { type: "revealed"; reason: "hunt" | "exposed"; stale: boolean }
+  | { type: "heli_approach"; stale: boolean }
+  | { type: "heli_landed"; stale: boolean }
+  | { type: "finished"; result: string; mode: MatchParams["mode"]; stale: boolean };
+
 export interface SessionDeps {
   geo: GeoLike | undefined;
   db: Db | null;
@@ -69,6 +82,8 @@ export interface SessionDeps {
   profile?: ProductProfile;
   random?: () => number;
   onCue?: (cue: Cue, text: string) => void;
+  /** Game moments for a soundscape (see SoundEvent). Omitted = no such events (Mini Outbreak). */
+  onSound?: (e: SoundEvent) => void;
   /** Kompass (webbläsarens rörelsesensorer). Utelämnad = bara GPS-riktning. */
   compass?: CompassSource;
 }
@@ -210,6 +225,10 @@ export class PlaySession {
   private heliNow: { kind: HeliNotice; until: number } | null = null;
   private lastDetectCueMs = -Infinity;
   private lastSprintCueMs = -Infinity;
+  /** The hunt has begun in this match (first zombie detection), for the one "position revealed" sound. */
+  private huntRevealed = false;
+  /** Set while events worked out on return from the background are handled (see SoundEvent.stale). */
+  private replaying = false;
   private cueMsgs: { text: string; until: number }[] = [];
   /** Alla skrivningar till lagringen går i kö, så en pågående sparning aldrig kan skriva efter att matchen avslutats (och lämna en föräldralös post). */
   private io: Promise<void> = Promise.resolve();
@@ -421,6 +440,8 @@ export class PlaySession {
     this.lastCheckMs = 0;
     this.lastSampleMs = 0;
     this.silentFirstCheck = !fresh;
+    // A restored match whose hunt has already begun must not announce it again.
+    this.huntRevealed = !fresh && live.state.phase !== "head_start";
     this.armHeli(live, params);
     this.recorder = fresh || !this.resumeRecap ? RecapRecorder.fresh(live, params, this.startedAt) : this.resumeRecap;
     this.resumeRecap = null;
@@ -493,7 +514,10 @@ export class PlaySession {
       void this.persist();
     } else if (r.awayMs > 0) {
       this.log?.add(t, "background_return", { awayS: Math.round(r.awayMs / 1000), shielded: r.shielded });
-      if (r.events.length) this.endMatch(r.events);
+      if (r.events.length) {
+        this.replaying = true;
+        try { this.endMatch(r.events); } finally { this.replaying = false; }
+      }
       if (!live.finished && !live.state.paused) void this.acquireWakeLock();
     }
     this.emit();
@@ -553,8 +577,13 @@ export class PlaySession {
     this.recorder?.events(events);
     for (const e of events) {
       switch (e.type) {
-        case "objective_reached": this.cue("goal", this.objectiveMessage(live, e.index)); this.log?.add(t, "objective", { id: e.targetId, atS: Math.round(live.state.elapsedSeconds) }); break;
+        case "objective_reached":
+          this.cue("goal", this.objectiveMessage(live, e.index));
+          if (live.state.objectives?.targets[e.index]?.kind === "checkpoint") this.sound({ type: "checkpoint", stale: this.replaying });
+          this.log?.add(t, "objective", { id: e.targetId, atS: Math.round(live.state.elapsedSeconds) });
+          break;
         case "zombie_detected":
+          if (!this.huntRevealed) { this.huntRevealed = true; this.sound({ type: "revealed", reason: "hunt", stale: this.replaying }); }
           // Med magnet-jakt upptäcker många zombier spelaren samtidigt: ett gemensamt larm, inte ett per zombie.
           if (t - this.lastDetectCueMs > 15_000) { this.lastDetectCueMs = t; this.cue("alert", "Zombies are hunting you"); }
           break;
@@ -575,16 +604,22 @@ export class PlaySession {
           if (!this.heliShown.landed && this.params?.mode === "survival") {
             this.heliShown = { approaching: true, landed: true };
             this.heliNow = { kind: "landed", until: t + HELI_NOTICE_MS };
+            this.sound({ type: "heli_landed", stale: this.replaying });
           }
           break;
         case "gps_lost_long": this.cue("alert", "Location lost for a while"); this.log?.add(t, "gps_lost_long"); break;
         case "off_network":
           this.log?.add(t, "off_network", { change: e.change, budgetS: Math.round(live.state.offNetwork?.budgetS ?? 0), offsetM: Math.round(live.state.offNetwork?.offsetM ?? 0) });
           if (e.change === "entered") this.cue("alert", "You are off the road network. Zombies are closing in on the nearest road.");
-          else if (e.change === "exposed") this.cue("danger", "Zombies have found you. Get back to the road!");
+          else if (e.change === "exposed") { this.cue("danger", "Zombies have found you. Get back to the road!"); this.sound({ type: "revealed", reason: "exposed", stale: this.replaying }); }
           break;
         case "phase": this.log?.add(t, "phase", { phase: e.phase }); break;
-        case "finished": finished = true; this.log?.add(t, "finished", { result: e.result }); break;
+        case "finished":
+          finished = true;
+          this.log?.add(t, "finished", { result: e.result });
+          // At once, with the scare or result picture (the spoken/vibrating "end" cue still waits for the result to be saved).
+          if (this.params) this.sound({ type: "finished", result: e.result, mode: this.params.mode, stale: this.replaying });
+          break;
         default: break;
       }
     }
@@ -672,8 +707,13 @@ export class PlaySession {
     if (!this.heliShown.approaching && s.phase !== "extraction" && s.elapsedSeconds >= live.rules.extractionOpensAtS - HELI_APPROACH_LEAD_S) {
       this.heliShown.approaching = true;
       this.heliNow = { kind: "approaching", until: t + HELI_NOTICE_MS };
+      this.sound({ type: "heli_approach", stale: false });
       this.log?.add(t, "heli_approaching", { atS: Math.round(s.elapsedSeconds) });
     }
+  }
+
+  private sound(e: SoundEvent) {
+    try { this.d.onSound?.(e); } catch { /* sound must never stop the game */ }
   }
 
   private cue(c: Cue, text: string) {

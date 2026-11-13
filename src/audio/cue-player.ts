@@ -17,7 +17,11 @@ export interface SoundPack<L extends string = string> {
   /** Volym för en ljudfil. */
   gain: (cue: Cue) => number;
   /** Talsyntes: språk (BCP 47, t.ex. "en-US") samt tonhöjd och tempo per replik. */
-  voice: { lang: string; pitch: (line: L) => number; rate: (line: L) => number };
+  voice: { lang: string; pitch: (line: L) => number; rate: (line: L) => number; volume?: () => number };
+  /** Optional: an AudioContext the app already owns (one context for all of its sound). Omitted = the player makes its own. */
+  context?: () => AudioContext | null;
+  /** Optional: told when a spoken line starts and ends (e.g. to lower background sound under the voice). */
+  onSpeech?: (speaking: boolean) => void;
 }
 
 /** How a cue came out, for the field log: "sample" / "synth" = sound started (context state after it), "silent" = no sound by design, "muted", "error". */
@@ -83,8 +87,9 @@ export function createCuePlayer<L extends string>(pack: SoundPack<L>): CuePlayer
       if (v) u.voice = v;
       u.pitch = pack.voice.pitch(text);
       u.rate = pack.voice.rate(text);
-      u.volume = 1;
-      const done = () => speaking.delete(u);
+      u.volume = Math.max(0, Math.min(1, pack.voice.volume?.() ?? 1));
+      const done = () => { if (speaking.delete(u)) pack.onSpeech?.(false); };
+      u.onstart = () => pack.onSpeech?.(true);
       u.onend = done;
       u.onerror = done;
       speaking.add(u);
@@ -99,7 +104,7 @@ export function createCuePlayer<L extends string>(pack: SoundPack<L>): CuePlayer
   /** Förladdar och avkodar paketets ljudfiler (anropas efter första användarinteraktionen). */
   async function preloadCues(): Promise<void> {
     try {
-      ctx ??= new AudioContext();
+      ctx ??= pack.context?.() ?? new AudioContext();
       for (const [cue, url] of Object.entries(pack.samples) as [Cue, string][]) {
         if (buffers.has(cue) || loading.has(cue)) continue;
         loading.add(cue);
@@ -117,7 +122,7 @@ export function createCuePlayer<L extends string>(pack: SoundPack<L>): CuePlayer
     try { navigator.vibrate?.(pack.patterns[cue].vib); } catch { /* ej stött */ }
     if (!pack.audible.has(cue)) return { how: "silent" };
     try {
-      ctx ??= new AudioContext();
+      ctx ??= pack.context?.() ?? new AudioContext();
       // Start the sound only once the context really runs: started on a suspended/interrupted context it may never be heard (checkpoint chime "only sometimes").
       const state = await wake(ctx);
       let buf = buffers.get(cue);
@@ -150,7 +155,7 @@ export function createCuePlayer<L extends string>(pack: SoundPack<L>): CuePlayer
 
   /** Anropas vid en knapptryckning så att ljud tillåts senare under spelet. */
   function unlockAudio(): void {
-    try { ctx ??= new AudioContext(); void ctx.resume(); void preloadCues(); } catch { /* ignoreras */ }
+    try { ctx ??= pack.context?.() ?? new AudioContext(); void ctx.resume(); void preloadCues(); } catch { /* ignoreras */ }
     // Every later touch also wakes the audio (iOS only allows resume() reliably inside a gesture), so one interruption does not silence the rest of the match.
     if (!wakeOnTouch) {
       wakeOnTouch = true;

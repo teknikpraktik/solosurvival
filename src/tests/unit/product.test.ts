@@ -202,13 +202,23 @@ describe("lokal lagring per app", () => {
 });
 
 describe("ljudpaket", () => {
-  it("vuxenappens ljudpaket är oförändrat efter uppdelningen i gemensam uppspelning och paket", async () => {
+  it("vuxenappens cue-paket vibrerar och talar bara: alla ljudfiler spelas av ljudbilden (inget hörs dubbelt)", async () => {
     const { OUTBREAK_SOUNDS } = await import("@/app/_client/cues");
-    expect(OUTBREAK_SOUNDS.storageKey).toBe("outbreak.cues");
-    expect(OUTBREAK_SOUNDS.samples).toEqual({ zombie: "/audio/zombie-near.wav", captured: "/audio/captured-scream.wav", jump: "/audio/jump-scream.wav", tension: "/audio/tension.wav", sprint: "/audio/sprint-shriek.wav", goal: "/audio/checkpoint.wav" });
-    expect([...OUTBREAK_SOUNDS.audible].sort()).toEqual(["captured", "goal", "jump", "sprint", "tension", "zombie"]);
+    expect(OUTBREAK_SOUNDS.storageKey).toBe("outbreak.cues"); // det sparade av/på-valet gäller fortfarande
+    expect(OUTBREAK_SOUNDS.samples).toEqual({});
+    expect([...OUTBREAK_SOUNDS.audible]).toEqual([]);
     expect(OUTBREAK_SOUNDS.voice).toMatchObject({ lang: "en-US" });
     expect([OUTBREAK_SOUNDS.voice.pitch("Run!"), OUTBREAK_SOUNDS.voice.pitch("Checkpoint"), OUTBREAK_SOUNDS.voice.rate("Run!"), OUTBREAK_SOUNDS.voice.rate("Checkpoint")]).toEqual([0.5, 1.1, 0.9, 1]);
-    expect([OUTBREAK_SOUNDS.gain("captured"), OUTBREAK_SOUNDS.gain("zombie")]).toEqual([1, 0.7]);
+  });
+  it("ljudbildens filer finns i public/audio, de gamla WAV-ljuden är borta och inga WAV-original ligger i appen", async () => {
+    const { AUDIO } = await import("@/app/_client/audio");
+    const { existsSync, readdirSync } = await import("node:fs");
+    const pub = path.resolve(import.meta.dirname, "../../../public/audio");
+    const urls = Object.values(AUDIO).flat();
+    for (const u of urls) expect(existsSync(path.join(pub, u.replace(/^\/audio\//, ""))), u).toBe(true);
+    const files = readdirSync(pub);
+    expect(files.filter((f) => !f.endsWith(".mp3"))).toEqual([]);
+    expect(files.sort()).toEqual(urls.map((u) => u.replace(/^\/audio\//, "")).sort()); // inga kvarglömda filer
+    expect(files).not.toContain("heli-apch.mp3");
   });
 });

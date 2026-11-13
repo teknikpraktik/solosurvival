@@ -21,6 +21,10 @@ Verktyg för balans och granskning (alla använder samma motor som spelet):
 - `scripts/infection-noise.ts` (GPS-brus mot infektionsregeln), `scripts/background-exploit.ts` (regler för frånvaro), `scripts/graph-audit.ts` / `graph-audit-karlstad.ts` (passager mot facit).
 - `npm run lint` – `tsc` med `noUnusedLocals/Parameters` (ESLint stöder ännu inte TypeScript 7).
 
+## Ljud
+
+Ljudbilden i vuxenappen (menymusik, hotpulser, helikopter, händelseljud, tal med radioklick) beskrivs i [`docs/LJUD.md`](docs/LJUD.md). Originalfilerna finns i `assets/audio/source/`, och `node scripts/build-audio.mjs` (kräver ffmpeg) bygger `public/audio/*.mp3`. Ljud-e2e: `BASE_URL=… node e2e/audio.e2e.mjs`.
+
 ## Kommandon
 
 ```bash

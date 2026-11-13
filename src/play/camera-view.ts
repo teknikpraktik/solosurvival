@@ -31,9 +31,6 @@ const BIKE: ViewProfile = { aheadM: 1500, closeAheadM: 300, closeSideM: 230, pla
 
 export const viewProfile = (a: Activity): ViewProfile => (a === "mtb" ? BIKE : FOOT);
 
-/** Minimum seconds between two "tension" sounds. */
-export const TENSION_COOLDOWN_S = 45;
-
 /** "Zombies approaching" is spoken when the nearest zombie comes within this distance (m)… */
 export const APPROACH_ENTER_M = 200;
 /** …and is armed again only after it has been farther away than this (hysteresis), plus the cooldown below. */

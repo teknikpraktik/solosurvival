@@ -6,7 +6,8 @@ import { tryOpenDb } from "@/play/idb";
 import { PlaySession } from "@/play/session";
 import { IdbTileCache } from "@/play/tile-cache";
 import type { Db } from "@/play/idb";
-import { playCue, speak } from "./cues";
+import { cancelPendingSpeech, playCue, speak } from "./cues";
+import { matchAudio, soundscape } from "./audio";
 import { openFreeMapFetcher } from "@/geo/blockers";
 import { createBrowserCompass } from "./compass";
 
@@ -41,12 +42,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         terrainTiles: openFreeMapFetcher(),
         traceEnabled,
         jumpScares: () => true, // hidden feature: always on (never on Bike, decided by the session)
+        // Cues vibrate and speak; every sound file comes from the soundscape (onSound), so nothing is heard twice.
         onCue: (c, text) => {
-          // The checkpoint chime's outcome goes to the field log (it was heard "only sometimes" in the field), and a bright spoken "Checkpoint"
-          // follows it on its own audio path, so the reward comes through even if Web Audio was interrupted.
-          void playCue(c).then((r) => { if (c === "goal") session?.fieldLog?.add(Date.now(), "cue_goal", { ...r, text }); });
+          void playCue(c);
+          // A bright spoken "Checkpoint" follows the chime on its own audio path, so the reward comes through even if Web Audio was interrupted.
           if (c === "goal" && /^(Checkpoint|All checkpoints)/.test(text)) setTimeout(() => speak("Checkpoint"), 1000);
-          if (c === "sprint") setTimeout(() => speak("Run!"), 250); // zombie sprint: shriek plus a spoken "Run!"
+          if (c === "sprint") setTimeout(() => speak("Run!"), 250); // zombie sprint (and extraction open): a spoken "Run!"
+        },
+        // What came of each event sound goes to the field log (the old checkpoint chime was heard "only sometimes" in the field).
+        onSound: (e) => {
+          if (e.type === "finished") cancelPendingSpeech();
+          void matchAudio().onEvent(e).then((r) => { if (r !== null) session?.fieldLog?.add(Date.now(), "sound", { event: e.type, result: r, stale: e.stale, ctx: soundscape().context()?.state }); }, () => undefined);
         },
         wakeLock: "wakeLock" in navigator ? { request: () => (navigator as Navigator & { wakeLock: { request(t: "screen"): Promise<{ release(): Promise<void> }> } }).wakeLock.request("screen") } : undefined,
       });
@@ -57,7 +63,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       try { if (localStorage.getItem("outbreak.debug") === "on") (window as unknown as { __outbreak?: PlaySession }).__outbreak = session; } catch { /* ignoreras */ }
       setCtx({ session, db, ready: true });
     })();
-    const vis = () => session?.onVisibility(document.hidden);
+    const vis = () => {
+      // Sound first: nothing old may play when the session works out the time away.
+      soundscape().setSuppressed(document.hidden);
+      matchAudio().setHidden(document.hidden);
+      if (document.hidden) cancelPendingSpeech();
+      session?.onVisibility(document.hidden);
+    };
     const hide = () => session?.onPageHide();
     document.addEventListener("visibilitychange", vis);
     window.addEventListener("pagehide", hide);

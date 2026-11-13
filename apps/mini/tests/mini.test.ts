@@ -223,7 +223,10 @@ describe("5. inga skrämmor och inga skräckljud", () => {
     expect(MINI_SOUNDS.storageKey).not.toBe(OUTBREAK_SOUNDS.storageKey);
   });
   it("barnappen innehåller inga av vuxenappens skräckfiler (namn eller innehåll)", () => {
-    const horror = ["img/jump.jpg", "img/jump.svg", "img/captured.jpg", "img/captured.svg", "img/hero.jpg", "img/hero.svg", "img/backdrop.jpg", "audio/jump-scream.wav", "audio/captured-scream.wav", "audio/zombie-near.wav", "audio/tension.wav", "audio/sprint-shriek.wav"];
+    // Every one of the adult app's sounds (the threat pulses, the capture, the zombie, the music…), plus its scary pictures.
+    const adultAudio = readdirSync(path.join(ROOT, "public", "audio")).map((f) => `audio/${f}`);
+    expect(adultAudio.length).toBeGreaterThan(10);
+    const horror = ["img/jump.jpg", "img/jump.svg", "img/captured.jpg", "img/captured.svg", "img/hero.jpg", "img/hero.svg", "img/backdrop.jpg", ...adultAudio];
     const sha = (p: string) => createHash("sha256").update(readFileSync(p)).digest("hex");
     const horrorHashes = new Set(horror.map((h) => sha(path.join(ROOT, "public", h))));
     const pub = files(path.join(APP, "public")).filter((p) => !p.includes(`${path.sep}data${path.sep}`) && !p.includes(`${path.sep}maplibre${path.sep}`));

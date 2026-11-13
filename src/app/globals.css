@@ -462,3 +462,10 @@ button.pageback { background: transparent; border: 0; padding: 0; font: inherit;
 @media (prefers-reduced-motion: reduce) { .helicard { animation: none; } }
 .map-shell.bike .helicard-text b { font-size: 1.05rem; }
 .map-shell.bike .helicard-text span { font-size: 0.95rem; }
+
+/* Sound settings (start page). */
+.soundrow { display: grid; grid-template-columns: 6.5em 1fr 2.5em; align-items: center; gap: 12px; padding: 10px 0; text-align: left; }
+.soundrow.switch { grid-template-columns: 1fr auto; }
+.soundrow input[type="range"] { width: 100%; accent-color: #b91c1c; }
+.soundrow input[type="checkbox"] { width: 24px; height: 24px; accent-color: #b91c1c; }
+.soundrow .soundval { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
