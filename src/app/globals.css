@@ -285,7 +285,7 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
   background: #0f151ce6; border: 1px solid #2d3b4d; color: var(--text); font: inherit; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.06em; box-shadow: 0 2px 8px #0008; }
 .backbtn span { font-size: 1.3rem; line-height: 1; margin-top: -2px; }
 .backbtn:active { background: #1b2430; }
-.backbtn:focus-visible, .pvtoggle:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
+.backbtn:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
 .backbtn:disabled { opacity: .5; }
 .sheet.pvsheet { gap: 8px; padding-top: 12px; max-height: 66dvh; }
 /* The buttons stay at the bottom of the panel while longer details scroll above them. */
@@ -298,16 +298,11 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .pvhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .pvkicker { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #a9b6c4; }
 .pvtitle { margin: 2px 0 0; font-size: 1.15rem; letter-spacing: 0.02em; }
-.pvtoggle { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border-radius: 10px; background: transparent; border: 1px solid #2d3b4d; color: #cbd5e1; font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; flex-shrink: 0; }
-.pvtoggle .chev { display: inline-block; transition: transform .15s; }
-.pvtoggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
-@media (prefers-reduced-motion: reduce) { .pvtoggle .chev { transition: none; } }
 .pvstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.pvstats.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .pvstats div { background: #131a22; border: 1px solid #243040; border-radius: 10px; padding: 7px 9px; min-width: 0; }
 .pvstats dt { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #9fb0c0; white-space: nowrap; }
 .pvstats dd { margin: 2px 0 0; font-size: 1.08rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pvlimit { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.9rem; color: #c3ced9; padding: 0 2px; }
-.pvlimit b { color: var(--text); font-size: 1rem; font-variant-numeric: tabular-nums; }
 .pvactions { display: flex; gap: 8px; }
 .pvactions .btn { width: auto; }
 .pvregen { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 0 0 auto; padding: 0 14px; min-height: 56px; font-size: 0.82rem; letter-spacing: 0.04em; }
@@ -341,7 +336,7 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .map-shell.bike .hudbar .pill.mode { font-size: .9rem; }
 .hudbar .pill.goal { min-width: 0; white-space: normal; line-height: 1.25; }
 .hudbar .pill.zpill { flex-shrink: 0; }
-.hudbar .line.end { justify-content: flex-end; }
+.hudbar .line.start { justify-content: flex-start; }
 /* QUIT is a confirmed, rare action: present but quieter than PAUSE and AUTO. */
 .controls button.quit { color: #9fb0c0; flex: .85; font-size: .85rem; }
 
@@ -377,10 +372,10 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .zedge { position: absolute; left: 0; top: 0; z-index: 2; width: 10px; height: 10px; border-radius: 50%; background: #ff2a2a; border: 1.5px solid #fff; box-shadow: 0 0 4px #000c; pointer-events: none; will-change: transform; }
 
 /* Bike: speed, distance and elapsed time side by side (caption above number, like TIME LEFT), the bike at the left. */
-.hudbar .pill.bikestats { display: inline-flex; align-items: center; gap: 12px; padding: 4px 14px 5px 10px; flex-shrink: 0; }
-.hudbar .pill.bikestats .bikeicon { display: flex; color: #9fb0c0; }
-.hudbar .pill.bikestats .cell { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.05; }
-.hudbar .pill.bikestats .tl { font-size: .56rem; font-weight: 700; letter-spacing: .08em; color: #9fb0c0; }
+.hudbar .pill.tripstats { display: inline-flex; align-items: center; gap: 12px; padding: 4px 14px 5px 10px; flex-shrink: 0; }
+.hudbar .pill.tripstats .tripicon { display: flex; color: #9fb0c0; }
+.hudbar .pill.tripstats .cell { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.05; }
+.hudbar .pill.tripstats .tl { font-size: .56rem; font-weight: 700; letter-spacing: .08em; color: #9fb0c0; }
 
 /* ---------- New game in three steps: picture cards (activity, mode), then the setup on the map ---------- */
 .page.newgame.ngstep { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
@@ -413,23 +408,12 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 @media (hover: hover) { .imgcard:hover { border-color: #4b5d73; } .imgcard[data-current]:hover { border-color: #f87171; } }
 @media (max-width: 359px) { .imgcard-title { font-size: 1.15rem; } .imgcard-sub { font-size: 0.76rem; } .imgcard-text { max-width: 78%; padding: 10px 12px; } }
 @media (max-height: 640px) { .imgcards.three .imgcard { min-height: 104px; } .imgcards.two .imgcard { min-height: 130px; } .imgcards.three .imgcard-sub { font-size: 0.74rem; } }
-/* Returning players: one tap to the setup with the last choices (never straight into a match). */
-.lastsetup { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 8px 14px; border-radius: 12px; cursor: pointer; text-align: left;
-  background: #131a22e6; border: 1px solid #b91c1c; color: var(--text); font: inherit; }
-.lastsetup-k { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; color: #fca5a5; flex: none; }
-.lastsetup-v { flex: 1; min-width: 0; font-weight: 700; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lastsetup-go { font-size: 1.6rem; line-height: 1; color: #fca5a5; flex: none; }
-.lastsetup:active { background: #1b2430; }
-.lastsetup:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
 /* Setup: the chosen activity and mode as buttons in the top bar; the panel scrolls on its own and never hands the gesture to the map. */
 .ngchips { gap: 6px; flex-wrap: nowrap; min-width: 0; }
 .ngchip { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: uppercase; }
 .ngchip::after { content: "✎"; margin-left: 6px; font-size: 0.8rem; opacity: .7; }
 .sheet.ngpanel { overscroll-behavior: contain; }
 .ngsettings { display: flex; flex-direction: column; gap: 10px; }
-.ngsettings[hidden] { display: none; }
-.ngpanel .pvtoggle { max-width: 55%; }
-.ngpanel .pvtoggle > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .imgcard-bg { transition: none; } .imgcard:active .imgcard-bg { transform: none; } }
 /* The back chevron of step 2 is a button (one step back), styled like the page header's link. */
 button.pageback { background: transparent; border: 0; padding: 0; font: inherit; cursor: pointer; }
@@ -469,3 +453,23 @@ button.pageback { background: transparent; border: 0; padding: 0; font: inherit;
 .soundrow input[type="range"] { width: 100%; accent-color: #b91c1c; }
 .soundrow input[type="checkbox"] { width: 24px; height: 24px; accent-color: #b91c1c; }
 .soundrow .soundval { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* Start page: the rings logo above the title, transparent so the sky shows between the rings. */
+.herologo { width: clamp(84px, 26vw, 120px); height: auto; aspect-ratio: 1; margin-bottom: -4px; filter: drop-shadow(0 0 14px #ff1a0a66) drop-shadow(0 2px 6px #000a); }
+/* How to play: short lists that read well on a phone. */
+.howto ul, .howto ol { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 8px; line-height: 1.45; }
+.howto p { margin: 0; line-height: 1.45; }
+/* Short screens: the setup settings are always shown (nothing to expand), so the panel packs tighter and the course keeps map room.
+   Tap targets stay at least 44 px; the "Difficulty" heading is kept for screen readers only. */
+@media (max-height: 700px) {
+  .ngpanel { gap: 6px; padding-top: 10px; }
+  .ngpanel .pvkicker { display: none; }
+  .ngpanel .pvtitle { font-size: 1rem; margin: 0; }
+  .ngpanel .ngsettings { gap: 6px; }
+  .ngpanel #difficulty-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ngpanel .opt { min-height: 44px; padding: 4px 8px; }
+  .ngpanel .rangerow span { display: none; }
+  .ngpanel .pvstats div { padding: 4px 8px; display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+  .ngpanel .pvstats dd { margin: 0; font-size: 0.95rem; }
+  .ngpanel .pvactions .btn { padding-top: 10px; padding-bottom: 10px; min-height: 48px; }
+}

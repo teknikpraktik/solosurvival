@@ -83,13 +83,14 @@ const waitEnd = (page) => page.locator(".outcome").waitFor({ timeout: 30000 }).t
   await ctx.close();
 }
 
-// --- Aborted ---
+// --- Quit: straight to the start page, no result ---
 {
   const { ctx, page } = await play("SURVIVAL", { width: 320, height: 568 });
   await page.getByRole("button", { name: "QUIT" }).click(); await page.waitForTimeout(300);
   await dialog(page).getByRole("button", { name: "QUIT" }).click();
-  check("aborted: short dialog with MAIN MENU, no numbers and no 'saved as aborted' text", await dialog(page).getByText("MATCH ABORTED").waitFor({ timeout: 30000 }).then(() => true, () => false) && (await page.getByText(/saved as aborted/).count()) === 0 && (await dialog(page).getAttribute("aria-label")) === "MATCH ABORTED" && (await page.locator(".statcells").count()) === 0 && (await page.locator(".modal-actions .cta").innerText()) === "MAIN MENU");
-  await page.screenshot({ path: `${OUT}/aborted.png` });
+  const home = await page.waitForURL((u) => new URL(u).pathname === "/", { timeout: 15000 }).then(() => true, () => false);
+  check("quit: straight to the start page, no result dialog", home && (await page.getByRole("dialog").count()) === 0 && (await page.getByRole("heading", { name: "OUTBREAK" }).isVisible()));
+  await page.screenshot({ path: `${OUT}/quit-home.png` });
   await ctx.close();
 }
 

@@ -51,6 +51,8 @@ export default function Play() {
   const [auto, setAuto] = useState(true);
   const [tried, setTried] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  // QUIT confirmed: the match is being closed; nothing of it (result, scare, cards) is shown on the way to the start page.
+  const [quitting, setQuitting] = useState(false);
   const onUserMove = useCallback(() => setAuto(false), []);
   const [pauseDismissed, setPauseDismissed] = useState(false);
   const [gpsDismissed, setGpsDismissed] = useState(false);
@@ -194,6 +196,7 @@ export default function Play() {
       </main>
     );
   }
+  if (quitting) return <main className="center" aria-busy="true" />;
   if (!view || !m || !session) return <main className="center"><p className="hint">Loading…</p></main>;
 
   const finished = view.stage === "finished" || m.phase === "finished";
@@ -243,7 +246,7 @@ export default function Play() {
           <span className="modegroup">
             <span className="pill mode" aria-label="Mode and difficulty"><span>{MODE_LABEL[m.mode]}</span> <span>· {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span></span>
             {/* On a bike the bike sits with the speed/distance/time group instead (below); a finished match shows it here. */}
-            {(m.activity !== "mtb" || finished) && <span className="pill activity" role="img" aria-label={m.activity === "mtb" ? "Bike" : "On foot"} dangerouslySetInnerHTML={{ __html: m.activity === "mtb" ? BIKE_SVG : WALK_SVG }} />}
+            {finished && <span className="pill activity" role="img" aria-label={m.activity === "mtb" ? "Bike" : "On foot"} dangerouslySetInnerHTML={{ __html: m.activity === "mtb" ? BIKE_SVG : WALK_SVG }} />}
           </span>
           <span className="pill timeleft" aria-label={`Time left ${fmtTime(remaining)}`}><span className="tl" aria-hidden="true">TIME LEFT</span><span aria-hidden="true">{fmtTime(remaining)}</span></span>
         </div>
@@ -264,12 +267,13 @@ export default function Play() {
           )}
           {!finished && <span className={`pill zpill${zombieClose ? " zclose" : zombieWarn ? " zwarn" : ""}`} aria-label="Nearest zombie">💀 {m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>}
         </div>
-        {/* Bike: speed, distance ridden and time since the start, grouped in one compact pill with the bike at its side. */}
-        {!finished && m.activity === "mtb" && (
-          <div className="line end">
-            <span className="pill bikestats">
-              <span className="bikeicon" role="img" aria-label="Bike" dangerouslySetInnerHTML={{ __html: BIKE_SVG }} />
-              <span className="cell" aria-label="Your speed"><span className="tl" aria-hidden="true">KM/H</span><span aria-hidden="true">{view.speedMps === null ? "–" : (view.speedMps * 3.6).toFixed(1)}</span></span>
+        {/* Your trip, on the left: the activity, (Bike) speed, the distance actually moved this match (the game's own filtered track, not
+            the straight line from the start) and the game clock since the start (it stands still while paused, like the time left). */}
+        {!finished && (
+          <div className="line start">
+            <span className="pill tripstats">
+              <span className="tripicon" role="img" aria-label={m.activity === "mtb" ? "Bike" : "On foot"} dangerouslySetInnerHTML={{ __html: m.activity === "mtb" ? BIKE_SVG : WALK_SVG }} />
+              {m.activity === "mtb" && <span className="cell" aria-label="Your speed"><span className="tl" aria-hidden="true">KM/H</span><span aria-hidden="true">{view.speedMps === null ? "–" : (view.speedMps * 3.6).toFixed(1)}</span></span>}
               <span className="cell" aria-label={`Distance ${fmtKm(m.distanceM)}`}><span className="tl" aria-hidden="true">KM</span><span aria-hidden="true">{(m.distanceM / 1000).toFixed(m.distanceM < 10_000 ? 2 : 1)}</span></span>
               <span className="cell" aria-label={`Elapsed ${fmtTime(m.elapsedS)}`}><span className="tl" aria-hidden="true">TIME</span><span aria-hidden="true">{fmtTime(m.elapsedS)}</span></span>
             </span>
@@ -326,10 +330,15 @@ export default function Play() {
       {confirmEnd && !finished && (
         <Modal
           title="Quit the match?"
-          onClose={() => setConfirmEnd(false)}
           actions={
             <>
-              <button className="btn primary" onClick={() => { setConfirmEnd(false); void session.abort(); }}>QUIT</button>
+              <button className="btn primary" onClick={() => {
+                // Straight to the start page: no result, no scare, no second question. Sounds and timers stop before the session resets.
+                setConfirmEnd(false);
+                setQuitting(true);
+                matchAudio().end();
+                void session.quit().finally(() => router.replace("/"));
+              }}>QUIT</button>
               <button className="btn" onClick={() => setConfirmEnd(false)}>KEEP PLAYING</button>
             </>
           }

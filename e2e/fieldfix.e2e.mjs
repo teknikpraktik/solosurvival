@@ -38,26 +38,10 @@ for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitFo
 await page.waitForURL("**/play", { timeout: 90000 });
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 
-// Dialog "Ready to start"
-const dlg = page.getByRole("dialog", { name: "Ready to start" });
-await dlg.waitFor({ timeout: 10000 });
-const startBtn = dlg.getByRole("button", { name: "START" });
-let r = await reachable(startBtn);
-check("startdialog: STARTA helt synlig och nåbar", r.inside && r.hit, JSON.stringify(r));
-const x = dlg.getByRole("button", { name: "Close" });
-r = await reachable(x);
-check("startdialog: X nåbar och minst 44 px", r.inside && r.hit && r.w >= 44 && r.h >= 44, `${r.w}x${r.h}`);
-const xb = await x.boundingBox(), db = await dlg.locator(".modal").boundingBox();
-check("startdialog: X uppe till höger i dialogen", xb.x + xb.width > db.x + db.width - 70 && xb.y < db.y + 70);
-await page.screenshot({ path: `${OUT}/dialog-start.png` });
-// X stänger dialogen; kontrollfältet blir nåbart
-await x.click();
-await page.waitForTimeout(300);
-check("X stänger dialogen", (await page.getByRole("dialog").count()) === 0);
-const ctrl = page.locator(".controls").getByRole("button", { name: "START" });
-r = await reachable(ctrl);
-check("kontrollfältets STARTA nåbart när dialogen stängts", r.inside && r.hit);
-await ctrl.click();
+// START GAME startar matchen direkt (ingen "Ready to start"-dialog längre): vänta tills den kör.
+for (let i = 0; i < 30 && !(await page.evaluate(() => { const m = window.__outbreak?.getView().match; return !!m && !m.paused; })); i++) { await ctx.setGeolocation(START); await page.waitForTimeout(400); }
+check("START GAME: matchen kör utan startdialog", (await page.getByRole("dialog").count()) === 0 && (await page.locator(".controls").getByRole("button", { name: "PAUSE" }).count()) === 1);
+let r;
 
 // Gå: öst 4 m/s 25 s, 90° vänster (norr) 25 s, U-sväng (söder) 25 s.
 let p = { latitude: START.latitude, longitude: START.longitude };
@@ -143,11 +127,13 @@ const jumps = await page.evaluate(() => new Promise((resolve) => {
 console.log("zombiemarkör rörelse:", JSON.stringify(jumps));
 check("zombiemarkören hoppar inte mellan bildrutor (< 6 px/bildruta)", jumps !== null && jumps.maxPx < 6, JSON.stringify(jumps));
 
-// Kompass: byt till North Up
+// Kompass: knappen finns inte längre (AUTO ersatte den); delen körs bara om den finns.
 const compass = page.locator(".controls .compass");
-await compass.click(); await page.waitForTimeout(1500);
-check("kompassknappen byter till North Up", near(Number(await map.getAttribute("data-bearing")), 0, 6));
-await compass.click(); await page.waitForTimeout(300);
+if (await compass.count()) {
+  await compass.click(); await page.waitForTimeout(1500);
+  check("kompassknappen byter till North Up", near(Number(await map.getAttribute("data-bearing")), 0, 6));
+  await compass.click(); await page.waitForTimeout(300);
+}
 
 // Paus → dialog → nåbara knappar (håll GPS färsk, annars visar dialogen korrekt "VÄNTAR PÅ GPS…")
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation({ ...p, accuracy: 6 }); await page.waitForTimeout(500); }
@@ -160,20 +146,18 @@ await page.screenshot({ path: `${OUT}/dialog-pause.png` });
 await pd.getByRole("button", { name: "QUIT" }).click();
 const cd = page.getByRole("dialog", { name: "Quit the match?" });
 await cd.waitFor();
-for (const name of ["QUIT", "KEEP PLAYING", "Close"]) { r = await reachable(cd.getByRole("button", { name, exact: true })); check(`bekräftelse: ${name} nåbar`, r.inside && r.hit); }
+check("bekräftelse: exakt två val, inget X", (await cd.getByRole("button").count()) === 2);
+for (const name of ["QUIT", "KEEP PLAYING"]) { r = await reachable(cd.getByRole("button", { name, exact: true })); check(`bekräftelse: ${name} nåbar`, r.inside && r.hit); }
 await cd.getByRole("button", { name: "QUIT", exact: true }).click();
-const fd = page.getByRole("dialog", { name: "ABORTED" });
-await fd.waitFor();
-check("Match slut: inget X (obligatoriskt beslut)", (await fd.getByRole("button", { name: "Close" }).count()) === 0);
-// En avbruten match har inget "PREVIOUS GAMES" (bara HOME): det är avsiktligt i Play.tsx.
-for (const name of ["HOME"]) { r = await reachable(fd.getByText(name, { exact: true })); check(`Match slut: ${name} nåbar`, r.inside && r.hit); }
-await page.screenshot({ path: `${OUT}/dialog-end.png` });
+// Bekräftad QUIT: direkt till startsidan, ingen resultatdialog.
+await page.waitForURL((u) => new URL(u).pathname === "/", { timeout: 15000 });
+check("QUIT: direkt till startsidan utan resultatdialog", (await page.getByRole("dialog").count()) === 0);
 
-// Sidor: X uppe till höger
+// Sidor: tillbaka-pilen (‹, "Back") uppe till vänster
 for (const [url, t] of [["/how-to-play", "HOW TO PLAY"], ["/history", "PREVIOUS GAMES"], ["/field", "TEST MODE"]]) {
   await page.goto(BASE + url);
-  r = await reachable(page.getByRole("link", { name: "Close" }));
-  check(`${t}: ✕ nåbar (≥44 px)`, r.inside && r.hit && r.w >= 44);
+  r = await reachable(page.getByRole("link", { name: "Back" }).first());
+  check(`${t}: ‹ nåbar (≥44 px)`, r.inside && r.hit && r.w >= 44);
 }
 const real = errs.filter((e) => !/WebGL|swiftshader/i.test(e));
 check("inga JS-fel", real.length === 0, real.slice(0, 2).join(" | "));

@@ -2,76 +2,96 @@ import { PageHeader } from "../_client/Modal";
 
 export const metadata = { title: "How to play – OUTBREAK" };
 
+/*
+ * Every number here is taken from the game's code (checked when this page was rewritten):
+ * checkpoints 500 m / 1 km apart (routes/course.ts), course 1–6 km / 4–30 km and match length 15–60 / 20–90 min (play/config.ts),
+ * goals and extraction 30 m for 5 s (objectives.ts, game-rules.ts), capture 20 m for 3 s or 5 s (game-rules.ts), extraction at about
+ * 80 % rounded down to 5 min and zombies 50 % faster then (game-rules.ts, modes.ts), sprint within 100 m, Bike hunt range 2 km
+ * (activities.ts), off-road budget 90 s (offnetwork.ts), 45 s away and 5 s protection after a
+ * pause (live-game.ts, game-rules.ts), location lost 60 s (game-rules.ts), spoken warning at 200 m and countdown from 100 m.
+ * Not described because it is not active: riding through a zombie on the bike (BIKE_PASS_THROUGH_KMH exists, passThroughMps is unset).
+ * Change the text when those change.
+ */
 export default function HowToPlay() {
   return (
-    <main className="page">
+    <main className="page howto">
       <PageHeader title="HOW TO PLAY" />
 
       <div className="card warn">
-        <b>Safety first.</b> The game is only a guide. You decide how you move. Follow traffic rules, do not cross a road or railway just because the game suggests it, and do not enter private land, dangerous terrain or water. Never look at the screen while cycling: rely on sound and vibration, or stop. You can quit at any time, and stopping for safety costs you nothing.
+        <b>Safety first.</b> The game is only a guide. Follow traffic rules and stay off private land, railways, water and dangerous ground,
+        whatever the map shows. Never look at the screen while cycling: listen, or stop. You can quit at any time.
       </div>
 
-      <h2>The idea</h2>
-      <p>Zombies move only along real trails and roads. You move in the real world with your phone in your pocket or on your handlebars. The game follows your location.</p>
-
-      <h2>The map</h2>
-      <ul>
-        <li>The arrow is you and points the way you are moving. Standing still, it keeps its last direction.</li>
-        <li>All zombies show as faces, however far away, with the distance written beside the three closest.</li>
-        <li>The checkpoint to head for is blue and turns green once you have taken it. When your next goal is off screen, a small blue arrow at the edge of the map points to it.</li>
-        <li>The scale bar at the bottom shows distances on the map.</li>
-      </ul>
-
-      <h2>Sound and voice</h2>
-      <ul>
-        <li>A low pulse plays while zombies are near (about 200 m on foot, 400 m on a bike) and fades when you have got away.</li>
-        <li>A zombie at close range gives a short sound. When a zombie is within 100 m its distance is shown larger and spoken: 100, 50, 40, 30, 20, 10.</li>
-        <li>A radio click comes before the operator speaks. A taken checkpoint gives a chime and a spoken &quot;Checkpoint&quot;.</li>
-        <li>In Survival you hear the helicopter approach, wait at the extraction point and take off when you make it.</li>
-        <li>Music, effects and voice have their own levels under <b>SOUND</b> on the start page.</li>
-      </ul>
-
-      <h2>Buttons</h2>
-      <ul>
-        <li><b>AUTO</b> (green) – the map follows you, turns so your direction of travel is up, and zooms by itself: about 1 km ahead on a bike (600 m on foot), closer when a zombie or your next checkpoint is near, wide again once the checkpoint is taken. Every match starts in AUTO.</li>
-        <li>Touch the map to move or zoom it yourself: AUTO turns off (grey) and the map stays where you put it. Tap AUTO to follow again.</li>
-        <li><b>Speaker</b> turns sound off and on.</li>
-      </ul>
+      <h2>Start a match</h2>
+      <ol>
+        <li>Tap <b>NEW GAME</b> and choose <b>ON FOOT</b> (paths and trails) or <b>BY BIKE</b> (roads and gravel tracks).</li>
+        <li>Choose a game mode.</li>
+        <li>On the map, pick <b>Easy</b>, <b>Normal</b> or <b>Hard</b> and the course distance or match length, then tap <b>START GAME</b>.
+          The match begins as soon as your location is good enough.</li>
+      </ol>
 
       <h2>Game modes</h2>
       <ul>
-        <li><b>CHECKPOINTS</b> – numbered checkpoints about every 500 m on foot or every 1 km by bike, as the crow flies. No route is shown: fetch them in order, choose your own way, then return home. The distance you choose is the sum of the straight lines between the checkpoints.</li>
-        <li><b>A TO B</b> – A is where you are now and you pick B (the goal) on the map. Any route you like counts; a faint line shows the straight line between A and B. You must stand at A to start.</li>
-        <li><b>SURVIVAL</b> – no route. Survive until extraction opens near the end (shown before you start, e.g. after 20 min in a 30-minute match), then reach the helicopter. The distance to it is shown at the top.</li>
+        <li><b>CHECKPOINTS</b> – numbered checkpoints, about 500 m apart on foot and 1 km by bike (straight line). No route is shown:
+          take them in order, any way you like, then return home to where you started. The course is 1–6 km on foot, 4–30 km by bike.
+          <b> REGENERATE</b> gives another course.</li>
+        <li><b>A TO B</b> – A is where you stand. Tap the map to set B, then reach it. Any way counts; a faint line shows the straight line.</li>
+        <li><b>SURVIVAL</b> – no goal at first. Choose the match length (15–60 min on foot, 20–90 min by bike). At about 80 % of the time
+          (20 min in a 30-minute match) the helicopter lands: extraction opens on the map and every zombie runs 50 % faster. Reach it.</li>
       </ul>
-      <p>You may go anywhere you like – but zombies follow only the trails, and a goal counts only after you stand within 30 m for 5 seconds.</p>
+      <p>A checkpoint, home, B or the helicopter counts when you stay within 30 m of it for 5 seconds.</p>
 
-      <h2>Activity and difficulty</h2>
-      <p>On foot and Bike use different trail networks, speeds and time limits. Difficulty changes how many zombies there are, how fast they are, and how generous the time limit is. The difficulty is shown next to the mode at the top of the screen. There is no bonus for being fast.</p>
-
-      <h2>Zombies</h2>
-      <p>Zombies hunt you from the first second, always heading for you along the trails. When a zombie gets within 100 m it can sprint: it speeds up (up to 1.25× its speed on Easy, 1.4× on Normal, 1.5× on Hard), then slowly loses that speed again and has to rest before it can sprint again. Shake them off by taking another path, or keep moving.</p>
-
-      <h2>Capture</h2>
-      <p>If a zombie stays within 20 m for a few seconds you are captured and the match is over. With uncertain location accuracy this takes longer or is paused. The game never captures you from an old or guessed position.</p>
-
-      <h2>Location and screen</h2>
+      <h2>Win or lose</h2>
       <ul>
-        <li>The app must stay open and in the foreground. Browsers cannot guarantee location in the background – if you lock the screen or switch app, the game pauses and you continue manually.</li>
-        <li>If the location signal drops, the clock and the zombies stand still until it is back.</li>
-        <li>The game tries to keep the screen on. That uses more battery; bring a power bank on long sessions.</li>
-        <li>Open sky gives the best accuracy. Dense forest and cliffs can make it less accurate.</li>
+        <li><b>Win:</b> Checkpoints – every checkpoint, then home. A TO B – reach B. Survival – reach extraction.</li>
+        <li><b>Lose:</b> a zombie captures you, or the time runs out first.</li>
+        <li>Checkpoints and A TO B get a time limit from the course length at a calm pace; it is shown before you start. There is no bonus for being fast.</li>
       </ul>
 
-      <h2>Map data</h2>
-      <p>Trails and roads come from OpenStreetMap (© OpenStreetMap contributors, ODbL). Map data can be incomplete or wrong. The game excludes trails marked private or forbidden and tries to avoid roads, railways and water – but a stretch appearing in the game does not mean it is safe or allowed.</p>
-      <p>The background map (forest, water, roads) is loaded as map tiles from OpenFreeMap (data © OpenStreetMap contributors, © OpenMapTiles). That provider sees your IP address and which map area is shown, but not your location as such or your matches. Without a connection the game works with just the trail network.</p>
+      <h2>Difficulty</h2>
+      <p>Harder means more and faster zombies that notice you from farther away, sprint harder, more often try to cut you off, and a
+        tighter time limit in Checkpoints and A TO B. Survival has faster zombies than the other modes.</p>
 
-      <h2>Your data</h2>
-      <p>Matches, location data and test logs are stored only on your device. No login, no upload. You can delete matches under PREVIOUS GAMES.</p>
+      <h2>Zombies and capture</h2>
+      <ul>
+        <li>Zombies move only along trails and roads, and more appear as the match goes on. They know where you are from the start
+          (by bike: those within 2 km; farther ones roam).</li>
+        <li>Within 100 m a zombie can sprint for a short while, then it has to rest.</li>
+        <li>A zombie within 20 m for 3 seconds captures you (5 seconds when your location is uncertain). It must be able to reach you along
+          the trails, not across a road, railway or building. The red bar at the top shows it filling.</li>
+        <li>After a pause you are protected for 5 seconds.</li>
+        <li>By bike, off the road network you have 90 seconds before zombies waiting at the nearest road can reach you. The top bar counts it down.</li>
+      </ul>
+
+      <h2>During the match</h2>
+      <ul>
+        <li><b>Top:</b> mode and difficulty, <b>TIME LEFT</b>, your next goal and its distance (Survival: a helicopter with the time until extraction),
+          and 💀 the nearest zombie – amber within 200 m, red and larger within 100 m.</li>
+        <li><b>Left:</b> the distance you have moved and the time played in this match; by bike also your speed.</li>
+        <li><b>Map:</b> you are the blue marker. Zombies are faces; the three closest show their distance. When your goal is off screen,
+          an arrow at the edge points to it.</li>
+        <li><b>PAUSE</b> stops the clock and the zombies. <b>AUTO</b> lets the map follow you; touch the map to move it yourself.
+          The <b>speaker</b> turns sound off and on. <b>QUIT</b> asks once, then ends the match and goes back to the start page.</li>
+        <li><b>Sound:</b> &quot;Zombies approaching&quot; at 200 m, then the distance spoken from 100 m down to 10 m. A low pulse while zombies
+          are near. Set music, effects and voice under <b>SOUND</b> on the start page.</li>
+      </ul>
+
+      <h2>Location and your surroundings</h2>
+      <ul>
+        <li>Keep the app open and in front. A short switch to another app is fine; after 45 seconds away the game pauses and you tap CONTINUE.</li>
+        <li>If your location is lost, the clock and the zombies stand still until it is back.</li>
+        <li>Open sky gives the best location; dense forest, cliffs and tall buildings make it worse.</li>
+        <li>The game tries to keep the screen on during a match, which uses battery: bring a power bank on long sessions.</li>
+        <li>Look up. Watch for traffic, people and the ground in front of you, not the phone.</li>
+      </ul>
+
+      <h2>Map data and privacy</h2>
+      <p>Trails and roads come from OpenStreetMap (© OpenStreetMap contributors, ODbL) and can be incomplete or wrong: a stretch in the
+        game is not a promise that it is safe or allowed. The background map comes from OpenFreeMap (© OpenMapTiles), which sees your
+        IP address and the map area shown. Matches and location data stay on your device; delete them under PREVIOUS GAMES.</p>
 
       <h2>Credits</h2>
-      <p>The pictures on the start page, the New game cards, the result screens and the helicopter cards were made for OUTBREAK. Other photographs used in the app, all cropped, darkened and colour-graded:</p>
+      <p>The pictures on the start page, the New game cards, the result screens and the helicopter cards were made for OUTBREAK. Other photographs, cropped and colour-graded:</p>
       <ul>
         <li>Settings-page backdrop: “Zombie gals” by istolethetv, <a href="https://commons.wikimedia.org/wiki/File:Zombie_gals_(3261797845).jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>.</li>
         <li>Jump scare: “Zombie Halloween Mask” by Sharpshotefx, <a href="https://commons.wikimedia.org/wiki/File:Zombie_Halloween_Mask.jpg">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</li>

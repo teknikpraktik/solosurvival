@@ -7,16 +7,13 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
 import type { GameMode } from "@/engine/objectives/objectives";
-import { extractionOpensAtS } from "@/config/game-rules";
 import { DISTANCE_LIMITS, DURATION_LIMITS, START_MAX_ACCURACY_M, clampParams, defaultParams, withActivity, type MatchParams } from "@/play/config";
-import { estimatedMinutes } from "@/play/prepare";
-import { COURSE_DETOUR_FACTOR } from "@/routes/course";
 import { haversineM } from "@/geo/geometry";
 import { errorText } from "@/gps/provider/provider";
 import { matchDurationS } from "@/play/match";
 import {
   NEW_GAME_ACTIVITIES, NEW_GAME_MODES, chooseActivity, chooseMode, courseKey, loadSetup, needsCourse, paramsFromSetup, prevStep, saveSetup,
-  stepFromSearch, stepUrl, type SavedSetup, type Step,
+  stepFromSearch, stepUrl, type Step,
 } from "@/play/newgame-flow";
 import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_LABEL, fmtKm } from "../_client/format";
 import { REGENERATE_SVG } from "../_client/symbols";
@@ -30,7 +27,7 @@ const GameMap = dynamic(() => import("../_client/GameMap"), { ssr: false });
 
 interface Opt<T extends string> { v: T; t: string }
 
-/** Difficulty on the setup step: a labelled group of toggle buttons (the chosen one has a red accent, a check mark and `aria-pressed`;
+/** Difficulty on the setup step, always shown (nothing to expand): a labelled row of toggle buttons (the chosen one has a red accent, a check mark and `aria-pressed`;
  * `aria-label` keeps the CSS check mark out of the button's name). */
 function Choice<T extends string>({ id, label, value, options, onChange }: { id: string; label: string; value: T; options: Opt<T>[]; onChange: (v: T) => void }) {
   return (
@@ -101,10 +98,6 @@ const km1 = (m: number) => `${(Math.round(m / 100) / 10).toFixed(1)} km`;
 const fmtHM = (s: number) => { const m = Math.round(s / 60); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
 const newSeed = () => Math.floor(Math.random() * 1e9);
 const storage = (): Storage | null => { try { return window.localStorage; } catch { return null; } };
-/** Whether the settings part of the setup panel is open, once the player has opened or closed it (per device). */
-const PANEL_KEY = "outbreak.newgame.panel";
-/** Until then the settings start open only on screens at least this tall (px); on shorter ones the map needs the room. */
-const PANEL_OPEN_MIN_HEIGHT = 700;
 /** A changed course distance plans a new course once the slider has rested this long (not on every step of a drag). */
 const DISTANCE_SETTLE_MS = 450;
 
@@ -115,8 +108,6 @@ export default function NewGame() {
   const view = useSessionView(session);
   const [p, setP] = useState<MatchParams>(() => defaultParams("walk"));
   const [step, setStep] = useState<Step>("activity");
-  const [saved, setSaved] = useState<SavedSetup | null>(null);
-  const [panelOpen, setPanelOpen] = useState(true);
   const [busy, setBusy] = useState(false);
   // Pressing START: keep the setup on screen until /play has taken over.
   const [starting, setStarting] = useState(false);
@@ -144,13 +135,9 @@ export default function NewGame() {
     else go(prev, "replace");
   };
   useEffect(() => {
+    // The last valid setup is the starting point of the choices (the cards show it as current); it is not offered as a separate shortcut.
     const s = loadSetup(storage());
-    setSaved(s);
     if (s) setP(paramsFromSetup(s));
-    // The player's own choice wins; otherwise open on tall screens and closed on short ones (small phones, landscape), so the map has room.
-    let kept: string | null = null;
-    try { kept = storage()?.getItem(PANEL_KEY) ?? null; } catch { /* not kept */ }
-    setPanelOpen(kept ? kept !== "min" : window.innerHeight >= PANEL_OPEN_MIN_HEIGHT);
     setStep(stepFromSearch(window.location.search));
     const onPop = () => { arrivedFrom.current = {}; setStep(stepFromSearch(window.location.search)); };
     window.addEventListener("popstate", onPop);
@@ -225,14 +212,6 @@ export default function NewGame() {
     if (next !== p) { setP(next); setPickProblem(null); session?.backToConfig(); }
     go("setup");
   };
-  const openLast = () => {
-    if (!saved) return;
-    const next = paramsFromSetup(saved);
-    setP(next);
-    setPickProblem(null);
-    session?.backToConfig();
-    go("setup");
-  };
 
   // --- The course on the setup step ---
   // A course is shown and can be started only when it was planned for exactly these choices.
@@ -264,17 +243,9 @@ export default function NewGame() {
 
   // ---------- Step 1: activity ----------
   if (step === "activity") {
-    const lastWhat = saved ? `${ACTIVITY_LABEL[saved.activity]} · ${MODE_LABEL[saved.mode]} · ${DIFFICULTY_LABEL[saved.difficulty]}` : "";
     return (
       <main className="page newgame ngstep">
         <StepHeader title={S.title} />
-        {saved && (
-          <button type="button" className="lastsetup" aria-label={S.lastSetupLabel(lastWhat)} onClick={openLast}>
-            <span className="lastsetup-k" aria-hidden="true">{S.lastSetup}</span>
-            <span className="lastsetup-v" aria-hidden="true">{lastWhat}</span>
-            <span className="lastsetup-go" aria-hidden="true">›</span>
-          </button>
-        )}
         <p className="ngprompt">{S.activityPrompt}</p>
         <div className="imgcards two">
           {(NEW_GAME_ACTIVITIES as ("walk" | "mtb")[]).map((a) => (
@@ -311,8 +282,6 @@ export default function NewGame() {
   const ok = status === "ok" || status === "alternative";
   const loading = wantCourse && !(fresh && stage === "preview") && (stage === "preparing" || haveStart);
   const failed = fresh && stage === "preview" && !!prepared && !ok;
-  const checkpoints = fresh && proposal ? proposal.waypoints.filter((w) => w.kind === "checkpoint").length : 0;
-  const extractionMin = Math.round(extractionOpensAtS(p.durationS) / 60);
   const limit = DISTANCE_LIMITS[p.activity];
   const dur = DURATION_LIMITS[p.activity];
   // A TO B: any way goes, so only a faint straight line between A and B is drawn (not the shortest path).
@@ -333,22 +302,13 @@ export default function NewGame() {
     ? (isAB && abA && abB ? [abA, { lat: abB.lat, lon: abB.lon }] : proposal.waypoints.map((w) => ({ lat: w.lat, lon: w.lon })).concat(view?.position ? [view.position] : []))
     : null;
 
-  // The three numbers and the time limit for this mode (from the prepared course and the same functions the game uses).
-  type Cell = { k: string; v: string };
-  const summary: { cells: Cell[]; limit: string } | null = isSurvival ? {
-    cells: [{ k: P.matchLength, v: P.minutes(Math.round(p.durationS / 60)) }, { k: P.extraction, v: P.afterMin(extractionMin) }, { k: P.goal, v: P.reachExtraction }],
-    limit: fmtHM(p.durationS),
-  } : showCourse && proposal ? {
-    cells: [
-      { k: P.distance, v: fmtKm(isAB && abA && abB ? haversineM(abA, abB) : proposal.lengthM) },
-      { k: P.estTime, v: P.minutes(estimatedMinutes(proposal.lengthM * (p.mode === "mission" || proposal.terrain ? COURSE_DETOUR_FACTOR : 1), p)) },
-      isAB ? { k: P.goal, v: P.pointB } : { k: P.checkpoints, v: P.checkpointsValue(checkpoints) },
-    ],
-    limit: fmtHM(matchDurationS(p, proposal)),
-  } : null;
+  // Checkpoints and A TO B: the planned distance and the time limit, in one row (from the prepared course and the same functions the game
+  // uses). Survival has none: its time limit is the match length chosen just above.
+  const summary: { k: string; v: string }[] | null = !isSurvival && showCourse && proposal ? [
+    { k: P.distance, v: fmtKm(isAB && abA && abB ? haversineM(abA, abB) : proposal.lengthM) },
+    { k: P.timeLimit, v: fmtHM(matchDurationS(p, proposal)) },
+  ] : null;
   const title = isAB ? (p.pointB ? K.bSet : K.tapForB) : isSurvival ? P.yourMatch : P.yourCourse;
-  const settingsSummary = `${DIFFICULTY_LABEL[p.difficulty]}${p.mode === "mission" ? ` · ${km1(p.targetLengthM)}` : isSurvival ? ` · ${Math.round(p.durationS / 60)} min` : ""}`;
-  const togglePanel = () => setPanelOpen((o) => { const n = !o; try { storage()?.setItem(PANEL_KEY, n ? "open" : "min"); } catch { /* not kept */ } return n; });
 
   const canStart = isSurvival
     ? haveStart && !busy && !starting && stage !== "preparing"
@@ -415,18 +375,15 @@ export default function NewGame() {
             <div className="pvkicker">{MODE_LABEL[p.mode]} · {ACTIVITY_LABEL[p.activity]}</div>
             <h2 className="pvtitle">{title}</h2>
           </div>
-          <button type="button" className="pvtoggle" aria-expanded={panelOpen} aria-controls="ngsettings" aria-label={`${S.settingsLabel(panelOpen)}: ${settingsSummary}`} onClick={togglePanel}>
-            <span>{settingsSummary}</span><span className="chev" aria-hidden="true">▾</span>
-          </button>
         </div>
         {gps && <div className={`card ${gps.tone}`} role="status">{gps.text}</div>}
         {isAB && pickProblem && <div className="card warn" role="status">{pickProblem}</div>}
-        <div id="ngsettings" className="ngsettings" hidden={!panelOpen}>
+        <div id="ngsettings" className="ngsettings">
           <Choice<Difficulty> id="difficulty" label={S.difficulty} value={p.difficulty} onChange={(difficulty) => set({ difficulty })}
             options={(["easy", "normal", "hard"] as Difficulty[]).map((d) => ({ v: d, t: DIFFICULTY_LABEL[d] }))} />
           {isSurvival ? (
             <RangeField id="dur" label={S.matchLength} shown={`${Math.round(p.durationS / 60)} min`} min={dur.minMin} max={dur.maxMin} step={dur.stepMin} value={Math.round(p.durationS / 60)}
-              onChange={(v) => set({ durationS: v * 60 })} note={S.extractionNote(extractionMin)} />
+              onChange={(v) => set({ durationS: v * 60 })} />
           ) : p.mode === "mission" ? (
             <RangeField id="dist" label={S.courseDistance} shown={km1(p.targetLengthM)} min={limit.min} max={limit.max} step={limit.step} value={p.targetLengthM}
               onChange={(v) => set({ targetLengthM: v })} />
@@ -436,12 +393,9 @@ export default function NewGame() {
         {fresh && stage === "preview" && prepared?.status === "ok" && prepared.notes.some((n) => n.startsWith("easy-bike-network")) && <div className="card warn">Few easy gravel roads or bike lanes here, so the route may include rougher trails.</div>}
         {fresh && stage === "preview" && prepared?.status === "alternative" && <div className="card warn">{prepared.message}</div>}
         {summary && (
-          <>
-            <dl className="pvstats">
-              {summary.cells.map((c) => <div key={c.k}><dt>{c.k}</dt><dd>{c.v}</dd></div>)}
-            </dl>
-            <div className="pvlimit"><span>{P.timeLimit}</span><b>{summary.limit}</b></div>
-          </>
+          <dl className="pvstats two">
+            {summary.map((c) => <div key={c.k}><dt>{c.k}</dt><dd>{c.v}</dd></div>)}
+          </dl>
         )}
         {fresh && view?.movedFromPreview && (
           <div className="card warn">

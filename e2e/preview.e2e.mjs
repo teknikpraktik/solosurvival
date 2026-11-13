@@ -51,7 +51,7 @@ const allIn = (ms) => ms.length > 0 && ms.every((m) => m.in);
   const labels = ms.filter((m) => m.label.startsWith("Objective")).map((m) => Number(m.label.split(" ")[1])).sort((a, b) => a - b);
   check("checkpoints numbered 1…n in the game's order", labels.length === nCp && labels.every((n, i) => n === i + 1), `${labels.join(",")} of ${nCp}`);
   check("compact panel: every marker in the visible map", allIn(ms), JSON.stringify(ms.filter((m) => !m.in)));
-  check("summary: distance, est. time, checkpoints and time limit", (await page.locator(".pvstats dd").count()) === 3 && /\d+ \+ home/.test(await page.locator(".pvstats").innerText()) && /\d+ (h \d+ )?min/.test(await page.locator(".pvlimit b").innerText()));
+  check("summary: only distance and time limit", (await page.locator(".pvstats dd").count()) === 2 && /\d+ (h \d+ )?min/.test(await page.locator(".pvstats dd").nth(1).innerText()));
   check("no warnings and no Details button in the preview", (await page.getByText(/Never cross|railway|private land/).count()) === 0 && (await page.getByRole("button", { name: /Details/ }).count()) === 0);
   // Pan by hand: the view stays where the player put it (GPS updates, panel changes).
   const before = await markers(page);
@@ -94,7 +94,7 @@ const allIn = (ms) => ms.length > 0 && ms.every((m) => m.in);
   }, "A TO B");
   check("A to B: START GAME is off until B is tapped on the setup map", pickOk);
   const txt = await page.locator(".pvsheet").innerText();
-  check("A to B: route summary with Point B, no Regenerate", /Point B/.test(txt) && (await page.getByRole("button", { name: /Regenerate/ }).count()) === 0 && (await page.getByRole("button", { name: "START GAME" }).count()) === 1);
+  check("A to B: route summary with distance and time limit only (no Goal/Point B box), no Regenerate", !/Point B|Est\. time/i.test(txt) && /Distance/i.test(txt) && /Time limit/i.test(txt) && (await page.getByRole("button", { name: /Regenerate/ }).count()) === 0 && (await page.getByRole("button", { name: "START GAME" }).count()) === 1);
   await ctx.close();
 }
 
@@ -105,7 +105,7 @@ for (const vp of [{ width: 320, height: 568 }, { width: 375, height: 667 }, { wi
   const ms = await markers(page);
   const r = await page.evaluate(() => ({
     hscroll: document.documentElement.scrollWidth > window.innerWidth,
-    small: [...document.querySelectorAll(".backbtn, .pvtoggle, .pvactions .btn")].filter((e) => { const b = e.getBoundingClientRect(); return b.height < 44 || b.width < 44; }).length,
+    small: [...document.querySelectorAll(".backbtn, .pvactions .btn")].filter((e) => { const b = e.getBoundingClientRect(); return b.height < 44 || b.width < 44; }).length,
     cut: [...document.querySelectorAll(".pvstats dd, .pvstats dt, .pvactions .btn")].filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent),
     startVisible: (() => { const b = document.querySelector(".pvstart").getBoundingClientRect(); return b.bottom <= window.innerHeight - 20 && b.top >= 0; })(), // with room under it, not at the edge
   }));
