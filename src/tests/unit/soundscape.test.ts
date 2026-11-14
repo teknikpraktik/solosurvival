@@ -655,7 +655,7 @@ describe("music around a match", () => {
     await t.m.onEvent({ type: "match_started", id: "new", mode: "escape" });
     await t.advance(5000); // no update from the screen yet
     expect(t.m.state.threat).toBeNull();
-    expect(t.m.radio.log).toEqual(["safehouseOnMap"]);
+    expect(t.m.radio.log).toEqual(["zombiesApproaching", "safehouseOnMap"]); // the old match's 150 m warning, then nothing more from it
   });
 });
 
@@ -847,5 +847,46 @@ describe("music playlist (three themes)", () => {
     expect(t.s.music.playing).toBe(false); // not at once: a new silence
     await t.advance(61_000);
     expect(t.s.music.playing).toBe(true);
+  });
+});
+
+describe("zombies approaching (200 m) and the roar (100 m)", () => {
+  const roars = (t: ReturnType<typeof setup>) => t.ctx.sources.filter((x) => x.buffer?.url === AUDIO.zombieNear).length;
+  const warns = (t: ReturnType<typeof setup>) => t.m.radio.log.filter((l) => l === "zombiesApproaching").length;
+  it("on foot and by bike: \"Zombies approaching!\" at 200 m, the roar at 100 m, each once per approach", async () => {
+    for (const activity of ["walk", "mtb"] as const) {
+      const t = setup();
+      t.s.unlock();
+      await run(t, 2, { activity, nearestM: 350 });
+      expect([warns(t), roars(t)], activity).toEqual([0, 0]);
+      await run(t, 3, { activity, nearestM: 190 });
+      expect([warns(t), roars(t)], activity).toEqual([1, 0]); // the roar no longer comes at 200 m by bike
+      await run(t, 3, { activity, nearestM: 150 });
+      await run(t, 3, { activity, nearestM: 95 });
+      expect([warns(t), roars(t)], activity).toEqual([1, 1]);
+      for (let k = 0; k < 6; k++) await run(t, 1, { activity, nearestM: k % 2 ? 105 : 98 }); // jitter around 100 m
+      expect(roars(t), activity).toBe(1);
+    }
+  });
+
+  it("a zombie that appears inside 100 m gets the roar only; the warning is a recorded line (no synthetic voice)", async () => {
+    const t = setup();
+    t.s.unlock();
+    await run(t, 1, { nearestM: 400 });
+    await run(t, 1, { nearestM: 80 });
+    expect([warns(t), roars(t)]).toEqual([0, 1]);
+    expect(VOICE.zombiesApproaching.url).toBe("/audio/zombies-approaching.mp3");
+  });
+
+  it("cooldown: back within 200 m soon after does not repeat the warning; after the cooldown it does", async () => {
+    const t = setup();
+    t.s.unlock();
+    await run(t, 1, { nearestM: 180 });
+    await run(t, 2, { nearestM: 300 });
+    await run(t, 1, { nearestM: 180 });
+    expect(warns(t)).toBe(1);
+    await run(t, SOUND_RULES.approach.cooldownS, { nearestM: 300 });
+    await run(t, 1, { nearestM: 180 });
+    expect(warns(t)).toBe(2);
   });
 });

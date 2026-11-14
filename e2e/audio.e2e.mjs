@@ -106,6 +106,10 @@ async function startMatch(o, mode) {
   const seen = new Set(); let quiet = 0;
   for (let i = 0; i < 25; i++) { await wait(1000); const x = await page.evaluate(() => window.__outbreakAudio.match.state.threat); if (x) seen.add(x); else quiet++; }
   check("pulse in bursts: silences in between and more than one variant over time", quiet >= 2 && seen.size >= 1, JSON.stringify({ quiet, variants: [...seen] }));
+  // 200 m: the operator's "Zombies approaching!" (a recorded line).
+  await zombieAt(page, 180);
+  await wait(1500);
+  check("zombie at 180 m: \"Zombies approaching!\" is said once", (await voices(page)).log.filter((l) => l === "zombiesApproaching").length === 1 && reqs.includes("/audio/zombies-approaching.mp3"), JSON.stringify(await voices(page)));
   // Spoken distance: the zombie closes in to 45 m, then 33 m.
   await zombieAt(page, 45);
   await wait(1200);

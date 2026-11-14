@@ -34,8 +34,12 @@ export const SOUND_RULES = {
     burstFadeInS: 1.5,
     burstFadeOutS: 2.5,
   },
-  /** Zombie at close range (the distance where the map zooms in: 100 m on foot, 200 m on Bike; out again beyond 130 / 260 m). */
-  near: { cooldownS: 45, maxPerMatch: 8 },
+  /**
+   * After the field test, two steps for both activities: at 200 m the operator's "Zombies approaching!" (out again beyond 260 m), at 100 m
+   * the zombies' roar (out again beyond 130 m). Each once per approach, with a cooldown and a cap per match.
+   */
+  approach: { enterM: 200, exitM: 260, cooldownS: 45, maxPerMatch: 8 },
+  near: { enterM: 100, exitM: 130, cooldownS: 45, maxPerMatch: 8 },
   /** "Position revealed": at most this often. */
   revealed: { cooldownS: 60 },
   heli: { loopFadeInS: 3, approachFadeOutS: 3, loopStopS: 0.8 },
@@ -115,19 +119,24 @@ export class ThreatGate {
   }
 }
 
-/** Zombie at close range: once on entering the range (hysteresis as the map's zoom), with a cooldown and a cap per match. */
+/**
+ * A zombie within a distance: once on entering it (with hysteresis), with a cooldown and a cap per match. The default is the close range
+ * (100 m, the roar); `SOUND_RULES.approach` gives the 200 m step ("Zombies approaching!").
+ */
 export class NearGate {
   private inside = false;
   private last = -Infinity;
   private count = 0;
 
-  update(tS: number, nearestM: number | null, activity: Activity, running: boolean): boolean {
+  constructor(private readonly r: { enterM: number; exitM: number; cooldownS: number; maxPerMatch: number } = SOUND_RULES.near) {}
+
+  /** `activity` is kept for the call sites; both activities use the same distances since the field test. */
+  update(tS: number, nearestM: number | null, _activity: Activity, running: boolean): boolean {
     if (!running || nearestM === null) { this.inside = false; return false; }
-    const v = viewProfile(activity);
     const was = this.inside;
-    this.inside = was ? nearestM <= v.exitM : nearestM <= v.enterM;
+    this.inside = was ? nearestM <= this.r.exitM : nearestM <= this.r.enterM;
     if (!this.inside || was) return false;
-    if (tS - this.last < SOUND_RULES.near.cooldownS || this.count >= SOUND_RULES.near.maxPerMatch) return false;
+    if (tS - this.last < this.r.cooldownS || this.count >= this.r.maxPerMatch) return false;
     this.last = tS;
     this.count++;
     return true;

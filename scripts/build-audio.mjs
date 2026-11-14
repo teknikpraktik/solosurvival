@@ -50,6 +50,8 @@ const FILES = [
   { name: "countdown-30", src: "mp3", measure: "M", target: -14 },
   { name: "countdown-20", src: "mp3", measure: "M", target: -14 },
   { name: "countdown-10", src: "mp3", measure: "M", target: -14 },
+  // "Zombies approaching!" (uploaded as zombies-apch.mp3; spoken, mono MP3, very loud at −8 LUFS): the same level as the countdown.
+  { name: "zombies-approaching", src: "mp3", measure: "M", target: -14 },
 ];
 const MUSIC = "theme-outbreak.mp3";
 /** More themes, played at random (copied unchanged too; they are about 14 dB quieter, lifted in the player: MUSIC_TRACKS in audio.ts). */

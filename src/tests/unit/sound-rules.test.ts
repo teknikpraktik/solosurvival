@@ -136,3 +136,14 @@ describe("close zombie and cooldown rules", () => {
     expect(c.take(60)).toBe(true);
   });
 });
+
+describe("close-range steps after the field test", () => {
+  it("the same distances on foot and by bike: roar at 100 m (out beyond 130), warning at 200 m (out beyond 260)", () => {
+    expect([SOUND_RULES.near.enterM, SOUND_RULES.near.exitM, SOUND_RULES.approach.enterM, SOUND_RULES.approach.exitM]).toEqual([100, 130, 200, 260]);
+    const bike = new NearGate();
+    expect(bike.update(0, 150, "mtb", true)).toBe(false); // 150 m by bike: no roar any more
+    expect(bike.update(1, 99, "mtb", true)).toBe(true);
+    const warn = new NearGate(SOUND_RULES.approach);
+    expect(warn.update(0, 199, "walk", true)).toBe(true);
+  });
+});
