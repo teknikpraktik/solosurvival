@@ -703,3 +703,6 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 .hero .homemain { padding: 15px; }
 .homesec { gap: 6px; margin-top: 2px; }
 .hero .homesec .btn { padding: 10px; }
+/* A little lower on ordinary phones (it sat too close to the top); short screens keep it higher so the buttons stay clear of the figures. */
+.center.hero { padding-top: calc(max(20px, env(safe-area-inset-top)) + 10vh); }
+@media (max-height: 700px) { .center.hero { padding-top: calc(max(20px, env(safe-area-inset-top)) + 6vh); } }
