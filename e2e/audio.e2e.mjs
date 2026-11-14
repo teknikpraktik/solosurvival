@@ -61,7 +61,7 @@ async function startMatch(o, mode) {
   const before = mu.playing && mu.els.some((e) => !e.paused);
   console.log(`  (music before any tap: ${before ? "started (this browser allows it)" : "refused by the browser, waits for a tap"})`);
   check("start page: the music is asked for at once (started, or waiting for the browser's first tap)", mu.els.length === 2, JSON.stringify(mu));
-  check("start page: no match sounds fetched yet", !reqs.some((p) => p !== "/audio/theme-outbreak.mp3"), reqs.join(","));
+  check("start page: no match sounds fetched yet (only the music)", !reqs.some((p) => !/^\/audio\/theme-(outbreak|v2|v3)\.mp3$/.test(p)), reqs.join(","));
   await page.getByRole("link", { name: "NEW GAME" }).click();
   await page.waitForURL("**/new"); await wait(2400);
   mu = await music(page);
@@ -73,6 +73,7 @@ async function startMatch(o, mode) {
   await page.getByRole("button", { name: "ON FOOT", exact: true }).click(); await wait(800);
   await page.getByRole("button", { name: "CHECKPOINTS", exact: true }).click(); await wait(1600);
   mu = await music(page);
+  check("the music opens with theme-outbreak; theme-v2 and theme-v3 are fetched for later passes", (await page.evaluate(() => window.__outbreakAudio.soundscape.music.history))[0] === "/audio/theme-outbreak.mp3" && ["/audio/theme-v2.mp3", "/audio/theme-v3.mp3"].every((p) => reqs.includes(p)), [...new Set(reqs)].filter((p) => p.includes("theme")).join(","));
   check("music continues through the setup steps without restarting", mu.els.findIndex((e) => !e.paused) === el0 && mu.els[el0].t > t1 + 1.5, `${t1.toFixed(1)} → ${mu.els[el0]?.t.toFixed(1)}`);
   const want = ["/audio/threat-pulse-1.mp3", "/audio/captured.mp3", "/audio/checkpoint-reached.mp3", "/audio/checkpoint-secured.mp3", "/audio/zombie-near.mp3"];
   check("setup: the match sounds are fetched in the background", want.every((p) => reqs.includes(p)), [...new Set(reqs)].join(","));
