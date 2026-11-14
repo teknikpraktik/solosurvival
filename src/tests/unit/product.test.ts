@@ -202,13 +202,20 @@ describe("lokal lagring per app", () => {
 });
 
 describe("ljudpaket", () => {
-  it("vuxenappens cue-paket vibrerar och talar bara: alla ljudfiler spelas av ljudbilden (inget hörs dubbelt)", async () => {
-    const { OUTBREAK_SOUNDS } = await import("@/app/_client/cues");
+  it("vuxenappens cue-paket vibrerar bara: ingen syntetisk röst, alla ljud (även operatörens repliker) är inspelade filer", async () => {
+    const cues = await import("@/app/_client/cues");
+    const { OUTBREAK_SOUNDS } = cues;
     expect(OUTBREAK_SOUNDS.storageKey).toBe("outbreak.cues"); // det sparade av/på-valet gäller fortfarande
     expect(OUTBREAK_SOUNDS.samples).toEqual({});
     expect([...OUTBREAK_SOUNDS.audible]).toEqual([]);
-    expect(OUTBREAK_SOUNDS.voice).toMatchObject({ lang: "en-US" });
-    expect([OUTBREAK_SOUNDS.voice.pitch("Run!"), OUTBREAK_SOUNDS.voice.pitch("Checkpoint"), OUTBREAK_SOUNDS.voice.rate("Run!"), OUTBREAK_SOUNDS.voice.rate("Checkpoint")]).toEqual([0.5, 1.1, 0.9, 1]);
+    expect("speak" in cues).toBe(false); // ingen talsyntes att anropa
+  });
+  it("vuxenappens kod anropar aldrig talsyntesen", async () => {
+    const { readFileSync, readdirSync, statSync } = await import("node:fs");
+    const all = (d: string): string[] => readdirSync(d).flatMap((f) => { const p = path.join(d, f); return statSync(p).isDirectory() ? all(p) : [p]; });
+    const app = path.resolve(import.meta.dirname, "../../app");
+    const hits = all(app).filter((p) => /\.tsx?$/.test(p)).filter((p) => /speechSynthesis|SpeechSynthesisUtterance|\bspeak\(/.test(readFileSync(p, "utf8")));
+    expect(hits.map((p) => path.relative(app, p))).toEqual([]);
   });
   it("ljudbildens filer finns i public/audio, de gamla WAV-ljuden är borta och inga WAV-original ligger i appen", async () => {
     const { AUDIO, VOICE } = await import("@/app/_client/audio");

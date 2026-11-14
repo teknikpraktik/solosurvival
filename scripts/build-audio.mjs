@@ -30,7 +30,6 @@ const FILES = [
   { name: "zombie-near", measure: "M", target: -14 },
   { name: "position-revealed", measure: "M", target: -14 },
   { name: "checkpoint-reached", measure: "M", target: -14 },
-  { name: "radio-open", measure: "M", target: -16 },
   { name: "safe-door-close", measure: "M", target: -17, limiter: true },
   // Operator voices (radio effect, static and squelch already in the files): integrated speech level, the same for all eight.
   { name: "keep-moving", measure: "I", target: -17 },

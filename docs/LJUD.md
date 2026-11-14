@@ -10,7 +10,7 @@ Källfiler, nivåer och storlekar: [`assets/audio/README.md`](../assets/audio/RE
 | Ljudmotor | `src/audio/soundscape.ts` | En AudioContext, bussar (musik, hot, helikopter, effekter), säkerhetslimiter, one-shots, loopar med övertoning, menymusik, duckning. Inga spelregler. |
 | Regler | `src/play/sound-rules.ts` | Alla avstånd och tider (`SOUND_RULES`), hotpulsens tillstånd, närhets-cooldown. Ren TypeScript, testad. |
 | Kontroller | `src/app/_client/audio.ts` | Filer, mix, nivåer per ljud, sparade inställningar, `MatchAudio` (matchens ljud). |
-| Tal och vibration | `src/app/_client/cues.ts` | Talsyntesen (befintlig) med radioklick före och duckning under; vibration. Spelar inga ljudfiler själv, så inget hörs dubbelt. |
+| Vibration | `src/app/_client/cues.ts` | Bara vibration. Appen har ingen syntetisk röst (talsyntes): allt som sägs är inspelade repliker. |
 | Spelhändelser | `src/play/session.ts` (`SoundEvent`, `onSound`) | Sessionen säger till i samma ögonblick som spelet bestämmer en händelse. |
 | Sidnivå | `src/app/_client/AudioDirector.tsx` | Menymusik över sidbyten, upplåsning vid tryck, förladdning under inställningarna. |
 | Inställningar | `src/app/_client/SoundSettings.tsx` | SOUND på startsidan: allt av/på, musik, effekter, röst. |
@@ -26,7 +26,7 @@ Källfiler, nivåer och storlekar: [`assets/audio/README.md`](../assets/audio/RE
 | zombie-near | Närmaste zombie inom 100 m till fots / 200 m på cykel (samma gränser som kartans inzoomning, ut igen bortom 130 / 260 m) | En gång per närmande, 45 s cooldown, högst 8 per match. Följer bara närmaste avståndet, så många zombier ger ett ljud. |
 | position-revealed | Första `zombie_detected` i matchen (jakten börjar, zombierna har positionen) och `off_network: exposed` ("Zombies have found you") | 60 s cooldown. Väntar tills operatörens röst ("Game on") har talat klart, högst 4 s. Det periodiska `reveal`-eventet används inte: med magnetjakt vet zombierna redan var spelaren är, så det vore ett ljud utan innebörd (V2.2-ANALYS 5). |
 | checkpoint-reached | `objective_reached` för ett mål av typen checkpoint | En gång per nådd checkpoint. Hem och B räknas inte, de ger vinstljudet. Den befintliga rösten "Checkpoint" följer efter 1 s. |
-| radio-open | Före operatörens tal (talsyntesen) | Rösten börjar 0,45 s efter klicket. Inget nytt klick inom 8 s efter förra repliken. Inte före "Captured". Talsyntesen har ingen egen radioeffekt, så det blir ingen dubbel effekt. |
+| (radio-open) | – | Borttagen ur appen: klicket inledde bara talsyntesen. Källfilen finns kvar i `assets/audio/source/`. |
 | heli-approach | Helikopterkortet "approaching" (60 s speltid före extraction) | En gång per match, från samma tick som kortet. |
 | heli-extraction | Fasen `extraction` i Survival | Loop medan räddningen är öppen. Tonas in på 3 s när helikoptern landat, och ankomstljudet tonas ut på 3 s. En återställd match i den fasen får loopen utan ankomstljudet. |
 | heli-extraction-success | `finished: survived` i Survival | En gång. Loopen avslutas (0,8 s). |
@@ -41,13 +41,13 @@ Bilder och ljud utgår från samma händelse. Inget ljud väntar på att en bild
 De gamla genererade ljuden (`captured-scream`, `jump-scream`, `sprint-shriek`, `tension`, `checkpoint`, `zombie-near` i WAV) och `scripts/make-audio.mjs` är borttagna. Det har följande konsekvenser:
 
 - **Jump scare** (den slumpade skrämbilden) har inget eget ljud längre, bara bild och vibration. Inget av de levererade ljuden är avsett för den.
-- **Zombiespurt** hade ett skrik. Nu hörs bara rösten "Run!" (med radioklick) och vibrationen.
+- **Zombiespurt** hade ett skrik. Nu finns bara vibrationen (ingen röst).
 - **"tension"** vid inzoomningen ersätts av zombie-near vid samma gränser.
 - Det gamla närhetsljudet (en gång per match vid 500/1 000 m) är nu bara vibration. 500 m är inte "nära håll".
 
 ### Infektion
 
-Det finns ett separat infektionsskede: `infection_contact` (zombien är i kontakt, infektionen räknas, mätaren `.infect` fylls). Varningen är oförändrad: vibration, texten "Zombie close – move away!" och nedräkningen 10 m i tal. Det finns ingen ljudfil för infektionsstart, och `captured` används inte som tidig varning. **Lucka:** ingen egen ljudsignal när infektionen börjar.
+Det finns ett separat infektionsskede: `infection_contact` (zombien är i kontakt, infektionen räknas, mätaren `.infect` fylls). Varningen är vibration och mätaren; zombie-near hörs vid 100 m (200 m på cykel). Det finns ingen ljudfil för infektionsstart, och `captured` används inte som tidig varning. **Lucka:** ingen egen ljudsignal när infektionen börjar.
 
 ## Operatörens radiorepliker
 
@@ -66,22 +66,17 @@ Whisper small.en i den här miljön; ingen har lyssnat.
 | lifting-off | "Lifting off. You made it." | `finished: survived` i Survival, alltså först när vinstvillkoret (30 m i 5 s vid helikoptern) är uppfyllt. Den spelas med extracted-bilden och helikopterns lyftljud. |
 | inside-safehouse | "You're inside. Lock the door. You made it." | `finished: survived` i Checkpoints (hemma) och A TO B (vid B). Den spelas med safehouse-bilden och dörrsmällen. |
 
-Checkpoints har ingen inspelad startreplik, så där sägs "Game on" som förut.
+Checkpoints har ingen inspelad startreplik, så där sägs ingenting vid start.
 
 ### Röstkanalen
 
 - **En replik åt gången.** En replik som kommer medan en annan spelar väntar på en enda köplats, där den nyaste vinner. Väntar den mer än 12 s kasseras den.
 - **Inaktuella repliker kasseras på händelser:** matchslut, fångst, Quit, när spelskärmen lämnas, när appen hamnar i bakgrunden, och när landningen ersätter "rescue inbound".
 - **Vinstrepliken är en del av slutsekvensen.** Den avbryter allt annat. Den stoppas när slutet lämnas (SHOW MATCH, PLAY AGAIN, Main menu) och vid fångst.
-- **Inspelad röst och talsyntes delar kanal.** En inspelad replik stoppar pågående tal. Tal som kommer under en replik (nedräkning, "Zombies approaching") sägs efteråt, eller släpps om det skulle komma mer än 9 s sent.
+- **Ingen syntetisk röst.** Talsyntesen används inte alls i vuxenappen (borttagen 2026-11-14): inte "Game on", "Zombies approaching", nedräkningen 100–10 m, "Run!", "Checkpoint" eller "Captured". Varningarna i den finns kvar som vibration, hotpuls och zombie-near.
 - **Ljudnivåer:** egen röstbuss. Rösten följer reglagen Voice och "Sound on". Musik, hotpuls och helikopter sänks med ≈ 10 dB medan repliken spelar och återställs när den slutar eller stoppas; det finns en säkerhetsgräns på 12 s. Effekter och varningsljud sänks inte.
 - **Händelser från bakgrunden** (räknade vid återkomst) ger ingen replik.
-- **Saknad eller trasig fil:**
-  - start i Survival eller A TO B: "Game on" sägs i stället;
-  - checkpoint: klangen och talet "Checkpoint" spelas;
-  - landningen: "Run!" sägs.
-
-  Spelets regler påverkas aldrig. Avstängt ljud ger ingen ersättning.
+- **Saknad eller trasig fil:** vid en checkpoint spelas den gamla klangen i stället; för övriga repliker blir det tyst. Spelets regler påverkas aldrig. Avstängt ljud ger ingen ersättning.
 - **Undertexter:** spelvyn har inget system för undertexter. Sessionens korta meddelanden visas aldrig där, så inga undertexter har lagts till. Repliktexten finns i `VOICE` och i fältloggen (`sound` → `voice`).
 
 ## Hotpuls
@@ -106,9 +101,9 @@ Checkpoints har ingen inspelad startreplik, så där sägs "Game on" som förut.
 
 Nivå per ljud på sin buss: hotpuls 1,0, helikopterloop 0,7, helikopterns ankomst 0,9, success/captured/dörr 1,0, zombie-near 0,8, revealed 0,75, checkpoint 0,7, radio 0,55.
 
-Duckning: under tal och radioklick sänks musik, hot och helikopter till 0,32 (≈ −10 dB) på 0,15 s och återställs på 0,9 s. Duckningen släpps automatiskt efter 8 s om talsyntesen aldrig meddelar att den är klar (det händer på Android). Efter mixen sitter en säkerhetslimiter (DynamicsCompressor, −6 dB, 12:1).
+Duckning: under operatörens repliker sänks musik, hot och helikopter till 0,32 (≈ −10 dB) på 0,15 s och återställs på 0,9 s. Duckningen släpps automatiskt efter 8 s om talsyntesen aldrig meddelar att den är klar (det händer på Android). Efter mixen sitter en säkerhetslimiter (DynamicsCompressor, −6 dB, 12:1).
 
-Lyssnarens nivåer (0–100 %) multipliceras på mixen. "Effects" styr bussarna fx, threat och heli, och "Voice" styr talsyntesens volym. Allt av/på sparas i den befintliga nyckeln `outbreak.cues`, så ett tidigare val gäller. Nivåerna sparas i `outbreak.audio.levels`. Ljud är på som standard, men inget spelas före ett tryck.
+Lyssnarens nivåer (0–100 %) multipliceras på mixen. "Effects" styr bussarna fx, threat och heli, och "Voice" styr röstbussen (operatörens repliker). Allt av/på sparas i den befintliga nyckeln `outbreak.cues`, så ett tidigare val gäller. Nivåerna sparas i `outbreak.audio.levels`. Ljud är på som standard, men inget spelas före ett tryck.
 
 ## Livscykel
 
@@ -149,8 +144,8 @@ ger ersättning, avstängt ljud, bakgrund, duckning släpps), `sound-events.test
 3. Skarvarna i hotpulsernas och helikopterns loopar (övertoning 0,12 / 0,35 s). Det gäller särskilt den rytmiska puls 2, där överlappet förskjuter takten en aning vid varje varv.
 4. Musikens upprepning vid ≈ 3:27. Låter övergången diskret?
 5. iPhone: ring/tyst-omkopplaren tystar Web Audio, även musiken. Kontrollera också musiken efter samtal/Siri, och efter att skärmen släckts och tänts.
-6. Android: talsyntesens start- och slutsignaler (duckningen), och att ingen kvarhängande duckning ligger kvar.
-7. Positionsljudet vid matchstart: känns det motiverat, eller är det ett ljud för mycket direkt efter "Game on"?
+6. Att ingen kvarhängande duckning ligger kvar efter en avbruten replik.
+7. Positionsljudet vid matchstart: känns det motiverat, eller är det ett ljud för mycket direkt efter startrepliken?
 8. Dörrsmällen är limiterad och ändå ≈ 5 dB svagare än de andra händelseljuden. Är den tillräckligt tydlig?
 9. Cykel: räcker 400 m för hotpulsen, eller kommer den för tidigt eller sent i verklig fart?
 10. Radiorepliker: nivån mot musik, hotpuls och helikopter; att transkriptionen stämmer. Talet börjar 1,6–3,9 s in i filerna efter brus och knaster, så "You're inside" kommer cirka 4 s efter dörrsmällen. Är det rätt tempo?

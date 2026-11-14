@@ -8,7 +8,7 @@ export const metadata = { title: "How to play – OUTBREAK" };
  * goals and extraction 30 m for 5 s (objectives.ts, game-rules.ts), capture 20 m for 3 s or 5 s (game-rules.ts), extraction at about
  * 80 % rounded down to 5 min and zombies 50 % faster then (game-rules.ts, modes.ts), sprint within 100 m, Bike hunt range 2 km
  * (activities.ts), off-road budget 90 s (offnetwork.ts), 45 s away and 5 s protection after a
- * pause (live-game.ts, game-rules.ts), location lost 60 s (game-rules.ts), spoken warning at 200 m and countdown from 100 m.
+ * pause (live-game.ts, game-rules.ts), location lost 60 s (game-rules.ts), vibration when a zombie comes within 200 m (camera-view.ts).
  * Not described because it is not active: riding through a zombie on the bike (BIKE_PASS_THROUGH_KMH exists, passThroughMps is unset).
  * Change the text when those change.
  */
@@ -72,8 +72,10 @@ export default function HowToPlay() {
           an arrow at the edge points to it.</li>
         <li><b>PAUSE</b> stops the clock and the zombies. <b>AUTO</b> lets the map follow you; touch the map to move it yourself.
           The <b>speaker</b> turns sound off and on. <b>QUIT</b> asks once, then ends the match and goes back to the start page.</li>
-        <li><b>Sound:</b> &quot;Zombies approaching&quot; at 200 m, then the distance spoken from 100 m down to 10 m. A low pulse while zombies
-          are near. Set music, effects and voice under <b>SOUND</b> on the start page.</li>
+        <li><b>Sound:</b> a low pulse while zombies are near and a short sound when one is close; phones that can vibrate do so when a zombie
+          comes within 200 m. The operator calls the important moments over the radio: the start (A TO B and Survival), checkpoints, the
+          helicopter and the rescue.
+          Set music, effects and voice under <b>SOUND</b> on the start page.</li>
       </ul>
 
       <h2>Location and your surroundings</h2>
