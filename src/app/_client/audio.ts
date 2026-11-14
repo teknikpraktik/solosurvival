@@ -55,7 +55,8 @@ export const MIX: Record<Bus, number> = { music: 0.32, threat: 0.7, heli: 0.8, f
 /** Per sound, on its bus (linear). */
 export const GAIN = {
   threat: 1, heliLoop: 0.7, heliApproach: 0.9, heliSuccess: 1, captured: 1, safeDoor: 1, zombieNear: 0.8, revealed: 0.75, checkpoint: 0.7,
-  voice: 1,
+  // The operator's lines −2.5 dB after the field test (the radio static was felt too loud; the files also have it lowered between the words).
+  voice: 0.75,
 } as const;
 /** Under the operator's recorded lines, music/threat/helicopter go down to this (≈ −10 dB). */
 export const DUCK = { to: 0.32, attackS: 0.15, releaseS: 0.9 };
@@ -91,6 +92,7 @@ export class RadioVoices {
   private cur: { line: VoiceLine; token: number; final: boolean; voice: Voice | null } | null = null;
   private pending: { line: VoiceLine; at: number; final: boolean; resolve: (r: PlayResult) => void } | null = null;
   private token = 0;
+  private idle: (() => void)[] = [];
   /** Lines started, for the field log and tests. */
   readonly log: VoiceLine[] = [];
 
@@ -101,6 +103,11 @@ export class RadioVoices {
   constructor(private readonly s: Soundscape, private readonly nowMs: () => number, private readonly maxQueueMs = 12_000) {}
 
   get busy(): boolean { return this.cur !== null; }
+  /** Resolves when no line plays or waits (at once if none does). */
+  whenIdle(): Promise<void> {
+    if (!this.cur && !this.pending) return Promise.resolve();
+    return new Promise((r) => this.idle.push(r));
+  }
   get speaking(): VoiceLine | null { return this.cur?.line ?? null; }
   get queued(): VoiceLine | null { return this.pending?.line ?? null; }
 
@@ -151,6 +158,10 @@ export class RadioVoices {
   private releaseIfIdle(): void {
     if (this.cur) return;
     this.s.setDuck("voice", false);
+    if (this.pending) return;
+    const waiting = this.idle;
+    this.idle = [];
+    for (const r of waiting) r();
   }
 
   private dropPending(): void { const p = this.pending; this.pending = null; p?.resolve("suppressed"); }
@@ -307,15 +318,41 @@ export class MatchAudio {
     if (this.done && this.endedWith !== null) return Promise.resolve(null);
     this.done = true;
     this.endedWith = result;
+    this.setEndDone(false);
     this.stopLoops(SOUND_RULES.heli.loopStopS);
     // Lines about the match (start, checkpoints, helicopter) are over; a win gets its own line, part of the ending.
     this.radio.stop();
-    if (result === "survived" && !this.hidden) void this.radio.say(mode === "survival" ? "liftingOff" : "insideSafehouse", { final: true });
+    const line = result === "survived" && !this.hidden ? this.radio.say(mode === "survival" ? "liftingOff" : "insideSafehouse", { final: true }) : null;
     const url = result === "infected" ? AUDIO.captured
       : result === "survived" ? (mode === "survival" ? AUDIO.heliSuccess : AUDIO.safeDoor)
       : null; // out of time, quit: no sound
-    if (!url) return Promise.resolve(null);
-    return this.s.play(url, "fx", url === AUDIO.captured ? GAIN.captured : url === AUDIO.safeDoor ? GAIN.safeDoor : GAIN.heliSuccess, 2500).then((r) => r.result);
+    // The ending's sounds are done when its effect has ended and the operator has finished speaking (the music comes back then). A safety
+    // limit keeps a lost "ended" from holding the music back.
+    let effectEnded!: () => void;
+    const effect = new Promise<void>((r) => { effectEnded = r; });
+    const id = this.matchId;
+    // Safety: a lost "ended" (effect or line) never keeps the music away longer than this.
+    const safety = this.s.later(() => { if (this.matchId === id && this.endedWith === result) this.setEndDone(true); }, END_SEQUENCE_MAX_MS);
+    const played = url
+      ? this.s.play(url, "fx", url === AUDIO.captured ? GAIN.captured : url === AUDIO.safeDoor ? GAIN.safeDoor : GAIN.heliSuccess, 2500, () => effectEnded())
+        .then((r) => { if (!r.voice) effectEnded(); return r.result; })
+      : (effectEnded(), Promise.resolve(null));
+    void Promise.all([effect, (line ?? Promise.resolve(null)).then(() => this.radio.whenIdle())]).then(() => {
+      this.s.cancel(safety);
+      if (this.matchId === id && this.endedWith === result) this.setEndDone(true);
+    });
+    return played;
+  }
+
+  /** The ending's own sounds (effect and win line) have been heard: the menu music may come back. */
+  get endSequenceDone(): boolean { return this.endDone; }
+  private endDone = false;
+  private endListeners = new Set<(done: boolean) => void>();
+  onEndSequence(fn: (done: boolean) => void): () => void { this.endListeners.add(fn); return () => this.endListeners.delete(fn); }
+  private setEndDone(done: boolean): void {
+    if (this.endDone === done) return;
+    this.endDone = done;
+    for (const fn of [...this.endListeners]) { try { fn(done); } catch { /* ignored */ } }
   }
   private endedWith: string | null = null;
 
@@ -340,6 +377,11 @@ export class MatchAudio {
   }
 
   private newMatch(i: Pick<MatchSoundInput, "id" | "mode">): void {
+    // The previous match's state and its clock go: a tick must never bring back an old match's id.
+    if (this.input && this.input.id !== i.id) {
+      this.input = null;
+      if (this.ticker !== null) { this.s.cancel(this.ticker); this.ticker = null; }
+    }
     this.radio.stop();
     this.stopLoops(0.3);
     this.threat.reset();
@@ -348,6 +390,7 @@ export class MatchAudio {
     this.matchId = i.id;
     this.done = false;
     this.endedWith = null;
+    this.setEndDone(false);
     this.s.preload(i.mode === "survival" ? [...MATCH_SOUNDS, ...HELI_SOUNDS] : MATCH_SOUNDS);
   }
 
@@ -371,8 +414,31 @@ export class MatchAudio {
   get state() { return { threat: this.threatVoice?.playing ? this.threatVoice.url : null, heliLoop: !!this.heliLoop?.playing, approach: !!this.approach?.playing, voice: this.radio.speaking }; }
 }
 
+/** The music waits at most this long for the ending's sounds (longest: 7 s effect, 7 s line). */
+const END_SEQUENCE_MAX_MS = 15_000;
+
 /** A line that could not be heard for a reason other than the player's own choice (muted) or being replaced. */
 const failed = (r: PlayResult) => r === "missing" || r === "error";
+
+/** Pages without music: the test mode and the simulator. */
+const NO_MUSIC = /^\/(field|dev)(\/|$)/;
+
+/** What the music does: repeat (menu, after a match), finish the pass that plays (during a match), or stop. */
+export type MusicMode = "loop" | "finish" | "off";
+
+/**
+ * The music for a page and match state. It starts as the app opens and repeats on the menu. A match does not stop it: the pass that plays
+ * when the match starts plays to its end alongside the game (no fade-out, no new pass). When the match is over it comes back, repeating,
+ * once the ending's own sounds (capture, door, helicopter, the operator's last line) have been heard.
+ */
+export function musicMode(path: string, match: { paused: boolean; elapsedS: number; phase: string } | null | undefined, opts: { autoStartPending: boolean; finished: boolean; endSequenceDone: boolean }): MusicMode {
+  if (NO_MUSIC.test(path)) return "off";
+  if (!path.startsWith("/play")) return "loop";
+  if (!match) return "finish"; // loading or leaving: leave the music as it is
+  if (opts.finished || match.phase === "finished") return opts.endSequenceDone ? "loop" : "finish";
+  const waiting = opts.autoStartPending && match.paused && match.elapsedS < 0.5;
+  return waiting ? "loop" : "finish";
+}
 
 function browserEnv(): SoundscapeEnv {
   return {

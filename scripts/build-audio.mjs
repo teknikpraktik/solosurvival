@@ -31,17 +31,21 @@ const FILES = [
   { name: "position-revealed", measure: "M", target: -14 },
   { name: "checkpoint-reached", measure: "M", target: -14 },
   { name: "safe-door-close", measure: "M", target: -17, limiter: true },
-  // Operator voices (radio effect, static and squelch already in the files): integrated speech level, the same for all eight.
-  { name: "keep-moving", measure: "I", target: -17 },
-  { name: "safehouse-on-map", measure: "I", target: -17 },
-  { name: "checkpoint-secured", measure: "I", target: -17 },
-  { name: "get-to-safehouse", measure: "I", target: -17 },
-  { name: "rescue-inbound", measure: "I", target: -17 },
-  { name: "get-to-helicopter", measure: "I", target: -17 },
-  { name: "lifting-off", measure: "I", target: -17 },
-  { name: "inside-safehouse", measure: "I", target: -17 },
+  // Operator voices (radio effect, static and squelch already in the files): integrated speech level, the same for all eight. The radio
+  // static between the words was felt too loud in the field: a gentle downward expander (VOICE_GATE) lowers what is well below the speech
+  // by up to 9 dB; the speech itself and the squelch bursts are untouched.
+  { name: "keep-moving", measure: "I", target: -17, gate: true },
+  { name: "safehouse-on-map", measure: "I", target: -17, gate: true },
+  { name: "checkpoint-secured", measure: "I", target: -17, gate: true },
+  { name: "get-to-safehouse", measure: "I", target: -17, gate: true },
+  { name: "rescue-inbound", measure: "I", target: -17, gate: true },
+  { name: "get-to-helicopter", measure: "I", target: -17, gate: true },
+  { name: "lifting-off", measure: "I", target: -17, gate: true },
+  { name: "inside-safehouse", measure: "I", target: -17, gate: true },
 ];
 const MUSIC = "theme-outbreak.mp3";
+/** Downward expander for the radio static: below −27 dBFS (RMS) the level falls 2:1, at most 9 dB; fast enough to open on every word. */
+const VOICE_GATE = "agate=mode=downward:threshold=0.045:ratio=2:range=0.355:attack=8:release=180:detection=rms:knee=2";
 
 function measure(file) {
   // ffmpeg writes the loudness summary to stderr.
@@ -64,11 +68,11 @@ for (const f of FILES) {
   const before = measure(src);
   const want = f.target - before[f.measure];
   const gain = f.limiter ? want : Math.min(want, CEILING_DBTP - 0.5 - before.TP); // 0,5 dB marginal för MP3-kodningens överslängar
-  const af = f.limiter ? `volume=${gain.toFixed(2)}dB,alimiter=limit=${Math.pow(10, (CEILING_DBTP - 1) / 20).toFixed(4)}:attack=2:release=60:level=false` : `volume=${gain.toFixed(2)}dB`;
+  const af = (f.gate ? `${VOICE_GATE},` : "") + (f.limiter ? `volume=${gain.toFixed(2)}dB,alimiter=limit=${Math.pow(10, (CEILING_DBTP - 1) / 20).toFixed(4)}:attack=2:release=60:level=false` : `volume=${gain.toFixed(2)}dB`);
   execFileSync("ffmpeg", ["-hide_banner", "-v", "error", "-y", "-i", src, "-af", af, "-c:a", "libmp3lame", "-b:a", BITRATE, "-ar", "48000", "-ac", "2", "-map_metadata", "-1", "-id3v2_version", "0", "-write_xing", "1", out]);
   const after = measure(out);
   report.files[f.name] = {
-    measure: f.measure, target: f.target, gainDb: r1(gain), limiter: !!f.limiter,
+    measure: f.measure, target: f.target, gainDb: r1(gain), limiter: !!f.limiter, gate: !!f.gate,
     before: { I: r1(before.I), M: r1(before.M), TP: r1(before.TP), bytes: statSync(src).size },
     after: { I: r1(after.I), M: r1(after.M), TP: r1(after.TP), bytes: statSync(out).size },
     durationS: Math.round(before.duration * 1000) / 1000,

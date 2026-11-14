@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Soundscape, type Levels } from "@/audio/soundscape";
-import { AUDIO, DUCK, MIX, MatchAudio, VOICE, type MatchSoundInput } from "@/app/_client/audio";
+import { AUDIO, DUCK, MIX, MatchAudio, VOICE, musicMode, type MatchSoundInput } from "@/app/_client/audio";
 import { SOUND_RULES } from "@/play/sound-rules";
 import { fakeEnv, flush, type FakeGain } from "./audio-fakes";
 
@@ -116,12 +116,13 @@ describe("soundscape engine", () => {
 });
 
 describe("menu music", () => {
-  it("starts at the first tap, skips the leading silence, fades in, and never restarts while wanted", async () => {
+  it("starts as the app opens (before any tap, where the browser allows it), skips the leading silence, and never restarts while wanted", async () => {
     const t = setup();
     await t.s.music.prefetch();
-    t.s.music.want(true);
-    expect(t.media.filter((m) => m.plays > 0)).toHaveLength(0); // no tap yet
-    t.s.unlock();
+    t.s.music.want(true); // no tap yet
+    await flush();
+    expect(t.media.filter((m) => m.plays > 0)).toHaveLength(1);
+    t.s.unlock(); // the first tap wakes the audio context it plays into
     await flush();
     const playing = () => t.media.filter((m) => !m.paused);
     expect(playing()).toHaveLength(1);
@@ -542,5 +543,117 @@ describe("operator's radio lines", () => {
     t.m.radio.stop();
     await t.advance(300);
     expect(t.s.ducked).toBe(false);
+  });
+});
+
+describe("music around a match", () => {
+  it("during a match the playing pass finishes (no fade-out, no new pass), then the music stops", async () => {
+    const t = setup();
+    t.s.unlock();
+    t.s.music.want(true);
+    await t.advance(1000);
+    const el = t.media.find((m) => !m.paused)!;
+    const plays = el.plays;
+    t.s.music.setRepeat(false); // the match starts
+    await t.advance(5000);
+    expect(el.paused).toBe(false);
+    expect(el.plays).toBe(plays);
+    el.currentTime = MUSIC.endS - 2; // near the end of the pass
+    await t.advance(3000);
+    expect(t.media.every((m) => m.paused)).toBe(true); // no crossfade into a new pass
+    expect(t.s.music.playing).toBe(false);
+  });
+
+  it("after the match it comes back, repeating; if it still plays it simply goes on", async () => {
+    const t = setup();
+    t.s.unlock();
+    t.s.music.want(true);
+    await t.advance(500);
+    t.s.music.setRepeat(false);
+    const el = t.media.find((m) => !m.paused)!;
+    el.currentTime = MUSIC.endS - 1;
+    await t.advance(2000);
+    expect(t.s.music.playing).toBe(false);
+    t.s.music.setRepeat(true); // the ending's sounds are over
+    t.s.music.want(true);
+    await t.advance(500);
+    const now = t.media.filter((m) => !m.paused);
+    expect(now).toHaveLength(1);
+    expect(now[0].currentTime).toBeLessThan(MUSIC.startS + 2); // a new pass from the start, with a fade-in
+    // Short match: the pass from the start is still playing at the end: no restart.
+    const plays = now[0].plays;
+    t.s.music.setRepeat(false);
+    await t.advance(2000);
+    t.s.music.setRepeat(true);
+    t.s.music.want(true);
+    await t.advance(500);
+    expect(now[0].plays).toBe(plays);
+    expect(now[0].paused).toBe(false);
+  });
+
+  it("which music mode each page and match state gives", () => {
+    const run = { paused: false, elapsedS: 120, phase: "survival" };
+    const o = { autoStartPending: false, finished: false, endSequenceDone: false };
+    expect(musicMode("/", null, o)).toBe("loop");
+    expect(musicMode("/new", null, o)).toBe("loop");
+    expect(musicMode("/how-to-play", null, o)).toBe("loop");
+    expect(musicMode("/field", null, o)).toBe("off");
+    expect(musicMode("/dev", null, o)).toBe("off");
+    expect(musicMode("/play", { paused: true, elapsedS: 0, phase: "survival" }, { ...o, autoStartPending: true })).toBe("loop"); // waiting for GPS
+    expect(musicMode("/play", run, o)).toBe("finish"); // the match runs: the pass finishes
+    expect(musicMode("/play", { ...run, paused: true }, o)).toBe("finish"); // paused: unchanged
+    expect(musicMode("/play", { ...run, phase: "finished" }, { ...o, finished: true })).toBe("finish"); // the ending's sounds play
+    expect(musicMode("/play", { ...run, phase: "finished" }, { ...o, finished: true, endSequenceDone: true })).toBe("loop");
+  });
+
+  it("the ending's sounds are reported done after the effect and the win line, at once when there are none", async () => {
+    const t = setup();
+    t.s.unlock();
+    const seen: boolean[] = [];
+    t.m.onEndSequence((d) => seen.push(d));
+    await run(t, 1, { mode: "survival" });
+    void t.m.onEvent({ type: "finished", result: "survived", mode: "survival", stale: false }); // effect 7 s, line 5 s
+    await t.advance(5500);
+    expect(t.m.endSequenceDone).toBe(false);
+    await t.advance(2000);
+    expect(t.m.endSequenceDone).toBe(true);
+    // A new match, then captured (effect 4 s, no line).
+    await t.m.onEvent({ type: "match_started", id: "m2", mode: "mission" });
+    expect(t.m.endSequenceDone).toBe(false);
+    void t.m.onEvent({ type: "finished", result: "infected", mode: "mission", stale: false });
+    await t.advance(3500);
+    expect(t.m.endSequenceDone).toBe(false);
+    await t.advance(1000);
+    expect(t.m.endSequenceDone).toBe(true);
+    // Out of time: no ending sound, done at once.
+    await t.m.onEvent({ type: "match_started", id: "m3", mode: "mission" });
+    void t.m.onEvent({ type: "finished", result: "failed", mode: "mission", stale: false });
+    await t.advance(100);
+    expect(t.m.endSequenceDone).toBe(true);
+    expect(seen).toEqual([true, false, true, false, true]);
+  });
+
+  it("a lost end signal does not keep the music away", async () => {
+    const t = setup();
+    t.s.unlock();
+    await run(t, 1);
+    const voice = t.m.radio as unknown as { whenIdle(): Promise<void> };
+    voice.whenIdle = () => new Promise(() => undefined); // never resolves
+    void t.m.onEvent({ type: "finished", result: "survived", mode: "mission", stale: false });
+    await t.advance(14_000);
+    expect(t.m.endSequenceDone).toBe(false); // the line's end is never reported…
+    await t.advance(2000);
+    expect(t.m.endSequenceDone).toBe(true); // …the music comes back anyway after 15 s
+  });
+
+  it("a new match drops the previous match's state: its clock never brings the old match back", async () => {
+    const t = setup();
+    t.s.unlock();
+    await run(t, 3, { id: "old", nearestM: 150 });
+    expect(t.m.state.threat).not.toBeNull();
+    await t.m.onEvent({ type: "match_started", id: "new", mode: "escape" });
+    await t.advance(5000); // no update from the screen yet
+    expect(t.m.state.threat).toBeNull();
+    expect(t.m.radio.log).toEqual(["safehouseOnMap"]);
   });
 });

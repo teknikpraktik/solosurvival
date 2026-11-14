@@ -10,16 +10,16 @@ export const SOUND_RULES = {
   threat: {
     /**
      * A threat period starts when the nearest zombie stays within `onM` for `enterDwellS`, and ends when it has stayed beyond `offM` for
-     * `exitDwellS` (and the period has lasted `minOnS`). On foot `onM` is the distance where "Zombies approaching" is already spoken
-     * (200 m ≈ 70 s of head-on closing at a walk against a Normal zombie, 5.6 km/h); Bike doubles it because both move faster
-     * (player ≈ 16 km/h, zombie 7.8–13.4 km/h: 400 m ≈ 55–65 s head-on).
+     * `exitDwellS` (and the period has lasted `minOnS`). Widened after the field test so the pulse is heard more often: on foot 300 m
+     * (≈ 100 s of head-on closing at a walk against a Normal zombie, 5.6 km/h), on Bike 600 m because both move faster (player ≈ 16 km/h,
+     * zombie 7.8–13.4 km/h: ≈ 85–100 s head-on). It still follows only the nearest-zombie distance the HUD shows.
      */
-    byActivity: { walk: { onM: 200, offM: 260 }, mtb: { onM: 400, offM: 500 } } as Partial<Record<Activity, { onM: number; offM: number }>>,
-    enterDwellS: 3,
-    exitDwellS: 10,
+    byActivity: { walk: { onM: 300, offM: 380 }, mtb: { onM: 600, offM: 750 } } as Partial<Record<Activity, { onM: number; offM: number }>>,
+    enterDwellS: 2,
+    exitDwellS: 8,
     minOnS: 12,
     /** Calm after a period: a new one waits this long, unless a zombie is already in the close range (where the map zooms in). */
-    quietGapS: 20,
+    quietGapS: 8,
     fadeInS: 2.5,
     fadeOutS: 4,
     /** Pause, match end or the app in the background: out quickly. */
@@ -32,7 +32,7 @@ export const SOUND_RULES = {
   heli: { loopFadeInS: 3, approachFadeOutS: 3, loopStopS: 0.8 },
 } as const;
 
-const DEFAULT_RANGE = { onM: 200, offM: 260 };
+const DEFAULT_RANGE = { onM: 300, offM: 380 };
 export const threatRange = (a: Activity) => SOUND_RULES.threat.byActivity[a] ?? DEFAULT_RANGE;
 
 /** A random variant index in [0, n) that is never `prev` (when there is more than one). */
