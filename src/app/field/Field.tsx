@@ -37,7 +37,7 @@ export default function Field() {
 
   return (
     <main className="page">
-      <PageHeader title="TEST MODE" />
+      <PageHeader title="TEST MODE" href="/settings" />
       <div className="card">Logs, matches and GPS traces are local: no telemetry is sent and nothing is uploaded. Export only happens when you press the button. The only external requests are map tiles from OpenFreeMap (see HOW TO PLAY).</div>
 
       <h2>GPS test (no match)</h2>

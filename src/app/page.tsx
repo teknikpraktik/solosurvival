@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { SoundSettings } from "./_client/SoundSettings";
 
+/* NEW GAME is the one main action: large and red. The rest are secondary, stacked so their labels never wrap, but lower and quieter. */
 export default function Home() {
   return (
     <main className="center hero">
@@ -8,13 +8,12 @@ export default function Home() {
       <img className="herologo" src="/img/logo-rings.png" alt="" width={112} height={112} />
       <h1 className="title">OUTBREAK</h1>
       <p className="sub">SOLO SURVIVAL</p>
-      <Link className="btn primary" href="/new">NEW GAME</Link>
-      <Link className="btn" href="/history">PREVIOUS GAMES</Link>
-      <Link className="btn" href="/how-to-play">HOW TO PLAY</Link>
-      <SoundSettings />
-      <p className="hint">
-        <Link href="/field">Test mode</Link>
-      </p>
+      <Link className="btn primary big homemain" href="/new">NEW GAME</Link>
+      <nav className="homesec" aria-label="More">
+        <Link className="btn" href="/history">PREVIOUS GAMES</Link>
+        <Link className="btn" href="/how-to-play">HOW TO PLAY</Link>
+        <Link className="btn" href="/settings">SETTINGS</Link>
+      </nav>
     </main>
   );
 }

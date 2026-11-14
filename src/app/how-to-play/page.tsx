@@ -76,7 +76,7 @@ export default function HowToPlay() {
         <li><b>Sound:</b> a low pulse while zombies are near and a short sound when one is close. As the nearest zombie closes in, its distance
           is spoken: 50, 40, 30, 20, 10 m. Phones that can vibrate do so when a zombie comes within 200 m. The operator calls the important
           moments over the radio: the start, checkpoints, the helicopter and the rescue.
-          Set music, effects and voice under <b>SOUND</b> on the start page.</li>
+          Set music, effects and voice under <b>SETTINGS</b> on the start page.</li>
       </ul>
 
       <h2>Location and your surroundings</h2>

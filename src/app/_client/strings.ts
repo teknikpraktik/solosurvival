@@ -86,13 +86,11 @@ const en = {
     landedSub: (dist: string | null) => (dist ? `Extraction open · ${dist} away` : "Extraction open · reach it"),
   },
   sound: {
-    button: "SOUND",
     title: "Sound",
     all: "Sound on",
     music: "Music",
     effects: "Effects",
     voice: "Voice",
-    done: "DONE",
     note: "The speaker button in the game turns all sound off and on. On iPhone the ring/silent switch also mutes the game.",
   },
   hud: {

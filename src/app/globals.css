@@ -473,3 +473,11 @@ button.pageback { background: transparent; border: 0; padding: 0; font: inherit;
   .ngpanel .pvstats dd { margin: 0; font-size: 0.95rem; }
   .ngpanel .pvactions .btn { padding-top: 10px; padding-bottom: 10px; min-height: 48px; }
 }
+
+/* ---------- Start page: NEW GAME leads; the secondary links are lower, quieter and grouped under it ---------- */
+.hero .homemain { padding: 20px; font-size: 1.1rem; box-shadow: 0 6px 18px #0009; }
+.homesec { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(320px, 100%); margin-top: 6px; }
+.hero .homesec .btn { width: 100%; padding: 11px; font-size: .85rem; letter-spacing: .1em; color: #cbd5e1; background: #0b0f14a6; border-color: #1f2937; }
+
+/* ---------- Settings ---------- */
+.setgroup { display: flex; flex-direction: column; gap: 8px; }
