@@ -26,6 +26,7 @@ const music = (page) => page.evaluate(() => {
   const m = window.__outbreakAudio?.soundscape.music;
   return { playing: m?.playing ?? false, els: (m?.els ?? []).map((e) => ({ paused: e.el.paused, t: e.el.currentTime, gain: e.gain?.gain.value ?? null, src: e.el.src.slice(0, 5) })) };
 });
+const voices = (page) => page.evaluate(() => ({ log: [...window.__outbreakAudio.match.radio.log], now: window.__outbreakAudio.match.radio.speaking, queued: window.__outbreakAudio.match.radio.queued }));
 const audio = (page) => page.evaluate(() => { const a = window.__outbreakAudio; return { ...a.match.state, voices: a.soundscape.voiceCount, ctx: a.soundscape.context()?.state }; });
 /** Puts one zombie `m` metres from the player along the trails and keeps it still; removes the others. */
 const zombieAt = (page, m) => page.evaluate((want) => {
@@ -102,6 +103,16 @@ async function startMatch(o, mode) {
   check("threat pulse after the zombie stayed within 300 m (wider than before)", typeof a1.threat === "string" && a1.threat.includes("threat-pulse-"), JSON.stringify(a1));
   await wait(6000);
   check("still the same single pulse", (await audio(page)).threat === a1.threat);
+  // Spoken distance: the zombie closes in to 45 m, then 33 m.
+  await zombieAt(page, 45);
+  await wait(1200);
+  let cv = await voices(page);
+  check("zombie at 45 m: \"Fifty\" is said", cv.log.includes("count50") && !cv.log.includes("count40"), JSON.stringify(cv));
+  await zombieAt(page, 33);
+  await wait(1200);
+  cv = await voices(page);
+  check("zombie at 33 m: \"Forty\" next, each once", cv.log.filter((l) => l.startsWith("count")).join() === "count50,count40", JSON.stringify(cv));
+  check("countdown files fetched", ["/audio/countdown-50.mp3", "/audio/countdown-40.mp3"].every((p) => reqs.includes(p)));
   await page.getByRole("button", { name: "QUIT" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "QUIT" }).click();
   await wait(2000);
@@ -139,7 +150,6 @@ async function startMatch(o, mode) {
 
 let v;
 // --- Operator's radio lines: one per real game moment, in the real app ---
-const voices = (page) => page.evaluate(() => ({ log: [...window.__outbreakAudio.match.radio.log], now: window.__outbreakAudio.match.radio.speaking, queued: window.__outbreakAudio.match.radio.queued }));
 {
   // A TO B: start → safe house on the map; win at B → inside the safe house. Quit while a line plays → silence, then a new match.
   const o = await open(); const { page, wait } = o;
@@ -178,12 +188,14 @@ const voices = (page) => page.evaluate(() => ({ log: [...window.__outbreakAudio.
   await o.ctx.close();
 }
 {
-  // Checkpoints: no opening line (there is no recording for it, and nothing synthetic); checkpoint → "Checkpoint secured"; the last → "Get to the safe house"; home → "You're inside".
+  // Checkpoints: opening line "Checkpoints marked on your map…"; checkpoint → "Checkpoint secured"; the last → "Get to the safe house"; home → "You're inside".
   const o = await open(); const { page, wait } = o;
   await page.goto(BASE + "/new"); await wait(1200);
   await startMatch(o, "CHECKPOINTS");
   await wait(1500);
-  check("Checkpoints start: no line and no synthetic voice", (await voices(page)).log.length === 0 && (await page.evaluate(() => window.__synthSpoken ?? 0)) === 0);
+  check("Checkpoints start: \"Checkpoints marked on your map\" once, nothing synthetic", (await voices(page)).log.join() === "checkpointStart" && (await page.evaluate(() => window.__synthSpoken ?? 0)) === 0);
+  check("checkpoint-start fetched", o.reqs.includes("/audio/checkpoint-start.mp3"));
+  await wait(10500); // the opening line is 8 s, and the "position revealed" sound waits for it (2 s)
   await page.evaluate(() => { window.__outbreak.live.state.zombies = []; window.__outbreak.live.rules.maxZombies = 0; });
   const reach = (i) => page.evaluate((k) => { const s = window.__outbreak; const o = s.live.state.objectives; o.index = k + 1; s.endMatch([{ type: "objective_reached", targetId: o.targets[k].id, index: k }]); }, i);
   const n = await page.evaluate(() => window.__outbreak.live.state.objectives.targets.filter((x) => x.kind === "checkpoint").length);

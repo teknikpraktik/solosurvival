@@ -402,6 +402,126 @@
       },
       "durationS": 7
     },
+    "checkpoint-start": {
+      "measure": "I",
+      "target": -17,
+      "gainDb": -2.3,
+      "limiter": false,
+      "gate": true,
+      "before": {
+        "I": -14.7,
+        "M": -11.6,
+        "TP": -0.1,
+        "bytes": 1536078
+      },
+      "after": {
+        "I": -17.4,
+        "M": -14.3,
+        "TP": -2.7,
+        "bytes": 129024
+      },
+      "durationS": 8
+    },
+    "countdown-50": {
+      "measure": "M",
+      "target": -14,
+      "gainDb": -0.8,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -15.5,
+        "M": -13.5,
+        "TP": -0.7,
+        "bytes": 29057
+      },
+      "after": {
+        "I": -16.8,
+        "M": -14.8,
+        "TP": -5,
+        "bytes": 13056
+      },
+      "durationS": 0.758
+    },
+    "countdown-40": {
+      "measure": "M",
+      "target": -14,
+      "gainDb": -2.5,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -12.2,
+        "M": -11.5,
+        "TP": -1.1,
+        "bytes": 30311
+      },
+      "after": {
+        "I": -15.2,
+        "M": -14.5,
+        "TP": -7.1,
+        "bytes": 14208
+      },
+      "durationS": 0.836
+    },
+    "countdown-30": {
+      "measure": "M",
+      "target": -14,
+      "gainDb": -2.1,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -12.8,
+        "M": -11.9,
+        "TP": -0.9,
+        "bytes": 33237
+      },
+      "after": {
+        "I": -15.4,
+        "M": -14.4,
+        "TP": -6.5,
+        "bytes": 17280
+      },
+      "durationS": 1.019
+    },
+    "countdown-20": {
+      "measure": "M",
+      "target": -14,
+      "gainDb": -2.5,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -13.6,
+        "M": -11.5,
+        "TP": -0.5,
+        "bytes": 29057
+      },
+      "after": {
+        "I": -16.6,
+        "M": -14.4,
+        "TP": -6.5,
+        "bytes": 13056
+      },
+      "durationS": 0.758
+    },
+    "countdown-10": {
+      "measure": "M",
+      "target": -14,
+      "gainDb": -0.8,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -16.7,
+        "M": -14.3,
+        "TP": -0.7,
+        "bytes": 30311
+      },
+      "after": {
+        "I": -17.9,
+        "M": -15.6,
+        "TP": -4.8,
+        "bytes": 14208
+      },
+      "durationS": 0.836
+    },
     "theme-outbreak": {
       "copied": true,
       "I": -16,

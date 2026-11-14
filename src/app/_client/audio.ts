@@ -2,6 +2,7 @@ import type { Activity } from "@/config/activities";
 import type { GameMode } from "@/engine/objectives/objectives";
 import type { SoundEvent } from "@/play/session";
 import { Cooldown, NearGate, SOUND_RULES, ThreatGate } from "@/play/sound-rules";
+import { VOICE_COUNTDOWN_M, nextCountdown, type CountdownStep } from "@/play/countdown";
 import { Soundscape, type Bus, type Levels, type LoopVoice, type PlayResult, type SoundscapeEnv, type Voice } from "@/audio/soundscape";
 
 /**
@@ -36,13 +37,23 @@ export const VOICE = {
   getToHelicopter: { url: "/audio/get-to-helicopter.mp3", text: "We're down. Get to the helicopter. We can't stay long." },
   liftingOff: { url: "/audio/lifting-off.mp3", text: "Lifting off. You made it." },
   insideSafehouse: { url: "/audio/inside-safehouse.mp3", text: "You're inside. Lock the door. You made it." },
+  checkpointStart: { url: "/audio/checkpoint-start.mp3", text: "Checkpoints marked on your map. Secure them all, then get to the safe house. Stay alive." },
+  // The nearest zombie's distance as it closes in (the uploaded files were named for other numbers than they say; mapped by what is said).
+  count50: { url: "/audio/countdown-50.mp3", text: "Fifty." },
+  count40: { url: "/audio/countdown-40.mp3", text: "Forty." },
+  count30: { url: "/audio/countdown-30.mp3", text: "Thirty." },
+  count20: { url: "/audio/countdown-20.mp3", text: "Twenty." },
+  count10: { url: "/audio/countdown-10.mp3", text: "Ten." },
 } as const;
 export type VoiceLine = keyof typeof VOICE;
+const COUNT_LINE: Record<(typeof VOICE_COUNTDOWN_M)[number], VoiceLine> = { 50: "count50", 40: "count40", 30: "count30", 20: "count20", 10: "count10" };
+const COUNT_LINES: readonly VoiceLine[] = Object.values(COUNT_LINE);
 
 /** Every match: decoded while the player sets up the match. */
 export const MATCH_SOUNDS: readonly string[] = [
   ...AUDIO.threat, AUDIO.captured, AUDIO.safeDoor, AUDIO.zombieNear, AUDIO.revealed, AUDIO.checkpoint,
   VOICE.safehouseOnMap.url, VOICE.checkpointSecured.url, VOICE.getToSafehouse.url, VOICE.insideSafehouse.url, VOICE.keepMoving.url,
+  VOICE.checkpointStart.url, ...COUNT_LINES.map((l) => VOICE[l].url),
 ];
 /** Survival only (larger files): decoded when a Survival match is chosen or starts. */
 export const HELI_SOUNDS: readonly string[] = [AUDIO.heliApproach, AUDIO.heliLoop, AUDIO.heliSuccess, VOICE.rescueInbound.url, VOICE.getToHelicopter.url, VOICE.liftingOff.url];
@@ -115,8 +126,15 @@ export class RadioVoices {
    * Says a line. `supersedes`: lines that are no longer true once this one is (a playing or waiting one is dropped). Resolves with what
    * came of it: "played", "suppressed" (dropped, replaced, too late), or the soundscape's reason ("muted", "missing", …).
    */
-  say(line: VoiceLine, o: { final?: boolean; supersedes?: readonly VoiceLine[] } = {}): Promise<PlayResult> {
+  say(line: VoiceLine, o: { final?: boolean; urgent?: boolean; supersedes?: readonly VoiceLine[] } = {}): Promise<PlayResult> {
     const final = !!o.final;
+    // Urgent (the zombie distance): now, not after a line; it cuts a playing line and drops a waiting one, but never the win line.
+    if (o.urgent && !final) {
+      if (this.cur?.final || this.pending?.final) return Promise.resolve("suppressed");
+      this.dropPending();
+      this.stopCurrent();
+      return this.start(line, false);
+    }
     if (o.supersedes?.length) {
       if (this.pending && o.supersedes.includes(this.pending.line)) this.dropPending();
       if (this.cur && o.supersedes.includes(this.cur.line)) this.stopCurrent();
@@ -203,6 +221,8 @@ export class MatchAudio {
   private readonly threat: ThreatGate;
   private readonly near = new NearGate();
   private readonly revealed = new Cooldown(SOUND_RULES.revealed.cooldownS);
+  /** The last distance step said (spoken countdown 50…10 m). */
+  private countdown: CountdownStep | null = null;
   private threatVoice: LoopVoice | null = null;
   private heliLoop: LoopVoice | null = null;
   private approach: Voice | null = null;
@@ -245,6 +265,10 @@ export class MatchAudio {
       this.threatVoice = null;
     }
     if (this.near.update(t, i.nearestM, i.activity, run)) void this.s.play(AUDIO.zombieNear, "fx", GAIN.zombieNear);
+    // Spoken distance as the nearest zombie closes in: 50, 40, 30, 20, 10 m, each once per approach (re-armed after it has dropped back).
+    const c = nextCountdown(this.countdown, run ? i.nearestM : null, VOICE_COUNTDOWN_M);
+    this.countdown = c.last;
+    if (c.say !== null) void this.radio.say(COUNT_LINE[c.say as keyof typeof COUNT_LINE], { urgent: true });
     // The helicopter waits while extraction is open (Survival). A restored match in that phase gets the loop without the approach.
     const wantLoop = run && i.mode === "survival" && i.phase === "extraction";
     if (wantLoop && !this.heliLoop?.playing) {
@@ -368,12 +392,11 @@ export class MatchAudio {
     this.threat.update(this.clock.nowS(), null, "walk", false);
   }
 
-  /** A match begins (after START, not on the setup step): the opening line for its mode. Checkpoints has no recorded opening line. */
+  /** A match begins (after START, not on the setup step): the opening line for its mode. */
   private started(id: string, mode: GameMode): Promise<PlayResult | null> {
     if (id !== this.matchId) this.newMatch({ id, mode });
     if (this.hidden) return Promise.resolve("suppressed");
-    if (mode === "mission") return Promise.resolve(null);
-    return this.radio.say(mode === "survival" ? "keepMoving" : "safehouseOnMap");
+    return this.radio.say(mode === "survival" ? "keepMoving" : mode === "escape" ? "safehouseOnMap" : "checkpointStart");
   }
 
   private newMatch(i: Pick<MatchSoundInput, "id" | "mode">): void {
@@ -386,6 +409,7 @@ export class MatchAudio {
     this.stopLoops(0.3);
     this.threat.reset();
     this.near.reset();
+    this.countdown = null;
     this.revealed.reset();
     this.matchId = i.id;
     this.done = false;

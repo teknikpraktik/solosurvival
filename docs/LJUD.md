@@ -65,8 +65,17 @@ Whisper small.en i den här miljön; ingen har lyssnat.
 | get-to-helicopter | "We're down. Get to the helicopter. We can't stay long." | Survival: `extraction_opened`, med kortet "landed". Den avbryter och ersätter en rescue-inbound som fortfarande spelas eller väntar. Den ersätter talet "Run!" vid landningen. |
 | lifting-off | "Lifting off. You made it." | `finished: survived` i Survival, alltså först när vinstvillkoret (30 m i 5 s vid helikoptern) är uppfyllt. Den spelas med extracted-bilden och helikopterns lyftljud. |
 | inside-safehouse | "You're inside. Lock the door. You made it." | `finished: survived` i Checkpoints (hemma) och A TO B (vid B). Den spelas med safehouse-bilden och dörrsmällen. |
+| checkpoint-start | "Checkpoints marked on your map. Secure them all, then get to the safe house. Stay alive." | Checkpoints: `match_started`, en gång när matchen startar. |
 
-Checkpoints har ingen inspelad startreplik, så där sägs ingenting vid start.
+
+### Nedräkning (zombiens avstånd)
+
+Fem inspelade ord: "fifty", "forty", "thirty", "twenty" och "ten" (`count50` … `count10` i `VOICE`). Närmaste zombies avstånd, samma som HUD:en visar, sägs när det passerar 50, 40, 30, 20 och 10 m (`VOICE_COUNTDOWN_M` i `src/play/countdown.ts`).
+- Varje steg sägs en gång per närmande. Vid ett snabbt närmande sägs bara det närmaste steget, ingen eftersläpning.
+- Ett steg kan sägas igen först när zombien har dragit sig minst 5 m bakom det (skydd mot GPS-brus).
+- Inget sägs i paus, när appen är i bakgrunden eller när ljudet är av.
+- Nedräkningen är brådskande: den avbryter en pågående replik och kastar en väntande, men aldrig vinstrepliken.
+- **Filnamnen stämde inte med innehållet.** Tre taligenkänningsmodeller (Whisper base, small och medium) är överens: uppladdade "10.mp3" säger "fifty", "20.mp3" säger "forty", "40.mp3" säger "twenty" och "50.mp3" säger "ten"; bara "30.mp3" stämmer. Filerna är kopplade efter vad som sägs, och källfilerna heter efter det (`countdown-50.mp3` = "fifty"). Ingen har lyssnat.
 
 ### Röstkanalen
 

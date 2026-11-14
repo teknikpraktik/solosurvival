@@ -29,6 +29,11 @@ Operatörens röster (WAV PCM 16 bit, 48 kHz stereo, radioeffekt i filerna): kee
 get-to-safehouse 7 s, rescue-inbound 6 s, get-to-helicopter 7 s, lifting-off 5 s, inside-safehouse 7 s. Nivå: integrerad −17 LUFS där
 true peak tillåter (keep-moving −21,2 och inside-safehouse −21,9 begränsas av topparna); MP3 128 kbit/s, 81–129 kB styck (WAV 0,96–1,5 MB).
 
+checkpoint-start (WAV 48 kHz stereo, 8 s, radioeffekt): samma nivå och brusdämpning som de andra rösterna. Nedräkningen
+`countdown-50/40/30/20/10.mp3` (MP3 44,1 kHz mono, 0,8–1 s, utan radioeffekt): högsta momentana nivå −14 LUFS. De uppladdade filnamnen
+sade andra tal än inspelningen (taligenkänning, tre modeller överens), så källorna heter efter vad som sägs: countdown-50 = uppladdad
+"10.mp3", countdown-40 = "20.mp3", countdown-30 = "30.mp3", countdown-20 = "40.mp3", countdown-10 = "50.mp3".
+
 Hotpulser: 1 `81c21560…`, 2 `7d34016b…`, 3 `c06d5c67…`, 4 `00a9f3ef…` (fullständiga summor: `sha256sum assets/audio/source/*`).
 
 ## Nivåer och storlek

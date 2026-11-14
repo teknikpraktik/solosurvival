@@ -11,6 +11,7 @@ const DUR: Record<string, number> = {
   [AUDIO.zombieNear]: 3, [AUDIO.revealed]: 2, [AUDIO.checkpoint]: 2,
   [VOICE.keepMoving.url]: 8, [VOICE.safehouseOnMap.url]: 8, [VOICE.checkpointSecured.url]: 5, [VOICE.getToSafehouse.url]: 7,
   [VOICE.rescueInbound.url]: 6, [VOICE.getToHelicopter.url]: 7, [VOICE.liftingOff.url]: 5, [VOICE.insideSafehouse.url]: 7,
+  [VOICE.checkpointStart.url]: 8, [VOICE.count50.url]: 0.8, [VOICE.count40.url]: 0.8, [VOICE.count30.url]: 1, [VOICE.count20.url]: 0.8, [VOICE.count10.url]: 0.8,
 };
 const MUSIC = { url: AUDIO.music, startS: 4, endS: 210.6, crossfadeS: 3.5, fadeInS: 3, fadeOutS: 2.5 };
 
@@ -381,8 +382,8 @@ describe("operator's radio lines", () => {
   /** Samples the voice bus every 100 ms for `ms`: the most lines heard at the same moment. */
   async function maxTogether(t: ReturnType<typeof setup>, ms: number) { let m = 0; for (let i = 0; i < ms; i += 100) { await t.advance(100); m = Math.max(m, live(t).length); } return m; }
 
-  it("each mode opens with its recorded line when the match starts; Checkpoints has none (and nothing synthetic either)", async () => {
-    for (const [mode, url] of [["survival", VOICE.keepMoving.url], ["escape", VOICE.safehouseOnMap.url], ["mission", null]] as const) {
+  it("each mode opens with its recorded line when the match starts (and nothing synthetic)", async () => {
+    for (const [mode, url] of [["survival", VOICE.keepMoving.url], ["escape", VOICE.safehouseOnMap.url], ["mission", VOICE.checkpointStart.url]] as const) {
       const t = setup();
       t.s.unlock();
       noSynthVoice(t);
@@ -489,7 +490,7 @@ describe("operator's radio lines", () => {
     t.s.unlock();
     await t.m.onEvent({ type: "match_started", id: "m1", mode: "mission" });
     await run(t, 1);
-    await t.m.onEvent({ type: "checkpoint", last: true, stale: false });
+    void t.m.onEvent({ type: "checkpoint", last: true, stale: false }); // waits behind the opening line
     await t.advance(1000);
     await t.m.onEvent({ type: "finished", result: "survived", mode: "mission", stale: false });
     await t.advance(300);
@@ -655,5 +656,56 @@ describe("music around a match", () => {
     await t.advance(5000); // no update from the screen yet
     expect(t.m.state.threat).toBeNull();
     expect(t.m.radio.log).toEqual(["safehouseOnMap"]);
+  });
+});
+
+describe("spoken zombie distance (50, 40, 30, 20, 10 m)", () => {
+  const said = (t: ReturnType<typeof setup>) => t.m.radio.log.filter((l) => l.startsWith("count"));
+  it("each step once as the nearest zombie closes in; none beyond 50 m", async () => {
+    const t = setup();
+    t.s.unlock();
+    for (const d of [120, 90, 60, 52]) await run(t, 1, { nearestM: d });
+    expect(said(t)).toEqual([]);
+    for (const d of [49, 47, 41, 39, 33, 29, 21, 19, 12, 9, 6]) await run(t, 1, { nearestM: d });
+    expect(said(t)).toEqual(["count50", "count40", "count30", "count20", "count10"]);
+    // The right recording for each number (named by what it says).
+    expect(VOICE.count50.url).toBe("/audio/countdown-50.mp3");
+    expect(VOICE.count10.url).toBe("/audio/countdown-10.mp3");
+  });
+
+  it("a fast approach says only the nearest step crossed (no backlog), GPS jitter repeats nothing", async () => {
+    const t = setup();
+    t.s.unlock();
+    await run(t, 1, { nearestM: 80 });
+    await run(t, 1, { nearestM: 24 }); // jumped past 50, 40 and 30
+    expect(said(t)).toEqual(["count30"]);
+    for (let k = 0; k < 10; k++) await run(t, 1, { nearestM: k % 2 ? 26 : 22 }); // jitter around 25 m
+    expect(said(t)).toEqual(["count30"]);
+    // Dropped back beyond the margin and comes again: said again.
+    await run(t, 1, { nearestM: 70 });
+    await run(t, 1, { nearestM: 45 });
+    expect(said(t)).toEqual(["count30", "count50"]);
+  });
+
+  it("urgent: cuts a playing line at once, but never the win line; paused or muted says nothing", async () => {
+    const t = setup();
+    t.s.unlock();
+    await t.m.onEvent({ type: "match_started", id: "m1", mode: "survival" }); // keep moving, 8 s
+    await t.advance(1000);
+    t.m.update(base({ mode: "survival", nearestM: 45 }));
+    await t.advance(200);
+    expect(t.m.radio.speaking).toBe("count50");
+    expect(t.ctx.live().map((x) => x.buffer?.url)).not.toContain(VOICE.keepMoving.url); // cut at once
+    expect(t.ctx.live().map((x) => x.buffer?.url)).toContain(VOICE.count50.url);
+    await t.advance(1500);
+    await run(t, 2, { mode: "survival", nearestM: 35, paused: true });
+    expect(said(t)).toEqual(["count50"]);
+    await t.m.onEvent({ type: "finished", result: "survived", mode: "survival", stale: false });
+    void t.m.radio.say("count20", { urgent: true });
+    expect(t.m.radio.speaking).toBe("liftingOff");
+    const u = setup({ on: false });
+    u.s.unlock();
+    await run(u, 3, { nearestM: 15 });
+    expect(u.ctx.sources).toHaveLength(0);
   });
 });

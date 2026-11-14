@@ -42,6 +42,14 @@ const FILES = [
   { name: "get-to-helicopter", measure: "I", target: -17, gate: true },
   { name: "lifting-off", measure: "I", target: -17, gate: true },
   { name: "inside-safehouse", measure: "I", target: -17, gate: true },
+  { name: "checkpoint-start", measure: "I", target: -17, gate: true },
+  // Spoken zombie distance (single words, mono MP3 sources, no radio effect): the loudest 400 ms, a little above the lines' speech.
+  // The uploaded files were named for other numbers than they say (checked by speech recognition); the sources are named for what is said.
+  { name: "countdown-50", src: "mp3", measure: "M", target: -14 },
+  { name: "countdown-40", src: "mp3", measure: "M", target: -14 },
+  { name: "countdown-30", src: "mp3", measure: "M", target: -14 },
+  { name: "countdown-20", src: "mp3", measure: "M", target: -14 },
+  { name: "countdown-10", src: "mp3", measure: "M", target: -14 },
 ];
 const MUSIC = "theme-outbreak.mp3";
 /** Downward expander for the radio static: below −27 dBFS (RMS) the level falls 2:1, at most 9 dB; fast enough to open on every word. */
@@ -63,7 +71,7 @@ const r1 = (x) => Math.round(x * 10) / 10;
 mkdirSync(OUT, { recursive: true });
 const report = { ceilingDbtp: CEILING_DBTP, bitrate: BITRATE, files: {} };
 for (const f of FILES) {
-  const src = path.join(SRC, `${f.name}.wav`);
+  const src = path.join(SRC, `${f.name}.${f.src ?? "wav"}`);
   const out = path.join(OUT, `${f.name}.mp3`);
   const before = measure(src);
   const want = f.target - before[f.measure];
