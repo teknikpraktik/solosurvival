@@ -655,7 +655,7 @@ describe("music around a match", () => {
     await t.m.onEvent({ type: "match_started", id: "new", mode: "escape" });
     await t.advance(5000); // no update from the screen yet
     expect(t.m.state.threat).toBeNull();
-    expect(t.m.radio.log).toEqual(["safehouseOnMap"]);
+    expect(t.m.radio.log).toEqual(["zombiesApproaching", "safehouseOnMap"]); // the old match's 150 m warning, then nothing more from it
   });
 });
 
@@ -747,5 +747,146 @@ describe("threat pulse in bursts", () => {
     expect(t.m.state.threat).not.toBeNull();
     await run(t, 20, { nearestM: 150, paused: true });
     expect(t.ctx.live().filter((x) => AUDIO.threat.includes(x.buffer?.url as never))).toHaveLength(0);
+  });
+});
+
+describe("music playlist (three themes)", () => {
+  async function playlist(random: () => number = Math.random) {
+    const f = fakeEnv(DUR);
+    const l: Levels = { on: true, music: 1, fx: 1, voice: 1 };
+    const { MUSIC_PLAYLIST } = await import("@/app/_client/audio");
+    const s = new Soundscape(f.env, { mix: MIX, duckTo: DUCK.to, duckAttackS: DUCK.attackS, duckReleaseS: DUCK.releaseS, levels: () => l }, { ...MUSIC_PLAYLIST, random });
+    s.unlock();
+    return { ...f, s, l, P: MUSIC_PLAYLIST };
+  }
+  const playingEl = (t: { media: { paused: boolean }[] }) => t.media.find((m) => !m.paused) as unknown as { currentTime: number } | undefined;
+  /** Moves the playing pass to just before its end (the fake elements play in real time otherwise). */
+  const nearEnd = (t: Awaited<ReturnType<typeof playlist>>, beforeS: number) => {
+    const url = t.s.music.track!;
+    const tr = t.P.tracks.find((x) => x.url === url)!;
+    playingEl(t)!.currentTime = (tr.endS ?? 60) - beforeS;
+  };
+
+  it("theme-outbreak opens the app; on the menu each next pass is a random other theme (crossfaded), never the same twice in a row", async () => {
+    const t = await playlist();
+    t.s.music.want(true);
+    await t.advance(500);
+    expect(t.s.music.history).toEqual([AUDIO.music]);
+    for (let k = 0; k < 12; k++) { nearEnd(t, t.P.crossfadeS + 0.5); await t.advance(5000); }
+    const h = t.s.music.history;
+    expect(h.length).toBe(13);
+    for (let k = 1; k < h.length; k++) expect(h[k]).not.toBe(h[k - 1]);
+    expect(new Set(h)).toEqual(new Set([AUDIO.music, AUDIO.musicV2, AUDIO.musicV3]));
+    expect(t.media.filter((m) => !m.paused)).toHaveLength(1);
+  });
+
+  it("the quieter themes are lifted (about 14 dB) to sit with theme-outbreak", async () => {
+    const t = await playlist(() => 0); // the next pass after the first is theme-v2
+    t.s.music.want(true);
+    await t.advance(3500);
+    nearEnd(t, t.P.crossfadeS + 0.5);
+    await t.advance(6000);
+    expect(t.s.music.track).toBe(AUDIO.musicV2);
+    const g = (t.s.music as unknown as { els: { el: { paused: boolean }; gain: FakeGain }[] }).els.find((e) => !e.el.paused)!.gain.gain.target;
+    expect(g).toBeCloseTo(10 ** (13.6 / 20), 1);
+  });
+
+  it("during a match: the pass ends with a fade-out, a random silence (20–60 s), then a random other theme, and so on", async () => {
+    const t = await playlist();
+    t.s.music.want(true);
+    await t.advance(1000);
+    t.s.music.setRepeat(false); // the match starts
+    nearEnd(t, 2.6);
+    await t.advance(3500);
+    expect(t.s.music.playing).toBe(false); // the pass is over
+    await t.advance(19_000);
+    expect(t.s.music.playing).toBe(false); // at least 20 s of silence
+    await t.advance(42_000);
+    expect(t.s.music.playing).toBe(true); // at most 60 s
+    expect(t.s.music.history.length).toBe(2);
+    expect(t.s.music.history[1]).not.toBe(t.s.music.history[0]);
+    // And again.
+    nearEnd(t, 1);
+    await t.advance(2000);
+    await t.advance(61_000);
+    expect(t.s.music.history.length).toBe(3);
+  });
+
+  it("the match ends during a silence: the music comes back at once; leaving or muting cancels a pending pass", async () => {
+    const t = await playlist();
+    t.s.music.want(true);
+    await t.advance(500);
+    t.s.music.setRepeat(false);
+    nearEnd(t, 0.5);
+    await t.advance(1500);
+    expect(t.s.music.playing).toBe(false);
+    t.s.music.setRepeat(true); // the ending's sounds are over
+    await t.advance(500);
+    expect(t.s.music.playing).toBe(true);
+    // Silence again, then the music is no longer wanted (test page): nothing comes later.
+    t.s.music.setRepeat(false);
+    nearEnd(t, 0.5);
+    await t.advance(1500);
+    t.s.music.want(false);
+    await t.advance(70_000);
+    expect(t.s.music.playing).toBe(false);
+  });
+
+  it("hidden during a silence: no pass starts while hidden; back in front, a new silence then the next pass", async () => {
+    const t = await playlist();
+    t.s.music.want(true);
+    await t.advance(500);
+    t.s.music.setRepeat(false);
+    nearEnd(t, 0.5);
+    await t.advance(1500);
+    t.s.setSuppressed(true);
+    await t.advance(70_000);
+    expect(t.s.music.playing).toBe(false);
+    t.s.setSuppressed(false);
+    await t.advance(500);
+    expect(t.s.music.playing).toBe(false); // not at once: a new silence
+    await t.advance(61_000);
+    expect(t.s.music.playing).toBe(true);
+  });
+});
+
+describe("zombies approaching (200 m) and the roar (100 m)", () => {
+  const roars = (t: ReturnType<typeof setup>) => t.ctx.sources.filter((x) => x.buffer?.url === AUDIO.zombieNear).length;
+  const warns = (t: ReturnType<typeof setup>) => t.m.radio.log.filter((l) => l === "zombiesApproaching").length;
+  it("on foot and by bike: \"Zombies approaching!\" at 200 m, the roar at 100 m, each once per approach", async () => {
+    for (const activity of ["walk", "mtb"] as const) {
+      const t = setup();
+      t.s.unlock();
+      await run(t, 2, { activity, nearestM: 350 });
+      expect([warns(t), roars(t)], activity).toEqual([0, 0]);
+      await run(t, 3, { activity, nearestM: 190 });
+      expect([warns(t), roars(t)], activity).toEqual([1, 0]); // the roar no longer comes at 200 m by bike
+      await run(t, 3, { activity, nearestM: 150 });
+      await run(t, 3, { activity, nearestM: 95 });
+      expect([warns(t), roars(t)], activity).toEqual([1, 1]);
+      for (let k = 0; k < 6; k++) await run(t, 1, { activity, nearestM: k % 2 ? 105 : 98 }); // jitter around 100 m
+      expect(roars(t), activity).toBe(1);
+    }
+  });
+
+  it("a zombie that appears inside 100 m gets the roar only; the warning is a recorded line (no synthetic voice)", async () => {
+    const t = setup();
+    t.s.unlock();
+    await run(t, 1, { nearestM: 400 });
+    await run(t, 1, { nearestM: 80 });
+    expect([warns(t), roars(t)]).toEqual([0, 1]);
+    expect(VOICE.zombiesApproaching.url).toBe("/audio/zombies-approaching.mp3");
+  });
+
+  it("cooldown: back within 200 m soon after does not repeat the warning; after the cooldown it does", async () => {
+    const t = setup();
+    t.s.unlock();
+    await run(t, 1, { nearestM: 180 });
+    await run(t, 2, { nearestM: 300 });
+    await run(t, 1, { nearestM: 180 });
+    expect(warns(t)).toBe(1);
+    await run(t, SOUND_RULES.approach.cooldownS, { nearestM: 300 });
+    await run(t, 1, { nearestM: 180 });
+    expect(warns(t)).toBe(2);
   });
 });

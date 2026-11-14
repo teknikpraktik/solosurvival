@@ -34,6 +34,10 @@ checkpoint-start (WAV 48 kHz stereo, 8 s, radioeffekt): samma nivå och brusdäm
 sade andra tal än inspelningen (taligenkänning, tre modeller överens), så källorna heter efter vad som sägs: countdown-50 = uppladdad
 "10.mp3", countdown-40 = "20.mp3", countdown-30 = "30.mp3", countdown-20 = "40.mp3", countdown-10 = "50.mp3".
 
+theme-v2.mp3 (63,5 s, musik 2,2–62,1 s) och theme-v3.mp3 (69,3 s, musik 6,6–66,6 s): MP3 48 kHz stereo, ≈ 157 / 137 kbit/s VBR,
+I −29,6 / −29,7 LUFS, toppar −15,4 / −14,2 dBFS. Kopieras oförändrade och lyfts +13,6 / +13,2 dB i uppspelningen (MUSIC_TRACKS i
+src/app/_client/audio.ts). Båda slutar tvärt, utan egen uttoning.
+
 Hotpulser: 1 `81c21560…`, 2 `7d34016b…`, 3 `c06d5c67…`, 4 `00a9f3ef…` (fullständiga summor: `sha256sum assets/audio/source/*`).
 
 ## Nivåer och storlek

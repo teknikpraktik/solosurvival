@@ -522,6 +522,42 @@
       },
       "durationS": 0.836
     },
+    "zombies-approaching": {
+      "measure": "M",
+      "target": -14,
+      "gainDb": -7.9,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -8,
+        "M": -6.1,
+        "TP": -0.2,
+        "bytes": 42014
+      },
+      "after": {
+        "I": -16.4,
+        "M": -14.4,
+        "TP": -11.3,
+        "bytes": 26112
+      },
+      "durationS": 1.567
+    },
+    "theme-v2": {
+      "copied": true,
+      "I": -29.6,
+      "M": -26.9,
+      "TP": -15.4,
+      "bytes": 1242096,
+      "durationS": 63.48
+    },
+    "theme-v3": {
+      "copied": true,
+      "I": -29.7,
+      "M": -25.4,
+      "TP": -14.2,
+      "bytes": 1189080,
+      "durationS": 69.336
+    },
     "theme-outbreak": {
       "copied": true,
       "I": -16,
