@@ -62,6 +62,10 @@ export type SoundEvent =
   | { type: "checkpoint"; last: boolean; stale: boolean }
   /** The zombies have the player's position: the hunt begins (first detection in the match) or the player is exposed off the road network. */
   | { type: "revealed"; reason: "hunt" | "exposed"; stale: boolean }
+  /** The random jump scare (picture shown now), a zombie starting to sprint, and a zombie in contact (infection is counting). */
+  | { type: "jump"; stale: boolean }
+  | { type: "sprint"; stale: boolean }
+  | { type: "contact"; stale: boolean }
   | { type: "heli_approach"; stale: boolean }
   | { type: "heli_landed"; stale: boolean }
   | { type: "finished"; result: string; mode: MatchParams["mode"]; stale: boolean };
@@ -614,12 +618,12 @@ export class PlaySession {
           // Med magnet-jakt upptäcker många zombier spelaren samtidigt: ett gemensamt larm, inte ett per zombie.
           if (t - this.lastDetectCueMs > 15_000) { this.lastDetectCueMs = t; this.cue("alert", "Zombies are hunting you"); }
           break;
-        case "infection_contact": this.cue("danger", "Zombie close – move away!"); this.log?.add(t, "infection_contact"); break;
+        case "infection_contact": this.cue("danger", "Zombie close – move away!"); this.sound({ type: "contact", stale: this.replaying }); this.log?.add(t, "infection_contact"); break;
         case "zombie_spawned": this.log?.add(t, "zombie_spawned", { id: e.zombieId, n: live.state.zombies.length }); break;
         case "zombie_culled": this.log?.add(t, "zombie_culled", { id: e.zombieId, n: live.state.zombies.length }); break;
         case "zombie_sprint":
           this.log?.add(t, "zombie_sprint", { id: e.zombieId });
-          if (t - this.lastSprintCueMs > SPRINT_CUE_COOLDOWN_MS) { this.lastSprintCueMs = t; this.cue("sprint", "Zombie sprinting!"); }
+          if (t - this.lastSprintCueMs > SPRINT_CUE_COOLDOWN_MS) { this.lastSprintCueMs = t; this.cue("sprint", "Zombie sprinting!"); this.sound({ type: "sprint", stale: this.replaying }); }
           break;
         case "spawn_relaxed": this.log?.add(t, "spawn_relaxed", { n: live.state.zombies.length }); break;
         case "spawn_skipped": this.log?.add(t, "spawn_skipped", { n: live.state.zombies.length, atS: Math.round(live.state.elapsedSeconds) }); break;
@@ -689,6 +693,7 @@ export class PlaySession {
       this.scareTimes.shift();
       this.scareNonce++;
       this.d.onCue?.("jump", "");
+      this.sound({ type: "jump", stale: this.replaying });
       this.log?.add(t, "jump_scare", { atS: Math.round(s.elapsedSeconds), nearestM: Math.round(nearest) });
     }
     if (t - this.lastSampleMs >= SAMPLE_MS) {

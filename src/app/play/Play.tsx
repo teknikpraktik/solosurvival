@@ -11,7 +11,9 @@ import { COUNTDOWN_START_M } from "@/play/countdown";
 import { APPROACH_COOLDOWN_S, nextApproaching, nextClose, nextGoalClose, viewProfile } from "@/play/camera-view";
 import { matchAudio } from "../_client/audio";
 import { Modal } from "../_client/Modal";
-import { BIKE_SVG, HELI_SVG, SOUND_OFF_SVG, SOUND_ON_SVG, WALK_SVG } from "../_client/symbols";
+import { BIKE_SVG, HELI_SVG, MENU_SVG, SKULL_SVG, SOUND_OFF_SVG, SOUND_ON_SVG, WALK_SVG } from "../_client/symbols";
+import { Loader } from "../_client/Loader";
+import { threatRange } from "@/play/sound-rules";
 import { t } from "../_client/strings";
 import { personalRecord } from "@/play/recap";
 import { extractionOpensAtS } from "@/config/game-rules";
@@ -80,6 +82,13 @@ export default function Play() {
     lastHeli.current = heliNotice;
   }, [heliNotice]);
   const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
+  // The title card over the map as a new match begins (mode and what to do), gone by itself after a few seconds.
+  const [intro, setIntro] = useState(false);
+  useEffect(() => {
+    if (!intro) return;
+    const h = setTimeout(() => setIntro(false), 3200);
+    return () => clearTimeout(h);
+  }, [intro]);
 
   // Deep link / reload: try to restore a saved match.
   useEffect(() => {
@@ -161,6 +170,7 @@ export default function Play() {
     unlockAudio();
     session.resume(); // the opening line (radio voice, or "Game on" in Checkpoints) follows the session's match_started
     setAuto(true);
+    setIntro(true);
   }, [autoReady]); // eslint-disable-line react-hooks/exhaustive-deps
   // Personal record, once the finished match is in the history.
   const [record, setRecord] = useState<string | null>(null);
@@ -182,7 +192,7 @@ export default function Play() {
     );
   }
   if (quitting) return <main className="center" aria-busy="true" />;
-  if (!view || !m || !session) return <main className="center"><p className="hint">Loading…</p></main>;
+  if (!view || !m || !session) return <main className="center"><Loader /></main>;
 
   const finished = view.stage === "finished" || m.phase === "finished";
   const savedHistory = session.history;
@@ -197,6 +207,11 @@ export default function Play() {
   // The picture behind the result, chosen from how the match ended and its mode.
   const resultPic = finished && !scare ? resultPicture(m.result, m.mode) : null;
   const opensInS = Math.max(0, extractionOpensAtS(m.limitS) - m.elapsedS);
+  // How much the screen itself shows the threat (0–1): nothing beyond the distance where the threat pulse starts, full at 40 m.
+  const threatOn = threatRange(m.activity).onM;
+  const threat = nearestM === null ? 0 : Math.max(0, Math.min(1, (threatOn - nearestM) / (threatOn - 40)));
+  const infecting = !finished && m.infection > 0;
+  const toggleSound = () => { const on = !sound; setSound(on); setCuesEnabled(on); if (on) unlockAudio(); };
 
   return (
     <div className={`map-shell${m.activity === "mtb" ? " bike" : ""}${resultPic ? " resultshow" : ""}`}>
@@ -226,6 +241,14 @@ export default function Play() {
         onUserMove={onUserMove}
         onError={(w) => session.fieldLog?.renderProblem(Date.now(), w)}
       />
+      {/* The screen answers to the threat: a dark edge always, a red one that grows as the nearest zombie closes in, a pulse within 100 m
+          and during contact. Never in the way of a touch. */}
+      {!finished && (
+        <div className={`threatfx${zombieClose ? " near" : ""}${infecting ? " contact" : ""}`} aria-hidden="true">
+          <div className="threatfx-red" style={{ opacity: infecting ? 1 : threat * 0.9 }} />
+          <div className="threatfx-grain" />
+        </div>
+      )}
       <div className="hudbar">
         <div className="line">
           <span className="modegroup">
@@ -250,7 +273,7 @@ export default function Play() {
               </span>
             )
           )}
-          {!finished && <span className={`pill zpill${zombieClose ? " zclose" : zombieWarn ? " zwarn" : ""}`} aria-label="Nearest zombie">💀 {m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>}
+          {!finished && <span className={`pill zpill${zombieClose ? " zclose" : zombieWarn ? " zwarn" : ""}`} aria-label="Nearest zombie"><span className="skull" aria-hidden="true" dangerouslySetInnerHTML={{ __html: SKULL_SVG }} />{m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>}
         </div>
         {/* Your trip, on the left: the activity, (Bike) speed, the distance actually moved this match (the game's own filtered track, not
             the straight line from the start) and the game clock since the start (it stands still while paused, like the time left). */}
@@ -267,7 +290,12 @@ export default function Play() {
         {!finished && !m.paused && m.offNetwork?.active && (
           <div className="line"><span className="pill warn" role="status" aria-live="polite">{m.offNetwork.exposed ? "Off the road · zombies can reach you. Return to a road!" : `Off the road network · ${m.offNetwork.budgetLeftS} s until zombies find you`}</span></div>
         )}
-        {m.infection > 0 && <div className="infect" aria-label="Smittrisk"><div style={{ width: `${Math.min(100, (m.infection / 3) * 100)}%` }} /></div>}
+        {m.infection > 0 && (
+          <div className="infectwrap" role="status" aria-label="Infection">
+            <span className="infectlabel" aria-hidden="true">CONTACT · GET AWAY</span>
+            <div className="infect"><div style={{ width: `${Math.min(100, (m.infection / 3) * 100)}%` }} /></div>
+          </div>
+        )}
       </div>
 
       {!finished && (
@@ -278,9 +306,8 @@ export default function Play() {
             <button className="wide" onClick={() => session.pause("manual")}>PAUSE</button>
           )}
           <button className="autobtn" onClick={() => { if (!auto) void session.enableCompass(); setAuto((a) => !a); }} aria-pressed={auto} aria-label={auto ? "AUTO on: the map follows you (tap to move the map yourself)" : "AUTO off: you move the map (tap to follow again)"}>AUTO</button>
-          {/* Sound on/off for every game sound and spoken line (same player, same stored choice). Turning it on is a tap, so audio is unlocked here as iOS requires. */}
-          <button className="iconbtn" onClick={() => { const on = !sound; setSound(on); setCuesEnabled(on); if (on) unlockAudio(); }} aria-label={sound ? t().hud.soundOn : t().hud.soundOff} aria-pressed={sound} dangerouslySetInnerHTML={{ __html: sound ? SOUND_ON_SVG : SOUND_OFF_SVG }} />
-          <button className="quit" onClick={() => setConfirmEnd(true)}>QUIT</button>
+          {/* Sound and QUIT live in the match menu (the pause dialog): opening it pauses the match, so nothing is fumbled for on the move. */}
+          <button className="iconbtn" aria-label="Match menu: sound and quit" onClick={() => { if (!m.paused) session.pause("manual"); setPauseDismissed(false); }} dangerouslySetInnerHTML={{ __html: MENU_SVG }} />
         </div>
       )}
 
@@ -295,6 +322,10 @@ export default function Play() {
             </>
           }
         >
+          <button className="menurow" onClick={toggleSound} aria-pressed={sound} aria-label={sound ? t().hud.soundOn : t().hud.soundOff}>
+            <span className="menuicon" aria-hidden="true" dangerouslySetInnerHTML={{ __html: sound ? SOUND_ON_SVG : SOUND_OFF_SVG }} />
+            <span>Sound</span><b>{sound ? "ON" : "OFF"}</b>
+          </button>
           {m.frozen && !ready && <div className="muted">The app was inactive. No time was counted.</div>}
           {!ready && <div className="muted">After a pause you are protected for 5 seconds.</div>}
           <div className="muted">The app must stay open and in the foreground for location to work.</div>
@@ -338,6 +369,13 @@ export default function Play() {
           sub={heliNotice === "landed" ? t().heli.landedSub(dExtraction !== null ? fmtDist(dExtraction) : null) : t().heli.approachingSub(fmtTime(opensInS))}
         />
       )}
+      {intro && !finished && !m.paused && (
+        <div className="matchintro" aria-hidden="true">
+          <span className="matchintro-k">{m.activity === "mtb" ? "BY BIKE" : "ON FOOT"} · {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span>
+          <b>{MODE_LABEL[m.mode]}</b>
+          <span className="matchintro-s">{t().intro[m.mode]}</span>
+        </div>
+      )}
       {jump && !finished && <JumpScare onDone={() => setJump(false)} />}
       {scare && <Scare onDone={() => { session.scareShown = true; setScareDone(true); }} />}
       {/* The ending's picture behind the result dialog (captured: after the scare, the same picture, still). */}
@@ -380,8 +418,8 @@ export default function Play() {
                   : null}
                 <button className={canShow ? "btn" : "btn primary cta"} aria-label={R.playAgainLabel} onClick={() => { void session.enableCompass(); session.playAgain(); router.push("/new"); }}>{R.playAgain}</button>
                 <div className="resultlinks">
-                  <Link className="link" href="/" onClick={() => session.reset()}>{R.home}</Link>
-                  <Link className="link" href="/history" onClick={() => session.reset()}>{R.previousGames}</Link>
+                  <Link className="quietbtn" href="/" onClick={() => session.reset()}>{R.home}</Link>
+                  <Link className="quietbtn" href="/history" onClick={() => session.reset()}>{R.previousGames}</Link>
                 </div>
               </>
             )}

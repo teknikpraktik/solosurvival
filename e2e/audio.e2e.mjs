@@ -120,7 +120,7 @@ async function startMatch(o, mode) {
   cv = await voices(page);
   check("zombie at 33 m: \"Forty\" next, each once", cv.log.filter((l) => l.startsWith("count")).join() === "count50,count40", JSON.stringify(cv));
   check("countdown files fetched", ["/audio/countdown-50.mp3", "/audio/countdown-40.mp3"].every((p) => reqs.includes(p)));
-  await page.getByRole("button", { name: "QUIT" }).click();
+  await page.locator(".controls .iconbtn").click(); await page.getByRole("dialog", { name: "Paused" }).getByRole("button", { name: "QUIT" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "QUIT" }).click();
   await wait(2000);
   const a2 = await audio(page);
@@ -182,7 +182,7 @@ let v;
   await page.getByRole("dialog").getByRole("button", { name: "CONTINUE" }).click(); await wait(1500);
   check("pause and continue: the start line is not said again", (await voices(page)).log.join() === "safehouseOnMap");
   // QUIT while the line plays: silence, nothing later.
-  await page.locator(".controls").getByRole("button", { name: "QUIT" }).click();
+  await page.locator(".controls .iconbtn").click(); await page.getByRole("dialog", { name: "Paused" }).getByRole("button", { name: "QUIT" }).click();
   // A line playing and one waiting behind it at the moment QUIT is confirmed.
   await page.evaluate(() => { const r = window.__outbreakAudio.match.radio; void r.say("safehouseOnMap", { final: true }); void r.say("checkpointSecured"); });
   const before = await voices(page);

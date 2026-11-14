@@ -42,6 +42,9 @@ export const SOUND_RULES = {
   near: { enterM: 100, exitM: 130, cooldownS: 45, maxPerMatch: 8 },
   /** "Position revealed": at most this often. */
   revealed: { cooldownS: 60 },
+  /** A sprinting zombie's roar is skipped when the roar was heard within this time; the contact sting comes at most this often. */
+  sprint: { afterRoarS: 8 },
+  contact: { cooldownS: 10 },
   heli: { loopFadeInS: 3, approachFadeOutS: 3, loopStopS: 0.8 },
 } as const;
 

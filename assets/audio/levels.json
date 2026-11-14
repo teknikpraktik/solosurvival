@@ -542,6 +542,66 @@
       },
       "durationS": 1.567
     },
+    "jump-scare-1": {
+      "measure": "M",
+      "target": -12,
+      "gainDb": -3.3,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -10.7,
+        "M": -8.7,
+        "TP": -0.7,
+        "bytes": 576078
+      },
+      "after": {
+        "I": -14.5,
+        "M": -12.4,
+        "TP": -4.3,
+        "bytes": 48768
+      },
+      "durationS": 3
+    },
+    "jump-scare-2": {
+      "measure": "M",
+      "target": -12,
+      "gainDb": -2.5,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -12.4,
+        "M": -9.5,
+        "TP": -0.8,
+        "bytes": 576078
+      },
+      "after": {
+        "I": -15.3,
+        "M": -12.4,
+        "TP": -3.6,
+        "bytes": 48768
+      },
+      "durationS": 3
+    },
+    "jump-scare-3": {
+      "measure": "M",
+      "target": -12,
+      "gainDb": -2.7,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -12.1,
+        "M": -9.3,
+        "TP": -1.5,
+        "bytes": 576078
+      },
+      "after": {
+        "I": -15.2,
+        "M": -12.4,
+        "TP": -4.9,
+        "bytes": 48768
+      },
+      "durationS": 3
+    },
     "theme-v2": {
       "copied": true,
       "I": -29.6,

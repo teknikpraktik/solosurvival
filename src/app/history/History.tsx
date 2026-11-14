@@ -1,6 +1,7 @@
 "use client";
 
-import { PageHeader } from "../_client/Modal";
+import { Modal, PageHeader } from "../_client/Modal";
+import { Loader } from "../_client/Loader";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MatchStorage, type HistoryRecord } from "@/play/storage";
@@ -12,6 +13,8 @@ export default function History() {
   const ctx = useSessionCtx();
   const [items, setItems] = useState<HistoryRecord[] | null>(null);
   const [maps, setMaps] = useState<Set<string>>(new Set());
+  /** What the player is asked to confirm deleting: one match (its id) or all of them (null). */
+  const [ask, setAsk] = useState<{ id: string | null } | null>(null);
   const st = ctx?.db ? new MatchStorage(ctx.db) : null;
 
   const load = useCallback(async () => {
@@ -23,7 +26,7 @@ export default function History() {
   return (
     <main className="page">
       <PageHeader title="PREVIOUS GAMES" />
-      {items === null && <div className="muted">Loading…</div>}
+      {items === null && <Loader />}
       {items?.length === 0 && <div className="card">No matches yet. {ctx && !ctx.db && "Local storage is not available in this browser (for example private mode), so matches are not saved."}</div>}
       <div className="hist">
         {items?.map((h) => (
@@ -35,13 +38,28 @@ export default function History() {
             <div className="muted">{h.plannedLengthM ? `Route ${fmtKm(h.plannedLengthM)}` : "No route"}{h.checkpoints ? (h.mode === "escape" ? ` · B ${h.checkpoints.reached >= h.checkpoints.total ? "reached" : "not reached"}` : ` · checkpoints ${h.checkpoints.reached}/${h.checkpoints.total}`) : ""}</div>
             <div>{maps.has(h.id) && <Link className="link" href={`/recap?id=${encodeURIComponent(h.id)}`}>Show match</Link>}</div>
             <div style={{ textAlign: "right" }}>
-              <button className="link" onClick={async () => { if (st && confirm("Delete this match from the device?")) { await st.deleteMatch(h.id); await load(); } }}>Delete</button>
+              <button className="link" onClick={() => setAsk({ id: h.id })}>Delete</button>
             </div>
           </div>
         ))}
       </div>
       {items && items.length > 0 && (
-        <button className="link" onClick={async () => { if (st && confirm("Delete ALL matches and test data from the device?")) { await st.deleteAll(); await load(); } }}>Delete all</button>
+        <button className="link" onClick={() => setAsk({ id: null })}>Delete all</button>
+      )}
+      {/* The game's own dialog, never the browser's confirm box. */}
+      {ask && (
+        <Modal
+          title={ask.id ? "Delete this match?" : "Delete all matches?"}
+          onClose={() => setAsk(null)}
+          actions={
+            <>
+              <button className="btn primary" onClick={async () => { const a = ask; setAsk(null); if (!st) return; if (a.id) await st.deleteMatch(a.id); else await st.deleteAll(); await load(); }}>DELETE</button>
+              <button className="btn" onClick={() => setAsk(null)}>KEEP</button>
+            </>
+          }
+        >
+          <div className="muted">{ask.id ? "It is removed from this device and cannot be brought back." : "Every match and all test data are removed from this device and cannot be brought back."}</div>
+        </Modal>
       )}
     </main>
   );

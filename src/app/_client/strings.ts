@@ -79,6 +79,8 @@ const en = {
     previousGames: "Previous games",
     notSaved: "The result could not be saved locally.",
   },
+  /** The title card as a match begins: what to do, in a few words. */
+  intro: { mission: "Secure every checkpoint. Get home.", escape: "Reach the safe house.", survival: "Stay alive until the helicopter lands." } satisfies Record<GameMode, string>,
   heli: {
     approaching: "HELICOPTER INBOUND",
     approachingSub: (time: string) => `Extraction opens in ${time}`,

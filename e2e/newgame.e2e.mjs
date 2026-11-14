@@ -248,12 +248,13 @@ async function startSurvival(page) {
   await startBtn(page).click();
   await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(1000);
 }
-const soundBtn = (page) => page.locator(".controls .iconbtn");
+const soundBtn = (page) => page.locator(".modal .menurow"); // in the match menu (the pause dialog)
 const pressed = (loc) => loc.getAttribute("aria-pressed").then((v) => v === "true");
 {
   const ctx = await newCtx();
   const page = await ctx.newPage(); watch(page);
   await startSurvival(page);
+  await page.locator(".controls .iconbtn").click(); await page.waitForTimeout(300);
   check("new player: sound on in the game", await pressed(soundBtn(page)));
   await soundBtn(page).click();
   check("tap: sound off (stored)", !(await pressed(soundBtn(page))) && (await page.evaluate(() => localStorage.getItem("outbreak.cues"))) === "off");

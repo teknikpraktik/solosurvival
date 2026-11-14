@@ -138,6 +138,10 @@ const ZOMBIE_FAR_M = 600;
 /** Closing or opening: the distance has changed by more than this (m) over the last CLOSING_WINDOW_MS. */
 const CLOSING_M = 2; // a zombie crossing terrain at half speed (0.6–0.9 m/s on foot) must still show as closing in
 const CLOSING_WINDOW_MS = 4000;
+/** The drawn player position reaches a new fix with this time constant (s): at one fix a second the marker moves evenly, about half a second behind. */
+const PLAYER_GLIDE_S = 0.45;
+/** A fix this far (m) from the drawn position is taken at once instead of glided to. */
+const PLAYER_SNAP_M = 120;
 
 export default function GameMap(props: GameMapProps) {
   const el = useRef<HTMLDivElement>(null);
@@ -151,6 +155,9 @@ export default function GameMap(props: GameMapProps) {
   // handlers, which is what made pinch and pan feel unresponsive (the follow and rotation updates kept cancelling them).
   const manual = useRef(false);
   const smoother = useRef(new BearingSmoother(0));
+  // Where the player is drawn: eased towards the latest fix every frame, so the marker and the following map glide instead of jumping
+  // once a second. A first fix, or one far from where the marker is (GPS correction, restored match), is taken at once.
+  const shown = useRef<LatLon | null>(null);
 
   useEffect(() => {
     if (!el.current) return;
@@ -289,13 +296,15 @@ export default function GameMap(props: GameMapProps) {
     if (!loaded || !map) return;
     src("acc", fc(player && accuracyM ? [circle(player, accuracyM)] : []));
     if (!m || !playerEl.current) return;
-    if (!player) { m.remove(); return; }
-    m.setLngLat([player.lon, player.lat]);
+    if (!player) { m.remove(); shown.current = null; return; }
+    if (!shown.current || frozen || haversineM(shown.current, player) > PLAYER_SNAP_M) shown.current = { lat: player.lat, lon: player.lon };
+    const at = shown.current;
+    m.setLngLat([at.lon, at.lat]);
     if (!m.getElement().isConnected) m.addTo(map);
     const bearing = smoother.current.value;
     if (follow && !manual.current) {
       const h = map.getContainer().clientHeight;
-      const cam: { center: [number, number]; bearing: number; padding: { top: number; bottom: number; left: number; right: number }; zoom?: number } = { center: [player.lon, player.lat], bearing, padding: { top: Math.round(h * 0.3), bottom: 0, left: 0, right: 0 } };
+      const cam: { center: [number, number]; bearing: number; padding: { top: number; bottom: number; left: number; right: number }; zoom?: number } = { center: [at.lon, at.lat], bearing, padding: { top: Math.round(h * 0.3), bottom: 0, left: 0, right: 0 } };
       let returning = false;
       if (viewAheadM !== undefined) {
         // Player at viewPlayerY of the height (padding moves the map centre); zoom so that viewAheadM fits between the player and the top edge.
@@ -314,7 +323,7 @@ export default function GameMap(props: GameMapProps) {
       else map.jumpTo(cam);
     }
     if (el.current) el.current.dataset.zoom = map.getZoom().toFixed(2);
-  }, [loaded, player, accuracyM, follow, viewAheadM, viewCloseAheadM, viewClose, viewPlayerY]);
+  }, [loaded, player, accuracyM, follow, frozen, viewAheadM, viewCloseAheadM, viewClose, viewPlayerY]);
   // Rotation och pil: en enda bildrutesloop (högst ~30 Hz) som läser riktningen direkt och mjukar den. Kartan ritas bara om medan den roterar.
   useEffect(() => {
     if (!loaded) return;
@@ -335,13 +344,25 @@ export default function GameMap(props: GameMapProps) {
       const map = mapRef.current;
       const sm = smoother.current;
       if (!map) return;
+      // Glide the drawn position towards the latest fix (time constant PLAYER_GLIDE_S); done when within a few centimetres.
+      const target = P.player, at = shown.current;
+      let moved = false;
+      if (target && at && (Math.abs(target.lat - at.lat) > 2e-7 || Math.abs(target.lon - at.lon) > 4e-7)) {
+        const k = P.frozen ? 1 : 1 - Math.exp(-dt / PLAYER_GLIDE_S);
+        at.lat += (target.lat - at.lat) * k;
+        at.lon += (target.lon - at.lon) * k;
+        playerMarker.current?.setLngLat([at.lon, at.lat]);
+        moved = true;
+      }
       if (P.follow && !manual.current) {
         // Mål: Track Up följer riktningen (kompass med litet dödband mot darrning), North Up ligger fast på 0°. Okänd riktning: kartan står kvar.
         if (P.trackUp) {
           if (h.deg != null && Math.abs(wrap180(h.deg - sm.target)) >= (h.source === "compass" ? 0.3 : 0.5)) sm.setTarget(h.deg);
         } else sm.setTarget(0);
-        if (sm.step(dt, compassDrives ? BEARING_COMPASS_TAU_S : undefined)) {
-          const c = P.player;
+        const turned = sm.step(dt, compassDrives ? BEARING_COMPASS_TAU_S : undefined);
+        // The map follows the drawn position. While it eases between the wide and the close view, only a turn may cut in (as before).
+        if (turned || (moved && !map.isMoving())) {
+          const c = shown.current ?? P.player;
           if (c) map.jumpTo({ bearing: sm.value, center: [c.lon, c.lat] });
           else map.setBearing(sm.value);
         }

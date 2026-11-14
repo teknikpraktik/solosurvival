@@ -129,7 +129,7 @@ for (const act of ["ON FOOT", "BY BIKE"]) {
     }
     // QUIT → KEEP PLAYING: the same match goes on.
     const id = (await view(page)).match.id;
-    await page.locator(".controls").getByRole("button", { name: "QUIT" }).click();
+    await page.locator(".controls .iconbtn").click(); await page.getByRole("dialog", { name: "Paused" }).getByRole("button", { name: "QUIT" }).click();
     const qd = page.getByRole("dialog", { name: "Quit the match?" });
     await qd.waitFor();
     check(`${tag}: QUIT asks once, with exactly KEEP PLAYING and QUIT`, (await qd.getByRole("button").count()) === 2 && (await qd.getByRole("button", { name: "KEEP PLAYING" }).count()) === 1 && (await qd.getByRole("button", { name: "QUIT", exact: true }).count()) === 1);
@@ -139,7 +139,7 @@ for (const act of ["ON FOOT", "BY BIKE"]) {
     check(`${tag}: KEEP PLAYING keeps the match running`, kv.match?.id === id && !kv.match.paused && kv.match.phase !== "finished" && kv.match.elapsedS > e1 + 1 && (await page.getByRole("dialog").count()) === 0, JSON.stringify(kv.match));
     if (mode === "SURVIVAL") {
       // QUIT → QUIT: straight to the start page, nothing of the match left, and a new match starts clean.
-      await page.locator(".controls").getByRole("button", { name: "QUIT" }).click();
+      await page.locator(".controls .iconbtn").click(); await page.getByRole("dialog", { name: "Paused" }).getByRole("button", { name: "QUIT" }).click();
       await page.getByRole("dialog", { name: "Quit the match?" }).getByRole("button", { name: "QUIT", exact: true }).click();
       let sawResult = false;
       for (let i = 0; i < 20 && new URL(page.url()).pathname !== "/"; i++) { if (await page.locator(".resultbg, .scare, .modal-backdrop").count()) sawResult = true; await page.waitForTimeout(100); }

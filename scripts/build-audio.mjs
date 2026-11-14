@@ -52,6 +52,10 @@ const FILES = [
   { name: "countdown-10", src: "mp3", measure: "M", target: -14 },
   // "Zombies approaching!" (uploaded as zombies-apch.mp3; spoken, mono MP3, very loud at −8 LUFS): the same level as the countdown.
   { name: "zombies-approaching", src: "mp3", measure: "M", target: -14 },
+  // Jump scare (three variants, one picked at random): a little above the other one-shots, it is meant to startle.
+  { name: "jump-scare-1", measure: "M", target: -12 },
+  { name: "jump-scare-2", measure: "M", target: -12 },
+  { name: "jump-scare-3", measure: "M", target: -12 },
 ];
 const MUSIC = "theme-outbreak.mp3";
 /** More themes, played at random (copied unchanged too; they are about 14 dB quieter, lifted in the player: MUSIC_TRACKS in audio.ts). */

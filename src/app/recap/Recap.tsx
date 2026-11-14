@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RECAP_KEEP_MS, RecapStore, nearZombies, tracksOf, type RecapChunk, type RecapMeta } from "@/play/recap";
 import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_LABEL, RESULT_LABEL, fmtDate, fmtTime } from "../_client/format";
 import { PageHeader } from "../_client/Modal";
+import { Loader } from "../_client/Loader";
 import { useSessionCtx } from "../_client/SessionProvider";
 
 const RecapMap = dynamic(() => import("../_client/RecapMap"), { ssr: false });
@@ -54,7 +55,7 @@ export default function Recap() {
     return () => cancelAnimationFrame(raf);
   }, [playing, end]);
 
-  if (data === undefined) return <main className="page"><PageHeader title="MATCH" href={back} /><div className="muted">Loading…</div></main>;
+  if (data === undefined) return <main className="page"><PageHeader title="MATCH" href={back} /><Loader /></main>;
   if (!data || !tracks) {
     return (
       <main className="page">

@@ -9,6 +9,7 @@ const DUR: Record<string, number> = {
   ...Object.fromEntries(AUDIO.threat.map((u) => [u, 15])),
   [AUDIO.heliLoop]: 30, [AUDIO.heliApproach]: 25, [AUDIO.heliSuccess]: 7, [AUDIO.captured]: 4, [AUDIO.safeDoor]: 5,
   [AUDIO.zombieNear]: 3, [AUDIO.revealed]: 2, [AUDIO.checkpoint]: 2,
+  ...Object.fromEntries(AUDIO.jump.map((u) => [u, 3])),
   [VOICE.keepMoving.url]: 8, [VOICE.safehouseOnMap.url]: 8, [VOICE.checkpointSecured.url]: 5, [VOICE.getToSafehouse.url]: 7,
   [VOICE.rescueInbound.url]: 6, [VOICE.getToHelicopter.url]: 7, [VOICE.liftingOff.url]: 5, [VOICE.insideSafehouse.url]: 7,
   [VOICE.checkpointStart.url]: 8, [VOICE.count50.url]: 0.8, [VOICE.count40.url]: 0.8, [VOICE.count30.url]: 1, [VOICE.count20.url]: 0.8, [VOICE.count10.url]: 0.8,
@@ -888,5 +889,27 @@ describe("zombies approaching (200 m) and the roar (100 m)", () => {
     await run(t, SOUND_RULES.approach.cooldownS, { nearestM: 300 });
     await run(t, 1, { nearestM: 180 });
     expect(warns(t)).toBe(2);
+  });
+
+  it("jump scare, sprint and contact have sounds: a scream variant, the roar (not twice in a row), the warning sting with a cooldown", async () => {
+    const t = setup();
+    t.s.unlock();
+    t.m.update(base());
+    const n = (url: string) => t.ctx.sources.filter((x) => x.buffer?.url === url).length;
+    const jumps = () => AUDIO.jump.reduce((a, u) => a + n(u), 0);
+    expect(await t.m.onEvent({ type: "jump", stale: false })).toBe("played");
+    expect(jumps()).toBe(1);
+    expect(await t.m.onEvent({ type: "jump", stale: true })).toBe("suppressed"); // worked out after the app was away
+    expect(jumps()).toBe(1);
+    // Sprint: the roar; a second sprint right after it is not another roar.
+    expect(await t.m.onEvent({ type: "sprint", stale: false })).toBe("played");
+    expect(await t.m.onEvent({ type: "sprint", stale: false })).toBe("suppressed");
+    expect(n(AUDIO.zombieNear)).toBe(1);
+    await run(t, SOUND_RULES.sprint.afterRoarS + 1);
+    expect(await t.m.onEvent({ type: "sprint", stale: false })).toBe("played");
+    // Contact: the sting, at most once per cooldown.
+    expect(await t.m.onEvent({ type: "contact", stale: false })).toBe("played");
+    expect(await t.m.onEvent({ type: "contact", stale: false })).toBe("suppressed");
+    expect(n(AUDIO.revealed)).toBe(1);
   });
 });

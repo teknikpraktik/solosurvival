@@ -52,10 +52,14 @@ const place = (page, list) => page.evaluate((list) => {
   check("small red dots at the edge for zombies outside the visible map", dot.n >= 1 && dot.bg === "rgb(255, 42, 42)", JSON.stringify(dot));
   const ring = await page.evaluate(() => [...document.querySelectorAll(".zmark .zring")].map((e) => getComputedStyle(e).stroke));
   check("zombies are red (no amber)", ring.length > 0 && ring.every((c) => !c.includes("245, 158, 11")), JSON.stringify([...new Set(ring)]));
-  check("QUIT quieter than PAUSE", (await page.locator(".controls .quit").count()) === 1);
+  // Sound and QUIT are in the match menu (it pauses the match); the control row keeps PAUSE, AUTO and the menu button.
+  check("controls: PAUSE, AUTO and the menu only", (await page.locator(".controls button").count()) === 3 && (await page.locator(".controls .quit").count()) === 0);
   await page.locator(".controls .iconbtn").click(); await page.waitForTimeout(200);
-  check("sound off: the icon is not red", (await page.locator(".controls .iconbtn").evaluate((e) => getComputedStyle(e).color)) !== "rgb(248, 113, 113)");
-  await page.locator(".controls .iconbtn").click();
+  const row = page.locator(".modal .menurow");
+  await row.click();
+  check("menu: sound off (stored)", (await row.getAttribute("aria-pressed")) === "false" && (await page.evaluate(() => localStorage.getItem("outbreak.cues"))) === "off");
+  await row.click();
+  await page.locator(".modal").getByRole("button", { name: "CONTINUE" }).click(); await page.waitForTimeout(300);
   const fill = await page.evaluate(() => { const r = document.querySelector(".map-shell").getBoundingClientRect(); return { bottom: Math.round(r.bottom), vh: window.innerHeight }; });
   check("map reaches the bottom of the screen", fill.bottom >= fill.vh, JSON.stringify(fill));
   check("match clock is captioned TIME LEFT", (await page.locator(".pill.timeleft .tl").innerText()) === "TIME LEFT");

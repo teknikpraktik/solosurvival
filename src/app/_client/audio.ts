@@ -23,6 +23,7 @@ export const AUDIO = {
   zombieNear: "/audio/zombie-near.mp3",
   revealed: "/audio/position-revealed.mp3",
   checkpoint: "/audio/checkpoint-reached.mp3",
+  jump: ["/audio/jump-scare-1.mp3", "/audio/jump-scare-2.mp3", "/audio/jump-scare-3.mp3"],
 } as const;
 
 /**
@@ -54,7 +55,7 @@ const COUNT_LINES: readonly VoiceLine[] = Object.values(COUNT_LINE);
 
 /** Every match: decoded while the player sets up the match. */
 export const MATCH_SOUNDS: readonly string[] = [
-  ...AUDIO.threat, AUDIO.captured, AUDIO.safeDoor, AUDIO.zombieNear, AUDIO.revealed, AUDIO.checkpoint,
+  ...AUDIO.threat, ...AUDIO.jump, AUDIO.captured, AUDIO.safeDoor, AUDIO.zombieNear, AUDIO.revealed, AUDIO.checkpoint,
   VOICE.safehouseOnMap.url, VOICE.checkpointSecured.url, VOICE.getToSafehouse.url, VOICE.insideSafehouse.url, VOICE.keepMoving.url,
   VOICE.checkpointStart.url, VOICE.zombiesApproaching.url, ...COUNT_LINES.map((l) => VOICE[l].url),
 ];
@@ -70,6 +71,9 @@ export const MIX: Record<Bus, number> = { music: 0.32, threat: 1, heli: 0.8, fx:
 export const GAIN = {
   // Threat pulse ≈ +5 dB after the field test (bus 0.7 → 1, pulse 1 → 1.25; the files peak at −4.8 dBTP or lower, the limiter guards the sum).
   threat: 1.25, heliLoop: 0.7, heliApproach: 0.9, heliSuccess: 1, captured: 1, safeDoor: 1, zombieNear: 0.8, revealed: 0.75, checkpoint: 0.7,
+  // The jump scare is meant to startle (its files are also levelled a little above the other one-shots); a sprinting zombie is the roar
+  // again, a little lower; contact is the warning sting at full level.
+  jump: 1, sprint: 0.7, contact: 1,
   // The operator's lines −2.5 dB after the field test (the radio static was felt too loud; the files also have it lowered between the words).
   voice: 0.75,
 } as const;
@@ -226,6 +230,10 @@ export class MatchAudio {
   private readonly near = new NearGate();
   private readonly approaching = new NearGate(SOUND_RULES.approach);
   private readonly revealed = new Cooldown(SOUND_RULES.revealed.cooldownS);
+  private readonly contact = new Cooldown(SOUND_RULES.contact.cooldownS);
+  /** When the roar was last heard (entering 100 m or a sprint), so the two never come on top of each other. */
+  private lastRoarS = -Infinity;
+  private jumpVariant: number | null = null;
   /** The last distance step said (spoken countdown 50…10 m). */
   private countdown: CountdownStep | null = null;
   private threatVoice: LoopVoice | null = null;
@@ -271,7 +279,7 @@ export class MatchAudio {
     // 100 m at once gets the roar only.
     const roar = this.near.update(t, i.nearestM, i.activity, run);
     const warn = this.approaching.update(t, i.nearestM, i.activity, run);
-    if (roar) void this.s.play(AUDIO.zombieNear, "fx", GAIN.zombieNear);
+    if (roar) { this.lastRoarS = t; void this.s.play(AUDIO.zombieNear, "fx", GAIN.zombieNear); }
     else if (warn) void this.radio.say("zombiesApproaching", { urgent: true });
     // Spoken distance as the nearest zombie closes in: 50, 40, 30, 20, 10 m, each once per approach (re-armed after it has dropped back).
     const c = nextCountdown(this.countdown, run ? i.nearestM : null, VOICE_COUNTDOWN_M);
@@ -306,6 +314,20 @@ export class MatchAudio {
           return r;
         });
       case "revealed": return this.revealed.take(this.clock.nowS()) ? this.afterVoice(() => res(this.s.play(AUDIO.revealed, "fx", GAIN.revealed))) : Promise.resolve("suppressed");
+      // The scare's own scream, with its picture: at once, over anything (a random variant, never the one just heard).
+      case "jump":
+        this.jumpVariant = pickVariant(this.jumpVariant, AUDIO.jump.length, this.random);
+        return res(this.s.play(AUDIO.jump[this.jumpVariant], "fx", GAIN.jump));
+      // A zombie starts to sprint: the roar, unless it was just heard (entering 100 m and the first sprint often come together).
+      case "sprint": {
+        const t = this.clock.nowS();
+        if (t - this.lastRoarS < SOUND_RULES.sprint.afterRoarS) return Promise.resolve("suppressed");
+        this.lastRoarS = t;
+        return res(this.s.play(AUDIO.zombieNear, "fx", GAIN.sprint));
+      }
+      // A zombie is on the player and the infection counts: the warning sting, not more often than its cooldown.
+      case "contact":
+        return this.contact.take(this.clock.nowS()) ? res(this.s.play(AUDIO.revealed, "fx", GAIN.contact)) : Promise.resolve("suppressed");
       case "heli_approach":
         void this.radio.say("rescueInbound");
         return this.s.play(AUDIO.heliApproach, "heli", GAIN.heliApproach, 4000).then((r) => {
@@ -419,6 +441,8 @@ export class MatchAudio {
     this.approaching.reset();
     this.countdown = null;
     this.revealed.reset();
+    this.contact.reset();
+    this.lastRoarS = -Infinity;
     this.matchId = i.id;
     this.done = false;
     this.endedWith = null;

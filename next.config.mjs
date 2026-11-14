@@ -23,6 +23,7 @@ const nextConfig = {
       { source: "/sw.js", headers: [...cache("no-cache, no-store, must-revalidate"), { key: "Service-Worker-Allowed", value: "/" }] },
       { source: "/manifest.webmanifest", headers: cache("public, max-age=3600") },
       { source: "/img/:file", headers: cache("public, max-age=604800") },
+      { source: "/fonts/:file", headers: cache("public, max-age=31536000, immutable") },
       { source: "/audio/:file", headers: cache("public, max-age=604800") },
       { source: "/icons/:file", headers: cache("public, max-age=604800") },
       // Filnamn utan hash: revalidera.

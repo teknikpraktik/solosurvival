@@ -42,7 +42,7 @@ Bilder och ljud utgår från samma händelse. Inget ljud väntar på att en bild
 
 De gamla genererade ljuden (`captured-scream`, `jump-scream`, `sprint-shriek`, `tension`, `checkpoint`, `zombie-near` i WAV) och `scripts/make-audio.mjs` är borttagna. Det har följande konsekvenser:
 
-- **Jump scare** (den slumpade skrämbilden) har inget eget ljud längre, bara bild och vibration. Inget av de levererade ljuden är avsett för den.
+- **Jump scare** (den slumpade skrämbilden) har tre egna skrik (`jump-scare-1…3`, ett slumpas, aldrig samma två gånger i rad). **Zombiespurt** ger zombievrålet (`zombie-near`, inte inom 8 s efter ett vrål), och **smittkontakt** varningsljudet `position-revealed` (högst var 10:e sekund) – de två saknar ännu egna ljudfiler.
 - **Zombiespurt** hade ett skrik. Nu finns bara vibrationen (ingen röst).
 - **"tension"** vid inzoomningen ersätts av zombie-near vid samma gränser.
 - Det gamla närhetsljudet (en gång per match vid 500/1 000 m) är nu bara vibration. 500 m är inte "nära håll".

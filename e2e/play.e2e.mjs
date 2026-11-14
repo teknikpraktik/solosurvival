@@ -82,7 +82,7 @@ try {
   await page.waitForTimeout(500);
   check("kan fortsätta efter återställning", (await page.locator(".controls").getByRole("button", { name: "PAUSE" }).count()) === 1);
 
-  await page.locator(".controls").getByRole("button", { name: "QUIT" }).click();
+  await page.locator(".controls .iconbtn").click(); await page.getByRole("dialog", { name: "Paused" }).getByRole("button", { name: "QUIT" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "QUIT", exact: true }).click();
   await page.getByText("ABORTED").first().waitFor({ timeout: 10000 });
   await page.screenshot({ path: `${OUT}/05-finished.png` });

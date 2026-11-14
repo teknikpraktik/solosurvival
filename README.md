@@ -2,14 +2,11 @@
 
 GPS-baserat överlevnadsspel (PWA) där zombier jagar spelaren längs verkliga stigar. Se produktspecifikationen (PRD v1.0).
 
-## Status: etapp 0–2 (simulerbar prototyp)
+## Status
 
-| Etapp | Innehåll | Status |
-| --- | --- | --- |
-| 0 | Next.js, MapLibre, GPS-filter, motorgränssnitt, Vitest | Klar. Ingen riktig GPS-källa i UI ännu |
-| 1 | OSM → graf, validering, komponenter, A\* | Klar mot fixturer. Overpass är inte testat live |
-| 2 | Zombie-AI, spawn, infektion, extraction, determinism | Klar och testad i simulering |
-| 3–5 | Fullständigt matchflöde, UX/lagring, balansering, release | Ej påbörjad |
+Spelbar PWA med fullständigt matchflöde: tre spellägen (Checkpoints, A TO B, Survival), till fots och på cykel, ljudbild med inspelade
+radiorepliker, matchhistorik och återuppspelning. Fälttestad (se `docs/FALTTEST-1.md`). Återstår före release: balansering i fält och
+beslut om native-skal (bakgrunds-GPS, vibration på iPhone).
 
 ## v2.2 (stabilisering efter fälttest)
 
@@ -49,8 +46,7 @@ npm run sim -- 20 24 # balanseringssimulering: matcher per cell, rutnätsstorlek
 - Infektion vid GPS-noggrannhet 10–20 m kräver 5 s i stället för 3 s (PRD 6.3: "ytterligare verifiering"). Detta är ett förslag att fälttesta.
 - "Oundviklig infektion" vid spawn (PRD 3.4) är approximerad med nätavstånd ≥ minimiavstånd, inte en fullständig analys av återvändsgränder.
 - Zombier hålls i spelarens sammanhängande nätverkskomponent.
-- Tailwind är inte installerat än; UI:t är minimal CSS tills etapp 4.
-- Utan `NEXT_PUBLIC_MAP_STYLE` ritas bara stignätet på mörk bakgrund. En kartleverantör med lämpliga villkor måste väljas före release.
+- Ingen CSS-ram: all stil ligger i `src/app/globals.css`. Typsnitten (Barlow, Barlow Condensed, SIL OFL) serveras från `public/fonts`.
 
 ## Etapp 2.5: kartdata, ruttgenerering och tre spellägen
 

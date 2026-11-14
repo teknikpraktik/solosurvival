@@ -2,7 +2,8 @@ import { ACTIVITIES, type Activity } from "@/config/activities";
 import type { Difficulty } from "@/config/difficulty";
 
 /** Lugn fart som andel av aktivitetens nominella fart. Tidsgränsen utgår från denna, inte från maxfart. */
-const CALM_FACTOR = 0.6;
+// 0.6 gave limits nobody could miss (a 3 km course on foot: 1 h 50 min); at 0.85 the clock is felt without punishing a detour round a zombie.
+const CALM_FACTOR = 0.85;
 const MARGIN: Record<Difficulty, number> = { easy: 1.4, normal: 1.25, hard: 1.1 };
 
 /**

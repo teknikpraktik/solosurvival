@@ -68,7 +68,7 @@ const waitEnd = (page) => page.locator(".outcome").waitFor({ timeout: 30000 }).t
   check("captured: the scare picture stays behind the dialog", (await page.locator(".resultbg[data-pic=\"captured\"] img").count()) === 1);
   const capWords = ((await dialog(page).innerText()).match(/captured/gi) ?? []).length;
   check("'Captured' once (the title), no time stamp sentence", (await dialog(page).getAttribute("aria-label")) === "CAPTURED" && capWords === 1 && (await page.getByText(/Captured at/).count()) === 0, `${capWords}×`);
-  const fit = await page.evaluate(() => ({ hscroll: document.documentElement.scrollWidth > window.innerWidth, small: [...document.querySelectorAll(".modal-actions .btn, .resultlinks .link, .pvtoggle")].filter((e) => e.getBoundingClientRect().height < 44).length, cut: [...document.querySelectorAll(".statcells dd, .statcells dt")].filter((e) => e.scrollWidth > e.clientWidth + 1).length }));
+  const fit = await page.evaluate(() => ({ hscroll: document.documentElement.scrollWidth > window.innerWidth, small: [...document.querySelectorAll(".modal-actions .btn, .resultlinks .quietbtn, .pvtoggle")].filter((e) => e.getBoundingClientRect().height < 44).length, cut: [...document.querySelectorAll(".statcells dd, .statcells dt")].filter((e) => e.scrollWidth > e.clientWidth + 1).length }));
   check("375×667: nothing cut, targets ≥ 44 px, no sideways scroll", !fit.hscroll && !fit.small && !fit.cut, JSON.stringify(fit));
   check("links: Main menu and Previous games", (await page.getByRole("link", { name: "Main menu" }).count()) === 1);
   // SHOW MATCH, then back: the CAPTURED dialog again (no new scare), not the main menu.
@@ -86,7 +86,7 @@ const waitEnd = (page) => page.locator(".outcome").waitFor({ timeout: 30000 }).t
 // --- Quit: straight to the start page, no result ---
 {
   const { ctx, page } = await play("SURVIVAL", { width: 320, height: 568 });
-  await page.getByRole("button", { name: "QUIT" }).click(); await page.waitForTimeout(300);
+  await page.locator(".controls .iconbtn").click(); await page.getByRole("dialog", { name: "Paused" }).getByRole("button", { name: "QUIT" }).click(); await page.waitForTimeout(300);
   await dialog(page).getByRole("button", { name: "QUIT" }).click();
   const home = await page.waitForURL((u) => new URL(u).pathname === "/", { timeout: 15000 }).then(() => true, () => false);
   check("quit: straight to the start page, no result dialog", home && (await page.getByRole("dialog").count()) === 0 && (await page.getByRole("heading", { name: "OUTBREAK" }).isVisible()));

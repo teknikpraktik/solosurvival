@@ -116,3 +116,13 @@ export const HELI_SVG = `<svg viewBox="0 0 24 24" width="20" height="20" xmlns="
 <path d="M15.5 11.5l5.5-.5" fill="none" stroke-width="1.8"/><path d="M21 9v4.5" fill="none" stroke-width="1.6"/>
 <path d="M8 15.5v2.5M13 15.5v2.5M6 18h9" fill="none" stroke-width="1.6"/>
 </svg>`;
+
+/** HUD: the nearest zombie (a skull, drawn here so it looks the same on every phone; currentColor). */
+export const SKULL_SVG = `<svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="currentColor">
+<path fill-rule="evenodd" d="M12 2.5c-4.9 0-8.3 3.3-8.3 7.8 0 2.5 1 4.3 2.6 5.5v2.4c0 .9.7 1.6 1.6 1.6h.9v1.7h1.9v-1.7h2.6v1.7h1.9v-1.7h.9c.9 0 1.6-.7 1.6-1.6v-2.4c1.6-1.2 2.6-3 2.6-5.5 0-4.5-3.4-7.8-8.3-7.8zM8.6 9.2a2.2 2.4 0 1 0 0 4.8 2.2 2.4 0 0 0 0-4.8zm6.8 0a2.2 2.4 0 1 0 0 4.8 2.2 2.4 0 0 0 0-4.8zM12 14.6l-1.3 2.3h2.6z"/>
+</svg>`;
+
+/** Game view: the match menu (sound, quit), three bars. currentColor. */
+export const MENU_SVG = `<svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+<path d="M5 7h14M5 12h14M5 17h14"/>
+</svg>`;
