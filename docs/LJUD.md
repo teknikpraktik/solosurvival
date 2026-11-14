@@ -99,7 +99,7 @@ Radiobruset upplevdes för högt. Två ändringar:
 - Till fots startar en hotperiod när närmaste zombie har varit inom **300 m** i 2 s. Den slutar när zombien har varit bortom 380 m i 8 s och perioden har pågått minst 12 s. Gränserna vidgades efter fälttestet, så att pulsen hörs oftare: 300 m motsvarar ungefär 100 s rakt mot varandra i gångfart mot en Normal-zombie.
 - På cykel gäller **600 m / 750 m**: spelaren rör sig i cirka 16 km/h och zombien i 7,8–13,4 km/h, så 600 m motsvarar ungefär 85–100 s rakt mot varandra.
 - Efter en period följer minst **8 s** lugn, utom när en zombie redan är inom inzoomningsavståndet (100 / 200 m).
-- Varje period får en slumpad variant, aldrig samma två gånger i rad. Bara en variant hörs åt gången. Den tonas in på 2,5 s och ut på 4 s.
+- **Skurar med tystnad emellan** (efter fälttestet): under en hotperiod spelas pulsen i skurar på slumpmässigt 6–14 s, med tystnad på slumpmässigt 3–8 s emellan (plus 2,5 s uttoning). Varje skur får en ny slumpad variant, aldrig samma två gånger i rad, och bara en hörs åt gången. Periodens första skur tonas in på 2,5 s, de följande på 1,5 s. När hotet är över tonas pulsen ut på 4 s.
 - Paus, matchslut, inga zombier eller appen i bakgrunden stoppar pulsen med en snabb uttoning (1,2 s). Därefter krävs de 3 s igen.
 - Reglerna körs varje sekund av `MatchAudio`, även när ingenting på skärmen ändras (en stillastående zombie).
 - Pulsen bygger på samma avstånd som HUD-pillret alltid visar. Ljudet avslöjar alltså ingenting som skärmen inte redan visar.
@@ -110,11 +110,11 @@ Radiobruset upplevdes för högt. Två ändringar:
 | Buss | Nivå | Duckas under tal |
 | --- | --- | --- |
 | music | 0,32 | ja |
-| threat | 0,70 | ja |
+| threat | 1,0 (förut 0,70) | ja |
 | heli | 0,80 | ja |
 | fx (händelser, radio) | 1,0 | nej |
 
-Nivå per ljud på sin buss: hotpuls 1,0, helikopterloop 0,7, helikopterns ankomst 0,9, success/captured/dörr 1,0, zombie-near 0,8, revealed 0,75, checkpoint 0,7, radio 0,55.
+Nivå per ljud på sin buss: hotpuls 1,25 (sammanlagt ≈ +5 dB mot förut), helikopterloop 0,7, helikopterns ankomst 0,9, success/captured/dörr 1,0, zombie-near 0,8, revealed 0,75, checkpoint 0,7, radio 0,55.
 
 Duckning: under operatörens repliker sänks musik, hot och helikopter till 0,32 (≈ −10 dB) på 0,15 s och återställs på 0,9 s. Duckningen släpps automatiskt efter 8 s om talsyntesen aldrig meddelar att den är klar (det händer på Android). Efter mixen sitter en säkerhetslimiter (DynamicsCompressor, −6 dB, 12:1).
 

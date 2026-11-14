@@ -24,6 +24,15 @@ export const SOUND_RULES = {
     fadeOutS: 4,
     /** Pause, match end or the app in the background: out quickly. */
     stopFadeS: 1.2,
+    /**
+     * Within a threat period the pulse comes in bursts of random length with random silences between (field test: a steady pulse wore
+     * off). Each burst is a new random variant, never the one just heard; only one burst sounds at a time (a silence is longer than the
+     * fade-out). Ranges in seconds.
+     */
+    burstS: [6, 14] as const,
+    restS: [3, 8] as const,
+    burstFadeInS: 1.5,
+    burstFadeOutS: 2.5,
   },
   /** Zombie at close range (the distance where the map zooms in: 100 m on foot, 200 m on Bike; out again beyond 130 / 260 m). */
   near: { cooldownS: 45, maxPerMatch: 8 },
@@ -34,6 +43,9 @@ export const SOUND_RULES = {
 
 const DEFAULT_RANGE = { onM: 300, offM: 380 };
 export const threatRange = (a: Activity) => SOUND_RULES.threat.byActivity[a] ?? DEFAULT_RANGE;
+
+/** A random value in [min, max]. */
+export const between = ([min, max]: readonly [number, number], random: () => number): number => min + (max - min) * random();
 
 /** A random variant index in [0, n) that is never `prev` (when there is more than one). */
 export function pickVariant(prev: number | null, n: number, random: () => number): number {
