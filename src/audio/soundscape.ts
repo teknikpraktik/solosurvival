@@ -409,11 +409,24 @@ export class MenuMusic {
   private needsGesture = false;
   /** Elements whose play() this player asked for and got (a primed element is paused again). */
   private confirmed = [false, false];
+  /** Repeat at the end (menu), or play the pass to its end and stop (during a match). */
+  private repeat = true;
 
   constructor(private readonly s: Soundscape, private readonly env: SoundscapeEnv, private readonly m: MusicSource | null) {}
 
   get playing(): boolean { return this.sounding; }
   get isWanted(): boolean { return this.wanted; }
+  get repeats(): boolean { return this.repeat; }
+
+  /**
+   * Repeat on (the menu, after a match) or off (during a match: the pass that plays finishes and the music stops, it does not fade out or
+   * start again). Turning it on while the music is wanted but has ended starts it again with a fade-in.
+   */
+  setRepeat(on: boolean): void {
+    if (this.repeat === on) return;
+    this.repeat = on;
+    if (on && this.wanted && !this.sounding && !this.paused && !this.needsGesture && this.m) this.begin(this.m.fadeInS);
+  }
 
   /** Starts fetching the music for offline use (no sound). */
   prefetch(): Promise<void> {
@@ -489,8 +502,12 @@ export class MenuMusic {
     else e.el.volume = to;
   }
 
+  /**
+   * Starts the music. Tried at once, also before any tap: browsers that allow it (a site the player uses often, an installed app on a
+   * computer) start at once; the others refuse, and the music starts at the first tap instead. Started before the audio context may run,
+   * it is heard as soon as the first tap wakes the context.
+   */
   private begin(fadeS: number): void {
-    if (!this.s.unlocked) { this.needsGesture = true; return; }
     if (!this.ensure()) return;
     if (this.stopTimer !== null) { this.env.clearTimeout(this.stopTimer); this.stopTimer = null; }
     const e = this.els[this.cur];
@@ -536,7 +553,15 @@ export class MenuMusic {
       if (!this.sounding) return;
       const e = this.els[this.cur];
       const end = this.m!.endS ?? (Number.isFinite(e.el.duration) ? e.el.duration : null);
-      if (end !== null && e.el.currentTime >= end - this.m!.crossfadeS && this.wanted && !this.paused) {
+      if (!this.repeat) {
+        // No repeat: the pass ends by itself (the track fades out on its own) and the music stops there.
+        if ((end !== null && e.el.currentTime >= end) || e.el.ended) {
+          for (const { el } of this.els) { try { el.pause(); } catch { /* ignore */ } }
+          this.confirmed = [false, false];
+          this.sounding = false;
+          return;
+        }
+      } else if (end !== null && e.el.currentTime >= end - this.m!.crossfadeS && this.wanted && !this.paused) {
         const prev = this.cur;
         this.cur = 1 - this.cur;
         const n = this.els[this.cur];

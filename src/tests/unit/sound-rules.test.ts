@@ -21,32 +21,35 @@ describe("threat pulse rules", () => {
   });
 
   it("does not toggle with GPS jitter around the limits (hysteresis, dwell and minimum length)", () => {
+    const { onM, offM } = threatRange("walk");
     const g = new ThreatGate(4, () => 0.3);
-    feed(g, 0, 5, 190);
+    feed(g, 0, 5, onM - 10);
     expect(g.active).toBe(true);
-    // Jitter between 195 and 270 m for two minutes: never 10 s in a row beyond 260 m, so it stays on.
+    // Jitter around the off limit for two minutes: never exitDwellS seconds in a row beyond it, so it stays on.
     const acts: unknown[] = [];
-    for (let t = 5; t < 125; t++) { const a = g.update(t, t % 8 < 6 ? 270 : 195, "walk", true); if (a) acts.push(a); }
-    expect(g.update(125, 195, "walk", true)).toBeNull();
+    const beyond = R.exitDwellS - 2;
+    for (let t = 5; t < 125; t++) { const a = g.update(t, (t - 5) % R.exitDwellS < beyond ? offM + 10 : onM - 5, "walk", true); if (a) acts.push(a); }
+    expect(g.update(125, onM - 5, "walk", true)).toBeNull();
     expect(acts).toEqual([]);
     // Then it really goes away: off after exitDwellS, with the long fade.
-    const off = feed(g, 126, 20, 300);
+    const off = feed(g, 126, 20, offM + 40);
     expect(off).toEqual([{ t: 126 + R.exitDwellS, a: { stop: "fade" } }]);
   });
 
   it("keeps a calm gap between threats unless a zombie is already at close range", () => {
+    const { onM, offM } = threatRange("walk");
     const g = new ThreatGate(4, () => 0.1);
     feed(g, 0, 20, 150);
-    feed(g, 20, 15, 400); // ends at 30
+    const offAt = feed(g, 20, 15, offM + 50)[0].t; // the period ends here
     expect(g.active).toBe(false);
-    const again = feed(g, 35, 30, 180); // back within 200 m, but not close (> 100 m)
+    const again = feed(g, offAt + 1, 30, onM - 20); // back within range at once, but not close (> 100 m)
     expect(again).toHaveLength(1);
-    expect(again[0].t).toBeGreaterThanOrEqual(30 + R.quietGapS);
+    expect(again[0].t).toBeGreaterThanOrEqual(offAt + R.quietGapS);
     const h = new ThreatGate(4, () => 0.1);
     feed(h, 0, 20, 150);
-    feed(h, 20, 15, 400);
-    const close = feed(h, 35, 10, 80); // a zombie at close range: no waiting for the gap
-    expect(close[0].t).toBe(35 + R.enterDwellS);
+    const hOff = feed(h, 20, 15, offM + 50)[0].t;
+    const close = feed(h, hOff + 1, 10, 80); // a zombie at close range: no waiting for the gap
+    expect(close[0].t).toBe(hOff + 1 + R.enterDwellS);
   });
 
   it("one variant per threat period, never the same twice in a row; only one at a time", () => {

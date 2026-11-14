@@ -38,3 +38,13 @@ describe("zombie distance countdown", () => {
     expect(said([45, null, 45])).toEqual([50, 50]);
   });
 });
+
+describe("countdown with its own steps (the operator's 50…10 m)", () => {
+  it("never says 100 when the steps start at 50", async () => {
+    const { nextCountdown, VOICE_COUNTDOWN_M } = await import("@/play/countdown");
+    let last = null as ReturnType<typeof nextCountdown>["last"];
+    const out: number[] = [];
+    for (const d of [150, 99, 80, 55, 50, 44, 31, 18, 9]) { const r = nextCountdown(last, d, VOICE_COUNTDOWN_M); last = r.last; if (r.say !== null) out.push(r.say); }
+    expect(out).toEqual([50, 40, 20, 10]);
+  });
+});

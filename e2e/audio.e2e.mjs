@@ -26,6 +26,7 @@ const music = (page) => page.evaluate(() => {
   const m = window.__outbreakAudio?.soundscape.music;
   return { playing: m?.playing ?? false, els: (m?.els ?? []).map((e) => ({ paused: e.el.paused, t: e.el.currentTime, gain: e.gain?.gain.value ?? null, src: e.el.src.slice(0, 5) })) };
 });
+const voices = (page) => page.evaluate(() => ({ log: [...window.__outbreakAudio.match.radio.log], now: window.__outbreakAudio.match.radio.speaking, queued: window.__outbreakAudio.match.radio.queued }));
 const audio = (page) => page.evaluate(() => { const a = window.__outbreakAudio; return { ...a.match.state, voices: a.soundscape.voiceCount, ctx: a.soundscape.context()?.state }; });
 /** Puts one zombie `m` metres from the player along the trails and keeps it still; removes the others. */
 const zombieAt = (page, m) => page.evaluate((want) => {
@@ -56,13 +57,17 @@ async function startMatch(o, mode) {
   const o = await open(); const { page, wait, reqs } = o;
   await page.goto(BASE + "/"); await page.waitForTimeout(1500);
   let mu = await music(page);
-  check("start page: no sound before a tap", !mu.playing && mu.els.every((e) => e.paused), JSON.stringify(mu));
+  // As the app opens the music is started at once; a browser that refuses sound before a tap starts it at the first tap instead.
+  const before = mu.playing && mu.els.some((e) => !e.paused);
+  console.log(`  (music before any tap: ${before ? "started (this browser allows it)" : "refused by the browser, waits for a tap"})`);
+  check("start page: the music is asked for at once (started, or waiting for the browser's first tap)", mu.els.length === 2, JSON.stringify(mu));
   check("start page: no match sounds fetched yet", !reqs.some((p) => p !== "/audio/theme-outbreak.mp3"), reqs.join(","));
   await page.getByRole("link", { name: "NEW GAME" }).click();
   await page.waitForURL("**/new"); await wait(2400);
   mu = await music(page);
   const el0 = mu.els.findIndex((e) => !e.paused);
-  check("menu music starts at the first tap (NEW GAME), one element, fading in", mu.playing && mu.els.filter((e) => !e.paused).length === 1 && (mu.els[el0]?.gain ?? 0) > 0.25, JSON.stringify(mu));
+  check("menu music plays after the first tap at the latest, one element, fading in", mu.playing && mu.els.filter((e) => !e.paused).length === 1 && (mu.els[el0]?.gain ?? 0) > 0.25, JSON.stringify(mu));
+  check("audio context running", (await audio(page)).ctx === "running");
   check("music: plays from the cached file (blob URL) past the leading silence", mu.els[el0]?.src === "blob:" && mu.els[el0].t >= 4, JSON.stringify(mu.els[el0]));
   const t1 = mu.els[el0]?.t ?? 0;
   await page.getByRole("button", { name: "ON FOOT", exact: true }).click(); await wait(800);
@@ -76,23 +81,38 @@ async function startMatch(o, mode) {
   await page.getByRole("button", { name: "START GAME" }).click();
   await page.waitForURL("**/play", { timeout: 90000 });
   for (let i = 0; i < 40 && !(await page.evaluate(() => { const m = window.__outbreak?.getView().match; return !!m && !m.paused; })); i++) await wait(400);
-  await wait(800);
+  const gStart = (await music(page)).els[el0]?.gain ?? 0;
+  const tStart = (await music(page)).els[el0]?.t ?? 0;
+  await wait(4000);
   mu = await music(page);
-  check("match start: the music is fading out", mu.els.every((e) => (e.gain ?? 0) < 0.95), JSON.stringify(mu.els));
-  await wait(2800);
+  check("match start: the music is not faded out, it goes on (same element, no restart)", mu.playing && mu.els.findIndex((e) => !e.paused) === el0 && mu.els[el0].t > tStart + 3 && (mu.els[el0].gain ?? 0) >= gStart - 0.05, JSON.stringify({ gStart, tStart, now: mu.els[el0] }));
+  check("match: the music does not repeat during the match", await page.evaluate(() => window.__outbreakAudio.soundscape.music.repeats) === false);
+  // The pass ends by itself during the match.
+  await page.evaluate(() => { const m = window.__outbreakAudio.soundscape.music; const e = m.els.find((x) => !x.el.paused); e.el.currentTime = 209.6; });
+  await wait(2400);
   mu = await music(page);
-  check("match: music gone ≈ 2.5 s after the start", !mu.playing && mu.els.every((e) => e.paused), JSON.stringify(mu));
-  check("audio context running after the taps", (await audio(page)).ctx === "running");
+  check("match: at the end of the track the music stops (no new pass)", !mu.playing && mu.els.every((e) => e.paused), JSON.stringify(mu));
   // Threat pulse from a real zombie distance.
   check("zombie placed ≈ 400 m away", (await zombieAt(page, 400)) < 30);
+  await zombieAt(page, 500);
+  await wait(4000);
+  check("calm with the nearest zombie ≈ 500 m (on foot)", (await audio(page)).threat === null, JSON.stringify(await audio(page)));
+  await zombieAt(page, 260);
   await wait(5000);
-  check("calm with the nearest zombie ≈ 400 m (on foot)", (await audio(page)).threat === null, JSON.stringify(await audio(page)));
-  await zombieAt(page, 160);
-  await wait(6000);
   const a1 = await audio(page);
-  check("threat pulse after the zombie stayed within 200 m", typeof a1.threat === "string" && a1.threat.includes("threat-pulse-"), JSON.stringify(a1));
+  check("threat pulse after the zombie stayed within 300 m (wider than before)", typeof a1.threat === "string" && a1.threat.includes("threat-pulse-"), JSON.stringify(a1));
   await wait(6000);
   check("still the same single pulse", (await audio(page)).threat === a1.threat);
+  // Spoken distance: the zombie closes in to 45 m, then 33 m.
+  await zombieAt(page, 45);
+  await wait(1200);
+  let cv = await voices(page);
+  check("zombie at 45 m: \"Fifty\" is said", cv.log.includes("count50") && !cv.log.includes("count40"), JSON.stringify(cv));
+  await zombieAt(page, 33);
+  await wait(1200);
+  cv = await voices(page);
+  check("zombie at 33 m: \"Forty\" next, each once", cv.log.filter((l) => l.startsWith("count")).join() === "count50,count40", JSON.stringify(cv));
+  check("countdown files fetched", ["/audio/countdown-50.mp3", "/audio/countdown-40.mp3"].every((p) => reqs.includes(p)));
   await page.getByRole("button", { name: "QUIT" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "QUIT" }).click();
   await wait(2000);
@@ -130,7 +150,6 @@ async function startMatch(o, mode) {
 
 let v;
 // --- Operator's radio lines: one per real game moment, in the real app ---
-const voices = (page) => page.evaluate(() => ({ log: [...window.__outbreakAudio.match.radio.log], now: window.__outbreakAudio.match.radio.speaking, queued: window.__outbreakAudio.match.radio.queued }));
 {
   // A TO B: start → safe house on the map; win at B → inside the safe house. Quit while a line plays → silence, then a new match.
   const o = await open(); const { page, wait } = o;
@@ -169,12 +188,14 @@ const voices = (page) => page.evaluate(() => ({ log: [...window.__outbreakAudio.
   await o.ctx.close();
 }
 {
-  // Checkpoints: no opening line (there is no recording for it, and nothing synthetic); checkpoint → "Checkpoint secured"; the last → "Get to the safe house"; home → "You're inside".
+  // Checkpoints: opening line "Checkpoints marked on your map…"; checkpoint → "Checkpoint secured"; the last → "Get to the safe house"; home → "You're inside".
   const o = await open(); const { page, wait } = o;
   await page.goto(BASE + "/new"); await wait(1200);
   await startMatch(o, "CHECKPOINTS");
   await wait(1500);
-  check("Checkpoints start: no line and no synthetic voice", (await voices(page)).log.length === 0 && (await page.evaluate(() => window.__synthSpoken ?? 0)) === 0);
+  check("Checkpoints start: \"Checkpoints marked on your map\" once, nothing synthetic", (await voices(page)).log.join() === "checkpointStart" && (await page.evaluate(() => window.__synthSpoken ?? 0)) === 0);
+  check("checkpoint-start fetched", o.reqs.includes("/audio/checkpoint-start.mp3"));
+  await wait(10500); // the opening line is 8 s, and the "position revealed" sound waits for it (2 s)
   await page.evaluate(() => { window.__outbreak.live.state.zombies = []; window.__outbreak.live.rules.maxZombies = 0; });
   const reach = (i) => page.evaluate((k) => { const s = window.__outbreak; const o = s.live.state.objectives; o.index = k + 1; s.endMatch([{ type: "objective_reached", targetId: o.targets[k].id, index: k }]); }, i);
   const n = await page.evaluate(() => window.__outbreak.live.state.objectives.targets.filter((x) => x.kind === "checkpoint").length);
@@ -216,8 +237,14 @@ const voices = (page) => page.evaluate(() => ({ log: [...window.__outbreakAudio.
   await page.evaluate(() => { const s = window.__outbreak; s.live.state.phase = "finished"; s.live.state.result = "survived"; s.endMatch([{ type: "finished", result: "survived" }]); });
   await wait(800);
   v = await voices(page);
+  check("rescued: while the ending's sounds play the music does not start a new pass", (await page.evaluate(() => ({ r: window.__outbreakAudio.soundscape.music.repeats, d: window.__outbreakAudio.match.endSequenceDone }))).r === false);
   check("rescued: \"Lifting off. You made it.\" with the extracted ending; each line once", v.now === "liftingOff" && v.log.join() === "keepMoving,rescueInbound,getToHelicopter,liftingOff" && (await page.locator('.resultbg[data-pic="extracted"]').count()) === 1, JSON.stringify(v));
   check("Survival from start to rescue: no synthetic voice at any point", (await page.evaluate(() => window.__synthSpoken ?? 0)) === 0);
+  // The ending's sounds: helicopter take-off 7 s and "Lifting off" 5 s; the music comes back, repeating, after them.
+  const endAt = Date.now();
+  let back = null;
+  for (let i = 0; i < 40 && back === null; i++) { await wait(400); const x = await page.evaluate(() => { const a = window.__outbreakAudio; return { done: a.match.endSequenceDone, repeat: a.soundscape.music.repeats, playing: a.soundscape.music.playing, voices: a.soundscape.voiceCount }; }); if (x.playing && x.repeat) back = { ...x, afterS: (Date.now() - endAt) / 1000 }; }
+  check("after the win the music comes back (repeating) once the ending's sounds are over", !!back && back.done && back.voices === 0, JSON.stringify(back));
   check("Survival lines fetched", ["/audio/keep-moving.mp3", "/audio/rescue-inbound.mp3", "/audio/get-to-helicopter.mp3", "/audio/lifting-off.mp3"].every((p) => o.reqs.includes(p)));
   await o.ctx.close();
 }

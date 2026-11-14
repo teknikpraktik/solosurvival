@@ -21,7 +21,7 @@ Källfiler, nivåer och storlekar: [`assets/audio/README.md`](../assets/audio/RE
 
 | Ljud | Spelhändelse (kod) | Regel |
 | --- | --- | --- |
-| theme-outbreak | Menysidor (allt utom `/play`, `/field`, `/dev`) | Startar vid första trycket. Fortsätter över sidbyten utan omstart. På `/play` spelar den bara medan en ny match väntar på sin första position. Tonas ut på 2,5 s när matchen startar och tonas in igen (3 s) på menyn efter matchen. |
+| theme-outbreak | Hela appen utom `/field` och `/dev` | **Startar direkt när appen öppnas** där webbläsaren tillåter ljud utan tryck. iPhone och de flesta mobiler tillåter det inte, och där startar musiken vid första trycket var som helst i appen. Den börjar efter filens 4 s tystnad, tonas in på 3 s och upprepas på menyn med 3,5 s övertoning. **Matchstart:** ingen uttoning; låten spelar klart parallellt med matchen och börjar inte om. **Matchslut:** när slutljud och slutreplik är klara (högst 15 s) kommer musiken tillbaka och upprepas. Spelade den fortfarande, fortsätter den bara. |
 | threat-pulse-1…4 | Närmaste zombie (samma tal som HUD:en visar) | Se *Hotpuls*. |
 | zombie-near | Närmaste zombie inom 100 m till fots / 200 m på cykel (samma gränser som kartans inzoomning, ut igen bortom 130 / 260 m) | En gång per närmande, 45 s cooldown, högst 8 per match. Följer bara närmaste avståndet, så många zombier ger ett ljud. |
 | position-revealed | Första `zombie_detected` i matchen (jakten börjar, zombierna har positionen) och `off_network: exposed` ("Zombies have found you") | 60 s cooldown. Väntar tills operatörens röst ("Game on") har talat klart, högst 4 s. Det periodiska `reveal`-eventet används inte: med magnetjakt vet zombierna redan var spelaren är, så det vore ett ljud utan innebörd (V2.2-ANALYS 5). |
@@ -65,8 +65,17 @@ Whisper small.en i den här miljön; ingen har lyssnat.
 | get-to-helicopter | "We're down. Get to the helicopter. We can't stay long." | Survival: `extraction_opened`, med kortet "landed". Den avbryter och ersätter en rescue-inbound som fortfarande spelas eller väntar. Den ersätter talet "Run!" vid landningen. |
 | lifting-off | "Lifting off. You made it." | `finished: survived` i Survival, alltså först när vinstvillkoret (30 m i 5 s vid helikoptern) är uppfyllt. Den spelas med extracted-bilden och helikopterns lyftljud. |
 | inside-safehouse | "You're inside. Lock the door. You made it." | `finished: survived` i Checkpoints (hemma) och A TO B (vid B). Den spelas med safehouse-bilden och dörrsmällen. |
+| checkpoint-start | "Checkpoints marked on your map. Secure them all, then get to the safe house. Stay alive." | Checkpoints: `match_started`, en gång när matchen startar. |
 
-Checkpoints har ingen inspelad startreplik, så där sägs ingenting vid start.
+
+### Nedräkning (zombiens avstånd)
+
+Fem inspelade ord: "fifty", "forty", "thirty", "twenty" och "ten" (`count50` … `count10` i `VOICE`). Närmaste zombies avstånd, samma som HUD:en visar, sägs när det passerar 50, 40, 30, 20 och 10 m (`VOICE_COUNTDOWN_M` i `src/play/countdown.ts`).
+- Varje steg sägs en gång per närmande. Vid ett snabbt närmande sägs bara det närmaste steget, ingen eftersläpning.
+- Ett steg kan sägas igen först när zombien har dragit sig minst 5 m bakom det (skydd mot GPS-brus).
+- Inget sägs i paus, när appen är i bakgrunden eller när ljudet är av.
+- Nedräkningen är brådskande: den avbryter en pågående replik och kastar en väntande, men aldrig vinstrepliken.
+- **Filnamnen stämde inte med innehållet.** Tre taligenkänningsmodeller (Whisper base, small och medium) är överens: uppladdade "10.mp3" säger "fifty", "20.mp3" säger "forty", "40.mp3" säger "twenty" och "50.mp3" säger "ten"; bara "30.mp3" stämmer. Filerna är kopplade efter vad som sägs, och källfilerna heter efter det (`countdown-50.mp3` = "fifty"). Ingen har lyssnat.
 
 ### Röstkanalen
 
@@ -79,11 +88,17 @@ Checkpoints har ingen inspelad startreplik, så där sägs ingenting vid start.
 - **Saknad eller trasig fil:** vid en checkpoint spelas den gamla klangen i stället; för övriga repliker blir det tyst. Spelets regler påverkas aldrig. Avstängt ljud ger ingen ersättning.
 - **Undertexter:** spelvyn har inget system för undertexter. Sessionens korta meddelanden visas aldrig där, så inga undertexter har lagts till. Repliktexten finns i `VOICE` och i fältloggen (`sound` → `voice`).
 
+### Radiobrus och nivå (efter fälttestet)
+
+Radiobruset upplevdes för högt. Två ändringar:
+- **Brusdämpning i filerna:** varsam nedåtexpansion vid bygget (`VOICE_GATE` i `scripts/build-audio.mjs`). Brus långt under talet sänks 2:1, högst 9 dB. Uppmätt: talet är oförändrat (±0,0 dB), och bruset mellan orden har sänkts 4–9 dB i sex filer. I keep-moving och get-to-helicopter ligger bruset nära talets nivå, så där blev sänkningen bara 0,6–1,2 dB.
+- **Lägre nivå i mixen:** alla repliker ligger 2,5 dB lägre (röstnivå 0,75).
+
 ## Hotpuls
 
-- Till fots startar en hotperiod när närmaste zombie har varit inom 200 m i 3 s. Den slutar när zombien har varit bortom 260 m i 10 s och perioden har pågått minst 12 s. 200 m är samma avstånd som "Zombies approaching" redan sägs vid, och motsvarar ungefär 70 s rakt mot varandra mot en Normal-zombie (5,6 km/h) i gångfart.
-- På cykel gäller 400 m / 500 m: spelaren rör sig i cirka 16 km/h och zombien i 7,8–13,4 km/h, så 400 m motsvarar ungefär 55–65 s rakt mot varandra.
-- Efter en period följer minst 20 s lugn, utom när en zombie redan är inom inzoomningsavståndet (100 / 200 m).
+- Till fots startar en hotperiod när närmaste zombie har varit inom **300 m** i 2 s. Den slutar när zombien har varit bortom 380 m i 8 s och perioden har pågått minst 12 s. Gränserna vidgades efter fälttestet, så att pulsen hörs oftare: 300 m motsvarar ungefär 100 s rakt mot varandra i gångfart mot en Normal-zombie.
+- På cykel gäller **600 m / 750 m**: spelaren rör sig i cirka 16 km/h och zombien i 7,8–13,4 km/h, så 600 m motsvarar ungefär 85–100 s rakt mot varandra.
+- Efter en period följer minst **8 s** lugn, utom när en zombie redan är inom inzoomningsavståndet (100 / 200 m).
 - Varje period får en slumpad variant, aldrig samma två gånger i rad. Bara en variant hörs åt gången. Den tonas in på 2,5 s och ut på 4 s.
 - Paus, matchslut, inga zombier eller appen i bakgrunden stoppar pulsen med en snabb uttoning (1,2 s). Därefter krävs de 3 s igen.
 - Reglerna körs varje sekund av `MatchAudio`, även när ingenting på skärmen ändras (en stillastående zombie).
