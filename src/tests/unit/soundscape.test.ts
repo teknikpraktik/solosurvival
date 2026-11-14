@@ -709,3 +709,43 @@ describe("spoken zombie distance (50, 40, 30, 20, 10 m)", () => {
     expect(u.ctx.sources).toHaveLength(0);
   });
 });
+
+describe("threat pulse in bursts", () => {
+  it("random bursts with silences between, one at a time, a new variant each time; louder than before", async () => {
+    const t = setup();
+    t.s.unlock();
+    const threatLive = () => t.ctx.live().map((x) => x.buffer?.url).filter((u) => AUDIO.threat.includes(u as never));
+    let max = 0, silentS = 0, soundS = 0;
+    const order: string[] = [];
+    for (let i = 0; i < 180; i++) { // three minutes with a zombie at 150 m
+      t.m.update(base({ nearestM: 150 }));
+      await t.advance(1000);
+      const now = threatLive();
+      max = Math.max(max, new Set(now).size);
+      if (now.length) soundS++; else silentS++;
+      const u = t.m.state.threat;
+      if (u && order.at(-1) !== u) order.push(u);
+    }
+    expect(max).toBe(1); // never two variants together
+    expect(order.length).toBeGreaterThanOrEqual(6); // several bursts
+    for (let k = 1; k < order.length; k++) expect(order[k]).not.toBe(order[k - 1]);
+    expect(silentS).toBeGreaterThan(20); // real silences in between…
+    expect(soundS).toBeGreaterThan(silentS); // …but mostly pulse while the threat lasts
+    expect(MIX.threat * 1.25).toBeGreaterThan(0.7 * 1.7); // ≈ +5 dB over the old 0.7 × 1
+    // The zombie goes: the bursts end and no timer brings one back.
+    for (let i = 0; i < 30; i++) { t.m.update(base({ nearestM: 900 })); await t.advance(1000); }
+    expect(threatLive()).toEqual([]);
+    const n = t.ctx.sources.length;
+    await t.advance(60_000);
+    expect(t.ctx.sources.length).toBe(n);
+  });
+
+  it("pause stops a burst and its timer; the next period starts again after the dwell", async () => {
+    const t = setup();
+    t.s.unlock();
+    await run(t, 5, { nearestM: 150 });
+    expect(t.m.state.threat).not.toBeNull();
+    await run(t, 20, { nearestM: 150, paused: true });
+    expect(t.ctx.live().filter((x) => AUDIO.threat.includes(x.buffer?.url as never))).toHaveLength(0);
+  });
+});

@@ -1,7 +1,7 @@
 import type { Activity } from "@/config/activities";
 import type { GameMode } from "@/engine/objectives/objectives";
 import type { SoundEvent } from "@/play/session";
-import { Cooldown, NearGate, SOUND_RULES, ThreatGate } from "@/play/sound-rules";
+import { Cooldown, NearGate, SOUND_RULES, ThreatGate, between, pickVariant } from "@/play/sound-rules";
 import { VOICE_COUNTDOWN_M, nextCountdown, type CountdownStep } from "@/play/countdown";
 import { Soundscape, type Bus, type Levels, type LoopVoice, type PlayResult, type SoundscapeEnv, type Voice } from "@/audio/soundscape";
 
@@ -62,10 +62,11 @@ export const HELI_SOUNDS: readonly string[] = [AUDIO.heliApproach, AUDIO.heliLoo
  * The mix. The files are levelled (scripts/build-audio.mjs: one-shots ≈ −14 LUFS momentary peak, threat pulses −24 LUFS and the waiting
  * helicopter −20 LUFS integrated, true peak ≤ −1 dBTP); these gains place them against each other and under the voice.
  */
-export const MIX: Record<Bus, number> = { music: 0.32, threat: 0.7, heli: 0.8, fx: 1, voice: 1 };
+export const MIX: Record<Bus, number> = { music: 0.32, threat: 1, heli: 0.8, fx: 1, voice: 1 };
 /** Per sound, on its bus (linear). */
 export const GAIN = {
-  threat: 1, heliLoop: 0.7, heliApproach: 0.9, heliSuccess: 1, captured: 1, safeDoor: 1, zombieNear: 0.8, revealed: 0.75, checkpoint: 0.7,
+  // Threat pulse ≈ +5 dB after the field test (bus 0.7 → 1, pulse 1 → 1.25; the files peak at −4.8 dBTP or lower, the limiter guards the sum).
+  threat: 1.25, heliLoop: 0.7, heliApproach: 0.9, heliSuccess: 1, captured: 1, safeDoor: 1, zombieNear: 0.8, revealed: 0.75, checkpoint: 0.7,
   // The operator's lines −2.5 dB after the field test (the radio static was felt too loud; the files also have it lowered between the words).
   voice: 0.75,
 } as const;
@@ -234,7 +235,7 @@ export class MatchAudio {
   /** The operator's recorded lines (one at a time). */
   readonly radio: RadioVoices;
 
-  constructor(private readonly s: Soundscape, private readonly clock: Clock, random: () => number = Math.random) {
+  constructor(private readonly s: Soundscape, private readonly clock: Clock, private readonly random: () => number = Math.random) {
     this.threat = new ThreatGate(AUDIO.threat.length, random);
     this.radio = new RadioVoices(s, () => clock.nowS() * 1000);
   }
@@ -257,12 +258,10 @@ export class MatchAudio {
     const run = this.running(i);
     const a = this.threat.update(t, i.nearestM, i.activity, run);
     if (a && "start" in a) {
-      this.threatVoice?.stop(SOUND_RULES.threat.stopFadeS);
-      this.threatVoice = this.s.loop(AUDIO.threat[a.start], "threat", GAIN.threat, 0.12);
-      void this.threatVoice.start(SOUND_RULES.threat.fadeInS);
+      this.stopBursts(SOUND_RULES.threat.stopFadeS);
+      this.burst(a.start, SOUND_RULES.threat.fadeInS);
     } else if (a && "stop" in a) {
-      this.threatVoice?.stop(a.stop === "fade" ? SOUND_RULES.threat.fadeOutS : SOUND_RULES.threat.stopFadeS);
-      this.threatVoice = null;
+      this.stopBursts(a.stop === "fade" ? SOUND_RULES.threat.fadeOutS : SOUND_RULES.threat.stopFadeS);
     }
     if (this.near.update(t, i.nearestM, i.activity, run)) void this.s.play(AUDIO.zombieNear, "fx", GAIN.zombieNear);
     // Spoken distance as the nearest zombie closes in: 50, 40, 30, 20, 10 m, each once per approach (re-armed after it has dropped back).
@@ -383,8 +382,7 @@ export class MatchAudio {
   private stopLoops(fadeS: number): void {
     for (const h of this.waits) this.s.cancel(h);
     this.waits.clear();
-    this.threatVoice?.stop(fadeS);
-    this.threatVoice = null;
+    this.stopBursts(fadeS);
     this.heliLoop?.stop(fadeS);
     this.heliLoop = null;
     this.approach?.stop(fadeS);
@@ -432,6 +430,31 @@ export class MatchAudio {
     this.hidden = hidden;
     if (hidden) { this.stopLoops(0.2); this.radio.stop(); }
     else if (this.input) this.update(this.input);
+  }
+
+  private burstTimer: unknown = null;
+  /**
+   * One burst of the threat pulse: a random length, then a fade-out and a random silence, then the next burst with another variant, for
+   * as long as the threat period lasts (the gate decides that; stopBursts ends it).
+   */
+  private burst(variant: number, fadeInS: number): void {
+    const T = SOUND_RULES.threat;
+    this.threatVoice = this.s.loop(AUDIO.threat[variant], "threat", GAIN.threat, 0.12);
+    void this.threatVoice.start(fadeInS);
+    this.burstTimer = this.s.later(() => {
+      this.threatVoice?.stop(T.burstFadeOutS);
+      this.threatVoice = null;
+      this.burstTimer = this.s.later(() => {
+        this.burstTimer = null;
+        if (this.threat.active && this.running(this.input)) this.burst(pickVariant(variant, AUDIO.threat.length, this.random), T.burstFadeInS);
+      }, (T.burstFadeOutS + between(T.restS, this.random)) * 1000);
+    }, between(T.burstS, this.random) * 1000);
+  }
+
+  private stopBursts(fadeS: number): void {
+    if (this.burstTimer !== null) { this.s.cancel(this.burstTimer); this.burstTimer = null; }
+    this.threatVoice?.stop(fadeS);
+    this.threatVoice = null;
   }
 
   /** For tests: what is sounding. */

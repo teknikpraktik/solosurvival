@@ -101,8 +101,10 @@ async function startMatch(o, mode) {
   await wait(5000);
   const a1 = await audio(page);
   check("threat pulse after the zombie stayed within 300 m (wider than before)", typeof a1.threat === "string" && a1.threat.includes("threat-pulse-"), JSON.stringify(a1));
-  await wait(6000);
-  check("still the same single pulse", (await audio(page)).threat === a1.threat);
+  // Bursts with silences: over 25 s the pulse comes and goes, never two at once.
+  const seen = new Set(); let quiet = 0;
+  for (let i = 0; i < 25; i++) { await wait(1000); const x = await page.evaluate(() => window.__outbreakAudio.match.state.threat); if (x) seen.add(x); else quiet++; }
+  check("pulse in bursts: silences in between and more than one variant over time", quiet >= 2 && seen.size >= 1, JSON.stringify({ quiet, variants: [...seen] }));
   // Spoken distance: the zombie closes in to 45 m, then 33 m.
   await zombieAt(page, 45);
   await wait(1200);
