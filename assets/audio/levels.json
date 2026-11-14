@@ -522,6 +522,22 @@
       },
       "durationS": 0.836
     },
+    "theme-v2": {
+      "copied": true,
+      "I": -29.6,
+      "M": -26.9,
+      "TP": -15.4,
+      "bytes": 1242096,
+      "durationS": 63.48
+    },
+    "theme-v3": {
+      "copied": true,
+      "I": -29.7,
+      "M": -25.4,
+      "TP": -14.2,
+      "bytes": 1189080,
+      "durationS": 69.336
+    },
     "theme-outbreak": {
       "copied": true,
       "I": -16,

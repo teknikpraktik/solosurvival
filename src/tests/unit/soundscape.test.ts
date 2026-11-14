@@ -749,3 +749,103 @@ describe("threat pulse in bursts", () => {
     expect(t.ctx.live().filter((x) => AUDIO.threat.includes(x.buffer?.url as never))).toHaveLength(0);
   });
 });
+
+describe("music playlist (three themes)", () => {
+  async function playlist(random: () => number = Math.random) {
+    const f = fakeEnv(DUR);
+    const l: Levels = { on: true, music: 1, fx: 1, voice: 1 };
+    const { MUSIC_PLAYLIST } = await import("@/app/_client/audio");
+    const s = new Soundscape(f.env, { mix: MIX, duckTo: DUCK.to, duckAttackS: DUCK.attackS, duckReleaseS: DUCK.releaseS, levels: () => l }, { ...MUSIC_PLAYLIST, random });
+    s.unlock();
+    return { ...f, s, l, P: MUSIC_PLAYLIST };
+  }
+  const playingEl = (t: { media: { paused: boolean }[] }) => t.media.find((m) => !m.paused) as unknown as { currentTime: number } | undefined;
+  /** Moves the playing pass to just before its end (the fake elements play in real time otherwise). */
+  const nearEnd = (t: Awaited<ReturnType<typeof playlist>>, beforeS: number) => {
+    const url = t.s.music.track!;
+    const tr = t.P.tracks.find((x) => x.url === url)!;
+    playingEl(t)!.currentTime = (tr.endS ?? 60) - beforeS;
+  };
+
+  it("theme-outbreak opens the app; on the menu each next pass is a random other theme (crossfaded), never the same twice in a row", async () => {
+    const t = await playlist();
+    t.s.music.want(true);
+    await t.advance(500);
+    expect(t.s.music.history).toEqual([AUDIO.music]);
+    for (let k = 0; k < 12; k++) { nearEnd(t, t.P.crossfadeS + 0.5); await t.advance(5000); }
+    const h = t.s.music.history;
+    expect(h.length).toBe(13);
+    for (let k = 1; k < h.length; k++) expect(h[k]).not.toBe(h[k - 1]);
+    expect(new Set(h)).toEqual(new Set([AUDIO.music, AUDIO.musicV2, AUDIO.musicV3]));
+    expect(t.media.filter((m) => !m.paused)).toHaveLength(1);
+  });
+
+  it("the quieter themes are lifted (about 14 dB) to sit with theme-outbreak", async () => {
+    const t = await playlist(() => 0); // the next pass after the first is theme-v2
+    t.s.music.want(true);
+    await t.advance(3500);
+    nearEnd(t, t.P.crossfadeS + 0.5);
+    await t.advance(6000);
+    expect(t.s.music.track).toBe(AUDIO.musicV2);
+    const g = (t.s.music as unknown as { els: { el: { paused: boolean }; gain: FakeGain }[] }).els.find((e) => !e.el.paused)!.gain.gain.target;
+    expect(g).toBeCloseTo(10 ** (13.6 / 20), 1);
+  });
+
+  it("during a match: the pass ends with a fade-out, a random silence (20–60 s), then a random other theme, and so on", async () => {
+    const t = await playlist();
+    t.s.music.want(true);
+    await t.advance(1000);
+    t.s.music.setRepeat(false); // the match starts
+    nearEnd(t, 2.6);
+    await t.advance(3500);
+    expect(t.s.music.playing).toBe(false); // the pass is over
+    await t.advance(19_000);
+    expect(t.s.music.playing).toBe(false); // at least 20 s of silence
+    await t.advance(42_000);
+    expect(t.s.music.playing).toBe(true); // at most 60 s
+    expect(t.s.music.history.length).toBe(2);
+    expect(t.s.music.history[1]).not.toBe(t.s.music.history[0]);
+    // And again.
+    nearEnd(t, 1);
+    await t.advance(2000);
+    await t.advance(61_000);
+    expect(t.s.music.history.length).toBe(3);
+  });
+
+  it("the match ends during a silence: the music comes back at once; leaving or muting cancels a pending pass", async () => {
+    const t = await playlist();
+    t.s.music.want(true);
+    await t.advance(500);
+    t.s.music.setRepeat(false);
+    nearEnd(t, 0.5);
+    await t.advance(1500);
+    expect(t.s.music.playing).toBe(false);
+    t.s.music.setRepeat(true); // the ending's sounds are over
+    await t.advance(500);
+    expect(t.s.music.playing).toBe(true);
+    // Silence again, then the music is no longer wanted (test page): nothing comes later.
+    t.s.music.setRepeat(false);
+    nearEnd(t, 0.5);
+    await t.advance(1500);
+    t.s.music.want(false);
+    await t.advance(70_000);
+    expect(t.s.music.playing).toBe(false);
+  });
+
+  it("hidden during a silence: no pass starts while hidden; back in front, a new silence then the next pass", async () => {
+    const t = await playlist();
+    t.s.music.want(true);
+    await t.advance(500);
+    t.s.music.setRepeat(false);
+    nearEnd(t, 0.5);
+    await t.advance(1500);
+    t.s.setSuppressed(true);
+    await t.advance(70_000);
+    expect(t.s.music.playing).toBe(false);
+    t.s.setSuppressed(false);
+    await t.advance(500);
+    expect(t.s.music.playing).toBe(false); // not at once: a new silence
+    await t.advance(61_000);
+    expect(t.s.music.playing).toBe(true);
+  });
+});

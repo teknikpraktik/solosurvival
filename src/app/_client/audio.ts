@@ -3,7 +3,7 @@ import type { GameMode } from "@/engine/objectives/objectives";
 import type { SoundEvent } from "@/play/session";
 import { Cooldown, NearGate, SOUND_RULES, ThreatGate, between, pickVariant } from "@/play/sound-rules";
 import { VOICE_COUNTDOWN_M, nextCountdown, type CountdownStep } from "@/play/countdown";
-import { Soundscape, type Bus, type Levels, type LoopVoice, type PlayResult, type SoundscapeEnv, type Voice } from "@/audio/soundscape";
+import { Soundscape, type Bus, type Levels, type LoopVoice, type MusicSource, type MusicTrack, type PlayResult, type SoundscapeEnv, type Voice } from "@/audio/soundscape";
 
 /**
  * OUTBREAK's soundscape (adult app only; Mini Outbreak has its own sound pack and never loads this file). Menu music, threat pulses,
@@ -12,6 +12,8 @@ import { Soundscape, type Bus, type Levels, type LoopVoice, type PlayResult, typ
  */
 export const AUDIO = {
   music: "/audio/theme-outbreak.mp3",
+  musicV2: "/audio/theme-v2.mp3",
+  musicV3: "/audio/theme-v3.mp3",
   threat: ["/audio/threat-pulse-1.mp3", "/audio/threat-pulse-2.mp3", "/audio/threat-pulse-3.mp3", "/audio/threat-pulse-4.mp3"],
   captured: "/audio/captured.mp3",
   safeDoor: "/audio/safe-door-close.mp3",
@@ -503,17 +505,30 @@ let scape: Soundscape | null = null;
 let match: MatchAudio | null = null;
 /** The app's one soundscape (browser only). */
 export function soundscape(): Soundscape {
-  scape ??= new Soundscape(browserEnv(), { mix: MIX, duckTo: DUCK.to, duckAttackS: DUCK.attackS, duckReleaseS: DUCK.releaseS, levels: () => readLevels() }, {
-    url: AUDIO.music,
-    // The file starts with 4.2 s of silence and fades out from about 207.5 s to 210.6 s (measured; see assets/audio/README.md).
-    startS: 4,
-    endS: 210.6,
-    crossfadeS: 3.5,
-    fadeInS: 3,
-    fadeOutS: 2.5,
-  });
+  scape ??= new Soundscape(browserEnv(), { mix: MIX, duckTo: DUCK.to, duckAttackS: DUCK.attackS, duckReleaseS: DUCK.releaseS, levels: () => readLevels() }, MUSIC_PLAYLIST);
   return scape;
 }
+
+/**
+ * The music: theme-outbreak opens the app; after that every pass is a random theme, never the one just heard. Start and end are where the
+ * music really is (measured, see assets/audio/README.md). theme-v2 and theme-v3 are about 14 dB quieter than theme-outbreak (−29.7 against
+ * −16 LUFS integrated) and are lifted here instead of re-encoded; they also stop abruptly, so a pass that is not crossfaded fades out
+ * over its last `endFadeS`.
+ */
+export const MUSIC_TRACKS: MusicTrack[] = [
+  { url: AUDIO.music, startS: 4, endS: 210.6, gain: 1 }, // 4.2 s of silence first, own fade-out 207.5–210.6 s
+  { url: AUDIO.musicV2, startS: 2.1, endS: 62, gain: 10 ** (13.6 / 20) }, // −29.6 → −16 LUFS (peak −15.4 → −1.8 dBFS)
+  { url: AUDIO.musicV3, startS: 6.6, endS: 66.5, gain: 10 ** (13.2 / 20) }, // −29.7 → −16.5 LUFS (peak −14.2 → −1.0 dBFS)
+];
+export const MUSIC_PLAYLIST: MusicSource = {
+  tracks: MUSIC_TRACKS,
+  crossfadeS: 3.5,
+  fadeInS: 3,
+  fadeOutS: 2.5,
+  endFadeS: 2.5,
+  // During a match: after a theme has ended, a random silence of 20–60 s before the next random theme.
+  gapS: [20, 60],
+};
 export function matchAudio(): MatchAudio {
   match ??= new MatchAudio(soundscape(), { nowS: () => Date.now() / 1000 });
   return match;
