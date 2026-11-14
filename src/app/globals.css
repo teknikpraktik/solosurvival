@@ -692,3 +692,14 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 @media (max-width: 359px) { .pvregen { font-size: .85rem; padding: 0 8px; } .pvactions .pvstart { font-size: 1.1rem; } }
 .pvactions .pvstart { min-width: 0; padding-left: 8px; padding-right: 8px; }
 @media (max-width: 380px) { .pvactions .pvstart { font-size: 1.15rem; letter-spacing: .08em; } .pvregen { font-size: .88rem; padding: 0 10px; } }
+/* Start page: the title and buttons sit in the upper part, so the two figures in the lower corners (their faces) stay in view; the
+   picture reaches the screen's real bottom edge (large viewport height: no dark band on an iPhone home-screen app), and the darkening
+   is behind the text only, not over the figures. */
+.center.hero { justify-content: flex-start; min-height: 100lvh; gap: 10px; padding-top: calc(max(20px, env(safe-area-inset-top)) + 5vh);
+  background: linear-gradient(#0b0f1426 0%, #0b0f1480 14%, #0b0f14a8 34%, #0b0f1499 52%, #0b0f1426 66%, #0b0f1400 80%, #0b0f1440 100%), url("/img/hero-v2.jpg") 50% 50% / cover no-repeat, url("/img/hero.svg") center / cover no-repeat; background-color: #0b0f14; }
+.hero::after { background: radial-gradient(140% 100% at 50% 40%, #0000 60%, #0008 100%); }
+.herologo { width: clamp(72px, 22vw, 100px); }
+.hero .sub { margin-bottom: 14px; }
+.hero .homemain { padding: 15px; }
+.homesec { gap: 6px; margin-top: 2px; }
+.hero .homesec .btn { padding: 10px; }
