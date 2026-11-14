@@ -8,7 +8,7 @@ import { fakeEnv, flush, type FakeGain } from "./audio-fakes";
 const DUR: Record<string, number> = {
   ...Object.fromEntries(AUDIO.threat.map((u) => [u, 15])),
   [AUDIO.heliLoop]: 30, [AUDIO.heliApproach]: 25, [AUDIO.heliSuccess]: 7, [AUDIO.captured]: 4, [AUDIO.safeDoor]: 5,
-  [AUDIO.zombieNear]: 3, [AUDIO.revealed]: 2, [AUDIO.checkpoint]: 2, [AUDIO.radio]: 0.49,
+  [AUDIO.zombieNear]: 3, [AUDIO.revealed]: 2, [AUDIO.checkpoint]: 2,
   [VOICE.keepMoving.url]: 8, [VOICE.safehouseOnMap.url]: 8, [VOICE.checkpointSecured.url]: 5, [VOICE.getToSafehouse.url]: 7,
   [VOICE.rescueInbound.url]: 6, [VOICE.getToHelicopter.url]: 7, [VOICE.liftingOff.url]: 5, [VOICE.insideSafehouse.url]: 7,
 };
@@ -312,7 +312,7 @@ describe("match sounds", () => {
     expect(n(AUDIO.captured)).toBe(1);
   });
 
-  it("the revealed warning waits until the operator has spoken (the hunt begins with \"Game on\")", async () => {
+  it("the revealed warning waits until the operator's line has ended (the hunt begins with the opening line)", async () => {
     const t = setup();
     t.s.unlock();
     await run(t, 1);
@@ -374,26 +374,25 @@ describe("match sounds", () => {
 });
 
 describe("operator's radio lines", () => {
-  const spoken = (t: ReturnType<typeof setup>) => { const said: string[] = []; t.m.speak = (l) => { said.push(l); }; return said; };
+  /** The app has no synthetic voice: the match audio has no way to speak at all. */
+  const noSynthVoice = (t: ReturnType<typeof setup>) => expect("speak" in t.m).toBe(false);
   const live = (t: ReturnType<typeof setup>) => t.ctx.live().map((x) => x.buffer?.url).filter((u) => Object.values(VOICE).some((v) => v.url === u));
   /** Samples the voice bus every 100 ms for `ms`: the most lines heard at the same moment. */
   async function maxTogether(t: ReturnType<typeof setup>, ms: number) { let m = 0; for (let i = 0; i < ms; i += 100) { await t.advance(100); m = Math.max(m, live(t).length); } return m; }
 
-  it("each mode opens with its line when the match starts; Checkpoints keeps the spoken \"Game on\"", async () => {
+  it("each mode opens with its recorded line when the match starts; Checkpoints has none (and nothing synthetic either)", async () => {
     for (const [mode, url] of [["survival", VOICE.keepMoving.url], ["escape", VOICE.safehouseOnMap.url], ["mission", null]] as const) {
       const t = setup();
       t.s.unlock();
-      const said = spoken(t);
+      noSynthVoice(t);
       await t.m.onEvent({ type: "match_started", id: "m1", mode });
       expect(live(t), mode).toEqual(url ? [url] : []);
-      expect(said, mode).toEqual(url ? [] : ["Game on"]);
     }
   });
 
-  it("checkpoint: \"Checkpoint secured\", the last one \"Get to the safe house\" instead; no chime and no second spoken line", async () => {
+  it("checkpoint: \"Checkpoint secured\", the last one \"Get to the safe house\" instead; no chime", async () => {
     const t = setup();
     t.s.unlock();
-    const said = spoken(t);
     await run(t, 1);
     await t.m.onEvent({ type: "checkpoint", last: false, stale: false });
     expect(live(t)).toEqual([VOICE.checkpointSecured.url]);
@@ -401,19 +400,17 @@ describe("operator's radio lines", () => {
     await t.m.onEvent({ type: "checkpoint", last: true, stale: false });
     expect(live(t)).toEqual([VOICE.getToSafehouse.url]);
     expect(t.ctx.sources.filter((x) => x.buffer?.url === AUDIO.checkpoint)).toHaveLength(0);
-    expect(said).toEqual([]);
   });
 
-  it("a missing recording changes nothing in the game: the chime and the spoken line take over", async () => {
+  it("a missing recording changes nothing in the game: the checkpoint chime takes over; nothing synthetic replaces a line", async () => {
     const t = setup();
     const fetch0 = t.env.fetchBytes;
     t.env.fetchBytes = async (u) => { if (u.includes("checkpoint-secured") || u.includes("keep-moving")) throw new Error("404"); return fetch0(u); };
     t.s.unlock();
-    const said = spoken(t);
+    noSynthVoice(t);
     expect(await t.m.onEvent({ type: "match_started", id: "m1", mode: "survival" })).toBe("missing");
     await run(t, 1, { mode: "survival" });
     expect(await t.m.onEvent({ type: "checkpoint", last: false, stale: false })).toBe("missing");
-    expect(said).toEqual(["Game on", "Checkpoint"]);
     expect(t.ctx.sources.filter((x) => x.buffer?.url === AUDIO.checkpoint)).toHaveLength(1);
     expect(t.s.ducked).toBe(false); // no duck left behind by a line that never played
   });
@@ -512,9 +509,7 @@ describe("operator's radio lines", () => {
     expect(live(t)).toEqual([]);
     const u = setup({ on: false });
     u.s.unlock();
-    const said = spoken(u);
     expect(await u.m.onEvent({ type: "match_started", id: "m1", mode: "survival" })).toBe("muted");
-    expect(said).toEqual([]);
     expect(u.ctx.sources).toHaveLength(0);
   });
 

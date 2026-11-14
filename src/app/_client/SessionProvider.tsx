@@ -6,7 +6,7 @@ import { tryOpenDb } from "@/play/idb";
 import { PlaySession } from "@/play/session";
 import { IdbTileCache } from "@/play/tile-cache";
 import type { Db } from "@/play/idb";
-import { cancelPendingSpeech, playCue, speak } from "./cues";
+import { playCue } from "./cues";
 import { matchAudio, soundscape } from "./audio";
 import { openFreeMapFetcher } from "@/geo/blockers";
 import { createBrowserCompass } from "./compass";
@@ -43,15 +43,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         traceEnabled,
         jumpScares: () => true, // hidden feature: always on (never on Bike, decided by the session)
         // Cues vibrate and speak; every sound file comes from the soundscape (onSound), so nothing is heard twice.
-        // Checkpoints and the helicopter landing are announced by the operator's recorded lines (MatchAudio), which fall back to the spoken
-        // "Checkpoint" / "Run!" only when a recording cannot play.
-        onCue: (c, text) => {
-          void playCue(c);
-          if (c === "sprint" && !/^Extraction open/.test(text)) setTimeout(() => speak("Run!"), 250); // zombie sprint: a spoken "Run!"
-        },
+        // Cues only vibrate. Every sound, including everything the operator says, is a recorded file played by the soundscape (onSound).
+        onCue: (c) => { void playCue(c); },
         // What came of each event sound goes to the field log (the old checkpoint chime was heard "only sometimes" in the field).
         onSound: (e) => {
-          if (e.type === "finished") cancelPendingSpeech();
           void matchAudio().onEvent(e).then((r) => { if (r !== null) session?.fieldLog?.add(Date.now(), "sound", { event: e.type, result: r, stale: "stale" in e ? e.stale : false, voice: matchAudio().radio.log.at(-1) ?? null, ctx: soundscape().context()?.state }); }, () => undefined);
         },
         wakeLock: "wakeLock" in navigator ? { request: () => (navigator as Navigator & { wakeLock: { request(t: "screen"): Promise<{ release(): Promise<void> }> } }).wakeLock.request("screen") } : undefined,
@@ -67,7 +62,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // Sound first: nothing old may play when the session works out the time away.
       soundscape().setSuppressed(document.hidden);
       matchAudio().setHidden(document.hidden);
-      if (document.hidden) cancelPendingSpeech();
       session?.onVisibility(document.hidden);
     };
     const hide = () => session?.onPageHide();

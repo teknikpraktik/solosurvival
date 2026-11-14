@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DIFFICULTY_LABEL, MODE_LABEL, fmtKm, fmtTime, objectiveLabel } from "../_client/format";
 import { useSessionCtx, useSessionView } from "../_client/SessionProvider";
-import { cuesEnabled, playCue, setCuesEnabled, speak, unlockAudio, type CountdownLine } from "../_client/cues";
-import { COUNTDOWN_START_M, nextCountdown, type CountdownStep } from "@/play/countdown";
+import { cuesEnabled, playCue, setCuesEnabled, unlockAudio } from "../_client/cues";
+import { COUNTDOWN_START_M } from "@/play/countdown";
 import { APPROACH_COOLDOWN_S, nextApproaching, nextClose, nextGoalClose, viewProfile } from "@/play/camera-view";
 import { matchAudio } from "../_client/audio";
 import { Modal } from "../_client/Modal";
@@ -112,7 +112,8 @@ export default function Play() {
   const goalM = goal ? (session?.live?.distanceTo(goal) ?? null) : null;
   const wantGoalClose = nextGoalClose(goalClose, goalM, vp);
   useEffect(() => { if (wantGoalClose !== goalClose) setGoalClose(wantGoalClose); }, [wantGoalClose, goalClose]);
-  // "Zombies approaching": spoken once when the nearest zombie comes within 200 m, armed again after it has been beyond 260 m (and not more often than the cooldown).
+  // Zombies approaching: a vibration once when the nearest zombie comes within 200 m, armed again after it has been beyond 260 m (and not
+  // more often than the cooldown). Nothing is spoken: the app has no synthetic voice; the threat pulse and the close-zombie sound are heard.
   const [approaching, setApproaching] = useState(false);
   const lastApproach = useRef(-Infinity);
   const wantApproaching = nextApproaching(approaching, nearestM);
@@ -122,27 +123,12 @@ export default function Play() {
     const now = Date.now();
     if (wantApproaching && now - lastApproach.current >= APPROACH_COOLDOWN_S * 1000) {
       lastApproach.current = now;
-      playCue("alert"); // vibration; "alert" makes no sound of its own
-      speak("Zombies approaching");
+      playCue("alert"); // vibration only
     }
   }, [wantApproaching, approaching]);
-  // Countdown: the distance to the nearest zombie is spoken at 100, 50, 40, 30, 20 and 10 m as it closes in (eyes on the road, not the screen).
-  const countdown = useRef<CountdownStep | null>(null);
-  useEffect(() => {
-    const r = nextCountdown(countdown.current, nearestM);
-    countdown.current = r.last;
-    if (r.say !== null) speak(String(r.say) as CountdownLine);
-  }, [nearestM]);
   const zombieClose = nearestM !== null && nearestM <= COUNTDOWN_START_M;
   // Caution (amber) before danger (red): a zombie within twice the countdown distance.
   const zombieWarn = nearestM !== null && nearestM <= 2 * COUNTDOWN_START_M;
-  // Captured: spoken a moment after the scream starts, when the scare screen opens.
-  const capturedNow = m?.phase === "finished" && m.result === "infected";
-  useEffect(() => {
-    if (!capturedNow || session?.scareShown) return;
-    const t = setTimeout(() => speak("Captured"), 700);
-    return () => clearTimeout(t);
-  }, [capturedNow]);
   const live = session?.live ?? null;
   const markers = useMemo<MapMarker[]>(() => {
     const o = m?.proposal;

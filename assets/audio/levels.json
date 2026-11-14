@@ -211,25 +211,6 @@
       },
       "durationS": 2
     },
-    "radio-open": {
-      "measure": "M",
-      "target": -16,
-      "gainDb": -0.2,
-      "limiter": false,
-      "before": {
-        "I": -15.8,
-        "M": -15.8,
-        "TP": -7.6,
-        "bytes": 93486
-      },
-      "after": {
-        "I": -16.4,
-        "M": -16.4,
-        "TP": -7.6,
-        "bytes": 8832
-      },
-      "durationS": 0.487
-    },
     "safe-door-close": {
       "measure": "M",
       "target": -17,

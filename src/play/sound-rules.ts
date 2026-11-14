@@ -29,14 +29,6 @@ export const SOUND_RULES = {
   near: { cooldownS: 45, maxPerMatch: 8 },
   /** "Position revealed": at most this often. */
   revealed: { cooldownS: 60 },
-  radio: {
-    /** The radio click comes before the operator's voice; the voice starts this long after it. */
-    leadMs: 450,
-    /** After a spoken line the channel counts as open this long: the next line comes without a new click. */
-    channelOpenS: 8,
-    /** A delayed line later than this (the phone was busy or in the background) is dropped, not said late. */
-    maxLateMs: 1500,
-  },
   heli: { loopFadeInS: 3, approachFadeOutS: 3, loopStopS: 0.8 },
 } as const;
 

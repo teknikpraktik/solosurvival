@@ -20,7 +20,6 @@ export const AUDIO = {
   zombieNear: "/audio/zombie-near.mp3",
   revealed: "/audio/position-revealed.mp3",
   checkpoint: "/audio/checkpoint-reached.mp3",
-  radio: "/audio/radio-open.mp3",
 } as const;
 
 /**
@@ -42,7 +41,7 @@ export type VoiceLine = keyof typeof VOICE;
 
 /** Every match: decoded while the player sets up the match. */
 export const MATCH_SOUNDS: readonly string[] = [
-  ...AUDIO.threat, AUDIO.captured, AUDIO.safeDoor, AUDIO.zombieNear, AUDIO.revealed, AUDIO.checkpoint, AUDIO.radio,
+  ...AUDIO.threat, AUDIO.captured, AUDIO.safeDoor, AUDIO.zombieNear, AUDIO.revealed, AUDIO.checkpoint,
   VOICE.safehouseOnMap.url, VOICE.checkpointSecured.url, VOICE.getToSafehouse.url, VOICE.insideSafehouse.url, VOICE.keepMoving.url,
 ];
 /** Survival only (larger files): decoded when a Survival match is chosen or starts. */
@@ -55,10 +54,10 @@ export const HELI_SOUNDS: readonly string[] = [AUDIO.heliApproach, AUDIO.heliLoo
 export const MIX: Record<Bus, number> = { music: 0.32, threat: 0.7, heli: 0.8, fx: 1, voice: 1 };
 /** Per sound, on its bus (linear). */
 export const GAIN = {
-  threat: 1, heliLoop: 0.7, heliApproach: 0.9, heliSuccess: 1, captured: 1, safeDoor: 1, zombieNear: 0.8, revealed: 0.75, checkpoint: 0.7, radio: 0.55,
+  threat: 1, heliLoop: 0.7, heliApproach: 0.9, heliSuccess: 1, captured: 1, safeDoor: 1, zombieNear: 0.8, revealed: 0.75, checkpoint: 0.7,
   voice: 1,
 } as const;
-/** Under the voice, music/threat/helicopter go down to this (≈ −10 dB). */
+/** Under the operator's recorded lines, music/threat/helicopter go down to this (≈ −10 dB). */
 export const DUCK = { to: 0.32, attackS: 0.15, releaseS: 0.9 };
 
 const MASTER_KEY = "outbreak.cues"; // the existing on/off choice (shared with the speech player), "off" = muted
@@ -92,9 +91,6 @@ export class RadioVoices {
   private cur: { line: VoiceLine; token: number; final: boolean; voice: Voice | null } | null = null;
   private pending: { line: VoiceLine; at: number; final: boolean; resolve: (r: PlayResult) => void } | null = null;
   private token = 0;
-  private idle = new Set<() => void>();
-  /** Stops the speech synthesis (and a line waiting for its radio click) when a recorded line starts. Set by cues.ts. */
-  interrupt: (() => void) | null = null;
   /** Lines started, for the field log and tests. */
   readonly log: VoiceLine[] = [];
 
@@ -107,8 +103,6 @@ export class RadioVoices {
   get busy(): boolean { return this.cur !== null; }
   get speaking(): VoiceLine | null { return this.cur?.line ?? null; }
   get queued(): VoiceLine | null { return this.pending?.line ?? null; }
-  /** Called once the channel is free (for speech that waited). */
-  onIdle(fn: () => void): () => void { this.idle.add(fn); return () => this.idle.delete(fn); }
 
   /**
    * Says a line. `supersedes`: lines that are no longer true once this one is (a playing or waiting one is dropped). Resolves with what
@@ -130,7 +124,6 @@ export class RadioVoices {
   private async start(line: VoiceLine, final: boolean): Promise<PlayResult> {
     const token = ++this.token;
     this.cur = { line, token, final, voice: null };
-    try { this.interrupt?.(); } catch { /* speech is optional */ }
     this.s.setDuck("voice", true);
     this.log.push(line);
     const r = await this.s.play(VOICE[line].url, "voice", GAIN.voice, 1500, () => this.ended(token));
@@ -158,7 +151,6 @@ export class RadioVoices {
   private releaseIfIdle(): void {
     if (this.cur) return;
     this.s.setDuck("voice", false);
-    for (const fn of [...this.idle]) { try { fn(); } catch { /* ignored */ } }
   }
 
   private dropPending(): void { const p = this.pending; this.pending = null; p?.resolve("suppressed"); }
@@ -210,8 +202,6 @@ export class MatchAudio {
 
   /** The operator's recorded lines (one at a time). */
   readonly radio: RadioVoices;
-  /** Speech synthesis, for the lines that have no recording (Checkpoints start) and as the fallback when a recording cannot play. */
-  speak: ((line: "Game on" | "Checkpoint" | "Run!") => void) | null = null;
 
   constructor(private readonly s: Soundscape, private readonly clock: Clock, random: () => number = Math.random) {
     this.threat = new ThreatGate(AUDIO.threat.length, random);
@@ -266,10 +256,10 @@ export class MatchAudio {
     if (e.stale || this.hidden || this.done) return Promise.resolve("suppressed");
     const res = (p: Promise<{ result: PlayResult }>) => p.then((r) => r.result);
     switch (e.type) {
-      // The radio line replaces the old chime and the spoken "Checkpoint"; they come back only if the line cannot play.
+      // The radio line replaces the old chime; the chime comes back only if the line cannot play (missing or broken file).
       case "checkpoint":
         return this.radio.say(e.last ? "getToSafehouse" : "checkpointSecured").then((r) => {
-          if (failed(r)) { void this.s.play(AUDIO.checkpoint, "fx", GAIN.checkpoint); this.speak?.("Checkpoint"); }
+          if (failed(r)) void this.s.play(AUDIO.checkpoint, "fx", GAIN.checkpoint);
           return r;
         });
       case "revealed": return this.revealed.take(this.clock.nowS()) ? this.afterVoice(() => res(this.s.play(AUDIO.revealed, "fx", GAIN.revealed))) : Promise.resolve("suppressed");
@@ -283,14 +273,14 @@ export class MatchAudio {
         });
       // The loop follows the phase (see update), from the same tick as the landed card. "Rescue inbound" is no longer true once it has landed.
       case "heli_landed":
-        return this.radio.say("getToHelicopter", { supersedes: ["rescueInbound"] }).then((r) => { if (failed(r)) this.speak?.("Run!"); return r; });
+        return this.radio.say("getToHelicopter", { supersedes: ["rescueInbound"] });
     }
   }
 
   private waits = new Set<unknown>();
   /**
-   * Plays a warning after the operator's voice (and its radio click) instead of over it: the hunt begins in the very first second, together
-   * with "Game on". Given up after a few seconds, or if the match ends or the app is hidden meanwhile.
+   * Plays a warning after the operator's recorded line instead of over it: the hunt begins in the very first second, together with the
+   * opening line. Given up after a few seconds, or if the match ends or the app is hidden meanwhile.
    */
   private afterVoice(fn: () => Promise<PlayResult>): Promise<PlayResult> {
     if (!this.s.ducked) return fn();
@@ -341,12 +331,12 @@ export class MatchAudio {
     this.threat.update(this.clock.nowS(), null, "walk", false);
   }
 
-  /** A match begins (after START, not on the setup step): the opening line for its mode. */
+  /** A match begins (after START, not on the setup step): the opening line for its mode. Checkpoints has no recorded opening line. */
   private started(id: string, mode: GameMode): Promise<PlayResult | null> {
     if (id !== this.matchId) this.newMatch({ id, mode });
     if (this.hidden) return Promise.resolve("suppressed");
-    if (mode === "mission") { this.speak?.("Game on"); return Promise.resolve(null); }
-    return this.radio.say(mode === "survival" ? "keepMoving" : "safehouseOnMap").then((r) => { if (failed(r)) this.speak?.("Game on"); return r; });
+    if (mode === "mission") return Promise.resolve(null);
+    return this.radio.say(mode === "survival" ? "keepMoving" : "safehouseOnMap");
   }
 
   private newMatch(i: Pick<MatchSoundInput, "id" | "mode">): void {

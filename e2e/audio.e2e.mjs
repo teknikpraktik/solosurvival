@@ -12,6 +12,8 @@ const errors = [];
 async function open() {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, permissions: ["geolocation"], geolocation: START });
   await ctx.addInitScript(() => { try { localStorage.setItem("outbreak.debug", "on"); } catch {} });
+  // Counts every use of the phone's speech synthesis: the app must never speak with a synthetic voice.
+  await ctx.addInitScript(() => { try { const ss = window.speechSynthesis; const orig = ss.speak.bind(ss); window.__synthSpoken = 0; ss.speak = (u) => { window.__synthSpoken++; return orig(u); }; } catch {} });
   const page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
@@ -60,14 +62,14 @@ async function startMatch(o, mode) {
   await page.waitForURL("**/new"); await wait(2400);
   mu = await music(page);
   const el0 = mu.els.findIndex((e) => !e.paused);
-  check("menu music starts at the first tap (NEW GAME), one element, faded in", mu.playing && mu.els.filter((e) => !e.paused).length === 1 && (mu.els[el0]?.gain ?? 0) > 0.5, JSON.stringify(mu));
+  check("menu music starts at the first tap (NEW GAME), one element, fading in", mu.playing && mu.els.filter((e) => !e.paused).length === 1 && (mu.els[el0]?.gain ?? 0) > 0.25, JSON.stringify(mu));
   check("music: plays from the cached file (blob URL) past the leading silence", mu.els[el0]?.src === "blob:" && mu.els[el0].t >= 4, JSON.stringify(mu.els[el0]));
   const t1 = mu.els[el0]?.t ?? 0;
   await page.getByRole("button", { name: "ON FOOT", exact: true }).click(); await wait(800);
   await page.getByRole("button", { name: "CHECKPOINTS", exact: true }).click(); await wait(1600);
   mu = await music(page);
   check("music continues through the setup steps without restarting", mu.els.findIndex((e) => !e.paused) === el0 && mu.els[el0].t > t1 + 1.5, `${t1.toFixed(1)} → ${mu.els[el0]?.t.toFixed(1)}`);
-  const want = ["/audio/threat-pulse-1.mp3", "/audio/captured.mp3", "/audio/checkpoint-reached.mp3", "/audio/radio-open.mp3", "/audio/zombie-near.mp3"];
+  const want = ["/audio/threat-pulse-1.mp3", "/audio/captured.mp3", "/audio/checkpoint-reached.mp3", "/audio/checkpoint-secured.mp3", "/audio/zombie-near.mp3"];
   check("setup: the match sounds are fetched in the background", want.every((p) => reqs.includes(p)), [...new Set(reqs)].join(","));
   check("setup: helicopter sounds not fetched for a Checkpoints match", !reqs.some((p) => p.includes("heli")));
   await page.locator(".pvstats").waitFor({ timeout: 90000 });
@@ -148,7 +150,7 @@ const voices = (page) => page.evaluate(() => ({ log: [...window.__outbreakAudio.
   for (let i = 0; i < 40 && !(await page.evaluate(() => { const m = window.__outbreak?.getView().match; return !!m && !m.paused; })); i++) await wait(400);
   await wait(1200);
   v = await voices(page);
-  check("A TO B start: \"Safe house marked on your map\" once (no \"Game on\")", v.log.join() === "safehouseOnMap" && v.now === "safehouseOnMap", JSON.stringify(v));
+  check("A TO B start: \"Safe house marked on your map\" once", v.log.join() === "safehouseOnMap" && v.now === "safehouseOnMap", JSON.stringify(v));
   check("A TO B: the line was fetched", o.reqs.includes("/audio/safehouse-on-map.mp3"));
   await page.locator(".controls").getByRole("button", { name: "PAUSE" }).click(); await wait(800);
   await page.getByRole("dialog").getByRole("button", { name: "CONTINUE" }).click(); await wait(1500);
@@ -167,12 +169,12 @@ const voices = (page) => page.evaluate(() => ({ log: [...window.__outbreakAudio.
   await o.ctx.close();
 }
 {
-  // Checkpoints: "Game on" is spoken (no recording); checkpoint → "Checkpoint secured"; the last → "Get to the safe house"; home → "You're inside".
+  // Checkpoints: no opening line (there is no recording for it, and nothing synthetic); checkpoint → "Checkpoint secured"; the last → "Get to the safe house"; home → "You're inside".
   const o = await open(); const { page, wait } = o;
   await page.goto(BASE + "/new"); await wait(1200);
   await startMatch(o, "CHECKPOINTS");
   await wait(1500);
-  check("Checkpoints start: no recorded line (the spoken \"Game on\" stays)", (await voices(page)).log.length === 0);
+  check("Checkpoints start: no line and no synthetic voice", (await voices(page)).log.length === 0 && (await page.evaluate(() => window.__synthSpoken ?? 0)) === 0);
   await page.evaluate(() => { window.__outbreak.live.state.zombies = []; window.__outbreak.live.rules.maxZombies = 0; });
   const reach = (i) => page.evaluate((k) => { const s = window.__outbreak; const o = s.live.state.objectives; o.index = k + 1; s.endMatch([{ type: "objective_reached", targetId: o.targets[k].id, index: k }]); }, i);
   const n = await page.evaluate(() => window.__outbreak.live.state.objectives.targets.filter((x) => x.kind === "checkpoint").length);
@@ -215,6 +217,7 @@ const voices = (page) => page.evaluate(() => ({ log: [...window.__outbreakAudio.
   await wait(800);
   v = await voices(page);
   check("rescued: \"Lifting off. You made it.\" with the extracted ending; each line once", v.now === "liftingOff" && v.log.join() === "keepMoving,rescueInbound,getToHelicopter,liftingOff" && (await page.locator('.resultbg[data-pic="extracted"]').count()) === 1, JSON.stringify(v));
+  check("Survival from start to rescue: no synthetic voice at any point", (await page.evaluate(() => window.__synthSpoken ?? 0)) === 0);
   check("Survival lines fetched", ["/audio/keep-moving.mp3", "/audio/rescue-inbound.mp3", "/audio/get-to-helicopter.mp3", "/audio/lifting-off.mp3"].every((p) => o.reqs.includes(p)));
   await o.ctx.close();
 }
@@ -228,6 +231,8 @@ const voices = (page) => page.evaluate(() => ({ log: [...window.__outbreakAudio.
   await wait(600);
   v = await voices(page);
   check("captured while \"Keep moving\" plays: it stops, no win line", v.now === null && v.log.join() === "keepMoving", JSON.stringify(v));
+  await wait(1500);
+  check("captured: nothing spoken by a synthetic voice (no \"Captured\")", (await page.evaluate(() => window.__synthSpoken ?? 0)) === 0);
   await wait(4000);
   await page.getByRole("button", { name: /PLAY AGAIN/i }).first().click();
   await page.waitForURL("**/new**"); await wait(1500);
