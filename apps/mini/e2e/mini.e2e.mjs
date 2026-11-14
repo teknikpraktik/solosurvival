@@ -168,7 +168,7 @@ try {
   check("apple-web-app-titel", /apple-mobile-web-app-title" content="Mini Outbreak"/.test(html));
   const sw = await (await ctx.request.get(BASE + "/sw.js")).text();
   check("service worker med egna cachenamn", sw.includes('"mini-outbreak-static-v1"') && !sw.includes('"outbreak-static-v1"'));
-  for (const p of ["/img/jump.jpg", "/img/captured.jpg", "/img/hero.jpg", "/img/backdrop.jpg", "/audio/captured.mp3", "/audio/zombie-near.mp3", "/audio/threat-pulse-1.mp3", "/audio/theme-outbreak.mp3", "/audio/position-revealed.mp3", "/audio/jump-scream.wav", "/audio/captured-scream.wav"]) {
+  for (const p of ["/img/jump-v2.jpg", "/img/captured.jpg", "/img/hero.jpg", "/img/backdrop.jpg", "/audio/captured.mp3", "/audio/zombie-near.mp3", "/audio/threat-pulse-1.mp3", "/audio/theme-outbreak.mp3", "/audio/position-revealed.mp3", "/audio/jump-scream.wav", "/audio/captured-scream.wav"]) {
     check(`skräckresurs saknas: ${p}`, (await ctx.request.get(BASE + p)).status() === 404);
   }
   const dbs = await page.evaluate(async () => (await indexedDB.databases()).map((d) => d.name));

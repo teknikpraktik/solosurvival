@@ -393,7 +393,7 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 /* Darker behind the text (left and bottom) so the real text stays readable on any picture, also in daylight. */
 .imgcard::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, #0b0f14f0 0%, #0b0f14b8 42%, #0b0f1433 72%, #0b0f1400 100%), linear-gradient(0deg, #0b0f14cc 0%, #0b0f1400 55%); }
 .imgcard[data-card="foot"] .imgcard-bg { background-image: url("/img/card-foot.jpg"); --pos: 72% 45%; }
-.imgcard[data-card="bike"] .imgcard-bg { background-image: url("/img/card-bike.jpg"); --pos: 82% 45%; }
+.imgcard[data-card="bike"] .imgcard-bg { background-image: url("/img/card-bike-v2.jpg"); --pos: 82% 45%; }
 .imgcard[data-card="checkpoints"] .imgcard-bg { background-image: url("/img/card-checkpoints.jpg"); --pos: 68% 55%; }
 .imgcard[data-card="atob"] .imgcard-bg { background-image: url("/img/card-atob.jpg"); --pos: 82% 60%; }
 .imgcard[data-card="survival"] .imgcard-bg { background-image: url("/img/card-survival.jpg"); --pos: 72% 55%; }
