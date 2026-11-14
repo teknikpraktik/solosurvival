@@ -37,10 +37,11 @@ const place = (page, list) => page.evaluate((list) => {
 {
   const { ctx, page, fixes } = await play("SURVIVAL");
   check("START: straight into the game (no 'Ready to start' dialog, match running)", (await page.getByRole("dialog").count()) === 0 && (await page.getByRole("button", { name: "PAUSE" }).count()) === 1);
-  const lines = await page.locator(".hudbar > .line").count();
-  check("HUD: three rows on foot (mode/time, goal/zombie, distance/time on the left)", lines === 3, `${lines} rows`);
+  const lines = await page.locator(".hudgrid > .hudrow").count();
+  const tops = await page.locator(".hudgrid .hudrow.main > .hcell").evaluateAll((cs) => cs.map((c) => { const b = c.getBoundingClientRect(); return [Math.round(b.top), Math.round(b.height)]; }));
+  check("HUD: one panel, goal / nearest zombie / time left at the same height, the trip row under them", lines === 2 && tops.length === 3 && tops.every((t) => t[0] === tops[0][0] && t[1] === tops[0][1]) && (await page.locator(".hudbar .pill.mode").count()) === 0, `${lines} rows ${JSON.stringify(tops)}`);
   const heli = { label: await page.locator(".pill.goal").getAttribute("aria-label"), text: (await page.locator(".pill.goal").innerText()).trim(), icon: await page.locator(".pill.goal svg").count() };
-  check("Survival: a helicopter and the countdown to extraction (no words), named for screen readers", heli.icon === 1 && /^\d+:\d\d$/.test(heli.text) && /^Extraction in \d+:\d\d$/.test(heli.label ?? ""), JSON.stringify(heli));
+  check("Survival: a helicopter and the countdown to extraction, named for screen readers", heli.icon === 1 && /^extraction in\s+\d+:\d\d$/i.test(heli.text) && /^Extraction in \d+:\d\d$/.test(heli.label ?? ""), JSON.stringify(heli));
   await place(page, [[0, 60, false], [1, 350, true], [2, 900, false]]);
   await fixes(8);
   const cls = await page.evaluate(() => [...document.querySelectorAll(".zmark")].map((e) => e.className));
@@ -68,7 +69,7 @@ const place = (page, list) => page.evaluate((list) => {
   // Extraction opens: a helicopter on the map.
   await page.evaluate(() => { const l = window.__outbreak.live; l.rules.extractionOpensAtS = l.state.elapsedSeconds + 1; });
   await fixes(6);
-  check("extraction open: a helicopter marker on the map", (await page.locator('[aria-label="Extraction point (helicopter)"] svg ellipse').count()) === 1 && /^Extraction open/.test(await page.locator(".pill.goal").innerText()));
+  check("extraction open: a helicopter marker on the map", (await page.locator('[aria-label="Extraction point (helicopter)"] svg ellipse').count()) === 1 && /^Extraction open/i.test(await page.locator(".pill.goal").innerText()));
   await page.screenshot({ path: `${OUT}/extraction.png` });
   await ctx.close();
 }
@@ -100,7 +101,7 @@ const place = (page, list) => page.evaluate((list) => {
   await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match await page.waitForTimeout(1200);
   check("Bike: speed shown, HUD at most three rows", (await page.getByLabel("Your speed").count()) === 1 && (await page.locator(".hudbar > .line").count()) <= 3);
   const bs = await page.evaluate(() => { const g = document.querySelector(".pill.tripstats"); if (!g) return null; const r = g.getBoundingClientRect(); return { cells: g.querySelectorAll(".cell").length, bike: g.querySelectorAll(".tripicon svg").length, top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width), dup: document.querySelectorAll(".pill.activity").length, labels: [...g.querySelectorAll(".cell")].map((c) => c.getAttribute("aria-label")) }; });
-  check("Bike: speed, distance and elapsed time grouped with the bike icon (no second bike icon)", bs && bs.cells === 3 && bs.bike === 1 && bs.dup === 0 && /^Distance /.test(bs.labels[1]) && /^Elapsed \d/.test(bs.labels[2]) && bs.w < 260 && bs.left <= 16, JSON.stringify(bs));
+  check("Bike: speed, distance and elapsed time grouped with the bike icon (no second bike icon)", bs && bs.cells === 3 && bs.bike === 1 && bs.dup === 0 && /^Distance /.test(bs.labels[1]) && /^Elapsed \d/.test(bs.labels[2]) && bs.left <= 16, JSON.stringify(bs));
   await page.screenshot({ path: `${OUT}/bike.png` });
   await ctx.close();
 }

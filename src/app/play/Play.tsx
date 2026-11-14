@@ -250,43 +250,53 @@ export default function Play() {
         </div>
       )}
       <div className="hudbar">
-        <div className="line">
-          <span className="modegroup">
-            <span className="pill mode" aria-label="Mode and difficulty"><span>{MODE_LABEL[m.mode]}</span> <span>· {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span></span>
-            {/* On a bike the bike sits with the speed/distance/time group instead (below); a finished match shows it here. */}
-            {finished && <span className="pill activity" role="img" aria-label={m.activity === "mtb" ? "Bike" : "On foot"} dangerouslySetInnerHTML={{ __html: m.activity === "mtb" ? BIKE_SVG : WALK_SVG }} />}
-          </span>
-          <span className="pill timeleft" aria-label={`Time left ${fmtTime(remaining)}`}><span className="tl" aria-hidden="true">TIME LEFT</span><span aria-hidden="true">{fmtTime(remaining)}</span></span>
-        </div>
-        {/* Goal and nearest zombie share a row: the top of the map is what the player is heading for, so the HUD covers as little of it as it can. */}
-        <div className="line">
-          {m.objectives ? (
-            <span className="pill goal">{objectiveLabel(m.objectives.progress)}{dHome !== null ? ` · ${dHome} m` : ""}{m.objectives.holdS > 0 ? ` · ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
-          ) : (
-            m.extraction || m.phase === "head_start" ? (
-              <span className="pill goal">{m.extraction ? `Extraction open${dExtraction !== null ? ` · ${fmtDist(dExtraction)}` : ""}` : `Head start ${fmtTime(m.headStartLeftS)}`}</span>
-            ) : (
-              // Countdown to extraction: a helicopter and the time, no words.
-              <span className="pill goal heli" aria-label={`Extraction in ${fmtTime(Math.max(0, extractionOpensAtS(m.limitS) - m.elapsedS))}`}>
-                <span className="heliicon" aria-hidden="true" dangerouslySetInnerHTML={{ __html: HELI_SVG }} />
-                <span aria-hidden="true">{fmtTime(Math.max(0, extractionOpensAtS(m.limitS) - m.elapsedS))}</span>
+        {/* One instrument panel: goal, nearest zombie and time left side by side at the same height (caption above value), the trip on a
+            thinner row under them. The mode is not repeated here during the match (the goal names it); a finished match shows it. */}
+        {finished && (
+          <div className="line">
+            <span className="modegroup">
+              <span className="pill mode" aria-label="Mode and difficulty"><span>{MODE_LABEL[m.mode]}</span> <span>· {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span></span>
+              <span className="pill activity" role="img" aria-label={m.activity === "mtb" ? "Bike" : "On foot"} dangerouslySetInnerHTML={{ __html: m.activity === "mtb" ? BIKE_SVG : WALK_SVG }} />
+            </span>
+          </div>
+        )}
+        <div className="hudgrid">
+          <div className="hudrow main">
+            {m.objectives ? (
+              <span className="pill goal hcell" aria-label={`${objectiveLabel(m.objectives.progress)}${dHome !== null ? `, ${dHome} m` : ""}`}>
+                <span className="tl" aria-hidden="true">{objectiveLabel(m.objectives.progress).split(" · ")[0]}{m.objectives.holdS > 0 ? ` · HOLD ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
+                <span className="hval" aria-hidden="true">{dHome !== null ? fmtDist(dHome) : "–"}</span>
               </span>
-            )
-          )}
-          {!finished && <span className={`pill zpill${zombieClose ? " zclose" : zombieWarn ? " zwarn" : ""}`} aria-label="Nearest zombie"><span className="skull" aria-hidden="true" dangerouslySetInnerHTML={{ __html: SKULL_SVG }} />{m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>}
-        </div>
-        {/* Your trip, on the left: the activity, (Bike) speed, the distance actually moved this match (the game's own filtered track, not
-            the straight line from the start) and the game clock since the start (it stands still while paused, like the time left). */}
-        {!finished && (
-          <div className="line start">
-            <span className="pill tripstats">
+            ) : m.extraction ? (
+              <span className="pill goal hcell"><span className="tl">Extraction open</span><span className="hval">{dExtraction !== null ? fmtDist(dExtraction) : "–"}</span></span>
+            ) : m.phase === "head_start" ? (
+              <span className="pill goal hcell"><span className="tl">Head start</span><span className="hval">{fmtTime(m.headStartLeftS)}</span></span>
+            ) : (
+              // Countdown to extraction: a helicopter and the time.
+              <span className="pill goal heli hcell" aria-label={`Extraction in ${fmtTime(opensInS)}`}>
+                <span className="tl" aria-hidden="true"><span className="heliicon" dangerouslySetInnerHTML={{ __html: HELI_SVG }} />Extraction in</span>
+                <span className="hval" aria-hidden="true">{fmtTime(opensInS)}</span>
+              </span>
+            )}
+            {!finished && (
+              <span className={`pill zpill hcell${zombieClose ? " zclose" : zombieWarn ? " zwarn" : ""}`} aria-label="Nearest zombie">
+                <span className="tl" aria-hidden="true"><span className="skull" dangerouslySetInnerHTML={{ __html: SKULL_SVG }} />Nearest</span>
+                <span className="hval">{m.nearestZombieM === null ? "–" : fmtDist(m.nearestZombieM)}</span>
+              </span>
+            )}
+            <span className="pill timeleft hcell" aria-label={`Time left ${fmtTime(remaining)}`}><span className="tl" aria-hidden="true">TIME LEFT</span><span className="hval" aria-hidden="true">{fmtTime(remaining)}</span></span>
+          </div>
+          {/* Your trip: (Bike) speed, the distance actually moved this match (the game's own filtered track) and the game clock since the
+              start (it stands still while paused, like the time left). */}
+          {!finished && (
+            <div className="hudrow pill tripstats">
               <span className="tripicon" role="img" aria-label={m.activity === "mtb" ? "Bike" : "On foot"} dangerouslySetInnerHTML={{ __html: m.activity === "mtb" ? BIKE_SVG : WALK_SVG }} />
               {m.activity === "mtb" && <span className="cell" aria-label="Your speed"><span className="tl" aria-hidden="true">KM/H</span><span aria-hidden="true">{view.speedMps === null ? "–" : (view.speedMps * 3.6).toFixed(1)}</span></span>}
               <span className="cell" aria-label={`Distance ${fmtKm(m.distanceM)}`}><span className="tl" aria-hidden="true">KM</span><span aria-hidden="true">{(m.distanceM / 1000).toFixed(m.distanceM < 10_000 ? 2 : 1)}</span></span>
               <span className="cell" aria-label={`Elapsed ${fmtTime(m.elapsedS)}`}><span className="tl" aria-hidden="true">TIME</span><span aria-hidden="true">{fmtTime(m.elapsedS)}</span></span>
-            </span>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
         {!finished && !m.paused && m.offNetwork?.active && (
           <div className="line"><span className="pill warn" role="status" aria-live="polite">{m.offNetwork.exposed ? "Off the road · zombies can reach you. Return to a road!" : `Off the road network · ${m.offNetwork.budgetLeftS} s until zombies find you`}</span></div>
         )}
