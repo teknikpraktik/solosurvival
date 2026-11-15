@@ -602,29 +602,29 @@
       },
       "durationS": 3
     },
-    "theme-v2": {
+    "theme-frostborne-fade": {
       "copied": true,
-      "I": -29.6,
-      "M": -26.9,
-      "TP": -15.4,
-      "bytes": 1242096,
-      "durationS": 63.48
+      "I": -16.1,
+      "M": -12.3,
+      "TP": -4.3,
+      "bytes": 3451813,
+      "durationS": 154.824
     },
-    "theme-v3": {
+    "theme-frostborne-short": {
       "copied": true,
-      "I": -29.7,
-      "M": -25.4,
-      "TP": -14.2,
-      "bytes": 1189080,
-      "durationS": 69.336
+      "I": -16.1,
+      "M": -12.3,
+      "TP": -4.2,
+      "bytes": 3100636,
+      "durationS": 138.024
     },
-    "theme-outbreak": {
+    "theme-frostborne": {
       "copied": true,
-      "I": -16,
-      "M": -9.5,
-      "TP": 0,
-      "bytes": 4792224,
-      "durationS": 211.344
+      "I": -16.3,
+      "M": -11.5,
+      "TP": -3.3,
+      "bytes": 4847594,
+      "durationS": 209.544
     }
   }
 }

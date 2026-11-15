@@ -78,3 +78,10 @@ helikopter 0,35 s). MP3-kodarens tystnad i början och slutet klipps bort vid up
 in i låtens egen uttoning och börjar om vid 4,0 s (efter den inledande tystnaden).
 
 Ingen har lyssnat på resultatet i den här miljön: skarvar och nivåer är mätta, inte provlyssnade.
+
+## Temat (uppdaterat)
+
+De tidigare filerna `theme-outbreak.mp3`, `theme-v2.mp3` och `theme-v3.mp3` är ersatta av tre versioner av "Frostborne Silence", som
+kopieras oförändrade av `scripts/build-audio.mjs`: `theme-frostborne.mp3` (209,5 s, musik 0,5–206,9 s, I −16,3 LUFS),
+`theme-frostborne-fade.mp3` (154,8 s, musik 0,6–154,1 s, I −16,1 LUFS) och `theme-frostborne-short.mp3` (138,0 s, I −16,1 LUFS).
+Raderna om de gamla temana ovan gäller inte längre. Var varje version spelas: `docs/LJUD.md`.

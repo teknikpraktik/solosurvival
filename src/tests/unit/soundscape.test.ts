@@ -751,7 +751,7 @@ describe("threat pulse in bursts", () => {
   });
 });
 
-describe("music playlist (three themes)", () => {
+describe("music playlist (three versions of the theme)", () => {
   async function playlist(random: () => number = Math.random) {
     const f = fakeEnv(DUR);
     const l: Levels = { on: true, music: 1, fx: 1, voice: 1 };
@@ -768,7 +768,7 @@ describe("music playlist (three themes)", () => {
     playingEl(t)!.currentTime = (tr.endS ?? 60) - beforeS;
   };
 
-  it("theme-outbreak opens the app; on the menu each next pass is a random other theme (crossfaded), never the same twice in a row", async () => {
+  it("the full theme opens the app; on the menu each next pass is a random other version (crossfaded), never the same twice in a row", async () => {
     const t = await playlist();
     t.s.music.want(true);
     await t.advance(500);
@@ -777,40 +777,49 @@ describe("music playlist (three themes)", () => {
     const h = t.s.music.history;
     expect(h.length).toBe(13);
     for (let k = 1; k < h.length; k++) expect(h[k]).not.toBe(h[k - 1]);
-    expect(new Set(h)).toEqual(new Set([AUDIO.music, AUDIO.musicV2, AUDIO.musicV3]));
+    expect(new Set(h)).toEqual(new Set([AUDIO.music, AUDIO.musicFade, AUDIO.musicShort]));
     expect(t.media.filter((m) => !m.paused)).toHaveLength(1);
   });
 
-  it("the quieter themes are lifted (about 14 dB) to sit with theme-outbreak", async () => {
-    const t = await playlist(() => 0); // the next pass after the first is theme-v2
-    t.s.music.want(true);
-    await t.advance(3500);
-    nearEnd(t, t.P.crossfadeS + 0.5);
-    await t.advance(6000);
-    expect(t.s.music.track).toBe(AUDIO.musicV2);
-    const g = (t.s.music as unknown as { els: { el: { paused: boolean }; gain: FakeGain }[] }).els.find((e) => !e.el.paused)!.gain.gain.target;
-    expect(g).toBeCloseTo(10 ** (13.6 / 20), 1);
-  });
-
-  it("during a match: the pass ends with a fade-out, a random silence (20–60 s), then a random other theme, and so on", async () => {
-    const t = await playlist();
+  it("a match: the short version as it begins, the middle one once after 4–9 min of silence, nothing more, the full one when it is over", async () => {
+    const t = await playlist(() => 0.5); // the silence is then 390 s
     t.s.music.want(true);
     await t.advance(1000);
-    t.s.music.setRepeat(false); // the match starts
+    t.s.music.matchStart(); // crossfaded from the menu's pass
+    await t.advance(5000);
+    expect(t.s.music.track).toBe(AUDIO.musicShort);
+    expect(t.media.filter((m) => !m.paused)).toHaveLength(1);
+    t.s.music.setRepeat(false); // what the page does as the match runs: changes nothing
     nearEnd(t, 2.6);
     await t.advance(3500);
-    expect(t.s.music.playing).toBe(false); // the pass is over
-    await t.advance(19_000);
-    expect(t.s.music.playing).toBe(false); // at least 20 s of silence
-    await t.advance(42_000);
-    expect(t.s.music.playing).toBe(true); // at most 60 s
-    expect(t.s.music.history.length).toBe(2);
-    expect(t.s.music.history[1]).not.toBe(t.s.music.history[0]);
-    // And again.
+    expect(t.s.music.playing).toBe(false); // the opening pass is over
+    await t.advance(239_000);
+    expect(t.s.music.playing).toBe(false); // at least 4 min of silence
+    await t.advance(160_000);
+    expect(t.s.music.track).toBe(AUDIO.musicFade); // within 9 min
     nearEnd(t, 1);
     await t.advance(2000);
-    await t.advance(61_000);
-    expect(t.s.music.history.length).toBe(3);
+    await t.advance(1_200_000);
+    expect(t.s.music.playing).toBe(false); // no third pass, however long the match
+    expect(t.s.music.history).toEqual([AUDIO.music, AUDIO.musicShort, AUDIO.musicFade]);
+    t.s.music.setRepeat(true); // the match is over
+    await t.advance(500);
+    expect(t.s.music.track).toBe(AUDIO.music);
+  });
+
+  it("the app hidden during the silence before the mid-match pass: the pass still comes afterwards", async () => {
+    const t = await playlist(() => 0.5); // the silence is then 390 s
+    t.s.music.want(true);
+    await t.advance(1000);
+    t.s.music.matchStart();
+    await t.advance(5000);
+    nearEnd(t, 1);
+    await t.advance(2000);
+    t.s.music.suspend();
+    await t.advance(30_000);
+    t.s.music.restore();
+    await t.advance(395_000); // a new silence, then the pass
+    expect(t.s.music.track).toBe(AUDIO.musicFade);
   });
 
   it("the match ends during a silence: the music comes back at once; leaving or muting cancels a pending pass", async () => {
@@ -834,7 +843,7 @@ describe("music playlist (three themes)", () => {
   });
 
   it("hidden during a silence: no pass starts while hidden; back in front, a new silence then the next pass", async () => {
-    const t = await playlist();
+    const t = await playlist(() => 0.5); // the silence is then 390 s
     t.s.music.want(true);
     await t.advance(500);
     t.s.music.setRepeat(false);
@@ -846,7 +855,7 @@ describe("music playlist (three themes)", () => {
     t.s.setSuppressed(false);
     await t.advance(500);
     expect(t.s.music.playing).toBe(false); // not at once: a new silence
-    await t.advance(61_000);
+    await t.advance(395_000);
     expect(t.s.music.playing).toBe(true);
   });
 });

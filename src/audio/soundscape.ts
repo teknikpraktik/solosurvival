@@ -403,6 +403,11 @@ export interface MusicSource {
   /** Silence between passes during a match (s, random in the range). */
   gapS: readonly [number, number];
   random?: () => number;
+  /**
+   * A match with its own plan instead of random passes: `start` plays as the match begins, `mid` once more after a silence (`gapS`), then
+   * nothing until the match is over, when `end` plays (and the menu's random repeat goes on from there). Indexes into `tracks`.
+   */
+  match?: { start: number; mid: number; end: number };
 }
 /** The single-track form (older): one file that repeats. */
 export interface SingleMusic { url: string; startS: number; endS: number | null; crossfadeS: number; fadeInS: number; fadeOutS: number }
@@ -437,6 +442,10 @@ export class MenuMusic {
   private elTrack = [0, 0];
   private lastTrack: number | null = null;
   private endFading = false;
+  /** A track chosen for the next pass instead of a random one (match start, the pass in mid-match, match end). */
+  private forced: number | null = null;
+  /** Passes still to come while not repeating; null = no limit (no match plan). */
+  private budget: number | null = null;
   private readonly m: MusicSource | null;
 
   constructor(private readonly s: Soundscape, private readonly env: SoundscapeEnv, m: MusicSource | SingleMusic | null) {
@@ -458,10 +467,54 @@ export class MenuMusic {
   setRepeat(on: boolean): void {
     if (this.repeat === on) return;
     this.repeat = on;
+    const plan = this.m?.match;
+    // Into a match: after the pass that plays, one more (the plan's mid track). Out of it: the plan's end track comes first.
+    if (plan && !on && this.budget === null) { this.budget = 1; this.forced = plan.mid; }
+    if (plan && on) { this.budget = null; this.forced = this.sounding ? null : plan.end; }
     if (on) {
       this.clearGap();
       if (this.wanted && !this.sounding && !this.paused && !this.needsGesture && this.m) this.begin(this.m.fadeInS);
     }
+  }
+
+  /**
+   * A match begins (with a match plan): the plan's start track from its beginning, now, crossfaded from whatever plays; not repeating, with
+   * one more pass (the mid track) to come after it. Without a plan nothing changes.
+   */
+  matchStart(): void {
+    const plan = this.m?.match;
+    if (!plan || !this.wanted || this.paused || this.needsGesture) return;
+    this.repeat = false;
+    this.budget = 1;
+    this.clearGap();
+    if (this.sounding && this.els.length) { this.crossTo(plan.start); this.forced = plan.mid; this.startWatch(); return; }
+    this.forced = plan.start;
+    this.begin(this.m!.fadeInS);
+    this.forced = plan.mid;
+  }
+
+  /** Crossfades from the pass that plays into `nextTrack` on the other element. */
+  private crossTo(nextTrack: number): void {
+    const m = this.m!;
+    const prev = this.cur;
+    this.cur = 1 - this.cur;
+    this.elTrack[this.cur] = nextTrack;
+    this.endFading = false;
+    const n = this.els[this.cur];
+    this.setSrc(n.el, nextTrack);
+    try { n.el.currentTime = m.tracks[nextTrack].startS; } catch { /* ignore */ }
+    this.level(this.cur, 0, 0);
+    const next = this.cur;
+    try {
+      void n.el.play().then(() => {
+        this.confirmed[next] = true;
+        this.lastTrack = nextTrack;
+        this.history.push(m.tracks[nextTrack].url);
+        this.level(next, 1, m.crossfadeS);
+      }, () => undefined);
+    } catch { /* ignore */ }
+    this.level(prev, 0, m.crossfadeS);
+    this.env.setTimeout(() => { if (this.cur !== prev) { this.confirmed[prev] = false; try { this.els[prev].el.pause(); } catch { /* ignore */ } } }, m.crossfadeS * 1000 + 200);
   }
 
   /** Starts fetching the music for offline use (no sound): the opening track first, then the others. */
@@ -510,6 +563,7 @@ export class MenuMusic {
   /** The next pass: the first track to open the app, then a random one that is not the one just heard. */
   private pickNext(): number {
     const n = this.m!.tracks.length;
+    if (this.forced !== null) { const f = this.forced; this.forced = null; return Math.min(n - 1, f); }
     if (this.lastTrack === null || n <= 1) return 0;
     const r = this.m!.random ?? Math.random;
     const i = Math.min(n - 2, Math.floor(r() * (n - 1)));
@@ -631,7 +685,7 @@ export class MenuMusic {
           this.sounding = false;
           this.endFading = false;
           // A silence of random length, then the next random pass (if the music is still wanted and still not repeating).
-          if (this.wanted && !this.paused) {
+          if (this.wanted && !this.paused && this.takePass()) {
             const r = m.random ?? Math.random;
             const gap = m.gapS[0] + (m.gapS[1] - m.gapS[0]) * r();
             this.gapTimer = this.env.setTimeout(() => {
@@ -642,29 +696,19 @@ export class MenuMusic {
           return;
         }
       } else if (end !== null && e.el.currentTime >= end - m.crossfadeS && this.wanted && !this.paused) {
-        const prev = this.cur;
-        const nextTrack = this.pickNext();
-        this.cur = 1 - this.cur;
-        this.elTrack[this.cur] = nextTrack;
-        const n = this.els[this.cur];
-        this.setSrc(n.el, nextTrack);
-        try { n.el.currentTime = m.tracks[nextTrack].startS; } catch { /* ignore */ }
-        this.level(this.cur, 0, 0);
-        const next = this.cur;
-        try {
-          void n.el.play().then(() => {
-            this.confirmed[next] = true;
-            this.lastTrack = nextTrack;
-            this.history.push(m.tracks[nextTrack].url);
-            this.level(next, 1, m.crossfadeS);
-          }, () => undefined);
-        } catch { /* ignore */ }
-        this.level(prev, 0, m.crossfadeS);
-        this.env.setTimeout(() => { if (this.cur !== prev) { this.confirmed[prev] = false; try { this.els[prev].el.pause(); } catch { /* ignore */ } } }, m.crossfadeS * 1000 + 200);
+        this.crossTo(this.pickNext());
       }
       this.watch = this.env.setTimeout(tick, 400);
     };
     this.watch = this.env.setTimeout(tick, 400);
+  }
+
+  /** While not repeating: whether another pass may come (and counts it against the match plan's budget). */
+  private takePass(): boolean {
+    if (this.budget === null) return true;
+    if (this.budget <= 0) return false;
+    this.budget--;
+    return true;
   }
 
   private stopWatch(): void {
@@ -676,6 +720,7 @@ export class MenuMusic {
     if (this.paused) return;
     this.paused = true;
     this.wasSounding = this.sounding;
+    if (this.gapTimer !== null && this.budget !== null) this.budget++; // the pass that was waiting is still owed
     this.clearGap();
     if (!this.sounding) return;
     for (let i = 0; i < this.els.length; i++) { this.level(i, 0, 0.1); try { this.els[i].el.pause(); } catch { /* ignore */ } }
@@ -691,7 +736,7 @@ export class MenuMusic {
     if (!this.wanted || !this.m) return;
     if (!this.wasSounding) {
       if (this.repeat) this.begin(this.m.fadeInS);
-      else {
+      else if (this.takePass()) {
         const m = this.m;
         const r = m.random ?? Math.random;
         this.gapTimer = this.env.setTimeout(() => { this.gapTimer = null; if (this.wanted && !this.paused && !this.sounding) this.begin(m.fadeInS); }, (m.gapS[0] + (m.gapS[1] - m.gapS[0]) * r()) * 1000);

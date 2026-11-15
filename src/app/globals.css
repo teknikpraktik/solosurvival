@@ -742,3 +742,6 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 .hudbar .hudgrid .pill.tripstats .cell { flex-direction: row; align-items: baseline; gap: 5px; line-height: 1; }
 .hudbar .hudgrid .pill.tripstats .cell .tl { order: 2; font-size: .62rem; }
 .hudgrid .hudrow.tripstats, .map-shell.bike .hudgrid .hudrow.tripstats { padding: 7px 10px 8px; }
+/* Control row without PAUSE: AUTO takes the width, the menu button (pause, sound, quit) at its side; CONTINUE joins when paused. */
+.controls .autobtn { flex: 1; }
+.controls .wide { flex: 1.4; }

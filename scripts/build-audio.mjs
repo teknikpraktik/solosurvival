@@ -57,9 +57,9 @@ const FILES = [
   { name: "jump-scare-2", measure: "M", target: -12 },
   { name: "jump-scare-3", measure: "M", target: -12 },
 ];
-const MUSIC = "theme-outbreak.mp3";
-/** More themes, played at random (copied unchanged too; they are about 14 dB quieter, lifted in the player: MUSIC_TRACKS in audio.ts). */
-const MORE_MUSIC = ["theme-v2.mp3", "theme-v3.mp3"];
+const MUSIC = "theme-frostborne.mp3";
+/** The theme's two shorter versions (copied unchanged too; where each is used: MUSIC_PLAYLIST in audio.ts). */
+const MORE_MUSIC = ["theme-frostborne-fade.mp3", "theme-frostborne-short.mp3"];
 /** Downward expander for the radio static: below −27 dBFS (RMS) the level falls 2:1, at most 9 dB; fast enough to open on every word. */
 const VOICE_GATE = "agate=mode=downward:threshold=0.045:ratio=2:range=0.355:attack=8:release=180:detection=rms:knee=2";
 
@@ -103,6 +103,6 @@ for (const f of MORE_MUSIC) {
   console.log(`${f.padEnd(26)} (kopierad)   I ${r1(mm.I)}  TP ${r1(mm.TP)}  ${statSync(path.join(OUT, f)).size} B`);
 }
 const m = measure(path.join(OUT, MUSIC));
-report.files["theme-outbreak"] = { copied: true, I: r1(m.I), M: r1(m.M), TP: r1(m.TP), bytes: statSync(path.join(OUT, MUSIC)).size, durationS: Math.round(m.duration * 1000) / 1000 };
-console.log(`theme-outbreak (kopierad)   I ${r1(m.I)}  TP ${r1(m.TP)}  ${statSync(path.join(OUT, MUSIC)).size} B`);
+report.files["theme-frostborne"] = { copied: true, I: r1(m.I), M: r1(m.M), TP: r1(m.TP), bytes: statSync(path.join(OUT, MUSIC)).size, durationS: Math.round(m.duration * 1000) / 1000 };
+console.log(`theme-frostborne (kopierad)   I ${r1(m.I)}  TP ${r1(m.TP)}  ${statSync(path.join(OUT, MUSIC)).size} B`);
 writeFileSync(path.join(ROOT, "assets/audio/levels.json"), JSON.stringify(report, null, 2) + "\n");

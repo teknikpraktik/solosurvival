@@ -84,9 +84,9 @@ export default function HowToPlay() {
           <li><b>Left:</b> the distance you have moved and the time played in this match; by bike also your speed.</li>
           <li><b>Map:</b> you are the blue marker. Zombies are faces; the three closest show their distance. When your goal is off screen,
             an arrow at the edge points to it.</li>
-          <li><b>PAUSE</b> stops the clock and the zombies. <b>AUTO</b> lets the map follow you; touch the map to move it yourself.
-            The <b>menu</b> button pauses and holds sound on/off and <b>QUIT</b>, which asks once, then ends the match and goes back to the start page.</li>
-          <li><b>Sound:</b> a low pulse while zombies are near. At 200 m the operator warns &quot;Zombies approaching!&quot;, at 100 m you hear the
+          <li>The <b>menu</b> button (three bars) pauses: the clock and the zombies stop. There you turn sound off and on, and <b>QUIT</b>
+            asks once, then ends the match and goes back to the start page. <b>AUTO</b> lets the map follow you; touch the map to move it yourself.</li>
+          <li><b>Sound:</b> the theme plays as a match begins, once more during it and when it is over; between them a low pulse sounds while zombies are near. At 200 m the operator warns &quot;Zombies approaching!&quot;, at 100 m you hear the
             zombies, and from 50 m the distance is spoken: 50, 40, 30, 20, 10 m. Phones that can vibrate do so when a zombie comes within 200 m. The operator calls the important
             moments over the radio: the start, checkpoints, the helicopter and the rescue.
             Set music, effects and voice under <b>SETTINGS</b> on the start page.</li>

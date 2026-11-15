@@ -11,9 +11,9 @@ import { Soundscape, type Bus, type Levels, type LoopVoice, type MusicSource, ty
  * assets/audio/source/; game rules for when they play are in src/play/sound-rules.ts.
  */
 export const AUDIO = {
-  music: "/audio/theme-outbreak.mp3",
-  musicV2: "/audio/theme-v2.mp3",
-  musicV3: "/audio/theme-v3.mp3",
+  music: "/audio/theme-frostborne.mp3",
+  musicFade: "/audio/theme-frostborne-fade.mp3",
+  musicShort: "/audio/theme-frostborne-short.mp3",
   threat: ["/audio/threat-pulse-1.mp3", "/audio/threat-pulse-2.mp3", "/audio/threat-pulse-3.mp3", "/audio/threat-pulse-4.mp3"],
   captured: "/audio/captured.mp3",
   safeDoor: "/audio/safe-door-close.mp3",
@@ -425,6 +425,7 @@ export class MatchAudio {
   private started(id: string, mode: GameMode): Promise<PlayResult | null> {
     if (id !== this.matchId) this.newMatch({ id, mode });
     if (this.hidden) return Promise.resolve("suppressed");
+    this.s.music.matchStart(); // the theme from its beginning as the match begins
     return this.radio.say(mode === "survival" ? "keepMoving" : mode === "escape" ? "safehouseOnMap" : "checkpointStart");
   }
 
@@ -542,15 +543,15 @@ export function soundscape(): Soundscape {
 }
 
 /**
- * The music: theme-outbreak opens the app; after that every pass is a random theme, never the one just heard. Start and end are where the
- * music really is (measured, see assets/audio/README.md). theme-v2 and theme-v3 are about 14 dB quieter than theme-outbreak (−29.7 against
- * −16 LUFS integrated) and are lifted here instead of re-encoded; they also stop abruptly, so a pass that is not crossfaded fades out
- * over its last `endFadeS`.
+ * The music: three versions of one theme ("Frostborne Silence"), all at about −16 LUFS. On the menu the full version opens the app and
+ * the passes repeat, crossfaded, each a random version that is not the one just heard. A match has a plan (`match`): the short version
+ * plays as the match begins, the middle one once more after a silence of 4–9 minutes, and the full one when the match is over. Between
+ * them the threat pulse is the match's backdrop. Start and end are where the music really is (measured with silencedetect).
  */
 export const MUSIC_TRACKS: MusicTrack[] = [
-  { url: AUDIO.music, startS: 4, endS: 210.6, gain: 1 }, // 4.2 s of silence first, own fade-out 207.5–210.6 s
-  { url: AUDIO.musicV2, startS: 2.1, endS: 62, gain: 10 ** (13.6 / 20) }, // −29.6 → −16 LUFS (peak −15.4 → −1.8 dBFS)
-  { url: AUDIO.musicV3, startS: 6.6, endS: 66.5, gain: 10 ** (13.2 / 20) }, // −29.7 → −16.5 LUFS (peak −14.2 → −1.0 dBFS)
+  { url: AUDIO.music, startS: 0.5, endS: 206.9, gain: 1 }, // 209.5 s, 0.5 s of silence first, own fade-out, 2.6 s of silence last
+  { url: AUDIO.musicFade, startS: 0.5, endS: 154.1, gain: 1 }, // 154.8 s, own fade-out
+  { url: AUDIO.musicShort, startS: 0, endS: 137.9, gain: 1 }, // 138.0 s, own fade-out
 ];
 export const MUSIC_PLAYLIST: MusicSource = {
   tracks: MUSIC_TRACKS,
@@ -558,8 +559,9 @@ export const MUSIC_PLAYLIST: MusicSource = {
   fadeInS: 3,
   fadeOutS: 2.5,
   endFadeS: 2.5,
-  // During a match: after a theme has ended, a random silence of 20–60 s before the next random theme.
-  gapS: [20, 60],
+  // During a match: the silence between the opening pass and the one pass in mid-match.
+  gapS: [240, 540],
+  match: { start: 2, mid: 1, end: 0 },
 };
 export function matchAudio(): MatchAudio {
   match ??= new MatchAudio(soundscape(), { nowS: () => Date.now() / 1000 });

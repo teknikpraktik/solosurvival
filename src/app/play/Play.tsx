@@ -310,14 +310,12 @@ export default function Play() {
 
       {!finished && (
         <div className="controls">
-          {m.paused ? (
+          {/* No PAUSE button: the menu button pauses (and holds sound and QUIT). A paused match whose dialog was closed shows CONTINUE here. */}
+          {m.paused && (
             <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); session.resume(); setAuto(true); }}>{!canResume ? "WAITING FOR LOCATION…" : ready ? "START" : "CONTINUE"}</button>
-          ) : (
-            <button className="wide" onClick={() => session.pause("manual")}>PAUSE</button>
           )}
           <button className="autobtn" onClick={() => { if (!auto) void session.enableCompass(); setAuto((a) => !a); }} aria-pressed={auto} aria-label={auto ? "AUTO on: the map follows you (tap to move the map yourself)" : "AUTO off: you move the map (tap to follow again)"}>AUTO</button>
-          {/* Sound and QUIT live in the match menu (the pause dialog): opening it pauses the match, so nothing is fumbled for on the move. */}
-          <button className="iconbtn" aria-label="Match menu: sound and quit" onClick={() => { if (!m.paused) session.pause("manual"); setPauseDismissed(false); }} dangerouslySetInnerHTML={{ __html: MENU_SVG }} />
+          <button className="iconbtn" aria-label="PAUSE" title="Pause: sound and quit" onClick={() => { if (!m.paused) session.pause("manual"); setPauseDismissed(false); }} dangerouslySetInnerHTML={{ __html: MENU_SVG }} />
         </div>
       )}
 
@@ -337,8 +335,6 @@ export default function Play() {
             <span>Sound</span><b>{sound ? "ON" : "OFF"}</b>
           </button>
           {m.frozen && !ready && <div className="muted">The app was inactive. No time was counted.</div>}
-          {!ready && <div className="muted">After a pause you are protected for 5 seconds.</div>}
-          <div className="muted">The app must stay open and in the foreground for location to work.</div>
         </Modal>
       )}
 
