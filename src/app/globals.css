@@ -745,3 +745,5 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 /* Control row without PAUSE: AUTO takes the width, the menu button (pause, sound, quit) at its side; CONTINUE joins when paused. */
 .controls .autobtn { flex: 1; }
 .controls .wide { flex: 1.4; }
+.hudgrid .tripstats .hdiff { margin-left: auto; font: 600 .68rem var(--font-display); letter-spacing: .16em; text-transform: uppercase; color: #8b98a5; white-space: nowrap; }
+.hudgrid .tripstats .cell:last-of-type { margin-right: 10px; }
