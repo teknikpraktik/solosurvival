@@ -8,6 +8,8 @@ import { createGame, stepGame } from "@/engine/core/engine";
 import type { Zombie } from "@/engine/core/types";
 import { zombieLatLon } from "@/engine/core/movement";
 import { chooseExtraction } from "@/engine/extraction/extraction";
+import { serializeGraph } from "@/geo/graph/graph";
+import { lineGraph } from "@/sim/test-graphs";
 import { infectionContactM } from "@/engine/infection/contact";
 import { fromLocal, haversineM } from "@/geo/geometry";
 import { indexGraph, snapToGraph, snapToGraphNear } from "@/geo/graph/graph";
@@ -206,6 +208,32 @@ describe("val av extraction och position på rätt nivå", () => {
       const n = g.nodes.get(id)!;
       expect(n.lon).toBeLessThan(ORIGIN.lon); // alltid på spelarens (västra) sida
     }
+  });
+
+  it("extraction lands on a road or trail, never on a point of the terrain mesh", () => {
+    // A straight trail with terrain-mesh nodes (off-trail edges) hanging off every trail node, joined to each other.
+    const raw = serializeGraph(lineGraph(1200));
+    const trailNodes = raw.nodes.map((n) => n.id);
+    for (const n of [...raw.nodes]) {
+      raw.nodes.push({ id: `T${n.id}`, lat: n.lat + 0.0009, lon: n.lon });
+      raw.edges.push({ id: `TL:${n.id}`, from: n.id, to: `T${n.id}`, geometry: [{ lat: n.lat, lon: n.lon }, { lat: n.lat + 0.0009, lon: n.lon }], type: "other", offtrail: true } as (typeof raw.edges)[number]);
+    }
+    for (let i = 1; i < trailNodes.length; i++) {
+      const a = raw.nodes.find((n) => n.id === `T${trailNodes[i - 1]}`)!, b = raw.nodes.find((n) => n.id === `T${trailNodes[i]}`)!;
+      raw.edges.push({ id: `T:${i}`, from: a.id, to: b.id, geometry: [{ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon }], type: "other", offtrail: true } as (typeof raw.edges)[number]);
+    }
+    const g = indexGraph(raw);
+    const start = g.nodes.get(trailNodes[0])!;
+    const player = snapToGraph(g, { lat: start.lat, lon: start.lon })!;
+    const comp = g.edges.get(player.edgeId)!.component;
+    let chosen = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const id = chooseExtraction(g, { playerPos: player, component: comp, zombiePositions: [], remainingS: 1800, playerPaceMps: 1.3 }, { rngState: seed });
+      if (id === null) continue;
+      chosen++;
+      expect(trailNodes).toContain(id);
+    }
+    expect(chosen).toBeGreaterThan(0);
   });
 
   it("position hålls på bron/marken man redan är på när två vägar ligger nästan i samma läge", () => {

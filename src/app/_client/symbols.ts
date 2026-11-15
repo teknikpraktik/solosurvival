@@ -126,3 +126,10 @@ export const SKULL_SVG = `<svg viewBox="0 0 24 24" width="18" height="18" xmlns=
 export const MENU_SVG = `<svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
 <path d="M5 7h14M5 12h14M5 17h14"/>
 </svg>`;
+
+/** Game view: AUTO (the map follows you, your direction up, auto zoom): a heading arrow inside a ring with a mark at the top. currentColor. */
+export const AUTO_SVG = `<svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="9.2" stroke-width="1.8"/>
+<path d="M12 1.2v3" stroke-width="2.2"/>
+<path d="M12 6.6l4.3 9.8L12 14.2l-4.3 2.2z" fill="currentColor" stroke-width="1.4"/>
+</svg>`;

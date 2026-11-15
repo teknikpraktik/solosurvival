@@ -11,7 +11,7 @@ import { COUNTDOWN_START_M } from "@/play/countdown";
 import { APPROACH_COOLDOWN_S, nextApproaching, nextClose, nextGoalClose, viewProfile } from "@/play/camera-view";
 import { matchAudio } from "../_client/audio";
 import { Modal } from "../_client/Modal";
-import { BIKE_SVG, HELI_SVG, MENU_SVG, SKULL_SVG, SOUND_OFF_SVG, SOUND_ON_SVG, WALK_SVG } from "../_client/symbols";
+import { AUTO_SVG, BIKE_SVG, HELI_SVG, MENU_SVG, SKULL_SVG, SOUND_OFF_SVG, SOUND_ON_SVG, WALK_SVG } from "../_client/symbols";
 import { Loader } from "../_client/Loader";
 import { threatRange } from "@/play/sound-rules";
 import { t } from "../_client/strings";
@@ -293,7 +293,7 @@ export default function Play() {
               <span className="tripicon" role="img" aria-label={m.activity === "mtb" ? "Bike" : "On foot"} dangerouslySetInnerHTML={{ __html: m.activity === "mtb" ? BIKE_SVG : WALK_SVG }} />
               {m.activity === "mtb" && <span className="cell" aria-label="Your speed"><span className="tl" aria-hidden="true">KM/H</span><span aria-hidden="true">{view.speedMps === null ? "–" : (view.speedMps * 3.6).toFixed(1)}</span></span>}
               <span className="cell" aria-label={`Distance ${fmtKm(m.distanceM)}`}><span className="tl" aria-hidden="true">KM</span><span aria-hidden="true">{(m.distanceM / 1000).toFixed(m.distanceM < 10_000 ? 2 : 1)}</span></span>
-              <span className="cell" aria-label={`Elapsed ${fmtTime(m.elapsedS)}`}><span className="tl" aria-hidden="true">TIME</span><span aria-hidden="true">{fmtTime(m.elapsedS)}</span></span>
+              <span className="cell pre" aria-label={`Elapsed ${fmtTime(m.elapsedS)}`}><span className="tl" aria-hidden="true">ELAPSED</span><span aria-hidden="true">{fmtTime(m.elapsedS)}</span></span>
               {/* The difficulty, small, at the right end of the row (the mode is named by the goal cell). */}
               <span className="hdiff" aria-label={`Difficulty ${DIFFICULTY_LABEL[m.difficulty]}`}>{DIFFICULTY_LABEL[m.difficulty]}</span>
             </div>
@@ -316,7 +316,7 @@ export default function Play() {
           {m.paused && (
             <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); session.resume(); setAuto(true); }}>{!canResume ? "WAITING FOR LOCATION…" : ready ? "START" : "CONTINUE"}</button>
           )}
-          <button className="autobtn" onClick={() => { if (!auto) void session.enableCompass(); setAuto((a) => !a); }} aria-pressed={auto} aria-label={auto ? "AUTO on: the map follows you (tap to move the map yourself)" : "AUTO off: you move the map (tap to follow again)"}>AUTO</button>
+          <button className="autobtn iconbtn" onClick={() => { if (!auto) void session.enableCompass(); setAuto((a) => !a); }} aria-pressed={auto} aria-label={auto ? "AUTO on: the map follows you (tap to move the map yourself)" : "AUTO off: you move the map (tap to follow again)"} dangerouslySetInnerHTML={{ __html: AUTO_SVG }} />
           <button className="iconbtn" aria-label="PAUSE" title="Pause: sound and quit" onClick={() => { if (!m.paused) session.pause("manual"); setPauseDismissed(false); }} dangerouslySetInnerHTML={{ __html: MENU_SVG }} />
         </div>
       )}
@@ -423,11 +423,18 @@ export default function Play() {
                 {canShow
                   ? <Link className="btn primary cta" href={`/recap?id=${encodeURIComponent(m.id)}&from=play`}>{R.showMatch}</Link>
                   : null}
-                <button className={canShow ? "btn" : "btn primary cta"} aria-label={R.playAgainLabel} onClick={() => { void session.enableCompass(); session.playAgain(); router.push("/new"); }}>{R.playAgain}</button>
-                <div className="resultlinks">
-                  <Link className="quietbtn" href="/" onClick={() => session.reset()}>{R.home}</Link>
-                  <Link className="quietbtn" href="/history" onClick={() => session.reset()}>{R.previousGames}</Link>
-                </div>
+                {won ? (
+                  // Made it: two ways on, the match or the menu. Nothing else competes with the moment.
+                  <Link className={canShow ? "btn" : "btn primary cta"} href="/" onClick={() => session.reset()}>{R.home.toUpperCase()}</Link>
+                ) : (
+                  <>
+                    <button className={canShow ? "btn" : "btn primary cta"} aria-label={R.playAgainLabel} onClick={() => { void session.enableCompass(); session.playAgain(); router.push("/new"); }}>{R.playAgain}</button>
+                    <div className="resultlinks">
+                      <Link className="quietbtn" href="/" onClick={() => session.reset()}>{R.home}</Link>
+                      <Link className="quietbtn" href="/history" onClick={() => session.reset()}>{R.previousGames}</Link>
+                    </div>
+                  </>
+                )}
               </>
             )}
           >
