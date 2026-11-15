@@ -125,9 +125,20 @@ kort flygradio). Befintliga repliker har radioeffekten inbakad i filen; gör lik
 
 ## 7. Bilder
 
-`public/campaign/the-fall/cover.jpg` är den uppladdade omslagsbilden. `mission-01.jpg` … `mission-05.jpg` är
-**platshållare** (kopior av befintlig spelgrafik): de fem uppdragsbilderna fanns bara som bilder i chatten, inte som filer.
-Skriv över de fem filerna med de riktiga (stående format fungerar; motivets läge styrs av `imagePosition` i definitionen).
+Alla sex bilder i `public/campaign/the-fall/` är kampanjens egna originalbilder (inga platshållare):
+
+| Fil | Motiv | Används |
+|---|---|---|
+| `cover.jpg` (1680×704) | Zombier på en gata i skymning | Kampanjkortet på startsidan, kampanjlistan, kampanjvyns huvud |
+| `mission-01.jpg` (1086×1448) | Överlevare på villagata, solnedgång | FIRST CONTACT |
+| `mission-02.jpg` (1086×1448) | Sjukvårdsförnödenheter och röd fackla vid skogsväg | THE SUPPLY RUN |
+| `mission-03.jpg` (1086×1448) | Blockerad väg med övergivna fordon | NO WAY BACK |
+| `mission-04.jpg` (1086×1448) | Radiomast med röda ljus i regn | THE LAST SIGNAL |
+| `mission-05.jpg` (1024×1536) | Helikopter, facklor och zombier på ett fält | FINAL EXTRACTION |
+
+Uppdragsbilderna är stående och visas i tre beskärningar: liggande remsa i uppdragskortet, övre delen i briefingen och hela bilden i
+introt (samt bakom resultatet i uppdrag 1, 2 och 4). Vilken del som syns i de smala beskärningarna styrs av `imagePosition` i
+`src/campaign/the-fall.ts`. Filerna är JPEG i full upplösning, kvalitet 86, progressiva.
 
 ## 8. Begränsningar
 

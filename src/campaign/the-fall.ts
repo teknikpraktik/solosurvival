@@ -30,7 +30,7 @@ const firstContact: MissionDef = {
   },
   aboutMin: 15,
   image: `${IMG}/mission-01.jpg`,
-  imagePosition: "50% 35%",
+  imagePosition: "50% 46%",
   intro: [
     "It started this afternoon. Sirens, then nothing.",
     "People are attacking each other in the streets. Nobody knows why.",
@@ -77,7 +77,7 @@ const supplyRun: MissionDef = {
   },
   aboutMin: 20,
   image: `${IMG}/mission-02.jpg`,
-  imagePosition: "50% 60%",
+  imagePosition: "45% 66%",
   intro: [
     "Eleven people in a cellar. Two of them will not last without medicine.",
     "Watchtower has found three places where supplies were left behind.",
@@ -123,7 +123,7 @@ const noWayBack: MissionDef = {
   },
   aboutMin: 20,
   image: `${IMG}/mission-03.jpg`,
-  imagePosition: "50% 40%",
+  imagePosition: "50% 44%",
   intro: [
     "The evacuation road is blocked. Cars, barriers, and what is left of the people who tried.",
     "There is one more safe zone. It will not stay open.",
@@ -177,7 +177,7 @@ const lastSignal: MissionDef = {
   },
   aboutMin: 25,
   image: `${IMG}/mission-04.jpg`,
-  imagePosition: "60% 30%",
+  imagePosition: "60% 20%",
   intro: [
     "No one has heard from the evacuation force in six hours.",
     "An old relay network still has power. Three sites. Each has to be brought on the air by hand.",
@@ -230,7 +230,7 @@ const finalExtraction: MissionDef = {
   },
   aboutMin: 30,
   image: `${IMG}/mission-05.jpg`,
-  imagePosition: "50% 30%",
+  imagePosition: "55% 34%",
   intro: [
     "Raven Two is in the air. Twenty-two minutes out.",
     "The district is being overrun. Every street has them now.",
