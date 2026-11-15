@@ -316,7 +316,7 @@ export default function Play() {
           {m.paused && (
             <button className="primary wide" disabled={!canResume} onClick={() => { unlockAudio(); void session.enableCompass(); session.resume(); setAuto(true); }}>{!canResume ? "WAITING FOR LOCATION…" : ready ? "START" : "CONTINUE"}</button>
           )}
-          <button className="autobtn iconbtn" onClick={() => { if (!auto) void session.enableCompass(); setAuto((a) => !a); }} aria-pressed={auto} aria-label={auto ? "AUTO on: the map follows you (tap to move the map yourself)" : "AUTO off: you move the map (tap to follow again)"} dangerouslySetInnerHTML={{ __html: AUTO_SVG }} />
+          <button className="autobtn" onClick={() => { if (!auto) void session.enableCompass(); setAuto((a) => !a); }} aria-pressed={auto} aria-label={auto ? "AUTO on: the map follows you (tap to move the map yourself)" : "AUTO off: you move the map (tap to follow again)"} dangerouslySetInnerHTML={{ __html: AUTO_SVG }} />
           <button className="iconbtn" aria-label="PAUSE" title="Pause: sound and quit" onClick={() => { if (!m.paused) session.pause("manual"); setPauseDismissed(false); }} dangerouslySetInnerHTML={{ __html: MENU_SVG }} />
         </div>
       )}
@@ -423,18 +423,8 @@ export default function Play() {
                 {canShow
                   ? <Link className="btn primary cta" href={`/recap?id=${encodeURIComponent(m.id)}&from=play`}>{R.showMatch}</Link>
                   : null}
-                {won ? (
-                  // Made it: two ways on, the match or the menu. Nothing else competes with the moment.
-                  <Link className={canShow ? "btn" : "btn primary cta"} href="/" onClick={() => session.reset()}>{R.home.toUpperCase()}</Link>
-                ) : (
-                  <>
-                    <button className={canShow ? "btn" : "btn primary cta"} aria-label={R.playAgainLabel} onClick={() => { void session.enableCompass(); session.playAgain(); router.push("/new"); }}>{R.playAgain}</button>
-                    <div className="resultlinks">
-                      <Link className="quietbtn" href="/" onClick={() => session.reset()}>{R.home}</Link>
-                      <Link className="quietbtn" href="/history" onClick={() => session.reset()}>{R.previousGames}</Link>
-                    </div>
-                  </>
-                )}
+                {/* Won or lost: two ways on, the match or the menu. Nothing else competes with the moment. */}
+                <Link className={canShow ? "btn" : "btn primary cta"} href="/" onClick={() => session.reset()}>{R.home.toUpperCase()}</Link>
               </>
             )}
           >

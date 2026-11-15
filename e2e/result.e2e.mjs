@@ -38,13 +38,8 @@ const waitEnd = (page) => page.locator(".outcome").waitFor({ timeout: 30000 }).t
   check("title COURSE COMPLETE, green outcome with icon and sentence", (await dialog(page).getAttribute("aria-label")) === "COURSE COMPLETE" && (await page.locator(".outcome.won").count()) === 1 && /^All \d+ checkpoints and home in \d/.test(await page.locator(".outcome p").innerText()), await page.locator(".outcome p").innerText());
   check("three numbers: time, distance, average speed", (await page.locator(".statcells dd").count()) === 3);
   check("no duplicated 'Result' row", (await dialog(page).getByText("Result", { exact: true }).count()) === 0);
-  check("SHOW MATCH is the primary action, PLAY AGAIN second, Home and Previous games as links", (await page.locator(".modal-actions .cta").innerText()) === "SHOW MATCH" && (await dialog(page).getByRole("button", { name: /Play again/ }).count()) === 1 && (await page.locator(".resultlinks a").count()) === 2);
+  check("only two actions: SHOW MATCH (primary) and MAIN MENU", (await page.locator(".modal-actions .cta").innerText()) === "SHOW MATCH" && JSON.stringify(await page.locator(".modal-actions a, .modal-actions button").allInnerTexts()) === JSON.stringify(["SHOW MATCH", "MAIN MENU"]));
   check("no 'All numbers' toggle after the match", (await page.getByRole("button", { name: /All numbers|Fewer numbers/ }).count()) === 0);
-  await page.getByRole("button", { name: /Play again/ }).click();
-  await page.waitForURL("**/new"); await fixes(4);
-  const opened = await page.locator(".pvstats").waitFor({ timeout: 90000 }).then(() => true, () => false);
-  const params = await page.evaluate(() => window.__outbreak.getView().params);
-  check("PLAY AGAIN: straight to a new course with the same settings", opened && params?.mode === "mission" && params?.difficulty === "hard" && params?.activity === "walk", JSON.stringify(params && { mode: params.mode, difficulty: params.difficulty, activity: params.activity }));
   await ctx.close();
 }
 
@@ -70,7 +65,7 @@ const waitEnd = (page) => page.locator(".outcome").waitFor({ timeout: 30000 }).t
   check("'Captured' once (the title), no time stamp sentence", (await dialog(page).getAttribute("aria-label")) === "CAPTURED" && capWords === 1 && (await page.getByText(/Captured at/).count()) === 0, `${capWords}×`);
   const fit = await page.evaluate(() => ({ hscroll: document.documentElement.scrollWidth > window.innerWidth, small: [...document.querySelectorAll(".modal-actions .btn, .resultlinks .quietbtn, .pvtoggle")].filter((e) => e.getBoundingClientRect().height < 44).length, cut: [...document.querySelectorAll(".statcells dd, .statcells dt")].filter((e) => e.scrollWidth > e.clientWidth + 1).length }));
   check("375×667: nothing cut, targets ≥ 44 px, no sideways scroll", !fit.hscroll && !fit.small && !fit.cut, JSON.stringify(fit));
-  check("links: Main menu and Previous games", (await page.getByRole("link", { name: "Main menu" }).count()) === 1);
+  check("lost: the same two actions, SHOW MATCH and MAIN MENU", JSON.stringify(await page.locator(".modal-actions a, .modal-actions button").allInnerTexts()) === JSON.stringify(["SHOW MATCH", "MAIN MENU"]));
   // SHOW MATCH, then back: the CAPTURED dialog again (no new scare), not the main menu.
   await page.getByRole("link", { name: "SHOW MATCH" }).click();
   await page.waitForURL("**/recap**"); await page.waitForTimeout(1500);
