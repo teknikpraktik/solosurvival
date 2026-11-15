@@ -762,3 +762,134 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 /* The AUTO symbol button is styled by its own class (it is not ".iconbtn", which names the menu button alone). */
 .controls .autobtn { flex: 0 0 48px; min-height: 48px; padding: 0; display: flex; align-items: center; justify-content: center; color: #8b98a5; }
 .controls .autobtn[aria-pressed="true"] { background: #0f2a1ae6; border-color: #22c55e99; color: #4ade80; }
+
+/* ================= Campaigns =================
+   The campaign screens have their own colour: teal and black from the cover artwork, with lime for what is done, what is next and what
+   to press. Free Play keeps the red. Typography, plates and radii are the game's own. */
+:root { --teal: #2dd4bf; --teal-deep: #0c2a2c; --lime: #a3e635; --lime-deep: #3f6212; }
+
+/* Start page: campaigns as the one large picture card; Free Play and the rest below it, quieter. */
+.campcta { position: relative; isolation: isolate; display: flex; align-items: flex-end; width: min(360px, 100%); min-height: clamp(132px, 24dvh, 190px); margin-top: 4px; overflow: hidden; border-radius: var(--r);
+  border: 1px solid #a3e63599; text-decoration: none; text-align: left; box-shadow: 0 10px 30px #000c, 0 0 0 1px #000, 0 0 26px #2dd4bf2e; }
+.campcta-bg { position: absolute; inset: 0; z-index: -2; background-color: var(--teal-deep); background-size: cover; background-repeat: no-repeat; transition: transform .3s ease-out; }
+.campcta::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, #04090bf2 0%, #04090bb3 38%, #04090b33 70%, #04090b00 100%); }
+.campcta-text { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px 16px; min-width: 0; text-shadow: 0 2px 8px #000; }
+.campcta-k { font: 600 .78rem var(--font-display); letter-spacing: .34em; color: var(--lime); }
+.campcta b { font: 700 clamp(2rem, 10vw, 2.6rem)/1 var(--font-display); letter-spacing: .16em; color: #f3fbf9; }
+.campcta-s { font: 500 .86rem var(--font-body); color: #cfe7e3; line-height: 1.3; }
+.campcta-pips { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
+.campcta-pips i, .campbar-track i { display: block; width: 18px; height: 5px; border-radius: 1px; background: #ffffff38; }
+.campcta-pips i[data-on], .campbar-track i[data-on] { background: var(--lime); box-shadow: 0 0 8px #a3e63599; }
+.campcta:active .campcta-bg { transform: scale(1.04); }
+.campcta:focus-visible, .campcard:focus-visible, .missioncard:focus-visible, .cine-skip:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
+.hero.home .homesec { margin-top: 8px; }
+.hero.home .homesec .btn.freeplay { font-size: 1.15rem; padding: 14px; color: #fff; background: #0b1215d9; border-color: #ffffff40; }
+@media (max-height: 640px) { .campcta { min-height: 112px; } .campcta b { font-size: 1.8rem; } }
+
+/* Campaign pages: the same backdrop, cooled down. */
+.page.camp::before { background: linear-gradient(#04090be6, #061215d9 40%, #04090bf2), url("/img/backdrop.jpg") 60% 20% / cover no-repeat; }
+.camplist, .missionlist { display: flex; flex-direction: column; gap: 12px; }
+.campcard { position: relative; isolation: isolate; display: flex; align-items: flex-end; min-height: clamp(240px, 46dvh, 380px); overflow: hidden; border-radius: var(--r); border: 1px solid #2dd4bf66; text-decoration: none; box-shadow: 0 10px 30px #000a; }
+.campcard-bg, .missioncard-bg, .camphero-bg, .cine-bg, .brief-bg { position: absolute; inset: 0; z-index: -2; background-color: var(--teal-deep); background-size: cover; background-repeat: no-repeat; }
+.campcard::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, #04090bf7 0%, #04090bc7 34%, #04090b40 66%, #04090b00 100%); }
+.campcard-body { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 18px 16px; width: 100%; text-shadow: 0 2px 8px #000; }
+.campcard-title { font: 700 clamp(2.6rem, 14vw, 3.6rem)/1 var(--font-display); letter-spacing: .14em; color: #f3fbf9; }
+.campcard-desc { font: 500 .95rem/1.4 var(--font-body); color: #cfe7e3; max-width: 30em; }
+.campchip { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 3px; font: 700 .72rem var(--font-display); letter-spacing: .2em; background: #04090bcc; border: 1px solid #ffffff40; color: #d5dde6; white-space: nowrap; }
+.campchip[data-state="NEW"], .campchip[data-state="next"], .campchip[data-state="IN PROGRESS"] { border-color: var(--lime); color: var(--lime); }
+.campchip[data-state="COMPLETED"], .campchip[data-state="completed"] { border-color: var(--teal); color: var(--teal); }
+.campchip[data-state="locked"] { color: #8b98a5; border-color: #ffffff26; }
+.campbar { display: flex; align-items: center; gap: 10px; width: 100%; }
+.campbar-track { display: flex; gap: 4px; flex: 1; }
+.campbar-track i { flex: 1; width: auto; height: 6px; }
+.campbar-n { font: 700 .85rem var(--font-display); letter-spacing: .14em; color: #d9f99d; white-space: nowrap; text-transform: uppercase; }
+
+/* A campaign: cover strip with the progress, the difficulty, then the missions as picture cards. */
+.camphero { position: relative; isolation: isolate; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; min-height: 150px; padding: 14px; overflow: hidden; border-radius: var(--r); border: 1px solid #2dd4bf55; }
+.camphero::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, #04090bf2 0%, #04090bb0 45%, #04090b26 100%); }
+.page .camphero-desc { font-size: .95rem; line-height: 1.4; color: #dcefec; text-shadow: 0 1px 6px #000; }
+.campdiff { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px 12px; border-radius: var(--r); border: 1px solid var(--line); background: #0a1114d9; }
+.campdiff[data-prompt] { border-color: var(--lime); box-shadow: 0 0 18px #a3e63526; }
+.campdiff[data-prompt] .nglabel { color: var(--lime); }
+.campdiff .seg button[aria-pressed="true"] { background: #1a2e05; border-color: var(--lime); color: #ecfccb; }
+.campdiff .ngnote { margin: 0; font-size: .8rem; color: #9fb0c0; line-height: 1.35; }
+.missioncard { position: relative; isolation: isolate; display: flex; align-items: flex-end; width: 100%; min-height: 148px; padding: 0; overflow: hidden; border-radius: var(--r); border: 1px solid var(--line); background: #0a1114; color: var(--text); text-align: left; cursor: pointer; }
+.missioncard::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, #04090bf2 0%, #04090bbd 46%, #04090b40 78%, #04090b00 100%), linear-gradient(0deg, #04090bd9 0%, #04090b00 60%); }
+.missioncard-body { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px 14px; width: 100%; min-width: 0; text-shadow: 0 2px 8px #000; }
+.missioncard-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.missioncard-n { font: 600 .8rem var(--font-display); letter-spacing: .3em; color: #b9e4de; }
+.missioncard-title { font: 700 clamp(1.6rem, 8vw, 2rem)/1.05 var(--font-display); letter-spacing: .1em; color: #f3fbf9; }
+.missioncard-sub { font: 500 .82rem/1.3 var(--font-body); color: #cfdbe0; max-width: 80%; }
+.missioncard-go { position: absolute; right: 12px; bottom: 12px; font: 700 .85rem var(--font-display); letter-spacing: .2em; color: var(--lime); text-shadow: 0 1px 6px #000; }
+.missioncard[data-status="next"] { border-color: var(--lime); box-shadow: 0 0 22px #a3e63530; min-height: 178px; }
+.missioncard[data-status="completed"] { border-color: #2dd4bf66; }
+.missioncard[data-status="completed"] .missioncard-go { color: var(--teal); }
+.missioncard[data-status="locked"] { cursor: not-allowed; opacity: 1; }
+.missioncard[data-status="locked"] .missioncard-bg { filter: grayscale(1) brightness(.35); }
+.missioncard[data-status="locked"] .missioncard-title, .missioncard[data-status="locked"] .missioncard-n { color: #8b98a5; }
+.missioncard:not(:disabled):active { transform: scale(.985); filter: brightness(1.15); }
+.epilogue { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: var(--r); border: 1px solid var(--lime); background: #0c1a08e6; }
+.epilogue b { font: 700 1.15rem var(--font-display); letter-spacing: .14em; color: var(--lime); }
+.page .epilogue p, .epilogue p { margin: 0; font-size: .95rem; line-height: 1.45; color: #e6edf3; }
+.epilogue.inres { border-color: #a3e63566; background: #0c1a0899; }
+
+/* Mission intro: the picture full screen, the lines one after another. A tap anywhere moves on. */
+.cine { position: fixed; inset: 0; z-index: 30; isolation: isolate; display: flex; flex-direction: column; justify-content: flex-end; background: #04090b; cursor: pointer; animation: screen-in .6s ease-out both; }
+.cine-bg { animation: cine-drift 14s ease-out both; }
+.cine::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, #04090bfa 0%, #04090bd1 34%, #04090b4d 62%, #04090b1a 100%); }
+.cine-text { display: flex; flex-direction: column; gap: 10px; padding: 24px 20px calc(max(24px, env(safe-area-inset-bottom)) + 64px); max-width: 560px; width: 100%; margin: 0 auto; text-shadow: 0 2px 10px #000; }
+.cine-k { font: 600 .85rem var(--font-display); letter-spacing: .32em; color: var(--lime); text-transform: uppercase; }
+.cine-title, .brief-title { margin: 0; font: 700 clamp(2.4rem, 13vw, 3.6rem)/1 var(--font-display); letter-spacing: .1em; color: #f3fbf9; }
+.cine-title { animation: rise-in .7s .2s cubic-bezier(.2, .7, .2, 1) both; }
+.cine-lines { display: flex; flex-direction: column; gap: 8px; min-height: 8.5em; }
+.cine-lines p { margin: 0; font: 500 1.1rem/1.4 var(--font-body); color: #e6edf3; animation: rise-in .9s ease-out both; }
+.cine-skip { position: absolute; right: 14px; bottom: max(16px, env(safe-area-inset-bottom)); min-height: 44px; padding: 0 16px; border-radius: var(--r); border: 1px solid #ffffff40; background: #04090bb3; color: #e6edf3; font: 700 .95rem var(--font-display); letter-spacing: .22em; cursor: pointer; }
+@keyframes cine-drift { from { transform: scale(1.12); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .cine, .cine-bg, .cine-title, .cine-lines p { animation: none; } }
+
+/* Briefing: picture and name on top, what to do, START MISSION always in reach at the bottom. */
+.brief { min-height: 100dvh; max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; background: #04090b; animation: screen-in .35s ease-out both; }
+.brief-hero { position: relative; isolation: isolate; min-height: clamp(200px, 38dvh, 340px); display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+.brief-hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, #04090b 0%, #04090bb3 40%, #04090b33 100%); }
+.brief-back { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 24px); left: 12px; }
+.brief-head { display: flex; flex-direction: column; gap: 6px; padding: 16px; text-shadow: 0 2px 10px #000; }
+.brief-body { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 4px 16px 16px; }
+.brief-body p { margin: 0; line-height: 1.45; }
+.brief-story { color: #c3d3d6; font-size: .98rem; }
+.brief-obj { padding: 12px 14px; border-radius: var(--r); border: 1px solid #a3e63573; background: #0c1a08cc; }
+.brief-obj h2 { margin: 0 0 4px; font: 600 .78rem var(--font-display); letter-spacing: .3em; color: var(--lime); }
+.brief-obj p { font-size: 1.05rem; font-weight: 500; color: #f3fbf9; }
+.brief-facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.brief-facts li { padding: 5px 10px; border-radius: 3px; border: 1px solid var(--line); background: #0a1114; font: 700 .82rem var(--font-display); letter-spacing: .18em; color: #d5dde6; }
+.brief-safety { font-size: .82rem; color: #8b98a5; }
+.brief-foot { position: sticky; bottom: 0; padding: 10px 16px calc(max(14px, env(safe-area-inset-bottom)) + 4px); background: linear-gradient(#04090b00, #04090b 28%); }
+.btn.cta.camp-cta { background: linear-gradient(#b5f04a, #84cc16); border-color: #d9f99d; color: #0b1403; text-shadow: none; box-shadow: 0 6px 20px #000a, 0 0 22px #a3e63540; }
+.btn.cta.camp-cta:disabled { background: #1c2a10; border-color: #33471c; color: #8fa37a; box-shadow: none; }
+.btn.cta.camp-cta:not(:disabled):active { background: #84cc16; }
+.btn.quiet { background: transparent; border-color: transparent; color: #9fb0c0; padding: 8px; font-size: .9rem; }
+
+/* In the game: the radio as one short line above the controls, the transmission bar under the instruments. */
+.radiocard { position: absolute; z-index: 4; left: 12px; right: 12px; margin: 0 auto; max-width: 420px; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 4px + 48px + 10px); pointer-events: none;
+  display: flex; flex-direction: column; gap: 3px; padding: 9px 12px 10px; border-radius: var(--r); background: #061215f2; border: 1px solid #2dd4bf80; border-left: 3px solid var(--lime); box-shadow: 0 6px 20px #000a;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); animation: helicard-in .25s ease-out both; }
+.radiocard.raised { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 4px + 48px + 10px + 104px); }
+.radiocard-who { font: 700 .72rem var(--font-display); letter-spacing: .3em; color: var(--lime); }
+.radiocard-who::before { content: "● "; color: var(--lime); animation: radio-blink 1.2s steps(2) infinite; }
+.radiocard-text { font: 500 1.02rem/1.32 var(--font-body); color: #f3fbf9; }
+@keyframes radio-blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .radiocard, .radiocard-who::before { animation: none; } }
+.txwrap { display: flex; flex-direction: column; gap: 4px; padding: 7px 10px 8px; border-radius: var(--r); background: var(--plate); border: 1px solid var(--lime); }
+.txlabel { font: 700 .8rem var(--font-display); letter-spacing: .16em; color: var(--lime); font-variant-numeric: tabular-nums; }
+.txbar { height: 8px; border-radius: 2px; background: #1b2430; overflow: hidden; }
+.txbar > div { height: 100%; background: var(--lime); transition: width .4s linear; }
+.txwrap.paused { border-color: #f59e0b; }
+.txwrap.paused .txlabel { color: #fbbf24; }
+.txwrap.paused .txbar > div { background: #f59e0b; }
+.matchintro.mission b { font-size: clamp(2rem, 11vw, 3.4rem); color: #f3fbf9; text-shadow: 0 0 26px #2dd4bf66, 0 2px 10px #000; }
+.matchintro.mission .matchintro-k { color: var(--lime); letter-spacing: .28em; }
+/* The mission's result. */
+.missionres-k { font: 600 .75rem var(--font-display); letter-spacing: .22em; color: #8fd9cf; text-transform: uppercase; }
+.radiolog { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: var(--r); background: #061215; border: 1px solid #2dd4bf40; border-left: 3px solid var(--lime); }
+.radiolog p { margin: 0; font-size: .92rem; line-height: 1.4; color: #dcefec; }
+.radiolog b { font: 700 .72rem var(--font-display); letter-spacing: .24em; color: var(--lime); margin-right: 4px; }
+.resultbg[data-pic="mission"] { background: radial-gradient(120% 80% at 50% 25%, #0c2a2c 0%, #04090b 70%); }

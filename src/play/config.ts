@@ -3,6 +3,7 @@ import { haversineM, type LatLon } from "@/geo/geometry";
 import type { Difficulty } from "@/config/difficulty";
 import type { GameMode } from "@/engine/objectives/objectives";
 import type { ProductProfile } from "@/config/product";
+import type { CampaignRef } from "@/campaign/types";
 
 export interface MatchParams {
   mode: GameMode;
@@ -18,6 +19,8 @@ export interface MatchParams {
   seed: number;
   /** Produktens fiendefart (se src/config/product.ts). Saknas = 1. Sparas med matchen så att en återställd match får samma regler. */
   enemySpeedMultiplier?: number;
+  /** A campaign mission (src/campaign): its rules, goals and story are laid over the mode. Missing = Free Play. */
+  campaign?: CampaignRef;
 }
 
 /** Skjutreglage för sträcka (Escape/Mission) per aktivitet: min, max, steg och förvalt värde (m). */

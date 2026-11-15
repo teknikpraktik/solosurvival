@@ -25,9 +25,26 @@ export default function HowToPlay() {
       </div>
 
       <details open>
-        <summary>Start a match</summary>
+        <summary>Campaigns</summary>
+        <ul>
+          <li>A campaign is a story told in missions. <b>THE FALL</b> has five, on foot, each its own session of 15 to 30 minutes.
+            Play them on the same day or weeks apart, wherever you are: every mission is laid out around the place you start it from.</li>
+          <li>Winning a mission unlocks the next. Being caught or running out of time only fails that mission: retry it, nothing earlier is
+            lost. Finished missions can be replayed.</li>
+          <li>Choose <b>Easy</b>, <b>Normal</b> or <b>Hard</b> for the campaign and change it between missions whenever you like. The story
+            and the goals are the same on every level.</li>
+          <li>The radio tells the story: short lines, heard and shown on screen for a few seconds. You never need to read while moving.</li>
+          <li><b>Signal transmission</b> (mission 4): stay inside the marked zone while the signal is sent. You can keep moving inside it.
+            Leaving the zone only pauses the signal, so step away whenever an infected, or the real world, comes too close.</li>
+          <li>Some infected <b>cut ahead</b> of you instead of following (from mission 3). They guess from the way you have been going:
+            change direction and they are fooled.</li>
+        </ul>
+      </details>
+
+      <details>
+        <summary>Free Play: start a match</summary>
         <ol>
-          <li>Tap <b>NEW GAME</b> and choose <b>ON FOOT</b> (paths and trails) or <b>BY BIKE</b> (roads and gravel tracks).</li>
+          <li>Tap <b>FREE PLAY</b> and choose <b>ON FOOT</b> (paths and trails) or <b>BY BIKE</b> (roads and gravel tracks).</li>
           <li>Choose a game mode.</li>
           <li>On the map, pick <b>Easy</b>, <b>Normal</b> or <b>Hard</b> and the course distance or match length, then tap <b>START GAME</b>.
             The match begins as soon as your location is good enough.</li>

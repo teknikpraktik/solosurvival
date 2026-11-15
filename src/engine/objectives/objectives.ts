@@ -15,7 +15,19 @@ export interface ObjectiveTarget {
   lat: number;
   lon: number;
   nodeId?: string;
+  /** Time (s) the player must stay inside the radius to confirm this target. Missing = OBJECTIVE_HOLD_S. */
+  holdS?: number;
+  /** Activation radius (m) for this target. Missing = the set's radius. */
+  radiusM?: number;
+  /**
+   * A long hold (signal transmission): leaving the zone pauses the progress instead of resetting it, and the zone has a margin on the
+   * way out (TRANSMIT_EXIT_MARGIN_M) so GPS noise at the edge does not flicker between holding and paused.
+   */
+  keepProgress?: boolean;
 }
+
+/** A player holding a `keepProgress` target counts as inside until this far beyond its radius (m). */
+export const TRANSMIT_EXIT_MARGIN_M = 10;
 
 /**
  * Gemensam målmodell för Escape (en destination) och Mission (ordnade checkpoints + hemkomst).
@@ -32,6 +44,10 @@ export interface ObjectiveSet {
   /** Antal olika GPS-fixar som hittills räknats under pågående bekräftelse (bara när fixSeq anges). */
   holdFixes?: number;
   lastFixSeq?: number;
+  /** Checkpoints may be taken in any order: the nearest remaining one is always the active target. Missing = in the given order. */
+  anyOrder?: boolean;
+  /** The player is inside the active `keepProgress` target's zone and the hold is counting (or waiting for reliable GPS). */
+  holding?: boolean;
 }
 
 /** Minsta antal olika GPS-fixar under bekräftelsen, så att en enstaka (dålig) fix aldrig kan registrera ett mål. */
@@ -48,6 +64,28 @@ export const activeTarget = (o: ObjectiveSet): ObjectiveTarget | undefined => o.
 export interface ObjectiveUpdate {
   reached?: ObjectiveTarget;
   completed: boolean;
+  /** A `keepProgress` target only: the hold began, was paused (the player left the zone) or resumed. */
+  hold?: "started" | "paused" | "resumed";
+}
+
+/** Seconds needed inside the zone of a target. */
+export const holdNeedS = (t: Pick<ObjectiveTarget, "holdS">): number => t.holdS ?? OBJECTIVE_HOLD_S;
+
+/** Any order: the nearest remaining checkpoint becomes the active target (a hold in progress on another one starts over). */
+function activateNearest(o: ObjectiveSet, pos: LatLon): void {
+  let best = -1, bd = Infinity;
+  for (let i = o.index; i < o.targets.length; i++) {
+    if (o.targets[i].kind !== "checkpoint") break; // home / destination always come after the checkpoints
+    const d = haversineM(pos, o.targets[i]);
+    if (d < bd) { bd = d; best = i; }
+  }
+  if (best <= o.index) return;
+  const a = o.targets[o.index];
+  o.targets[o.index] = o.targets[best];
+  o.targets[best] = a;
+  o.holdS = 0;
+  o.holdFixes = 0;
+  o.holding = false;
 }
 
 /**
@@ -61,23 +99,46 @@ export interface ObjectiveFixInfo {
 }
 
 export function updateObjectives(o: ObjectiveSet, pos: LatLon, quality: GpsQuality, dtS: number, nowS: number, fix: ObjectiveFixInfo = {}): ObjectiveUpdate {
-  const t = activeTarget(o);
-  if (!t) return { completed: true };
+  if (!activeTarget(o)) return { completed: true };
   if (quality !== "ok" && quality !== "verify") return { completed: false };
+  if (o.anyOrder) activateNearest(o, pos);
+  const t = activeTarget(o)!;
   // Vid "verify" kan sanna positionen ligga upp till accuracyM från den rapporterade: kräv marginal.
   const shrink = quality === "verify" && fix.accuracyM !== undefined ? Math.max(0, fix.accuracyM - VERIFY_OK_ACCURACY_M) : 0;
-  if (haversineM(pos, t) > o.radiusM - shrink) {
-    o.holdS = 0;
-    o.holdFixes = 0;
-    return { completed: false };
+  const radius = t.radiusM ?? o.radiusM;
+  const d = haversineM(pos, t);
+  if (t.keepProgress) {
+    // Signal transmission: inside counts with the same care as any target; once holding, the player stays "inside" a little beyond the edge.
+    const inside = o.holding ? d <= radius + TRANSMIT_EXIT_MARGIN_M : d <= radius - shrink;
+    if (!inside) {
+      if (!o.holding) return { completed: false };
+      o.holding = false;
+      return { completed: false, hold: "paused" };
+    }
+    let hold: ObjectiveUpdate["hold"];
+    if (!o.holding) { o.holding = true; hold = o.holdS > 0 ? "resumed" : "started"; }
+    if (fix.fixSeq !== undefined && fix.fixSeq !== o.lastFixSeq) {
+      o.lastFixSeq = fix.fixSeq;
+      o.holdFixes = (o.holdFixes ?? 0) + 1;
+    }
+    o.holdS += dtS;
+    if (o.holdS < holdNeedS(t) - 1e-9) return { completed: false, hold };
+    if (fix.fixSeq !== undefined && (o.holdFixes ?? 0) < OBJECTIVE_MIN_FIXES) return { completed: false, hold };
+    o.holding = false;
+  } else {
+    if (d > radius - shrink) {
+      o.holdS = 0;
+      o.holdFixes = 0;
+      return { completed: false };
+    }
+    if (fix.fixSeq !== undefined && fix.fixSeq !== o.lastFixSeq) {
+      o.lastFixSeq = fix.fixSeq;
+      o.holdFixes = (o.holdFixes ?? 0) + 1;
+    }
+    o.holdS += dtS;
+    if (o.holdS < holdNeedS(t) - 1e-9) return { completed: false };
+    if (fix.fixSeq !== undefined && (o.holdFixes ?? 0) < OBJECTIVE_MIN_FIXES) return { completed: false };
   }
-  if (fix.fixSeq !== undefined && fix.fixSeq !== o.lastFixSeq) {
-    o.lastFixSeq = fix.fixSeq;
-    o.holdFixes = (o.holdFixes ?? 0) + 1;
-  }
-  o.holdS += dtS;
-  if (o.holdS < OBJECTIVE_HOLD_S - 1e-9) return { completed: false };
-  if (fix.fixSeq !== undefined && (o.holdFixes ?? 0) < OBJECTIVE_MIN_FIXES) return { completed: false };
   o.holdS = 0;
   o.holdFixes = 0;
   o.index++;

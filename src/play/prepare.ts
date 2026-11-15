@@ -46,7 +46,17 @@ const AREA_MESH_MAX_SPACING_M = 120;
  * Hämtar regionala tiles, bygger aktivitetens stignät och genererar ruttförslag från den verkliga startpositionen.
  * Hellre ett tydligt avslag med förklaring än en dålig rutt (säkerhetsprincip).
  */
-export async function prepareMatch(store: TileStore, start: LatLon, p: MatchParams, opts: { component?: ComponentPolicy; terrainTiles?: TileFetcher } = {}): Promise<Prepared> {
+export interface PrepareOptions {
+  component?: ComponentPolicy;
+  terrainTiles?: TileFetcher;
+  /**
+   * A to B without a B chosen by the player (campaign missions): picks the destination on the route network, or null when the network
+   * around the start has no fitting one. Without it, and without `pointB`, nothing changes from before.
+   */
+  autoDestination?: (routeGraph: TrailGraph, start: LatLon, hazardNodes: Set<string>) => LatLon | null;
+}
+
+export async function prepareMatch(store: TileStore, start: LatLon, p: MatchParams, opts: PrepareOptions = {}): Promise<Prepared> {
   const t0 = performance.now();
   const base = { proposals: [], notes: [] as string[], timing: { ...emptyTiming } };
   const manifest = await store.loadManifest();
@@ -115,9 +125,14 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
     }
     return done({ ...base, status: "ok" }, graph);
   }
-  if (atob) {
+  let pointB = atob ? p.pointB! : null;
+  if (!pointB && p.mode === "escape" && opts.autoDestination) {
+    pointB = opts.autoDestination(routeGraph, start, region.hazardNodes);
+    if (!pointB) return done({ ...base, status: "no_route", message: "No reachable destination could be found on the trails around you. Move to a place with more connected paths and try again." }, graph);
+  }
+  if (pointB) {
     const t5 = performance.now();
-    const ab = generateAtoB(routeGraph, start, p.pointB!, region.hazardNodes, A_TO_B_MIN_STRAIGHT_M);
+    const ab = generateAtoB(routeGraph, start, pointB, region.hazardNodes, A_TO_B_MIN_STRAIGHT_M);
     timing.routeMs = performance.now() - t5;
     const msg: Record<string, string> = {
       b_off: "B is too far from a trail connected to A. Pick a point closer to a trail or road.",

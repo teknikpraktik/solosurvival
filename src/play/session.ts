@@ -22,6 +22,12 @@ import { LiveGame } from "./live-game";
 import { createLiveMatch, matchDurationS } from "./match";
 import { prepareMatch, type Prepared } from "./prepare";
 import { MatchStorage, type HistoryRecord } from "./storage";
+import { findMission } from "@/campaign";
+import { prepareMission } from "@/campaign/prepare";
+import { loadProgress, recordResult, recordStart, saveProgress, type MissionResult } from "@/campaign/progress";
+import { MissionStory, type RadioMessage } from "@/campaign/story";
+import type { MissionDef } from "@/campaign/types";
+import { holdNeedS } from "@/engine/objectives/objectives";
 
 export type Cue = "danger" | "alert" | "goal" | "info" | "end" | "zombie" | "captured" | "jump" | "tension" | "sprint";
 
@@ -57,18 +63,55 @@ export type HeliNotice = "approaching" | "landed";
  */
 export type SoundEvent =
   /** The match really begins (START / auto start, once per match; never on resume after a pause, never for a restored match under way). */
-  | { type: "match_started"; id: string; mode: MatchParams["mode"] }
+  | { type: "match_started"; id: string; mode: MatchParams["mode"]; campaign?: boolean }
   /** A checkpoint is confirmed by the game (30 m for 5 s). `last`: the next and final goal is home. */
-  | { type: "checkpoint"; last: boolean; stale: boolean }
+  | { type: "checkpoint"; last: boolean; stale: boolean; campaign?: boolean }
   /** The zombies have the player's position: the hunt begins (first detection in the match) or the player is exposed off the road network. */
   | { type: "revealed"; reason: "hunt" | "exposed"; stale: boolean }
   /** The random jump scare (picture shown now), a zombie starting to sprint, and a zombie in contact (infection is counting). */
   | { type: "jump"; stale: boolean }
   | { type: "sprint"; stale: boolean }
   | { type: "contact"; stale: boolean }
-  | { type: "heli_approach"; stale: boolean }
-  | { type: "heli_landed"; stale: boolean }
-  | { type: "finished"; result: string; mode: MatchParams["mode"]; stale: boolean };
+  | { type: "heli_approach"; stale: boolean; campaign?: boolean }
+  | { type: "heli_landed"; stale: boolean; campaign?: boolean }
+  /**
+   * `campaign`: a mission match. Its radio lines come as `story` events, so the mode's own lines (opening, checkpoint, helicopter, win)
+   * are not said; `ending` says how a win sounds (the helicopter, the safe-house door, or nothing but the radio).
+   */
+  | { type: "finished"; result: string; mode: MatchParams["mode"]; stale: boolean; campaign?: boolean; ending?: MissionDef["ending"] }
+  /** A campaign radio line (see campaign/story.ts). `queue`: it follows the line before it instead of replacing it. */
+  | { type: "story"; id: string; campaignId: string; final: boolean; queue: boolean; fallbackVoice?: string; stale: boolean };
+
+/** Where campaign progress is kept (localStorage in the app). */
+export type CampaignStore = Pick<Storage, "getItem" | "setItem">;
+
+/** A radio line on screen. */
+export interface RadioView { id: string; speaker: string; text: string }
+
+/** How long a radio line stays on screen (ms): time to read it at a glance while moving, within limits. */
+export function radioShowMs(text: string): number {
+  const words = text.trim().split(/\s+/).length;
+  return Math.max(4500, Math.min(12_000, 2500 + words * 420));
+}
+
+/** The campaign side of a match, for the game screen. */
+export interface CampaignMatchView {
+  campaignId: string;
+  campaignTitle: string;
+  missionId: string;
+  /** 1-based place in the campaign, and how many missions it has. */
+  number: number;
+  total: number;
+  title: string;
+  hud: string;
+  objective: string;
+  success: string;
+  ending: MissionDef["ending"];
+  /** The radio lines of the ending (for the result). */
+  endLines: RadioView[];
+  /** Set when the match is over: what the result did to the campaign. */
+  outcome: { firstCompletion: boolean; campaignCompleted: boolean; nextMissionId: string | null; nextTitle: string | null; saved: boolean } | null;
+}
 
 export interface SessionDeps {
   geo: GeoLike | undefined;
@@ -93,6 +136,8 @@ export interface SessionDeps {
   onSound?: (e: SoundEvent) => void;
   /** Kompass (webbläsarens rörelsesensorer). Utelämnad = bara GPS-riktning. */
   compass?: CompassSource;
+  /** Campaign progress (missions done, difficulty). Omitted = mission results are not kept. */
+  campaignStore?: CampaignStore | null;
 }
 
 export type Stage = "idle" | "locating" | "preparing" | "preview" | "playing" | "finished";
@@ -140,6 +185,8 @@ export interface SessionView {
   scareNonce: number;
   /** Survival: the helicopter card to show now (each at most once per match, about 3 s), or null. */
   heliNotice: HeliNotice | null;
+  /** Campaign: the radio line to show now, or null. */
+  radio: RadioView | null;
 }
 
 export interface MatchView {
@@ -164,7 +211,20 @@ export interface MatchView {
   nearestZombieM: number | null;
   infection: number;
   /** `index`/`total` räknar alla mål inklusive hemkomst; visa i stället `progress` (checkpoints räknas för sig, hem för sig). */
-  objectives: { index: number; total: number; holdS: number; next: { id: string; kind: string; lat: number; lon: number } | null; progress: ObjectiveProgress } | null;
+  objectives: {
+    index: number; total: number; holdS: number; next: { id: string; kind: string; lat: number; lon: number } | null; progress: ObjectiveProgress;
+    /** Ids of the goals already confirmed (with goals in any order, the order they were taken in). */
+    reached: string[];
+    anyOrder: boolean;
+    /** The active goal: seconds needed in its zone, the zone's radius (m), whether it is a signal transmission and whether it is counting now. */
+    needS: number; radiusM: number; transmit: boolean; holding: boolean;
+  } | null;
+  /** Game time (s) at which extraction opens; Infinity when the match has none. */
+  extractionOpensAtS: number;
+  /** Surviving until the time limit is the win. */
+  winOnTimeout: boolean;
+  /** A campaign mission, or null in Free Play. */
+  campaign: CampaignMatchView | null;
   extraction: LatLon | null;
   gpsLost: boolean;
   gpsLostLong: boolean;
@@ -239,6 +299,12 @@ export class PlaySession {
   /** Set while events worked out on return from the background are handled (see SoundEvent.stale). */
   private replaying = false;
   private cueMsgs: { text: string; until: number }[] = [];
+  /** Campaign mission: its story, the radio lines waiting to be shown and the one showing, the ending's lines and what the result did. */
+  private story: MissionStory | null = null;
+  private radioQueue: RadioMessage[] = [];
+  private radioNow: { msg: RadioMessage; until: number } | null = null;
+  private endLines: RadioView[] = [];
+  private campaignOutcome: CampaignMatchView["outcome"] = null;
   /** Alla skrivningar till lagringen går i kö, så en pågående sparning aldrig kan skriva efter att matchen avslutats (och lämna en föräldralös post). */
   private io: Promise<void> = Promise.resolve();
 
@@ -371,7 +437,10 @@ export class PlaySession {
     const t0 = performance.now();
     let prepared: Prepared;
     try {
-      prepared = await prepareMatch(this.d.store, start, params, { terrainTiles: this.d.terrainTiles });
+      const cm = findMission(params.campaign);
+      prepared = cm
+        ? await prepareMission(this.d.store, start, cm.mission, params, { terrainTiles: this.d.terrainTiles })
+        : await prepareMatch(this.d.store, start, params, { terrainTiles: this.d.terrainTiles });
     } catch (err) {
       prepared = { status: "no_route", message: `Map data could not be loaded: ${(err as Error).message}`, proposals: [], notes: [], timing: { loadMs: 0, graphMs: 0, routeMs: 0, totalMs: 0 } };
     }
@@ -453,6 +522,13 @@ export class PlaySession {
     this.huntRevealed = !fresh && live.state.phase !== "head_start";
     this.startAnnounced = !fresh && live.state.elapsedSeconds >= 0.5;
     this.armHeli(live, params);
+    const cm = findMission(params.campaign);
+    this.story = cm ? new MissionStory(cm.campaign, cm.mission, live.state.config.durationSeconds, fresh ? undefined : live.state.elapsedSeconds) : null;
+    this.radioQueue = [];
+    this.radioNow = null;
+    this.endLines = [];
+    this.campaignOutcome = null;
+    if (cm && fresh) this.updateCampaign((p) => recordStart(p, cm.mission.id));
     this.recorder = fresh || !this.resumeRecap ? RecapRecorder.fresh(live, params, this.startedAt) : this.resumeRecap;
     this.resumeRecap = null;
     // Slumpade skrämmor (aldrig på cykel och bara om påslaget). Återställd match: planera om från nuvarande speltid.
@@ -485,7 +561,8 @@ export class PlaySession {
     this.log?.add(t, "resume");
     if (!this.startAnnounced && this.params) {
       this.startAnnounced = true;
-      this.sound({ type: "match_started", id: live.state.id, mode: this.params.mode });
+      this.sound({ type: "match_started", id: live.state.id, mode: this.params.mode, ...this.campaignSound() });
+      if (this.story) this.radio(this.story.start());
     }
     void this.acquireWakeLock();
     void this.persist();
@@ -592,7 +669,8 @@ export class PlaySession {
     if (events.length) this.endMatch(events);
     this.updateHeli(live, t);
     if (!live.finished) this.recorder?.tick(live);
-    if (this.stage === "playing" && !live.state.paused && t - this.lastCheckMs >= CHECK_MS) { this.lastCheckMs = t; this.checkZombies(live, t); }
+    if (this.stage === "playing" && !live.state.paused && t - this.lastCheckMs >= CHECK_MS) { this.lastCheckMs = t; this.checkZombies(live, t); this.storyTick(live); }
+    this.advanceRadio(t);
     if (this.stage === "playing" && t - this.lastSaveMs > SAVE_EVERY_MS) void this.persist();
     // React-vyn uppdateras ungefär 2 gånger per sekund; kartan ritar själv från live-objektet.
     if (events.length || t - this.lastEmitMs >= 500) this.emit();
@@ -609,7 +687,7 @@ export class PlaySession {
           this.cue("goal", this.objectiveMessage(live, e.index));
           if (live.state.objectives?.targets[e.index]?.kind === "checkpoint") {
             const o = live.state.objectives;
-            this.sound({ type: "checkpoint", last: objectiveProgress(o).stage === "home", stale: this.replaying });
+            this.sound({ type: "checkpoint", last: objectiveProgress(o).stage === "home", stale: this.replaying, ...this.campaignSound() });
           }
           this.log?.add(t, "objective", { id: e.targetId, atS: Math.round(live.state.elapsedSeconds) });
           break;
@@ -635,7 +713,7 @@ export class PlaySession {
           if (!this.heliShown.landed && this.params?.mode === "survival") {
             this.heliShown = { approaching: true, landed: true };
             this.heliNow = { kind: "landed", until: t + HELI_NOTICE_MS };
-            this.sound({ type: "heli_landed", stale: this.replaying });
+            this.sound({ type: "heli_landed", stale: this.replaying, ...this.campaignSound() });
           }
           break;
         case "gps_lost_long": this.cue("alert", "Location lost for a while"); this.log?.add(t, "gps_lost_long"); break;
@@ -649,11 +727,14 @@ export class PlaySession {
           finished = true;
           this.log?.add(t, "finished", { result: e.result });
           // At once, with the scare or result picture (the spoken/vibrating "end" cue still waits for the result to be saved).
-          if (this.params) this.sound({ type: "finished", result: e.result, mode: this.params.mode, stale: this.replaying });
+          if (this.params) this.sound({ type: "finished", result: e.result, mode: this.params.mode, stale: this.replaying, ...this.campaignSound(), ...(this.story ? { ending: findMission(this.params.campaign)?.mission.ending } : {}) });
+          // Campaign progress is saved at once (not with the match history), so closing the app on the result screen loses nothing.
+          this.campaignResult(live, e.result);
           break;
         default: break;
       }
     }
+    if (this.story) this.radio(this.story.onEvents(events, live.state.elapsedSeconds, live.state.objectives?.targets.length ?? 0));
     if (finished || live.finished) {
       // Match over: a helicopter card that is showing goes at once (not when the result has been saved).
       this.heliNow = null;
@@ -739,9 +820,74 @@ export class PlaySession {
     if (!this.heliShown.approaching && s.phase !== "extraction" && s.elapsedSeconds >= live.rules.extractionOpensAtS - HELI_APPROACH_LEAD_S) {
       this.heliShown.approaching = true;
       this.heliNow = { kind: "approaching", until: t + HELI_NOTICE_MS };
-      this.sound({ type: "heli_approach", stale: false });
+      this.sound({ type: "heli_approach", stale: false, ...this.campaignSound() });
+      if (this.story) this.radio(this.story.heliInbound());
       this.log?.add(t, "heli_approaching", { atS: Math.round(s.elapsedSeconds) });
     }
+  }
+
+  // --- campaign ---
+  /** Marks a sound event as a mission's. Free Play's events are exactly what they have always been (no extra field). */
+  private campaignSound(): { campaign?: true } {
+    return this.story ? { campaign: true } : {};
+  }
+
+  /** Timed story lines and lines about the distance to the goal (about once a second). */
+  private storyTick(live: LiveGame): void {
+    if (!this.story) return;
+    const s = live.state;
+    const goal = s.objectives && s.objectives.index < s.objectives.targets.length ? s.objectives.targets[s.objectives.index] : null;
+    this.radio(this.story.onTick({
+      elapsedS: s.elapsedSeconds, durationS: s.config.durationSeconds, finished: live.finished,
+      goalM: goal ? live.distanceTo(goal) : null,
+      goalFromStartM: goal && s.startPos ? haversineM(s.startPos, goal) : null,
+    }));
+  }
+
+  /** Radio lines to say: shown as text one after another, and sent to the soundscape (a recording, a stand-in line, or a chime). */
+  private radio(msgs: RadioMessage[]): void {
+    msgs.forEach((m, i) => {
+      // An ending line replaces whatever was waiting; the lines of one moment follow each other.
+      if (m.final && i === 0) { this.radioQueue = []; this.radioNow = null; }
+      if (m.final) this.endLines.push({ id: m.id, speaker: m.speaker, text: m.text });
+      this.radioQueue.push(m);
+      this.log?.add(this.now(), "radio", { id: m.id });
+      this.sound({ type: "story", id: m.id, campaignId: m.campaignId, final: m.final, queue: i > 0, fallbackVoice: m.fallbackVoice, stale: this.replaying });
+    });
+    if (msgs.length) { this.advanceRadio(this.now()); this.cached = null; }
+  }
+
+  private advanceRadio(t: number): void {
+    if (this.radioNow && this.radioNow.until > t) return;
+    const next = this.radioQueue.shift();
+    const had = this.radioNow !== null;
+    this.radioNow = next ? { msg: next, until: t + radioShowMs(next.text) } : null;
+    if (next || had) this.cached = null;
+  }
+
+  private updateCampaign(fn: (p: ReturnType<typeof loadProgress>) => ReturnType<typeof loadProgress>): boolean {
+    const cm = findMission(this.params?.campaign);
+    if (!cm) return false;
+    const store = this.d.campaignStore ?? null;
+    try { return saveProgress(store, fn(loadProgress(store, cm.campaign))); } catch { return false; }
+  }
+
+  private campaignResult(live: LiveGame, result: string): void {
+    const cm = findMission(this.params?.campaign);
+    if (!cm || this.campaignOutcome) return;
+    const store = this.d.campaignStore ?? null;
+    let saved = false;
+    try {
+      const out = recordResult(cm.campaign, loadProgress(store, cm.campaign), cm.mission.id, result as MissionResult, live.state.elapsedSeconds, this.now());
+      saved = saveProgress(store, out.progress);
+      this.campaignOutcome = {
+        firstCompletion: out.firstCompletion, campaignCompleted: out.campaignCompleted, nextMissionId: out.nextMissionId,
+        nextTitle: cm.campaign.missions.find((m) => m.id === out.nextMissionId)?.title ?? null, saved,
+      };
+    } catch {
+      this.campaignOutcome = { firstCompletion: false, campaignCompleted: false, nextMissionId: null, nextTitle: null, saved: false };
+    }
+    this.log?.add(this.now(), "campaign_result", { mission: cm.mission.id, result, saved });
   }
 
   private sound(e: SoundEvent) {
@@ -890,7 +1036,7 @@ export class PlaySession {
   /** PLAY AGAIN: the finished match's settings, for New game to pick up and make a new course from. */
   private again: MatchParams | null = null;
   playAgain(): void {
-    this.again = this.params ? { ...this.params, pointA: null, seed: Math.floor(Math.random() * 1e9) } : null;
+    this.again = this.params ? { ...this.params, pointA: null, campaign: undefined, seed: Math.floor(Math.random() * 1e9) } : null;
     this.reset();
   }
   /** The settings PLAY AGAIN left (once). */
@@ -909,6 +1055,11 @@ export class PlaySession {
     this.autoStart = false;
     this.scareShown = false;
     this.heliNow = null;
+    this.story = null;
+    this.radioQueue = [];
+    this.radioNow = null;
+    this.endLines = [];
+    this.campaignOutcome = null;
     this.proposal = null;
     this.log = null;
     this.prepared = null;
@@ -961,6 +1112,7 @@ export class PlaySession {
       storageWarning: this.storageWarning,
       scareNonce: this.scareNonce,
       heliNotice: live && !live.finished && !live.state.paused && this.heliNow && this.heliNow.until > t ? this.heliNow.kind : null,
+      radio: live && this.radioNow && this.radioNow.until > t ? { id: this.radioNow.msg.id, speaker: this.radioNow.msg.speaker, text: this.radioNow.msg.text } : null,
       messages: [...this.cueMsgs.filter((m) => m.until > t).map((m) => m.text), ...this.messages],
     };
   }
@@ -978,6 +1130,7 @@ export class PlaySession {
     const o = s.objectives;
     const next = o && o.index < o.targets.length ? o.targets[o.index] : null;
     const st = live.status(t);
+    const cm = findMission(this.params?.campaign);
     return {
       id: s.id,
       mode: s.config.mode ?? "survival",
@@ -996,7 +1149,18 @@ export class PlaySession {
       zombieCount: zs.length,
       nearestZombieM: zs.length ? zs[0].distanceM : null,
       infection: s.infectionProgressSeconds,
-      objectives: o ? { index: o.index, total: o.targets.length, holdS: o.holdS, next: next ? { id: next.id, kind: next.kind, lat: next.lat, lon: next.lon } : null, progress: objectiveProgress(o) } : null,
+      objectives: o ? {
+        index: o.index, total: o.targets.length, holdS: o.holdS, next: next ? { id: next.id, kind: next.kind, lat: next.lat, lon: next.lon } : null, progress: objectiveProgress(o),
+        reached: o.targets.slice(0, o.index).map((x) => x.id), anyOrder: !!o.anyOrder,
+        needS: next ? holdNeedS(next) : 0, radiusM: next?.radiusM ?? o.radiusM, transmit: !!next?.keepProgress, holding: !!o.holding,
+      } : null,
+      extractionOpensAtS: live.rules.extractionOpensAtS,
+      winOnTimeout: !!live.rules.winOnTimeout,
+      campaign: cm ? {
+        campaignId: cm.campaign.id, campaignTitle: cm.campaign.title, missionId: cm.mission.id, number: cm.index + 1, total: cm.campaign.missions.length,
+        title: cm.mission.title, hud: cm.mission.hud, objective: cm.mission.objective, success: cm.mission.success, ending: cm.mission.ending,
+        endLines: this.endLines, outcome: this.campaignOutcome,
+      } : null,
       extraction: s.extractionNodeId ? (live.g.nodes.get(s.extractionNodeId) ?? null) : null,
       gpsLost: st.quality === "unavailable" || st.quality === "warning",
       gpsLostLong: s.gpsLostLong,

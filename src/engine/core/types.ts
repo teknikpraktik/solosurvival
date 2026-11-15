@@ -69,6 +69,8 @@ export interface PlayerState {
   magnetObservation?: Observation;
   /** Recent positions (game time) for the pass-through speed; the oldest is at least `PASS_THROUGH_WINDOW_S` old once available. */
   speedTrail?: { t: number; lat: number; lon: number }[];
+  /** Interception model "track": the player's snapped positions over the last half minute or so (about one every 4 s), oldest first. */
+  track?: Observation[];
 }
 
 export interface GameState {
@@ -108,6 +110,10 @@ export interface GameState {
   offNetwork?: OffNetworkState;
   /** Bike: riding through a zombie right now (so `pass_through` is sent once per encounter). */
   passingThrough?: boolean;
+  /** Extra zombies added to the population by mission events (signal transmissions). */
+  bonusZombies?: number;
+  /** Extraction without a landing point: game time (s) of the next attempt to choose one (rules.extractionRetry). */
+  nextExtractionTryAtS?: number;
 }
 
 export type GameEvent =
@@ -125,6 +131,10 @@ export type GameEvent =
   | { type: "extraction_opened"; nodeId: string }
   | { type: "extraction_unavailable" }
   | { type: "objective_reached"; targetId: string; index: number }
+  /** A long hold (signal transmission) began, was paused because the player left the zone, or resumed. */
+  | { type: "objective_hold"; targetId: string; change: "started" | "paused" | "resumed" }
+  /** A zombie stopped following and is heading for a junction ahead of the player. */
+  | { type: "zombie_intercept"; zombieId: string }
   | { type: "gps_lost_long" }
   | { type: "off_network"; change: "entered" | "left" | "exposed" }
   | { type: "finished"; result: GameResult };

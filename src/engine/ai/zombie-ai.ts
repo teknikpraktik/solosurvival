@@ -1,4 +1,4 @@
-import { haversineM, type LatLon } from "@/geo/geometry";
+import { haversineM, toLocal, type LatLon } from "@/geo/geometry";
 import { posAtNode, snapToGraphNear } from "@/geo/graph/graph";
 import type { Dir, EdgePos, TrailGraph } from "@/geo/graph/types";
 import { buildTargetTree, planRoute, type PlanOptions, type Route, type TargetTree } from "../pathfinding/astar";
@@ -21,7 +21,9 @@ export interface AiContext {
   reveal: boolean;
   /** Sant om positionen är giltig nog att upptäcka spelaren. */
   detectionEnabled: boolean;
-  events: { type: "zombie_detected"; zombieId: string }[];
+  events: ({ type: "zombie_detected"; zombieId: string } | { type: "zombie_intercept"; zombieId: string })[];
+  /** Interception model "track" (rules.interceptModel): the player's recent snapped positions, oldest first. Missing = the original model. */
+  track?: Observation[];
 }
 
 const REPLAN_MIN_S = 5;
@@ -34,6 +36,15 @@ const CONTACT_LOSS_S = 10;
 const INVESTIGATE_TIMEOUT_S = 90;
 const INTERCEPT_HORIZON_M = 900;
 const INTERCEPT_MARGIN_S = 4;
+/** Track model: the direction is read between the newest position and one at least this much older (s) and this far away (m). */
+const TRACK_MIN_AGE_S = 6;
+const TRACK_MAX_AGE_S = 40;
+const TRACK_MIN_MOVE_M = 10;
+/** Track model: an interceptor looks again this often (s, plus jitter) at whether its junction is still ahead of the player. */
+const INTERCEPT_RECHECK_S = 10;
+const INTERCEPT_RECHECK_JITTER_S = 5;
+/** Track model: at most this many junctions ahead are tried (nearest first); each costs one route search. */
+const INTERCEPT_MAX_CANDIDATES = 8;
 
 /** Planeringsalternativ: på terrängkanter går zombien långsammare (kostnad = längd / fart), så den väljer stigen när den är snabbare. Utan terrängkanter inga alternativ (oförändrad planering). */
 function planOpts(g: TrailGraph, rules: Rules, speedMps: number): PlanOptions {
@@ -94,20 +105,49 @@ function estimateHeading(g: TrailGraph, rules: Rules, z: Zombie, speedMps: numbe
 }
 
 /**
- * Genskjutning (PRD 4.4): hitta en korsning framför spelaren som zombien rimligen hinner före.
- * Använder bara senast observerade position/riktning och en nominell spelarfart – aldrig spelarens verkliga framtid.
+ * Track model: the player's direction from the recent track. The newest position against the most recent one that is old enough and far
+ * enough away to say something; a player who stands still, or whose track is too short, has no direction (no interception).
  */
-function findIntercept(
-  ctx: AiContext,
-  z: Zombie,
-): { nodeId: string; route: Route } | null {
-  const { g, rules } = ctx;
-  const heading = estimateHeading(g, rules, z, rules.playerPaceMps);
-  if (!heading || !z.lastKnownPlayerPosition) return null;
-  const ageS = Math.max(0, ctx.timeS - z.lastKnownPlayerPosition.observedAtMs / 1000);
-  const e0 = g.edges.get(heading.edge.edgeId)!;
+function headingFromTrack(g: TrailGraph, rules: Rules, track: Observation[]): { edge: EdgePos; dir: Dir; from: LatLon; vx: number; vy: number } | null {
+  const last = track[track.length - 1];
+  if (!last) return null;
+  const edge: EdgePos = { edgeId: last.edgeId, distM: last.edgeDistM };
+  for (let i = track.length - 2; i >= 0; i--) {
+    const p = track[i];
+    const age = last.observedAtS - p.observedAtS;
+    if (age < TRACK_MIN_AGE_S) continue;
+    if (age > TRACK_MAX_AGE_S) break;
+    if (p.edgeId === last.edgeId) {
+      if (Math.abs(last.edgeDistM - p.edgeDistM) < TRACK_MIN_MOVE_M) continue;
+      return { edge, dir: last.edgeDistM > p.edgeDistM ? 1 : -1, ...travel(p, last) };
+    }
+    if (haversineM(p, last) < TRACK_MIN_MOVE_M) continue;
+    const r = planRoute(g, { edgeId: p.edgeId, distM: p.edgeDistM }, edge, rules.playerPaceMps, planOpts(g, rules, rules.playerPaceMps));
+    const step = r?.steps.at(-1);
+    if (!r || !step || step.edgeId !== last.edgeId) return null;
+    return { edge, dir: step.dir, ...travel(p, last) };
+  }
+  return null;
+}
+
+/** Where the player is and the direction of travel as the crow flies (unit vector, x east, y north) between two track positions. */
+function travel(a: LatLon, b: LatLon): { from: LatLon; vx: number; vy: number } {
+  const v = toLocal(a, b);
+  const len = Math.hypot(v.x, v.y) || 1;
+  return { from: { lat: b.lat, lon: b.lon }, vx: v.x / len, vy: v.y / len };
+}
+
+/**
+ * Junctions ahead of the player (never turning back), with the distance along the network to each, nearest first.
+ * `trailsOnly` (track model): the sweep follows real trails and roads only, and a junction needs three of them, so the lattice of terrain
+ * edges across open ground neither carries the player's predicted way nor counts as junctions.
+ */
+function junctionsAhead(g: TrailGraph, heading: { edge: EdgePos; dir: Dir }, trailsOnly: boolean): { id: string; d: number }[] {
+  const e0 = g.edges.get(heading.edge.edgeId);
+  if (!e0 || (trailsOnly && e0.offtrail)) return [];
   const startNode = heading.dir === 1 ? e0.to : e0.from;
   const firstLen = heading.dir === 1 ? e0.lengthM - heading.edge.distM : heading.edge.distM;
+  const real = (edgeId: string) => !trailsOnly || !g.edges.get(edgeId)?.offtrail;
 
   // Dijkstra-liknande svep framåt (utan att vända) från spelarens nod.
   const dist = new Map<string, number>([[startNode, firstLen]]);
@@ -120,8 +160,9 @@ function findIntercept(
     const d = dist.get(n)!;
     if (d > INTERCEPT_HORIZON_M) break;
     const adj = g.adj.get(n) ?? [];
-    if (adj.length >= 3) candidates.push({ id: n, d });
+    if ((trailsOnly ? adj.filter((a) => real(a.edgeId)).length : adj.length) >= 3) candidates.push({ id: n, d });
     for (const a of adj) {
+      if (!real(a.edgeId)) continue;
       if (a.edgeId === cameFrom.get(n) && n !== startNode) continue;
       if (a.edgeId === e0.id && n === startNode) continue; // ingen vändning
       const nd = d + a.lengthM;
@@ -132,8 +173,34 @@ function findIntercept(
       }
     }
   }
+  return candidates;
+}
 
+/**
+ * Genskjutning (PRD 4.4): hitta en korsning framför spelaren som zombien rimligen hinner före.
+ * Använder bara senast observerade position/riktning och en nominell spelarfart – aldrig spelarens verkliga framtid.
+ */
+function findIntercept(
+  ctx: AiContext,
+  z: Zombie,
+): { nodeId: string; route: Route } | null {
+  const { g, rules } = ctx;
+  const heading = ctx.track ? headingFromTrack(g, rules, ctx.track) : estimateHeading(g, rules, z, rules.playerPaceMps);
+  if (!heading || !z.lastKnownPlayerPosition) return null;
+  const ageS = Math.max(0, ctx.timeS - z.lastKnownPlayerPosition.observedAtMs / 1000);
+  let candidates = junctionsAhead(g, heading, !!ctx.track);
   const zPos: EdgePos = { edgeId: z.edgeId, distM: z.distanceAlongEdgeM };
+  if (ctx.track) {
+    // A dense street network has dozens of junctions ahead, most of them hopeless for this zombie. Keep only those it could reach first
+    // even in a straight line (no route can be shorter), then search routes for the nearest few of them.
+    const zll = zombieLatLon(g, z);
+    const h = heading as NonNullable<ReturnType<typeof headingFromTrack>>;
+    candidates = candidates.filter((c) => {
+      const n = g.nodes.get(c.id);
+      return !!n && onTheWay(h, n, c.d) && haversineM(zll, n) / z.speedMps + INTERCEPT_MARGIN_S <= c.d / rules.playerPaceMps - ageS;
+    }).slice(0, INTERCEPT_MAX_CANDIDATES);
+  }
+
   let best: { nodeId: string; route: Route; playerEta: number } | null = null;
   for (const c of candidates) {
     const playerEta = c.d / rules.playerPaceMps - ageS;
@@ -147,6 +214,29 @@ function findIntercept(
     }
   }
   return best ? { nodeId: best.nodeId, route: best.route } : null;
+}
+
+/** Track model: is the junction this zombie is heading for still ahead of the player, as far as the player's track tells? */
+function interceptStillAhead(ctx: AiContext, z: Zombie): boolean {
+  if (!ctx.track || !z.targetNodeId) return true;
+  const heading = headingFromTrack(ctx.g, ctx.rules, ctx.track);
+  if (!heading) return true; // standing still: nothing new is known, the zombie keeps its plan
+  const target = ctx.g.nodes.get(z.targetNodeId);
+  return !!target && junctionsAhead(ctx.g, heading, true).some((c) => c.id === z.targetNodeId && onTheWay(heading, target, c.d));
+}
+
+/**
+ * Track model: a junction counts as ahead of the player only if it lies in the direction the player is moving (within about 70 degrees)
+ * and the way there is fairly direct. In a street grid every junction can be reached "forwards" by going round a block, also the ones
+ * behind a player who has just turned; those are not where the player is going.
+ */
+const AHEAD_MIN_COS = 0.35;
+function onTheWay(h: { from: LatLon; vx: number; vy: number }, junction: LatLon, aheadM: number): boolean {
+  const v = toLocal(h.from, junction);
+  const straight = Math.hypot(v.x, v.y);
+  if (straight < 1) return true;
+  if ((v.x * h.vx + v.y * h.vy) / straight < AHEAD_MIN_COS) return false;
+  return aheadM <= straight * 1.5 + 40;
 }
 
 /** Delat kortaste-tid-träd per graf och mål (terrängnät): alla zombier som jagar samma observation använder samma träd. */
@@ -272,6 +362,20 @@ export function updateZombieAI(ctx: AiContext, z: Zombie, arrived: boolean): voi
       applyRoute(z, hit.route);
       setState(z, "intercept", timeS);
       z.replanAtS = timeS + MIN_DECISION_S;
+      if (ctx.track) {
+        z.tacticalAtS = timeS + INTERCEPT_RECHECK_S + rand(ctx.rng) * INTERCEPT_RECHECK_JITTER_S;
+        ctx.events.push({ type: "zombie_intercept", zombieId: z.id });
+      }
+    }
+  } else if (ctx.track && z.state === "intercept" && timeS >= z.tacticalAtS) {
+    // Track model: the interceptor has no perfect knowledge. It holds its plan for a while, then looks at the player's track again; a
+    // player who turned away or took another branch has fooled it, and it goes back to following (and may try again later).
+    z.tacticalAtS = timeS + INTERCEPT_RECHECK_S + rand(ctx.rng) * INTERCEPT_RECHECK_JITTER_S;
+    if (!interceptStillAhead(ctx, z)) {
+      setState(z, "chase", timeS);
+      z.targetNodeId = undefined;
+      z.replanAtS = timeS;
+      z.tacticalAtS = timeS + TACTICAL_MIN_S + rand(ctx.rng) * TACTICAL_JITTER_S;
     }
   }
 }

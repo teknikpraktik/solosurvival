@@ -8,6 +8,13 @@ Spelbar PWA med fullständigt matchflöde: tre spellägen (Checkpoints, A TO B, 
 radiorepliker, matchhistorik och återuppspelning. Fälttestad (se `docs/FALTTEST-1.md`). Återstår före release: balansering i fält och
 beslut om native-skal (bakgrunds-GPS, vibration på iPhone).
 
+## Kampanjer
+
+Huvudmenyn leder till CAMPAIGNS (berättelsedrivna uppdrag) och FREE PLAY (de tre fristående lägena, oförändrade). Första kampanjen är
+THE FALL: fem uppdrag till fots på samma motor som Free Play. Arkitektur, balans, röstmanus och fälttestlista finns i
+[`docs/CAMPAIGN-THE-FALL.md`](docs/CAMPAIGN-THE-FALL.md). Kod: `src/campaign/`. Verktyg: `npm run campaign:voice` (röstmanus och lista över
+inspelade repliker), `npx tsx scripts/campaign-balance.ts` (simulerade vinster per uppdrag och nivå), `npm run e2e:campaign`.
+
 ## v2.2 (stabilisering efter fälttest)
 
 Se `docs/V2.2-ANALYS.md` (grundorsaker, avsnitt 5 = slutlig kvalitetssäkring) och `docs/V2.2-RAPPORT.md` (åtgärder, tester, simuleringar, GO/NO-GO; avsnitt 11 = kvalitetssäkringen).
@@ -38,7 +45,8 @@ npm run sim -- 20 24 # balanseringssimulering: matcher per cell, rutnätsstorlek
 - `src/geo` – geometri, stiggraf, OSM-normalisering/filtrering, områdesvalidering.
 - `src/gps` – GPS-filter och map matching.
 - `src/sim` – syntetiska nät, simulerad spelare och strategier (används av tester, CLI och `/dev`).
-- `src/app` – Next.js (startsida, `/new`, `/play`, `/history`, `/how-to-play`, `/field`, `/dev`). Inga API-routes. Se `docs/ETAPP-3.md`.
+- `src/campaign` – kampanjer: definitioner, framsteg, uppdragsregler, berättelse. Ingen import av React.
+- `src/app` – Next.js (startsida, `/campaigns`, `/new`, `/play`, `/history`, `/how-to-play`, `/field`, `/dev`). Inga API-routes. Se `docs/ETAPP-3.md`.
 
 ## Beslut och avvikelser från PRD
 

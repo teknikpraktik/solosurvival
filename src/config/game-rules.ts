@@ -121,6 +121,32 @@ export interface Rules {
   maxPlausibleSpeedMps: number;
   /** Max antal zombier som området klarar (spawn-kapacitet); begränsar max. */
   spawnCapacity: number;
+
+  // --- Optional mission rules (campaigns). Missing = the behaviour Free Play has always had. ---
+  /** Surviving until the time limit is the win (no extraction, no goal). Missing = running out of time is a loss. */
+  winOnTimeout?: boolean;
+  /**
+   * A simple game director: zombie speed factor by game time (s), as steps. The last step whose `atS` has passed applies; before the
+   * first step the factor is 1.
+   */
+  intensity?: { atS: number; speed: number }[];
+  /**
+   * Interception model. "track": zombies that may intercept estimate the player's direction from the player's recent track (several
+   * seconds of positions), look for a junction ahead they can reach first, and give the attempt up when the player has turned away.
+   * It also works with a terrain lattice in the graph. Missing = the original model (two consecutive observations, trail-only graphs).
+   */
+  interceptModel?: "track";
+  /** Signal transmission: this many extra zombies are added to the population each time a transmission begins. */
+  transmitSpawn?: number;
+  /** Extraction opened but no landing point could be chosen: try again every 15 s instead of leaving the match without one. */
+  extractionRetry?: boolean;
+}
+
+/** The director's zombie speed factor at game time `t` (1 without a director). */
+export function intensityAt(r: Pick<Rules, "intensity">, t: number): number {
+  let f = 1;
+  if (r.intensity) for (const s of r.intensity) if (t >= s.atS) f = s.speed;
+  return f;
 }
 
 export function resolveRules(

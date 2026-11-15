@@ -36,6 +36,8 @@ export interface HistoryRecord {
   checkpoints: { reached: number; total: number } | null;
   /** Numbers from the match recap (no positions, so they are kept with the history; the tracks are deleted after a week). */
   stats?: RecapStats;
+  /** A campaign mission (campaign id and mission id); missing for Free Play. */
+  campaign?: { id: string; mission: string };
 }
 
 interface MatchRecord {
@@ -90,6 +92,7 @@ export class MatchStorage {
       timeLimitS: Math.round(matchDurationS(params, proposal)),
       result,
       checkpoints: o ? { reached: objectiveProgress(o).primaryReached, total: objectiveProgress(o).primaryTotal } : null,
+      ...(params.campaign ? { campaign: { id: params.campaign.id, mission: params.campaign.mission } } : {}),
     };
   }
 

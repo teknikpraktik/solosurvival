@@ -16,7 +16,7 @@ import { Loader } from "../_client/Loader";
 import { threatRange } from "@/play/sound-rules";
 import { t } from "../_client/strings";
 import { personalRecord } from "@/play/recap";
-import { extractionOpensAtS } from "@/config/game-rules";
+import { findMission } from "@/campaign";
 import { MatchStorage } from "@/play/storage";
 import { Scare } from "../_client/Scare";
 import { JumpScare } from "../_client/JumpScare";
@@ -41,6 +41,14 @@ function ResultBackdrop({ pic }: { pic: ResultPicture }) {
       {src && <img src={src} alt="" style={{ objectPosition: pic.position }} onError={() => setSrc((cur) => (cur === pic.src && pic.fallback ? pic.fallback : null))} />}
     </div>
   );
+}
+
+/** The HUD's goal label: the mission's own word in a campaign ("Supplies 2/3", "Safe zone"), the mode's otherwise. */
+function goalLabel(m: { objectives: { progress: Parameters<typeof objectiveLabel>[0] } | null; campaign: { hud: string } | null }): string {
+  const p = m.objectives?.progress;
+  if (!p) return "";
+  if (!m.campaign) return objectiveLabel(p);
+  return p.stage === "checkpoint" ? `${m.campaign.hud} ${p.primaryReached + 1}/${p.primaryTotal}` : m.campaign.hud;
 }
 
 export default function Play() {
@@ -142,12 +150,16 @@ export default function Play() {
   const markers = useMemo<MapMarker[]>(() => {
     const o = m?.proposal;
     if (!o || !m?.objectives) return [];
+    // By id, not by place in the list: with goals in any order the engine's order is the order they are taken in.
+    const reached = new Set(m.objectives.reached);
+    const nextId = m.objectives.next?.id;
     return o.waypoints.map((w, i): MapMarker => ({
       id: w.id, label: w.kind === "destination" ? "B" : w.kind === "home" ? "" : String(i + 1), lat: w.lat, lon: w.lon,
       icon: w.kind === "home" ? "home" : undefined,
-      tone: i < m.objectives!.index ? "done" : i === m.objectives!.index ? "next" : "todo",
+      // Any order: every remaining goal is open, so they all look like the next one.
+      tone: reached.has(w.id) ? "done" : w.id === nextId || m.objectives!.anyOrder ? "next" : "todo",
     }));
-  }, [m?.proposal, m?.objectives?.index]);
+  }, [m?.proposal, m?.objectives?.index, m?.objectives?.next?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // A TO B: any route counts, so only a faint straight line from A to B is drawn. Mission: a thin goal-coloured line joins
   // start → 1 → 2 → … → home, a hint of the direction of the next checkpoint (straight lines, not a route to follow).
   const route = useMemo(() => {
@@ -157,9 +169,12 @@ export default function Play() {
       const b = pr.waypoints[0];
       return [{ points: [pr.geometry[0], { lat: b.lat, lon: b.lon }], selected: false, faint: true }];
     }
-    if (m?.mode === "mission" && pr.waypoints.length) return [{ points: [pr.geometry[0], ...pr.waypoints.map((w) => ({ lat: w.lat, lon: w.lon }))], selected: false, hint: true }];
+    if (m?.mode === "mission" && pr.waypoints.length && !m.objectives?.anyOrder) return [{ points: [pr.geometry[0], ...pr.waypoints.map((w) => ({ lat: w.lat, lon: w.lon }))], selected: false, hint: true }];
     return [];
-  }, [m?.proposal, m?.mode]);
+  }, [m?.proposal, m?.mode, m?.objectives?.anyOrder]);
+  // Signal transmission: the zone to stay inside, round the active goal.
+  const tx = m?.objectives?.transmit && m.objectives.next && m.phase !== "finished" ? m.objectives : null;
+  const zone = useMemo(() => (tx?.next ? { center: { lat: tx.next.lat, lon: tx.next.lon }, radiusM: tx.radiusM, active: tx.holding } : null), [tx?.next?.id, tx?.radiusM, tx?.holding]); // eslint-disable-line react-hooks/exhaustive-deps
   const zombies = useMemo(() => (m?.zombiesNear ?? []).map((z) => ({ id: z.id, edgeId: z.edgeId, distM: z.distM, speedMps: z.speedMps, chasing: z.state === "chase" || z.state === "intercept", sprinting: z.sprinting })), [m?.zombiesNear]);
   useEffect(() => { if (m && !m.paused) setPauseDismissed(false); }, [m?.paused]); // eslint-disable-line react-hooks/exhaustive-deps
   // A new match started with START GAME begins by itself as soon as the location is fresh: no "Ready to start" dialog in between.
@@ -205,8 +220,12 @@ export default function Play() {
   const ready = m.elapsedS < 0.5;
   const canResume = !m.needsFix && !m.gpsLost;
   // The picture behind the result, chosen from how the match ended and its mode.
-  const resultPic = finished && !scare ? resultPicture(m.result, m.mode) : null;
-  const opensInS = Math.max(0, extractionOpensAtS(m.limitS) - m.elapsedS);
+  const camp = m.campaign;
+  const missionDef = camp ? findMission({ id: camp.campaignId, mission: camp.missionId })?.mission : undefined;
+  const resultPic = finished && !scare ? resultPicture(m.result, m.mode, missionDef ? { ending: missionDef.ending, image: missionDef.image, position: missionDef.imagePosition } : undefined) : null;
+  const opensInS = Math.max(0, m.extractionOpensAtS - m.elapsedS);
+  const C = t().campaign;
+  const campaignUrl = camp ? `/campaigns/${camp.campaignId}` : "/";
   // How much the screen itself shows the threat (0–1): nothing beyond the distance where the threat pulse starts, full at 40 m.
   const threatOn = threatRange(m.activity).onM;
   const threat = nearestM === null ? 0 : Math.max(0, Math.min(1, (threatOn - nearestM) / (threatOn - 40)));
@@ -228,6 +247,7 @@ export default function Play() {
         trackUp={auto}
         zoom={16}
         extraction={m.extraction}
+        zone={zone}
         pointTo={!finished ? (m.objectives?.next ?? m.extraction) : null}
         homeStepsBack
         zombieEdgeDots={!finished}
@@ -263,12 +283,15 @@ export default function Play() {
         <div className="hudgrid">
           <div className="hudrow main">
             {m.objectives ? (
-              <span className="pill goal hcell" aria-label={`${objectiveLabel(m.objectives.progress)}${dHome !== null ? `, ${dHome} m` : ""}`}>
-                <span className="tl" aria-hidden="true">{objectiveLabel(m.objectives.progress).split(" · ")[0]}{m.objectives.holdS > 0 ? ` · HOLD ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
+              <span className="pill goal hcell" aria-label={`${goalLabel(m)}${dHome !== null ? `, ${dHome} m` : ""}`}>
+                <span className="tl" aria-hidden="true">{goalLabel(m).split(" · ")[0]}{m.objectives.holdS > 0 && !m.objectives.transmit ? ` · HOLD ${m.objectives.holdS.toFixed(0)}s` : ""}</span>
                 <span className="hval" aria-hidden="true">{dHome !== null ? fmtDist(dHome) : "–"}</span>
               </span>
             ) : m.extraction ? (
               <span className="pill goal hcell"><span className="tl">Extraction open</span><span className="hval">{dExtraction !== null ? fmtDist(dExtraction) : "–"}</span></span>
+            ) : m.winOnTimeout ? (
+              // Hold out until the clock runs down: how many infected are out there (the time is in its own cell).
+              <span className="pill goal hcell" aria-label={`${C.infected}: ${m.zombieCount}`}><span className="tl" aria-hidden="true">{C.infected}</span><span className="hval" aria-hidden="true">{m.zombieCount}</span></span>
             ) : m.phase === "head_start" ? (
               <span className="pill goal hcell"><span className="tl">Head start</span><span className="hval">{fmtTime(m.headStartLeftS)}</span></span>
             ) : (
@@ -301,6 +324,13 @@ export default function Play() {
         </div>
         {!finished && !m.paused && m.offNetwork?.active && (
           <div className="line"><span className="pill warn" role="status" aria-live="polite">{m.offNetwork.exposed ? "Off the road · zombies can reach you. Return to a road!" : `Off the road network · ${m.offNetwork.budgetLeftS} s until zombies find you`}</span></div>
+        )}
+        {/* Signal transmission: how far it has come, and plainly when it is paused (leaving the zone never loses it). */}
+        {tx && !finished && (tx.holding || tx.holdS > 0) && (
+          <div className={`txwrap${tx.holding ? "" : " paused"}`} role="status" aria-live="polite" aria-label={tx.holding ? `${C.transmit.transmitting} ${Math.floor(tx.holdS)} of ${tx.needS} seconds` : C.transmit.paused}>
+            <span className="txlabel" aria-hidden="true">{tx.holding ? `${C.transmit.transmitting} · ${Math.floor(tx.holdS)} / ${tx.needS} s` : C.transmit.paused}</span>
+            <div className="txbar" aria-hidden="true"><div style={{ width: `${Math.min(100, (tx.holdS / Math.max(1, tx.needS)) * 100)}%` }} /></div>
+          </div>
         )}
         {m.infection > 0 && (
           <div className="infectwrap" role="status" aria-label="Infection">
@@ -360,7 +390,7 @@ export default function Play() {
                 setConfirmEnd(false);
                 setQuitting(true);
                 matchAudio().end();
-                void session.quit().finally(() => router.replace("/"));
+                void session.quit().finally(() => router.replace(campaignUrl));
               }}>QUIT</button>
               <button className="btn" onClick={() => setConfirmEnd(false)}>KEEP PLAYING</button>
             </>
@@ -376,13 +406,26 @@ export default function Play() {
           sub={heliNotice === "landed" ? t().heli.landedSub(dExtraction !== null ? fmtDist(dExtraction) : null) : t().heli.approachingSub(fmtTime(opensInS))}
         />
       )}
-      {intro && !finished && !m.paused && (
+      {/* Campaign: what the radio says, as text. One short line at a time, above the controls, never in the way of a touch. */}
+      {camp && view.radio && !finished && !m.paused && (
+        <div className={`radiocard${heliNotice ? " raised" : ""}`} key={view.radio.id} role="status" aria-live="polite">
+          <span className="radiocard-who">{view.radio.speaker}</span>
+          <span className="radiocard-text">{view.radio.text}</span>
+        </div>
+      )}
+      {intro && !finished && !m.paused && (camp ? (
+        <div className="matchintro mission" aria-hidden="true">
+          <span className="matchintro-k">{camp.campaignTitle} · {C.mission(camp.missionId)}</span>
+          <b>{camp.title}</b>
+          <span className="matchintro-s">{camp.objective}</span>
+        </div>
+      ) : (
         <div className="matchintro" aria-hidden="true">
           <span className="matchintro-k">{m.activity === "mtb" ? "BY BIKE" : "ON FOOT"} · {DIFFICULTY_LABEL[m.difficulty].toUpperCase()}</span>
           <b>{MODE_LABEL[m.mode]}</b>
           <span className="matchintro-s">{t().intro[m.mode]}</span>
         </div>
-      )}
+      ))}
       {jump && !finished && <JumpScare onDone={() => setJump(false)} />}
       {scare && <Scare onDone={() => { session.scareShown = true; setScareDone(true); }} />}
       {/* The ending's picture behind the result dialog (captured: after the scare, the same picture, still). */}
@@ -410,6 +453,52 @@ export default function Play() {
           m.activity === "mtb" && st.passThroughs > 0 ? R.riddenThrough(st.passThroughs) : null,
         ].filter((x): x is string => !!x) : [];
         const canShow = res !== "aborted" && !!savedHistory && !!ctx?.db;
+        if (camp) {
+          // A mission's result: what it meant for the story, then where to go. A failed mission offers itself again; nothing earlier is lost.
+          const R2 = C.result;
+          const lost = res === "infected" || res === "failed";
+          const out = camp.outcome;
+          const last = camp.number === camp.total;
+          const campaignDone = won && last;
+          const epilogue = campaignDone ? findMission({ id: camp.campaignId, mission: camp.missionId })?.campaign.epilogue : undefined;
+          const leave = () => session.reset();
+          const missionHref = (id: string) => `/campaigns/${camp.campaignId}?mission=${id}`;
+          return (
+            <Modal
+              title={epilogue ? epilogue.title : won ? R2.complete : lost ? R2.failed : R2.aborted}
+              actions={
+                <>
+                  {won && out?.nextMissionId && <Link className="btn primary cta camp-cta" href={missionHref(out.nextMissionId)} onClick={leave}>{R2.next(out.nextTitle ?? "")}</Link>}
+                  {lost && <Link className="btn primary cta" href={missionHref(camp.missionId)} onClick={leave}>{R2.retry}</Link>}
+                  <Link className={(won && out?.nextMissionId) || lost ? "btn" : "btn primary cta camp-cta"} href={campaignUrl} onClick={leave}>{C.backToCampaign}</Link>
+                  {canShow && <Link className="btn quiet" href={`/recap?id=${encodeURIComponent(m.id)}&from=play`}>{R.showMatch}</Link>}
+                </>
+              }
+            >
+              <div className="missionres-k">{camp.campaignTitle} · {C.mission(camp.missionId)} · {camp.title}</div>
+              <div className={`outcome ${tone}`} role="status">
+                <span className="outcomeicon" aria-hidden="true">{tone === "won" ? "✓" : tone === "lost" ? "✕" : tone === "late" ? "⏱" : "■"}</span>
+                <p>{won ? camp.success : res === "infected" ? R2.caught : res === "failed" ? R2.outOfTime : ""}</p>
+              </div>
+              {camp.endLines.length > 0 && (
+                <div className="radiolog" aria-label="Radio">
+                  {camp.endLines.map((l) => <p key={l.id}><b>{l.speaker}</b> {l.text}</p>)}
+                </div>
+              )}
+              {epilogue && <div className="epilogue inres">{epilogue.lines.map((l, i) => <p key={i}>{l}</p>)}</div>}
+              {won && out?.firstCompletion && out.nextTitle && !campaignDone && <div className="recordline">★ {R2.unlocked(out.nextTitle)}</div>}
+              {lost && <p className="muted">{R2.safe}</p>}
+              {res !== "aborted" && (
+                <dl className="pvstats statcells">
+                  <div><dt>{R.time}</dt><dd>{fmtTime(m.elapsedS)}</dd></div>
+                  <div><dt>{R.distance}</dt><dd>{fmtKm(m.distanceM)}</dd></div>
+                  <div><dt>{R.avgSpeed}</dt><dd>{avg}</dd></div>
+                </dl>
+              )}
+              {((out && !out.saved) || view.storageWarning) && <div className="muted">{R2.notSaved}</div>}
+            </Modal>
+          );
+        }
         return (
           <Modal
             title={title}

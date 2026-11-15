@@ -62,7 +62,7 @@ async function startMatch(o, mode) {
   console.log(`  (music before any tap: ${before ? "started (this browser allows it)" : "refused by the browser, waits for a tap"})`);
   check("start page: the music is asked for at once (started, or waiting for the browser's first tap)", mu.els.length === 2, JSON.stringify(mu));
   check("start page: no match sounds fetched yet (only the music)", !reqs.some((p) => !/^\/audio\/theme-frostborne(-fade|-short)?\.mp3$/.test(p)), reqs.join(","));
-  await page.getByRole("link", { name: "NEW GAME" }).click();
+  await page.getByRole("link", { name: "FREE PLAY" }).click();
   await page.waitForURL("**/new"); await wait(2400);
   mu = await music(page);
   const el0 = mu.els.findIndex((e) => !e.paused);
@@ -282,7 +282,7 @@ let v;
   const o = await open(); const { page, wait } = o;
   await o.ctx.addInitScript(() => { try { localStorage.setItem("outbreak.cues", "off"); } catch {} });
   await page.goto(BASE + "/"); await page.waitForTimeout(800);
-  await page.getByRole("link", { name: "NEW GAME" }).click(); await page.waitForURL("**/new"); await wait(2000);
+  await page.getByRole("link", { name: "FREE PLAY" }).click(); await page.waitForURL("**/new"); await wait(2000);
   const mu = await music(page);
   check("saved 'sound off': no music after a tap", !mu.playing && mu.els.every((e) => e.paused), JSON.stringify(mu));
   await o.ctx.close();

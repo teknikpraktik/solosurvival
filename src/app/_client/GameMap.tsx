@@ -71,6 +71,8 @@ export interface GameMapProps {
   markers?: MapMarker[];
   player?: LatLon | null;
   accuracyM?: number | null;
+  /** A zone to stay inside (signal transmission): a circle of `radiusM` round the goal, brighter while the hold is counting. */
+  zone?: { center: LatLon; radiusM: number; active: boolean } | null;
   start?: LatLon | null;
   /** Auktoritativa zombiepositioner (kant + sträcka). Kartan animerar mjukt längs kantgeometrin mellan uppdateringarna. */
   zombies?: ZombieTarget[];
@@ -198,6 +200,10 @@ export default function GameMap(props: GameMapProps) {
       // Checkpoints: a thin goal-coloured line start → 1 → 2 → … → home, only a hint of where the next one lies.
       map.addLayer({ id: "routes-hint", type: "line", source: "routes", filter: ["==", ["get", "hint"], true], layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#c026d3", "line-width": 1.6, "line-opacity": 0.7 } });
       map.addLayer({ id: "routes", type: "line", source: "routes", filter: ["all", ["!=", ["get", "faint"], true], ["!=", ["get", "hint"], true]], paint: { "line-color": ["case", ["get", "sel"], "#22d3ee", "#64748b"], "line-width": ["case", ["get", "sel"], 5, 2.5], "line-opacity": ["case", ["get", "sel"], 0.95, 0.5] } });
+      // A goal's zone (signal transmission): where the player has to stay, drawn under the player and the zombies.
+      map.addSource("zone", { type: "geojson", data: fc() });
+      map.addLayer({ id: "zone", type: "fill", source: "zone", paint: { "fill-color": ["case", ["get", "active"], "#a3e635", "#22d3ee"], "fill-opacity": ["case", ["get", "active"], 0.2, 0.1] } });
+      map.addLayer({ id: "zone-edge", type: "line", source: "zone", paint: { "line-color": ["case", ["get", "active"], "#a3e635", "#22d3ee"], "line-width": 2, "line-opacity": 0.85, "line-dasharray": [3, 2] } });
       map.addSource("acc", { type: "geojson", data: fc() });
       map.addLayer({ id: "acc", type: "fill", source: "acc", paint: { "fill-color": "#3b82f6", "fill-opacity": 0.15 } });
       map.addSource("start", { type: "geojson", data: fc() });
@@ -224,6 +230,11 @@ export default function GameMap(props: GameMapProps) {
   const src = (id: string, data: GeoJSON.FeatureCollection) => (mapRef.current?.getSource(id) as GeoJSONSource | undefined)?.setData(data);
 
   const { graph, routes, markers, player, accuracyM, start, zombies, extraction, pointTo, follow, fit, frozen, viewAheadM, viewCloseAheadM, viewCloseSideM, viewClose, viewPlayerY } = props;
+  const zone = props.zone ?? null;
+  useEffect(() => {
+    if (!loaded) return;
+    src("zone", fc(zone ? [{ ...circle(zone.center, zone.radiusM), properties: { active: zone.active } }] : []));
+  }, [loaded, zone?.center.lat, zone?.center.lon, zone?.radiusM, zone?.active]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (loaded) src("net", fc(graph ? [...graph.edges.values()].filter((e) => !e.offtrail).map((e) => line(e.geometry)) : [])); }, [loaded, graph]);
   useEffect(() => { if (loaded) src("routes", fc((routes ?? []).map((r) => line(r.points, { sel: r.selected, faint: !!r.faint, hint: !!r.hint })))); }, [loaded, routes]);
   useEffect(() => { if (loaded) src("start", fc(start ? [pt(start)] : [])); }, [loaded, start]);

@@ -43,7 +43,7 @@ const dialogBox = (page) => page.evaluate(() => { const d = document.querySelect
   await o.page.goto(BASE + "/"); await o.page.waitForTimeout(1500);
   const bg = await o.page.locator(".hero").evaluate((e) => getComputedStyle(e).backgroundImage);
   check("start page: hero-v2.jpg behind the title, hero.svg as fallback, old photo gone", bg.includes("/img/hero-v2.jpg") && bg.includes("/img/hero.svg") && !bg.includes("/img/hero.jpg"), bg.slice(0, 160));
-  check("start page: title and buttons visible", (await o.page.getByRole("heading", { name: "OUTBREAK" }).isVisible()) && (await o.page.getByRole("link", { name: "NEW GAME" }).isVisible()));
+  check("start page: title and buttons visible", (await o.page.getByRole("heading", { name: "OUTBREAK" }).isVisible()) && (await o.page.getByRole("link", { name: "FREE PLAY" }).isVisible()));
   await shot(o.page, "01-start");
   await o.ctx.close();
 }

@@ -10,6 +10,7 @@ import { playCue } from "./cues";
 import { matchAudio, soundscape } from "./audio";
 import { openFreeMapFetcher } from "@/geo/blockers";
 import { createBrowserCompass } from "./compass";
+import { campaignKv } from "./campaignStore";
 
 interface Ctx {
   session: PlaySession;
@@ -39,6 +40,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         store,
         userAgent: navigator.userAgent,
         compass: createBrowserCompass(),
+        campaignStore: campaignKv(),
         terrainTiles: openFreeMapFetcher(),
         traceEnabled,
         jumpScares: () => true, // hidden feature: always on (never on Bike, decided by the session)

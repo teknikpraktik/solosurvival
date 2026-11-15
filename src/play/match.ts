@@ -1,7 +1,9 @@
 import { haversineM } from "@/geo/geometry";
 import { COURSE_DETOUR_FACTOR } from "@/routes/course";
-import { RULES_VERSION, applyEnemySpeedMultiplier } from "@/config/game-rules";
-import { resolveModeRules } from "@/config/modes";
+import { RULES_VERSION } from "@/config/game-rules";
+import { findMission } from "@/campaign";
+import { missionDurationS, missionObjectives } from "@/campaign/setup";
+import { resolveMatchRules } from "./rules";
 import { createGame } from "@/engine/core/engine";
 import type { LatLon } from "@/geo/geometry";
 import { objectivesFromProposal } from "@/routes/objectives";
@@ -22,6 +24,8 @@ export interface MatchSetup {
 
 /** Tidsgräns: Survival = vald matchlängd, annars lugn fart längs rutten (ingen bonus för snabbhet). */
 export function matchDurationS(p: MatchParams, proposal: RouteProposal | null): number {
+  const cm = findMission(p.campaign);
+  if (cm) return missionDurationS(cm.mission, p, proposal);
   if (p.mode === "survival" || !proposal) return p.durationS;
   // Mission distances are straight lines between checkpoints; the way actually walked is longer.
   // Mission and terrain A TO B give straight-line lengths; the way actually walked is longer.
@@ -34,7 +38,8 @@ export function createLiveMatch(s: MatchSetup): LiveGame {
   const { params: p } = s;
   const durationS = matchDurationS(p, s.proposal);
   const dest = p.mode === "escape" ? s.proposal?.waypoints.find((w) => w.kind === "destination") : undefined;
-  const rules = applyEnemySpeedMultiplier(resolveModeRules(p.mode, p.activity, p.difficulty, durationS, undefined, dest ? haversineM(s.start, dest) : undefined), p.enemySpeedMultiplier);
+  const rules = resolveMatchRules(p, durationS, dest ? haversineM(s.start, dest) : undefined);
+  const cm = findMission(p.campaign);
   const { state } = createGame({
     g: s.graph,
     config: {
@@ -49,7 +54,7 @@ export function createLiveMatch(s: MatchSetup): LiveGame {
     rules,
     start: s.start,
     id: s.id,
-    objectives: p.mode === "survival" || !s.proposal ? undefined : objectivesFromProposal(s.proposal),
+    objectives: cm ? missionObjectives(cm.mission, s.proposal, p.difficulty) : p.mode === "survival" || !s.proposal ? undefined : objectivesFromProposal(s.proposal),
   });
   return new LiveGame(s.graph, state, rules);
 }

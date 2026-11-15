@@ -18,15 +18,21 @@ export const IMG = {
 } as const;
 
 /** A picture behind the result: its file, a fallback file (or null = the dark gradient alone) and where its subject is (`object-position`). */
-export interface ResultPicture { key: "captured" | "out-of-time" | "safehouse" | "extracted"; src: string; fallback: string | null; position: string }
+export interface ResultPicture { key: "captured" | "out-of-time" | "safehouse" | "extracted" | "mission"; src: string; fallback: string | null; position: string }
 
 /**
  * The picture for how the match ended, from the match's own result and mode (not from any text): captured, out of time, won in
  * Checkpoints or A TO B (the safe house), won in Survival (extracted). Aborted or unknown endings get no picture.
  */
-export function resultPicture(result: string | undefined, mode: GameMode): ResultPicture | null {
+export function resultPicture(result: string | undefined, mode: GameMode, mission?: { ending: "heli" | "safehouse" | "plain"; image: string; position?: string }): ResultPicture | null {
   if (result === "infected") return { key: "captured", src: IMG.captured, fallback: IMG.capturedFallback, position: "50% 22%" };
   if (result === "failed") return { key: "out-of-time", src: IMG.outOfTime, fallback: null, position: "50% 30%" };
+  // A mission won: the helicopter or the safe house when that is how it ends, otherwise the mission's own picture.
+  if (result === "survived" && mission) {
+    if (mission.ending === "heli") return { key: "extracted", src: IMG.extracted, fallback: null, position: "50% 30%" };
+    if (mission.ending === "safehouse") return { key: "safehouse", src: IMG.safehouse, fallback: null, position: "50% 18%" };
+    return { key: "mission", src: mission.image, fallback: null, position: mission.position ?? "50% 30%" };
+  }
   if (result === "survived") {
     return mode === "survival"
       ? { key: "extracted", src: IMG.extracted, fallback: null, position: "50% 30%" }

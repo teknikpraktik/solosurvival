@@ -3,6 +3,8 @@ import type { GameMode } from "@/engine/objectives/objectives";
 import type { SoundEvent } from "@/play/session";
 import { Cooldown, NearGate, SOUND_RULES, ThreatGate, between, pickVariant } from "@/play/sound-rules";
 import { VOICE_COUNTDOWN_M, nextCountdown, type CountdownStep } from "@/play/countdown";
+import { beatVoiceUrl } from "@/campaign";
+import { RECORDED_BEATS } from "@/campaign/voice-manifest";
 import { Soundscape, type Bus, type Levels, type LoopVoice, type MusicSource, type MusicTrack, type PlayResult, type SoundscapeEnv, type Voice } from "@/audio/soundscape";
 
 /**
@@ -74,6 +76,8 @@ export const GAIN = {
   // The jump scare is meant to startle (its files are also levelled a little above the other one-shots); a sprinting zombie is the roar
   // again, a little lower; contact is the warning sting at full level.
   jump: 1, sprint: 0.7, contact: 1,
+  // Campaign: the soft chime that says "a radio message came in" while a line has no recording yet.
+  radioCue: 0.45,
   // The operator's lines −2.5 dB after the field test (the radio static was felt too loud; the files also have it lowered between the words).
   voice: 0.75,
 } as const;
@@ -108,12 +112,14 @@ export function writeLevels(l: Partial<Levels>, s: Storage | null = storage()): 
  * While a line plays, music, threat and helicopter are lowered; the duck is released however the line ends (end, stop, missing file).
  */
 export class RadioVoices {
-  private cur: { line: VoiceLine; token: number; final: boolean; voice: Voice | null } | null = null;
-  private pending: { line: VoiceLine; at: number; final: boolean; resolve: (r: PlayResult) => void } | null = null;
+  private cur: { line: string; token: number; final: boolean; voice: Voice | null } | null = null;
+  private pending: { line: string; at: number; final: boolean; resolve: (r: PlayResult) => void } | null = null;
+  /** Campaign lines: where each one's recording is (the game's own lines are in VOICE). */
+  private readonly clips = new Map<string, string>();
   private token = 0;
   private idle: (() => void)[] = [];
   /** Lines started, for the field log and tests. */
-  readonly log: VoiceLine[] = [];
+  readonly log: string[] = [];
 
   /**
    * `maxQueueMs`: a waiting line older than this is dropped. Lines lose their meaning through events (the match ends, the helicopter lands),
@@ -127,14 +133,20 @@ export class RadioVoices {
     if (!this.cur && !this.pending) return Promise.resolve();
     return new Promise((r) => this.idle.push(r));
   }
-  get speaking(): VoiceLine | null { return this.cur?.line ?? null; }
-  get queued(): VoiceLine | null { return this.pending?.line ?? null; }
+  get speaking(): string | null { return this.cur?.line ?? null; }
+  get queued(): string | null { return this.pending?.line ?? null; }
+
+  /** A campaign line with its own recording at `url`. `queue`: after the line that plays (also an ending line), instead of replacing it. */
+  sayClip(id: string, url: string, o: { final?: boolean; queue?: boolean } = {}): Promise<PlayResult> {
+    this.clips.set(id, url);
+    return this.say(id, o);
+  }
 
   /**
    * Says a line. `supersedes`: lines that are no longer true once this one is (a playing or waiting one is dropped). Resolves with what
    * came of it: "played", "suppressed" (dropped, replaced, too late), or the soundscape's reason ("muted", "missing", …).
    */
-  say(line: VoiceLine, o: { final?: boolean; urgent?: boolean; supersedes?: readonly VoiceLine[] } = {}): Promise<PlayResult> {
+  say(line: VoiceLine | string, o: { final?: boolean; urgent?: boolean; supersedes?: readonly string[]; queue?: boolean } = {}): Promise<PlayResult> {
     const final = !!o.final;
     // Urgent (the zombie distance): now, not after a line; it cuts a playing line and drops a waiting one, but never the win line.
     if (o.urgent && !final) {
@@ -147,19 +159,21 @@ export class RadioVoices {
       if (this.pending && o.supersedes.includes(this.pending.line)) this.dropPending();
       if (this.cur && o.supersedes.includes(this.cur.line)) this.stopCurrent();
     }
-    if (final) this.stop();
+    if (final && !o.queue) this.stop();
     if (!this.cur) return this.start(line, final);
-    if (this.pending?.final) return Promise.resolve("suppressed");
+    if (this.pending?.final && !final) return Promise.resolve("suppressed");
     this.dropPending();
     return new Promise((resolve) => { this.pending = { line, at: this.nowMs(), final, resolve }; });
   }
 
-  private async start(line: VoiceLine, final: boolean): Promise<PlayResult> {
+  private async start(line: string, final: boolean): Promise<PlayResult> {
     const token = ++this.token;
     this.cur = { line, token, final, voice: null };
     this.s.setDuck("voice", true);
     this.log.push(line);
-    const r = await this.s.play(VOICE[line].url, "voice", GAIN.voice, 1500, () => this.ended(token));
+    const url = this.clips.get(line) ?? (VOICE as Record<string, { url: string } | undefined>)[line]?.url;
+    if (!url) { this.ended(token); return "missing"; }
+    const r = await this.s.play(url, "voice", GAIN.voice, 1500, () => this.ended(token));
     if (token !== this.token || this.cur?.token !== token) {
       // Stopped while the file was loading: it must not start late.
       r.voice?.stop(0.05);
@@ -301,14 +315,16 @@ export class MatchAudio {
 
   /** A game moment from the session. Resolves with what came of its sound (for the field log), or null when it has none. */
   onEvent(e: SoundEvent): Promise<PlayResult | null> {
-    if (e.type === "finished") return this.finish(e.result, e.mode);
-    if (e.type === "match_started") return this.started(e.id, e.mode);
+    if (e.type === "finished") return this.finish(e.result, e.mode, !!e.campaign, e.ending);
+    if (e.type === "match_started") return this.started(e.id, e.mode, !!e.campaign);
+    if (e.type === "story") return this.storyLine(e);
     // Moments worked out on return from the background happened while the app was away: no late sound for them.
     if (e.stale || this.hidden || this.done) return Promise.resolve("suppressed");
     const res = (p: Promise<{ result: PlayResult }>) => p.then((r) => r.result);
     switch (e.type) {
       // The radio line replaces the old chime; the chime comes back only if the line cannot play (missing or broken file).
       case "checkpoint":
+        if (e.campaign) return Promise.resolve(null); // the mission's own line says it
         return this.radio.say(e.last ? "getToSafehouse" : "checkpointSecured").then((r) => {
           if (failed(r)) void this.s.play(AUDIO.checkpoint, "fx", GAIN.checkpoint);
           return r;
@@ -329,7 +345,7 @@ export class MatchAudio {
       case "contact":
         return this.contact.take(this.clock.nowS()) ? res(this.s.play(AUDIO.revealed, "fx", GAIN.contact)) : Promise.resolve("suppressed");
       case "heli_approach":
-        void this.radio.say("rescueInbound");
+        if (!e.campaign) void this.radio.say("rescueInbound");
         return this.s.play(AUDIO.heliApproach, "heli", GAIN.heliApproach, 4000).then((r) => {
           // Landed in the meantime (very short lead): the loop is already there.
           if (r.voice && (this.heliLoop?.playing || this.done)) r.voice.stop(SOUND_RULES.heli.approachFadeOutS);
@@ -338,8 +354,27 @@ export class MatchAudio {
         });
       // The loop follows the phase (see update), from the same tick as the landed card. "Rescue inbound" is no longer true once it has landed.
       case "heli_landed":
+        if (e.campaign) return Promise.resolve(null);
         return this.radio.say("getToHelicopter", { supersedes: ["rescueInbound"] });
     }
+  }
+
+  /**
+   * A campaign radio line. With a recording: the operator's channel plays it (one line at a time, as always). Without one: the stand-in
+   * line the beat names, or a soft chime, so the player knows to glance at the text. Ending lines play although the match is over.
+   */
+  private storyLine(e: Extract<SoundEvent, { type: "story" }>): Promise<PlayResult | null> {
+    if (e.stale || this.hidden || (this.done && !e.final)) return Promise.resolve("suppressed");
+    const o = { final: e.final, queue: e.queue };
+    if (RECORDED_BEATS[e.campaignId]?.includes(e.id)) {
+      return this.radio.sayClip(e.id, beatVoiceUrl(e.campaignId, e.id), o).then((r) => {
+        if (failed(r) && !e.final) void this.s.play(AUDIO.checkpoint, "fx", GAIN.radioCue);
+        return r;
+      });
+    }
+    if (e.fallbackVoice && e.fallbackVoice in VOICE) return this.radio.say(e.fallbackVoice, o);
+    if (e.final) return Promise.resolve(null);
+    return this.s.play(AUDIO.checkpoint, "fx", GAIN.radioCue).then((r) => r.result);
   }
 
   private waits = new Set<unknown>();
@@ -368,7 +403,7 @@ export class MatchAudio {
   }
 
   /** The match ended: background loops out, then the ending's own sound (once). */
-  private finish(result: string, mode: GameMode): Promise<PlayResult | null> {
+  private finish(result: string, mode: GameMode, campaign = false, ending?: "heli" | "safehouse" | "plain"): Promise<PlayResult | null> {
     if (this.done && this.endedWith !== null) return Promise.resolve(null);
     this.done = true;
     this.endedWith = result;
@@ -376,9 +411,11 @@ export class MatchAudio {
     this.stopLoops(SOUND_RULES.heli.loopStopS);
     // Lines about the match (start, checkpoints, helicopter) are over; a win gets its own line, part of the ending.
     this.radio.stop();
-    const line = result === "survived" && !this.hidden ? this.radio.say(mode === "survival" ? "liftingOff" : "insideSafehouse", { final: true }) : null;
+    // A mission's ending lines come as story events right after this one; how its win sounds is the mission's own choice.
+    const line = result === "survived" && !this.hidden && !campaign ? this.radio.say(mode === "survival" ? "liftingOff" : "insideSafehouse", { final: true }) : null;
+    const winSound = campaign ? (ending === "heli" ? AUDIO.heliSuccess : ending === "safehouse" ? AUDIO.safeDoor : null) : mode === "survival" ? AUDIO.heliSuccess : AUDIO.safeDoor;
     const url = result === "infected" ? AUDIO.captured
-      : result === "survived" ? (mode === "survival" ? AUDIO.heliSuccess : AUDIO.safeDoor)
+      : result === "survived" ? winSound
       : null; // out of time, quit: no sound
     // The ending's sounds are done when its effect has ended and the operator has finished speaking (the music comes back then). A safety
     // limit keeps a lost "ended" from holding the music back.
@@ -391,7 +428,9 @@ export class MatchAudio {
       ? this.s.play(url, "fx", url === AUDIO.captured ? GAIN.captured : url === AUDIO.safeDoor ? GAIN.safeDoor : GAIN.heliSuccess, 2500, () => effectEnded())
         .then((r) => { if (!r.voice) effectEnded(); return r.result; })
       : (effectEnded(), Promise.resolve(null));
-    void Promise.all([effect, (line ?? Promise.resolve(null)).then(() => this.radio.whenIdle())]).then(() => {
+    // Campaign: give the ending's story lines (sent just after this event) a moment to reach the radio before asking whether it is idle.
+    const lines = campaign ? new Promise<void>((r) => { this.s.later(() => r(), 400); }) : (line ?? Promise.resolve(null));
+    void Promise.all([effect, Promise.resolve(lines).then(() => this.radio.whenIdle())]).then(() => {
       this.s.cancel(safety);
       if (this.matchId === id && this.endedWith === result) this.setEndDone(true);
     });
@@ -422,10 +461,11 @@ export class MatchAudio {
   }
 
   /** A match begins (after START, not on the setup step): the opening line for its mode. */
-  private started(id: string, mode: GameMode): Promise<PlayResult | null> {
+  private started(id: string, mode: GameMode, campaign = false): Promise<PlayResult | null> {
     if (id !== this.matchId) this.newMatch({ id, mode });
     if (this.hidden) return Promise.resolve("suppressed");
     this.s.music.matchStart(); // the theme from its beginning as the match begins
+    if (campaign) return Promise.resolve(null); // the mission's opening line follows as a story event
     return this.radio.say(mode === "survival" ? "keepMoving" : mode === "escape" ? "safehouseOnMap" : "checkpointStart");
   }
 
@@ -563,6 +603,11 @@ export const MUSIC_PLAYLIST: MusicSource = {
   gapS: [240, 540],
   match: { start: 2, mid: 1, end: 0 },
 };
+/** Campaign: decode a mission's recorded lines before the match (only those that exist), with the sounds its ending may use. */
+export function preloadMissionVoices(campaignId: string, beatIds: readonly string[]): void {
+  const have = RECORDED_BEATS[campaignId] ?? [];
+  soundscape().preload([...MATCH_SOUNDS, ...HELI_SOUNDS, ...beatIds.filter((id) => have.includes(id)).map((id) => beatVoiceUrl(campaignId, id))]);
+}
 export function matchAudio(): MatchAudio {
   match ??= new MatchAudio(soundscape(), { nowS: () => Date.now() / 1000 });
   return match;

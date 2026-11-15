@@ -24,6 +24,8 @@ jobs:
       # Deterministiska matcher (gång/cykel × svårighet × läge × seeds). En avsiktlig regeländring uppdaterar referensfilen i samma PR.
       - name: Regression fingerprint
         run: npx tsx scripts/regression-fingerprint.ts | diff -u scripts/regression-fingerprint.expected.txt -
+      # Campaign voice script and the list of recorded lines match the campaign definitions and the files in public/campaign.
+      - run: npm run campaign:voice -- --check
       - run: npm run build
 
   mini:

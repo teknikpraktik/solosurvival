@@ -8,6 +8,13 @@ import { MatchStorage, type HistoryRecord } from "@/play/storage";
 import { RecapStore } from "@/play/recap";
 import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_LABEL, RESULT_LABEL, fmtDate, fmtKm, fmtTime } from "../_client/format";
 import { useSessionCtx } from "../_client/SessionProvider";
+import { findMission } from "@/campaign";
+
+/** A campaign mission's name for the list ("THE FALL 02 · THE SUPPLY RUN"), or null for a Free Play match. */
+function missionName(h: HistoryRecord): string | null {
+  const cm = findMission(h.campaign);
+  return cm ? `${cm.campaign.title} ${cm.mission.id} · ${cm.mission.title}` : null;
+}
 
 export default function History() {
   const ctx = useSessionCtx();
@@ -31,7 +38,7 @@ export default function History() {
       <div className="hist">
         {items?.map((h) => (
           <div className="card" key={h.id}>
-            <div><b>{MODE_LABEL[h.mode]}</b> · {ACTIVITY_LABEL[h.activity]} · {DIFFICULTY_LABEL[h.difficulty]}</div>
+            <div><b>{missionName(h) ?? MODE_LABEL[h.mode]}</b> · {ACTIVITY_LABEL[h.activity]} · {DIFFICULTY_LABEL[h.difficulty]}</div>
             <div className={`res ${h.result}`}>{RESULT_LABEL[h.result] ?? h.result}</div>
             <div className="muted">{fmtDate(h.startedAt)}</div>
             <div className="muted" style={{ textAlign: "right" }}>{fmtTime(h.elapsedS)} · {fmtKm(h.measuredDistanceM)}</div>

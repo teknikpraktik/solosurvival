@@ -6,6 +6,7 @@ import {
   PASS_THROUGH_WINDOW_S,
   RESUME_NEUTRAL_S,
   STEP_S,
+  intensityAt,
   sprintFactorAt,
   sprintTotalS,
   type Rules,
@@ -15,7 +16,7 @@ import { edgeLatLon, nodeLatLon, snapToGraph } from "@/geo/graph/graph";
 import type { EdgePos, TrailGraph } from "@/geo/graph/types";
 import type { GpsQuality } from "@/gps/types";
 import { cullStackedZombies } from "../ai/culling";
-import { makeObservation, updateZombieAI } from "../ai/zombie-ai";
+import { makeObservation, updateZombieAI, type AiContext } from "../ai/zombie-ai";
 import { chooseExtraction } from "../extraction/extraction";
 import { CONTACT_CHECK_M, infectionContactM } from "../infection/contact";
 import { updateInfection } from "../infection/infection";
@@ -36,6 +37,10 @@ export interface StepInput {
 }
 
 export class GameSetupError extends Error {}
+
+/** Interception model "track": one sample of the player's position every this many seconds, and how many are kept. */
+export const TRACK_SAMPLE_S = 4;
+export const TRACK_SAMPLES = 8;
 
 /** Aktuell fartfaktor för en zombie (1 utanför spurt). Äldre sparade matcher saknar `sprintStartS`: då antas en spurt utan ramp/avtagande. */
 export function zombieSpeedFactor(rules: Rules, z: Pick<Zombie, "sprintUntilS" | "sprintStartS">, t: number): number {
@@ -170,7 +175,8 @@ function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos,
     replanAtS: 0,
     tacticalAtS: s.elapsedSeconds + 20 + rand(s) * 10,
     contactLostS: 0,
-    canIntercept: rand(s) < rules.interceptShare && !g.hasOfftrail, // genskjutning är odefinierad i öppen terräng
+    // The original interception is undefined on open ground; the "track" model only looks along real trails, so a lattice does not stop it.
+    canIntercept: rand(s) < rules.interceptShare && (!g.hasOfftrail || rules.interceptModel === "track"),
   };
   s.zombies.push(z);
   s.peakZombies = Math.max(s.peakZombies, s.zombies.length);
@@ -261,6 +267,7 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   if (s.phase === "survival" && t >= rules.extractionOpensAtS) {
     setPhase(s, "extraction", events);
     openExtraction(g, s, rules, events);
+    if (rules.extractionRetry) s.nextExtractionTryAtS = t + 15;
   }
   const hunting = s.phase === "survival" || s.phase === "extraction";
 
@@ -277,7 +284,7 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   // Successivt fler zombier.
   if (hunting && t >= s.nextSpawnTryAtS) {
     const sinceHunt = t - rules.headStartS;
-    const target = Math.min(rules.maxZombies, rules.initialZombies + Math.floor((rules.growthPerMin * sinceHunt) / 60));
+    const target = Math.min(rules.maxZombies, rules.initialZombies + Math.floor((rules.growthPerMin * sinceHunt) / 60)) + (s.bonusZombies ?? 0);
     // Zombier som tagits bort ur en hög räknas fortfarande: nya kommer i samma takt som förut, men de borttagna ersätts inte.
     if (s.zombies.length + (s.culledZombies ?? 0) < target) {
       const snap = snapToGraph(g, input.position, s.component);
@@ -290,11 +297,22 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   if (hunting && rules.magnetic && detection) {
     const m = s.player.magnetObservation;
     if (!m || t - m.observedAtS >= 1) s.player.magnetObservation = makeObservation(g, input.position, t, s.component, m ?? s.player.lastObservation) ?? m;
+    // Interception model "track": a sparse trail of those positions, the only thing the interceptors estimate the player's direction from.
+    const now = s.player.magnetObservation;
+    if (rules.interceptModel === "track" && now) {
+      const track = (s.player.track ??= []);
+      const last = track[track.length - 1];
+      if (!last || now.observedAtS - last.observedAtS >= TRACK_SAMPLE_S) {
+        track.push(now);
+        while (track.length > TRACK_SAMPLES) track.shift();
+      }
+    }
   }
 
   // Zombier.
   if (hunting) {
-    const aiEvents: { type: "zombie_detected"; zombieId: string }[] = [];
+    const aiEvents: AiContext["events"] = [];
+    const director = intensityAt(rules, t);
     for (const z of s.zombies) {
       // Spurt: en jagande zombie nära spelaren accelererar, håller toppfart, tappar den gradvis och måste sedan återhämta sig.
       if (z.sprintUntilS !== undefined && t >= z.sprintUntilS) {
@@ -315,7 +333,7 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
       // Terrängkant: zombien går långsammare. Hastigheten avgörs av kanten den står på i stegets början (högst ett steg fel vid kantbyte).
       const offTrail = g.hasOfftrail && g.edges.get(z.edgeId)?.offtrail;
       const rush = s.phase === "extraction" ? (rules.extractionRushFactor ?? 1) : 1;
-      const speed = z.speedMps * zombieSpeedFactor(rules, z, t) * (offTrail ? rules.offTrailFactor : 1) * rush;
+      const speed = z.speedMps * zombieSpeedFactor(rules, z, t) * (offTrail ? rules.offTrailFactor : 1) * rush * director;
       const arrived = advanceZombie(g, z, speed * STEP_S, s);
       updateZombieAI(
         {
@@ -326,6 +344,7 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
           playerPos: input.position,
           playerObservation: s.player.lastObservation ?? null,
           magnetObservation: rules.magnetic && detection ? (s.player.magnetObservation ?? null) : null,
+          track: rules.interceptModel === "track" ? s.player.track : undefined,
           reveal,
           detectionEnabled: detection,
           events: aiEvents,
@@ -390,6 +409,12 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   // Mål (Escape/Mission).
   if (s.objectives) {
     const u = updateObjectives(s.objectives, input.position, input.quality, STEP_S, t, { accuracyM: input.accuracyM, fixSeq: input.fixSeq });
+    if (u.hold) {
+      const target = s.objectives.targets[s.objectives.index];
+      if (target) events.push({ type: "objective_hold", targetId: target.id, change: u.hold });
+      // The transmission is heard: more infected head for the area (they appear at the usual safe distance, never on top of the player).
+      if (u.hold === "started" && rules.transmitSpawn) { s.bonusZombies = (s.bonusZombies ?? 0) + rules.transmitSpawn; s.nextSpawnTryAtS = Math.min(s.nextSpawnTryAtS, t); }
+    }
     if (u.reached) events.push({ type: "objective_reached", targetId: u.reached.id, index: s.objectives.index - 1 });
     if (u.completed) {
       finish(s, "survived", events);
@@ -398,6 +423,10 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
   }
 
   // Extraction.
+  if (s.phase === "extraction" && !s.extractionNodeId && rules.extractionRetry && t >= (s.nextExtractionTryAtS ?? 0)) {
+    s.nextExtractionTryAtS = t + 15;
+    openExtraction(g, s, rules, events);
+  }
   if (s.phase === "extraction" && s.extractionNodeId) {
     const ex = nodeLatLon(g, s.extractionNodeId);
     const shrink = input.quality === "verify" ? Math.max(0, input.accuracyM - VERIFY_OK_ACCURACY_M) : 0;
@@ -419,7 +448,7 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
     }
   }
 
-  if (t >= rules.durationS) finish(s, "failed", events);
+  if (t >= rules.durationS) finish(s, rules.winOnTimeout ? "survived" : "failed", events);
   return events;
 }
 
