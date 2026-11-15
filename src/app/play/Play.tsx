@@ -334,7 +334,6 @@ export default function Play() {
             <span className="menuicon" aria-hidden="true" dangerouslySetInnerHTML={{ __html: sound ? SOUND_ON_SVG : SOUND_OFF_SVG }} />
             <span>Sound</span><b>{sound ? "ON" : "OFF"}</b>
           </button>
-          {m.frozen && !ready && <div className="muted">The app was inactive. No time was counted.</div>}
         </Modal>
       )}
 
