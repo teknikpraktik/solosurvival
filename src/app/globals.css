@@ -754,3 +754,8 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 .controls .autobtn.iconbtn[aria-pressed="true"] { background: #0f2a1ae6; border-color: #22c55e99; color: #4ade80; }
 /* Trip row: the elapsed time is named before its value. */
 .hudbar .hudgrid .pill.tripstats .cell.pre .tl { order: 0; }
+/* The difficulty leads the trip row, before the activity symbol. */
+.hudgrid .tripstats .hdiff { margin-left: 0; margin-right: 10px; }
+.hudgrid .tripstats .tripicon { margin-right: 12px; }
+.hudgrid .tripstats .cell { margin-right: 14px; }
+.hudgrid .tripstats .cell:last-of-type { margin-right: 0; }

@@ -290,12 +290,12 @@ export default function Play() {
               start (it stands still while paused, like the time left). */}
           {!finished && (
             <div className="hudrow pill tripstats">
+              {/* The difficulty, small, first in the row: it reads together with the activity symbol after it. */}
+              <span className="hdiff" aria-label={`Difficulty ${DIFFICULTY_LABEL[m.difficulty]}`}>{DIFFICULTY_LABEL[m.difficulty]}</span>
               <span className="tripicon" role="img" aria-label={m.activity === "mtb" ? "Bike" : "On foot"} dangerouslySetInnerHTML={{ __html: m.activity === "mtb" ? BIKE_SVG : WALK_SVG }} />
               {m.activity === "mtb" && <span className="cell" aria-label="Your speed"><span className="tl" aria-hidden="true">KM/H</span><span aria-hidden="true">{view.speedMps === null ? "–" : (view.speedMps * 3.6).toFixed(1)}</span></span>}
               <span className="cell" aria-label={`Distance ${fmtKm(m.distanceM)}`}><span className="tl" aria-hidden="true">KM</span><span aria-hidden="true">{(m.distanceM / 1000).toFixed(m.distanceM < 10_000 ? 2 : 1)}</span></span>
               <span className="cell pre" aria-label={`Elapsed ${fmtTime(m.elapsedS)}`}><span className="tl" aria-hidden="true">ELAPSED</span><span aria-hidden="true">{fmtTime(m.elapsedS)}</span></span>
-              {/* The difficulty, small, at the right end of the row (the mode is named by the goal cell). */}
-              <span className="hdiff" aria-label={`Difficulty ${DIFFICULTY_LABEL[m.difficulty]}`}>{DIFFICULTY_LABEL[m.difficulty]}</span>
             </div>
           )}
         </div>
