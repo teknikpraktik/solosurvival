@@ -1,16 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Soundscape, type Levels } from "@/audio/soundscape";
 import { AUDIO, DUCK, MIX, MatchAudio, VOICE } from "@/app/_client/audio";
 import { beatVoiceUrl } from "@/campaign";
 import type { SoundEvent } from "@/play/session";
 import { fakeEnv, flush } from "./audio-fakes";
 
+// The tests decide which lines count as recorded (one of them), so they do not depend on which voice files exist in the repository.
+vi.mock("@/campaign/voice-manifest", () => ({ RECORDED_BEATS: { "the-fall": ["tf-m05-landed"] } }));
+
 // What the soundscape starts for campaign radio lines, on a fake Web Audio clock. This is not a listening test.
-const CLIP_A = beatVoiceUrl("the-fall", "tf-m04-win"), CLIP_B = beatVoiceUrl("the-fall", "tf-m04-raven");
+const CLIP_A = beatVoiceUrl("the-fall", "tf-m04-win"), CLIP_B = beatVoiceUrl("the-fall", "tf-m04-raven"), CLIP_REC = beatVoiceUrl("the-fall", "tf-m05-landed");
 const DUR: Record<string, number> = {
   [AUDIO.checkpoint]: 2, [AUDIO.heliApproach]: 25, [AUDIO.heliSuccess]: 7, [AUDIO.safeDoor]: 5, [AUDIO.captured]: 4,
   [VOICE.keepMoving.url]: 8, [VOICE.checkpointSecured.url]: 5, [VOICE.checkpointStart.url]: 8, [VOICE.rescueInbound.url]: 6, [VOICE.getToHelicopter.url]: 7,
-  [VOICE.liftingOff.url]: 5, [VOICE.insideSafehouse.url]: 7, [VOICE.safehouseOnMap.url]: 8, [CLIP_A]: 6, [CLIP_B]: 5,
+  [VOICE.liftingOff.url]: 5, [VOICE.insideSafehouse.url]: 7, [VOICE.safehouseOnMap.url]: 8, [CLIP_A]: 6, [CLIP_B]: 5, [CLIP_REC]: 6,
 };
 function setup() {
   const f = fakeEnv(DUR);
@@ -31,6 +34,18 @@ describe("campaign radio lines in the soundscape", () => {
     expect(t.m.radio.speaking).toBeNull();
     expect(await t.m.onEvent({ type: "match_started", id: "f1", mode: "survival" })).toBe("played");
     expect(t.m.radio.speaking).toBe("keepMoving");
+  });
+
+  it("a recorded line plays its own file on the operator's channel, not its stand-in, and lowers the music while it plays", async () => {
+    const t = setup();
+    await t.m.onEvent({ type: "match_started", id: "c1", mode: "survival", campaign: true });
+    expect(await t.m.onEvent(line("tf-m05-landed", { fallbackVoice: "getToHelicopter" }))).toBe("played");
+    expect(live(t)).toEqual([CLIP_REC]);
+    expect(t.m.radio.speaking).toBe("tf-m05-landed");
+    expect(t.s.ducked).toBe(true);
+    await t.advance(7000);
+    expect(t.m.radio.speaking).toBeNull();
+    expect(t.s.ducked).toBe(false);
   });
 
   it("a line without a recording plays its stand-in line when it has one", async () => {

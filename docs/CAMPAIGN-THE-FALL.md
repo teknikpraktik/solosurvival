@@ -111,7 +111,7 @@ Zombien vet alltså aldrig vart spelaren ska, bara vart spelaren har varit på v
 
 ## 6. Röstfiler (ElevenLabs)
 
-Alla 50 repliker visas som text redan nu. Ljudet väljs i tre steg: egen inspelning om den finns, annars en befintlig inspelad
+Alla 50 repliker är inspelade (ElevenLabs, 2026-11-15) och visas dessutom som text. Ljudet väljs i tre steg: egen inspelning om den finns, annars en befintlig inspelad
 replik (`fallbackVoice`, 13 repliker har en), annars en mjuk signal så spelaren vet att text kommit.
 
 1. Manus: `docs/campaign/the-fall-voice-script.csv` – filnamn, talare, röstregi, utlösare, text. Genereras ur definitionerna.
@@ -153,7 +153,7 @@ introt (samt bakom resultatet i uppdrag 1, 2 och 4). Vilken del som syns i de sm
 - Uppdrag 1 och 5 kräver minst 3 km sammanhängande nät (samma krav som Survival). Uppdrag 2 och 4 nöjer sig med två mål om nätet
   är litet. Uppdrag 3 söker destination i allt vidare avståndsband och avstår hellre än att lägga ett orimligt mål.
 - Zonen i uppdrag 4 läggs på en korsning utan större väg, men spelet vet inget om belysning, sikt eller trafik på platsen.
-- Ingen röst är inspelad. Kampanjen är inte spelad i fält.
+- Rösterna är genererade och kontrollerade med taligenkänning mot manuset, men ingen människa har lyssnat igenom dem i spelet. Kampanjen är inte spelad i fält.
 
 ## 9. Fälttest
 

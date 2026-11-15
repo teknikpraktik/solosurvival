@@ -67,7 +67,7 @@ function radioFilter(kind: Speaker["radio"], durationS: number): string {
   const bed = air ? 0.03 : 0.012;
   const env = `'${bed}+0.16*between(t,0.03,0.13)+0.14*between(t,${(total - 0.2).toFixed(2)},${(total - 0.08).toFixed(2)})'`;
   const noise = `anoisesrc=color=${air ? "brown" : "white"}:duration=${total.toFixed(2)}:sample_rate=48000:seed=7,highpass=f=${air ? 250 : 700},lowpass=f=${air ? 2400 : 3600},volume=${env}:eval=frame`;
-  return `[0:a]aresample=48000,aformat=channel_layouts=mono,${voice}[v];${noise}[n];[v][n]amix=inputs=2:duration=shortest:normalize=0[m]`;
+  return `[0:a]aresample=48000,aformat=channel_layouts=mono,${voice}[v];${noise}[n];[v][n]amix=inputs=2:duration=shortest:normalize=0,pan=stereo|c0=c0|c1=c0[m]`;
 }
 
 function loudness(file: string): { I: number; TP: number; duration: number } {
@@ -81,9 +81,14 @@ function build(take: string, out: string, kind: Speaker["radio"]): { I: number; 
   const tmp = `${out}.tmp.wav`;
   const dur = loudness(take).duration;
   execFileSync("ffmpeg", ["-hide_banner", "-v", "error", "-y", "-i", take, "-filter_complex", radioFilter(kind, dur), "-map", "[m]", "-c:a", "pcm_s16le", tmp]);
+  const encode = (gainDb: number) => execFileSync("ffmpeg", ["-hide_banner", "-v", "error", "-y", "-i", tmp, "-af", `volume=${gainDb.toFixed(2)}dB`, "-c:a", "libmp3lame", "-b:a", "128k", "-ar", "48000", "-ac", "2", "-map_metadata", "-1", "-id3v2_version", "0", "-write_xing", "1", out]);
   const m = loudness(tmp);
-  const gain = Math.min(TARGET_LUFS - m.I, CEILING_DBTP - 0.5 - m.TP);
-  execFileSync("ffmpeg", ["-hide_banner", "-v", "error", "-y", "-i", tmp, "-af", `volume=${gain.toFixed(2)}dB`, "-c:a", "libmp3lame", "-b:a", "128k", "-ar", "48000", "-ac", "2", "-map_metadata", "-1", "-id3v2_version", "0", "-write_xing", "1", out]);
+  const limit = CEILING_DBTP - 0.5 - m.TP;
+  let gain = Math.min(TARGET_LUFS - m.I, limit);
+  encode(gain);
+  // The encoded stereo file does not measure exactly like the mono working file: correct once from what actually came out.
+  const got = loudness(out);
+  if (Math.abs(TARGET_LUFS - got.I) > 0.3) { gain = Math.min(gain + (TARGET_LUFS - got.I), limit); encode(gain); }
   execFileSync("rm", ["-f", tmp]);
   return { ...loudness(out), bytes: statSync(out).size };
 }

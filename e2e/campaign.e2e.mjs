@@ -25,6 +25,9 @@ const ctx = await browser.newContext({
 await ctx.addInitScript(() => { try { localStorage.setItem("outbreak.debug", "on"); } catch { /* ignored */ } });
 const page = await ctx.newPage();
 const errors = [];
+// Campaign voice files the page fetched, with their HTTP status.
+const voices = new Map();
+page.on("response", (r) => { const m = /\/campaign\/the-fall\/voice\/([^/?]+)\.mp3/.exec(r.url()); if (m) voices.set(m[1], r.status()); });
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 
@@ -116,6 +119,7 @@ try {
   const v1 = await page.evaluate(() => { const v = window.__outbreak.getView(); return { camp: v.match.campaign?.title, mode: v.match.mode, diff: v.match.difficulty, win: v.match.winOnTimeout, radio: v.radio?.text ?? null, limit: v.match.limitS, zombies: v.match.zombieCount }; });
   check("mission 01 runs as a campaign survival match on the chosen difficulty", v1.camp === "FIRST CONTACT" && v1.mode === "survival" && v1.diff === "easy" && v1.win === true && v1.limit === 900, JSON.stringify(v1));
   check("mission 01 opens with a radio line on screen", !!v1.radio && (await page.locator(".radiocard").count()) === 1, v1.radio ?? "");
+  check("mission 01's opening line is fetched as its own recorded voice file", [200, 206].includes(voices.get("tf-m01-start")), `status ${voices.get("tf-m01-start")}`);
   check("mission 01 starts with a low threat", v1.zombies <= 2, `${v1.zombies} infected`);
   await page.waitForTimeout(3600);
   await shot("c07-mission-hud");
@@ -172,6 +176,7 @@ try {
   await page.getByRole("button", { name: "ON FOOT", exact: true }).click();
   check("Free Play still offers the three modes", (await page.getByRole("button", { name: "CHECKPOINTS", exact: true }).count()) === 1 && (await page.getByRole("button", { name: "A TO B", exact: true }).count()) === 1 && (await page.getByRole("button", { name: "SURVIVAL", exact: true }).count()) === 1);
 
+  check("every voice file the game asked for exists", voices.size > 0 && [...voices.values()].every((st) => st === 200 || st === 206 || st === 304), [...voices].map(([k, v]) => `${k}:${v}`).join(" "));
   const bad = errors.filter((e) => !/favicon|openfreemap|tiles\.|Failed to load resource|net::ERR/i.test(e));
   check("no page errors", bad.length === 0, bad.slice(0, 3).join(" ¦ "));
 } catch (e) {

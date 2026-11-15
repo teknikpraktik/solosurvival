@@ -61,8 +61,12 @@ describe("THE FALL: the campaign as data", () => {
       expect(b.text.split(/\s+/).length).toBeLessThanOrEqual(40);
       if (b.fallbackVoice) expect(Object.keys(VOICE)).toContain(b.fallbackVoice);
     }
-    // Only beats that exist may be listed as recorded.
-    for (const id of RECORDED_BEATS["the-fall"]) expect(ids).toContain(id);
+    // Only beats that exist may be listed as recorded, and every line listed has its file in the repository.
+    const voice = path.join(import.meta.dirname, "..", "..", "..", "public", "campaign", "the-fall", "voice");
+    for (const id of RECORDED_BEATS["the-fall"]) {
+      expect(ids).toContain(id);
+      expect(existsSync(path.join(voice, `${id}.mp3`)), id).toBe(true);
+    }
   });
 });
 
