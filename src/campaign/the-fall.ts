@@ -275,8 +275,8 @@ export const THE_FALL: CampaignDef = {
   coverPosition: "40% 40%",
   description: "The outbreak, from the first sirens to the last helicopter. Five missions on foot, wherever you are.",
   speakers: [
-    { id: "watchtower", name: "WATCHTOWER", voice: "Civil-defence radio operator, woman in her forties. Calm, exact, tired but in control. Procedural radio speech, no drama; urgent only in the contact lines." },
-    { id: "raven", name: "RAVEN TWO", voice: "Military helicopter pilot, man. Clipped aviation radio, rotor noise behind the voice. Matter-of-fact, never hurried until the landing." },
+    { id: "watchtower", name: "WATCHTOWER", elevenLabsVoiceId: "Qbw4VpyUrHEG7NigKzty", radio: "ground", voice: "Civil-defence radio operator, woman in her forties. Calm, exact, tired but in control. Procedural radio speech, no drama; urgent only in the contact lines." },
+    { id: "raven", name: "RAVEN TWO", elevenLabsVoiceId: "SAxJUlDKRc79XAyeWyMu", radio: "aircraft", voice: "Military helicopter pilot, man. Clipped aviation radio, rotor noise behind the voice. Matter-of-fact, never hurried until the landing." },
   ],
   missions: [firstContact, supplyRun, noWayBack, lastSignal, finalExtraction],
   epilogue: {

@@ -119,6 +119,13 @@ replik (`fallbackVoice`, 13 repliker har en), annars en mjuk signal så spelaren
 3. Lägg filerna i `public/campaign/the-fall/voice/`.
 4. Kör `npm run campaign:voice` och checka in `src/campaign/voice-manifest.ts`. Spelet ber bara om filer som står där.
 
+**Automatiskt med API:t** (i stället för steg 2–3): `npm run campaign:voice:generate` (`scripts/campaign-voice-generate.ts`) genererar
+en torr tagning per replik till `assets/audio/campaign/the-fall/`, kör den genom en radiokedja med ffmpeg (telefonband, kompression,
+squelch före och efter, −17 LUFS som övriga operatörsrepliker) och skriver spelfilen. Rösterna står som `elevenLabsVoiceId` på
+talarna i `src/campaign/the-fall.ts` (WATCHTOWER = Kristen, RAVEN TWO = Morgan). Nyckeln läses ur `ELEVENLABS_API_KEY`; den står
+aldrig i koden. Flaggor: `--dry-run`, `--only <id,id>`, `--force`, `--build` (bara radiokedjan, kostar inga tecken). Kör sedan steg 4.
+Biblioteksröster via API kräver betalplan hos ElevenLabs.
+
 Två röster: **WATCHTOWER** (44 repliker; civilförsvarets radiooperatör, lugn och exakt) och **RAVEN TWO** (6; helikopterpilot,
 kort flygradio). Befintliga repliker har radioeffekten inbakad i filen; gör likadant, eller kör dem genom samma kedja som
 `scripts/build-audio.mjs`. Replik-id:n är permanenta: byt aldrig namn på ett id som spelats in. CI kör `campaign:voice -- --check`.

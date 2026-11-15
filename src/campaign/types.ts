@@ -17,6 +17,10 @@ export interface Speaker {
   name: string;
   /** Direction for the voice recording (who they are, how they talk). Never shown in the game. */
   voice: string;
+  /** The ElevenLabs voice the lines are generated with (scripts/campaign-voice-generate.ts). Not a secret; never used by the game itself. */
+  elevenLabsVoiceId?: string;
+  /** How the line is treated after generation: a plain radio channel, or one heard from inside an aircraft. */
+  radio?: "ground" | "aircraft";
 }
 
 /** When a story beat is said. Every beat is said at most once per match unless it has `repeatAfterS`. */

@@ -20,7 +20,8 @@
     "balance": "tsx scripts/balance-v22.ts",
     "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "campaign:voice": "tsx scripts/campaign-voice.ts",
-    "e2e:campaign": "node e2e/campaign.e2e.mjs"
+    "e2e:campaign": "node e2e/campaign.e2e.mjs",
+    "campaign:voice:generate": "tsx scripts/campaign-voice-generate.ts"
   },
   "dependencies": {
     "maplibre-gl": "^6.14.0",
@@ -29,6 +30,7 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.78.0",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
