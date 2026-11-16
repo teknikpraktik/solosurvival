@@ -14,7 +14,7 @@
 |---|---|
 | Version | 2.2 (2026-11-16) |
 | Ersätter | Story Bible v2.0 (filnamn `OUTBREAK_STORY_BIBLE_V2_1.md`), arkiverad i [`docs/story/archive/`](story/archive/OUTBREAK_STORY_BIBLE_V2_1.md) |
-| Kanon | Detta dokument. Vid konflikt mellan detta dokument och koden gäller **koden för vad som finns**, och detta dokument för **vad som ska gälla**. En konflikt är en bugg i ett av dem och rättas. |
+| Kanon | Detta dokument. Vid konflikt mellan detta dokument och koden gäller **koden för vad som finns**, och detta dokument för **vad som ska gälla**. En konflikt är en bugg i ett av dem: undersök orsaken och rapportera den innan något ändras (se `CLAUDE.md`). |
 | Implementerat innehåll | Endast THE FALL (kampanj 1), Story v1.1. Källa: `src/campaign/the-fall.ts`. Teknisk beskrivning: [`docs/CAMPAIGN-THE-FALL.md`](CAMPAIGN-THE-FALL.md) |
 
 **Statusmarkeringar i dokumentet:**
@@ -22,6 +22,8 @@
 - **[IMPLEMENTERAT]**: finns i koden och spelas under normala förhållanden. Texten här citerar koden.
 - **[PLANERAT]**: berättelsebeslut för framtida innehåll. Inget av det finns i koden.
 - **[KRÄVER NY MEKANIK]**: planerat innehåll som förutsätter en funktion som motorn inte har i dag (se avsnitt 17).
+
+**Citatmarkörer.** Ordagranna citat av implementerad text i avsnitt 7 och 11 är omslutna av osynliga markörer, till exempel `<!--q:the-fall/03.success-->…<!--/q-->`, som anger exakt vilket fält i `src/campaign/the-fall.ts` citatet gäller. Testet `src/tests/unit/story-bible.test.ts` jämför dem med koden i CI. Nya citat av implementerad text i de avsnitten ska ha en markör; planerat innehåll ska inte ha det. Testet kontrollerar bara ordalydelsen, inte karaktärer, tidslinje eller berättelselogik.
 
 **Viktigaste ändringarna i v2.2** (fullständig lista i avsnitt 22):
 
@@ -223,11 +225,11 @@ Berättelsen behöver människor att rädda, men inte fler röster att följa. A
 
 **I THE FALL [IMPLEMENTERAT]:** Spelaren hör bara om "the evacuation force", aldrig anropssignalen.
 
-- Uppdrag 2, success: *"The supplies are in. The group can hold out, but the evacuation routes are closing."*
-- Uppdrag 3, success: *"You are inside the Waystation. But the evacuation force has gone silent."*
-- Uppdrag 3, radio (`tf-m03-win`): *"You are in. Gate is sealed. … Runner, I have lost the evacuation force. Nothing on any channel. There is an old relay network near you. It may be the last way to reach them."*
-- Uppdrag 4, intro: *"No one has heard from the evacuation force in six hours."*
-- Epilog: *"One call does not belong. The evacuation force, hours after she lost them: “…NEXAGEN perimeter… do not…” Then static."*
+- Uppdrag 2, success: <!--q:the-fall/02.success-->*"The supplies are in. The group can hold out, but the evacuation routes are closing."*<!--/q-->
+- Uppdrag 3, success: <!--q:the-fall/03.success-->*"You are inside the Waystation. But the evacuation force has gone silent."*<!--/q-->
+- Uppdrag 3, radio (`tf-m03-win`): <!--q:the-fall/03.beat.tf-m03-win-->*"You are in. Gate is sealed. … Runner, I have lost the evacuation force. Nothing on any channel. There is an old relay network near you. It may be the last way to reach them."*<!--/q-->
+- Uppdrag 4, intro: <!--q:the-fall/04.intro.0-->*"No one has heard from the evacuation force in six hours."*<!--/q-->
+- Epilog: <!--q:the-fall/epilogue.2-->*"One call does not belong. The evacuation force, hours after she lost them: “…NEXAGEN perimeter… do not…” Then static."*<!--/q-->
 
 **Varför styrkan skickades till NEXAGEN:** NEXAGEN:s medicinska mottagnings- och logistikbyggnad var registrerad i regionens beredskapsplan som möjlig säker uppsamlingsplats (avsnitt 2). När staden började evakueras natten mellan dag 0 och dag 1 behövde WATCHTOWER en plats med kraft, utrymme och helikopterplatta, och planen pekade på byggnaden. Hon skickade SHEPHERD från THE WAYSTATION för att öppna den, så att bussar med evakuerade kunde följa efter. Ingen hos civilförsvaret visste något om REGENESIS.
 
@@ -326,7 +328,7 @@ Varje kampanj har fem uppdrag, en ny information eller relation, en tydlig mekan
 **Källa:** `src/campaign/the-fall.ts`. All text nedan är citerad därifrån.
 **Produktstatus:** Implementerad, inte fälttestad. Ändra inte uppdragens mål, längd, svårighet, zombie-AI eller radiorepliker utan särskilt beslut. Alla 50 radiorepliker är inspelade; replik-id:n är permanenta.
 
-**Vad THE FALL är och inte är:** En överlevnadsberättelse. Den förklarar aldrig utbrottet ("People are attacking each other in the streets. Nobody knows why."). Den nämner inte REGENESIS eller Elena. Ordet NEXAGEN förekommer en enda gång, i epilogen, som ett oförklarat fragment.
+**Vad THE FALL är och inte är:** En överlevnadsberättelse. Den förklarar aldrig utbrottet (<!--q:the-fall/01.intro.1-->"People are attacking each other in the streets. Nobody knows why."<!--/q-->). Den nämner inte REGENESIS eller Elena. Ordet NEXAGEN förekommer en enda gång, i epilogen, som ett oförklarat fragment.
 
 | # | Uppdrag | Mekanik (faktisk) | Röster | Motiv | Ny information | Safehouse |
 |---|---|---|---|---|---|---|
@@ -337,46 +339,46 @@ Varje kampanj har fem uppdrag, en ny information eller relation, en tydlig mekan
 | 05 | **FINAL EXTRACTION** | Survival + extraction: 30:00, helikoptern landar vid 22:00, 8 min att nå den | WATCHTOWER, RAVEN TWO | Komma ombord | Distriktet faller; spelaren räddas | – |
 
 ### 01 FIRST CONTACT
-- **Intro:** "It started this afternoon. Sirens, then nothing." / "People are attacking each other in the streets. Nobody knows why." / "Then a voice breaks through the static."
-- **Nyckelrepliker:** *"Any station, this is Watchtower. If you can hear me: stay outside, keep moving, and do not approach anyone."* · *"Stand by. I am picking up a second group on this channel. Survivors, not far from you."*
-- **Slut (WATCHTOWER):** *"You are still on your feet. I am logging you as Runner Seven. That group needs medicine and supplies. Rest while you can."*
-- **Success:** "You made it through the first night. A group of survivors needs your help." (Natten mellan dag 0 och dag 1 passerar här.)
+- **Intro:** <!--q:the-fall/01.intro.0-->"It started this afternoon. Sirens, then nothing."<!--/q--> / <!--q:the-fall/01.intro.1-->"People are attacking each other in the streets. Nobody knows why."<!--/q--> / <!--q:the-fall/01.intro.2-->"Then a voice breaks through the static."<!--/q-->
+- **Nyckelrepliker:** <!--q:the-fall/01.beat.tf-m01-start-->*"Any station, this is Watchtower. If you can hear me: stay outside, keep moving, and do not approach anyone."*<!--/q--> · <!--q:the-fall/01.beat.tf-m01-survivors-->*"Stand by. I am picking up a second group on this channel. Survivors, not far from you."*<!--/q-->
+- **Slut (WATCHTOWER):** <!--q:the-fall/01.beat.tf-m01-win-->*"You are still on your feet. I am logging you as Runner Seven. That group needs medicine and supplies. Rest while you can."*<!--/q-->
+- **Success:** <!--q:the-fall/01.success-->"You made it through the first night. A group of survivors needs your help."<!--/q--> (Natten mellan dag 0 och dag 1 passerar här.)
 - **Bedömning:** Fungerar. Mysteriet är exakt lagom.
 
 ### 02 THE SUPPLY RUN
-- **Intro:** "Eleven people in a cellar. Two of them will not last without medicine." / "Watchtower has found three places where supplies were left behind." / "You are the only one who can still move."
-- **Slut (WATCHTOWER):** *"That is all three. They will make it through the night. … Stand by, Runner. The evacuation routes are closing."*
-- **Success:** "The supplies are in. The group can hold out, but the evacuation routes are closing."
+- **Intro:** <!--q:the-fall/02.intro.0-->"Eleven people in a cellar. Two of them will not last without medicine."<!--/q--> / <!--q:the-fall/02.intro.1-->"Watchtower has found three places where supplies were left behind."<!--/q--> / <!--q:the-fall/02.intro.2-->"You are the only one who can still move."<!--/q-->
+- **Slut (WATCHTOWER):** <!--q:the-fall/02.beat.tf-m02-win-->*"That is all three. They will make it through the night. … Stand by, Runner. The evacuation routes are closing."*<!--/q-->
+- **Success:** <!--q:the-fall/02.success-->"The supplies are in. The group can hold out, but the evacuation routes are closing."<!--/q-->
 - **Bedömning:** Fungerar. Etablerar att överlevare söker skydd. Känd bugg: replikerna förutsätter tre platser (avsnitt 21).
 
 ### 03 NO WAY BACK
-- **Intro (v1.1):** "The evacuation road is blocked. Cars, barriers, and what is left of the people who tried." / **"One shelter is still taking people: the Waystation. Not for long."** / "And the infected have started to hunt differently."
-- **Radio:** *"Runner Seven, the east road is gone. New safe zone on your map. Get there before they seal it."* · *"Two hundred metres. They are opening the gate for you."*
-- **Slut (WATCHTOWER):** *"You are in. Gate is sealed. … Runner, I have lost the evacuation force. Nothing on any channel. There is an old relay network near you. It may be the last way to reach them."*
-- **Success (v1.1):** **"You are inside the Waystation. But the evacuation force has gone silent."**
+- **Intro (v1.1):** <!--q:the-fall/03.intro.0-->"The evacuation road is blocked. Cars, barriers, and what is left of the people who tried."<!--/q--> / <!--q:the-fall/03.intro.1-->**"One shelter is still taking people: the Waystation. Not for long."**<!--/q--> / <!--q:the-fall/03.intro.2-->"And the infected have started to hunt differently."<!--/q-->
+- **Radio:** <!--q:the-fall/03.beat.tf-m03-start-->*"Runner Seven, the east road is gone. New safe zone on your map. Get there before they seal it."*<!--/q--> · <!--q:the-fall/03.beat.tf-m03-near-->*"Two hundred metres. They are opening the gate for you."*<!--/q-->
+- **Slut (WATCHTOWER):** <!--q:the-fall/03.beat.tf-m03-win-->*"You are in. Gate is sealed. … Runner, I have lost the evacuation force. Nothing on any channel. There is an old relay network near you. It may be the last way to reach them."*<!--/q-->
+- **Success (v1.1):** <!--q:the-fall/03.success-->**"You are inside the Waystation. But the evacuation force has gone silent."**<!--/q-->
 - **Benämning:** THE WAYSTATION är namnet; "safe zone" (radio, mål, HUD) är vad den är. Båda används och är förenliga. Radio och mål ändras inte.
 - **Slutljud och bild:** dörrljud och `/img/safehouse.jpg`.
 
 ### 04 THE LAST SIGNAL
-- **Intro:** "No one has heard from the evacuation force in six hours." / "An old relay network still has power. Three sites. Each has to be brought on the air by hand." / "A signal that strong will be heard by everything out there."
-- **Slut:** WATCHTOWER *"Signal is out on all bands. … Wait. I have a carrier. Someone is answering."* → RAVEN TWO *"Watchtower, Raven Two. We read your signal. One aircraft, one pickup. Tell your runner to stay alive until we get there."*
-- **Success:** "The signal is out. A helicopter is coming, if you can stay alive until it lands."
+- **Intro:** <!--q:the-fall/04.intro.0-->"No one has heard from the evacuation force in six hours."<!--/q--> / <!--q:the-fall/04.intro.1-->"An old relay network still has power. Three sites. Each has to be brought on the air by hand."<!--/q--> / <!--q:the-fall/04.intro.2-->"A signal that strong will be heard by everything out there."<!--/q-->
+- **Slut:** WATCHTOWER <!--q:the-fall/04.beat.tf-m04-win-->*"Signal is out on all bands. … Wait. I have a carrier. Someone is answering."*<!--/q--> → RAVEN TWO <!--q:the-fall/04.beat.tf-m04-raven-->*"Watchtower, Raven Two. We read your signal. One aircraft, one pickup. Tell your runner to stay alive until we get there."*<!--/q-->
+- **Success:** <!--q:the-fall/04.success-->"The signal is out. A helicopter is coming, if you can stay alive until it lands."<!--/q-->
 - **Bedömning:** Kampanjens bästa vändning. Ingen ytterligare replik får läggas här (radiokön rymmer två slutrepliker, avsnitt 18).
 
 ### 05 FINAL EXTRACTION
-- **Intro:** "Raven Two is in the air. Twenty-two minutes out." / "The district is being overrun. Every street has them now." / "One aircraft. One pickup. They will not wait."
-- **Nyckelrepliker:** RAVEN TWO *"Watchtower, Raven Two. Crossing the river. Ten minutes. We see fires across the whole district."*
-- **Slut (RAVEN TWO):** *"We have Runner Seven. Lifting off. Watchtower, you got one out."*
-- **Success:** "You are aboard. Raven Two is lifting off."
+- **Intro:** <!--q:the-fall/05.intro.0-->"Raven Two is in the air. Twenty-two minutes out."<!--/q--> / <!--q:the-fall/05.intro.1-->"The district is being overrun. Every street has them now."<!--/q--> / <!--q:the-fall/05.intro.2-->"One aircraft. One pickup. They will not wait."<!--/q-->
+- **Nyckelrepliker:** RAVEN TWO <!--q:the-fall/05.beat.tf-m05-river-->*"Watchtower, Raven Two. Crossing the river. Ten minutes. We see fires across the whole district."*<!--/q-->
+- **Slut (RAVEN TWO):** <!--q:the-fall/05.beat.tf-m05-win-->*"We have Runner Seven. Lifting off. Watchtower, you got one out."*<!--/q-->
+- **Success:** <!--q:the-fall/05.success-->"You are aboard. Raven Two is lifting off."<!--/q-->
 
 ### Kampanjslut och epilog (v1.1)
 Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och därefter överst i kampanjvyn. Inget eget ljud; helikopterljudet och RAVEN TWO:s slutreplik bär slutet.
 
-> **THE FALL – CAMPAIGN COMPLETED**
-> From the air the fires reach the horizon.
-> Watchtower's channel is still open. Other towns are calling in.
-> One call does not belong. The evacuation force, hours after she lost them: “…NEXAGEN perimeter… do not…” Then static.
-> You got out. Most did not. This is not over.
+> <!--q:the-fall/epilogue.title-->**THE FALL – CAMPAIGN COMPLETED**<!--/q-->
+> <!--q:the-fall/epilogue.0-->From the air the fires reach the horizon.<!--/q-->
+> <!--q:the-fall/epilogue.1-->Watchtower's channel is still open. Other towns are calling in.<!--/q-->
+> <!--q:the-fall/epilogue.2-->One call does not belong. The evacuation force, hours after she lost them: “…NEXAGEN perimeter… do not…” Then static.<!--/q-->
+> <!--q:the-fall/epilogue.3-->You got out. Most did not. This is not over.<!--/q-->
 
 **Brygga till GROUND ZERO:** RAVEN TWO sätter av Runner Seven vid en uppsamlingsplats som inte beskrivs närmare. WATCHTOWER:s kanal är fortfarande öppen, och hon har spelat upp fragmentet hundra gånger. Hon skickade SHEPHERD till byggnaden. Hon ber Runner Seven gå tillbaka ut. Var hon själv befinner sig sägs inte.
 
