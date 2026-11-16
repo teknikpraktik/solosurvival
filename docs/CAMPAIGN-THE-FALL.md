@@ -3,6 +3,10 @@
 Första kampanjen i OUTBREAK. Fem uppdrag till fots, vart och ett en egen session som läggs ut runt den plats där spelaren startar.
 Kampanjer är huvudprodukten; de tre fristående lägena ligger under FREE PLAY och är oförändrade.
 
+Berättelsen (roller, tidslinje, kommande kampanjer) styrs av den kanoniska Story Bible: [`OUTBREAK_STORY_BIBLE_V2_2.md`](OUTBREAK_STORY_BIBLE_V2_2.md).
+Detta dokument beskriver den tekniska implementationen. Kampanjens text är **Story v1.1** (THE WAYSTATION i uppdrag 3, epilogens
+fragment från evakueringsstyrkan).
+
 ## 1. Hur det hänger ihop
 
 En motor, två ingångar. Kampanjen är **data och ett tunt lager ovanpå** samma motor som Free Play använder.
@@ -122,7 +126,8 @@ replik (`fallbackVoice`, 13 repliker har en), annars en mjuk signal så spelaren
 **Automatiskt med API:t** (i stället för steg 2–3): `npm run campaign:voice:generate` (`scripts/campaign-voice-generate.ts`) genererar
 en torr tagning per replik till `assets/audio/campaign/the-fall/`, kör den genom en radiokedja med ffmpeg (telefonband, kompression,
 squelch före och efter, −17 LUFS som övriga operatörsrepliker) och skriver spelfilen. Rösterna står som `elevenLabsVoiceId` på
-talarna i `src/campaign/the-fall.ts` (WATCHTOWER = Kristen, RAVEN TWO = Morgan). Nyckeln läses ur `ELEVENLABS_API_KEY`; den står
+talarna i `src/campaign/the-fall.ts` (WATCHTOWER = Kristen, RAVEN TWO = Morgan; det är ElevenLabs-rösternas namn, inte
+karaktärernas. Karaktärerna har bara anropssignaler). Nyckeln läses ur `ELEVENLABS_API_KEY`; den står
 aldrig i koden. Flaggor: `--dry-run`, `--only <id,id>`, `--force`, `--build` (bara radiokedjan, kostar inga tecken). Kör sedan steg 4.
 Biblioteksröster via API kräver betalplan hos ElevenLabs.
 
@@ -154,13 +159,14 @@ introt (samt bakom resultatet i uppdrag 1, 2 och 4). Vilken del som syns i de sm
   är litet. Uppdrag 3 söker destination i allt vidare avståndsband och avstår hellre än att lägga ett orimligt mål.
 - Zonen i uppdrag 4 läggs på en korsning utan större väg, men spelet vet inget om belysning, sikt eller trafik på platsen.
 - Rösterna är genererade och kontrollerade med taligenkänning mot manuset, men ingen människa har lyssnat igenom dem i spelet. Kampanjen är inte spelad i fält.
+- Uppdrag 2 och 4 kan få två mål i glesa nät, medan radion säger tre: [`BUGG-THE-FALL-TVA-CHECKPOINTS.md`](BUGG-THE-FALL-TVA-CHECKPOINTS.md).
 
 ## 9. Fälttest
 
 1. **Uppdrag 4 på riktig GPS**: håller zonen (55 m) under träd och mellan hus? Fladdrar paus/återupptagen? Är 30 s nervöst eller bara långt?
 2. **Genskjutning**: märks den, går den att lura genom att byta väg, känns den orättvis i glesa nät med få korsningar?
 3. **Hard, uppdrag 4 och 5**: går de att klara för en löpare?
-4. **Uppdrag 2**: uppstår ett verkligt vägval, eller är ordningen alltid given?
+4. **Uppdrag 2**: uppstår ett verkligt vägval, eller är ordningen alltid given? Hur ofta får uppdrag 2 och 4 bara två mål?
 5. **Uppdrag 1**: lagom lugn inledning, eller händelselös på Easy?
 6. **Uppdrag 5**: ligger landningsplatsen rimligt, räcker 8 min, känns slutet som en final?
 7. **Radion**: hinner man läsa texten i rörelse, kommer replikerna för tätt, stör signalen?
