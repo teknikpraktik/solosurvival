@@ -12,8 +12,8 @@ import { haversineM } from "@/geo/geometry";
 import { errorText } from "@/gps/provider/provider";
 import { matchDurationS } from "@/play/match";
 import {
-  NEW_GAME_ACTIVITIES, NEW_GAME_MODES, chooseActivity, chooseMode, courseKey, loadSetup, needsCourse, paramsFromSetup, prevStep, saveSetup,
-  stepFromSearch, stepUrl, type Step,
+  NEW_GAME_ACTIVITIES, NEW_GAME_MODES, chooseActivity, chooseMode, courseKey, isActivityChosen, loadSetup, needsCourse, paramsFromSetup, prevStep, saveSetup,
+  stepFromSearch, stepToShow, stepUrl, type Step,
 } from "@/play/newgame-flow";
 import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_LABEL, fmtKm } from "../_client/format";
 import { REGENERATE_SVG } from "../_client/symbols";
@@ -108,6 +108,10 @@ export default function NewGame() {
   const view = useSessionView(session);
   const [p, setP] = useState<MatchParams>(() => defaultParams("walk"));
   const [step, setStep] = useState<Step>("activity");
+  // How to travel has been picked in this setup. It starts unpicked every time New game is opened: neither card is marked, whatever the
+  // last game or the saved setup used, and the later steps cannot be reached until the player has chosen. Going back and forth within
+  // the setup keeps the choice (this component lives as long as the setup does). PLAY AGAIN repeats a finished match's own settings.
+  const [activityPicked, setActivityPicked] = useState(false);
   const [busy, setBusy] = useState(false);
   // Pressing START: keep the setup on screen until /play has taken over.
   const [starting, setStarting] = useState(false);
@@ -135,7 +139,7 @@ export default function NewGame() {
     else go(prev, "replace");
   };
   useEffect(() => {
-    // The last valid setup is the starting point of the choices (the cards show it as current); it is not offered as a separate shortcut.
+    // The last valid setup is the starting point of the other choices (mode, difficulty, distance); how to travel is always picked anew.
     const s = loadSetup(storage());
     if (s) setP(paramsFromSetup(s));
     setStep(stepFromSearch(window.location.search));
@@ -188,6 +192,7 @@ export default function NewGame() {
     if (again) {
       const next = clampParams({ ...again, pointA: null, pointB: again.mode === "escape" ? null : again.pointB });
       setP(next);
+      setActivityPicked(true);
       go("setup", "replace");
       if (next.mode === "survival" && session.currentStart()) startWith(next);
     }
@@ -199,12 +204,13 @@ export default function NewGame() {
   const set = (patch: Partial<MatchParams>) => setP((cur) => clampParams({ ...cur, ...patch }));
   const haveStart = !!session?.currentStart();
   // The match's pictures (helicopter cards, its possible endings) start loading on the setup step, before START.
-  useEffect(() => { if (step === "setup") preloadMatchPictures(p.mode); }, [step, p.mode]);
+  useEffect(() => { if (step === "setup" && activityPicked) preloadMatchPictures(p.mode); }, [step, activityPicked, p.mode]);
 
   // --- Choices: another activity or mode drops a course planned for the old one (and any answer still on its way) ---
   const pickActivity = (a: Activity) => {
     const next = chooseActivity(p, a);
     if (next !== p) { setP(next); setPickProblem(null); session?.backToConfig(); }
+    setActivityPicked(true);
     go("mode");
   };
   const pickMode = (m: GameMode) => {
@@ -218,7 +224,10 @@ export default function NewGame() {
   const key = courseKey(p);
   const preparedKey = view?.params ? courseKey(view.params) : null;
   const fresh = !!prepared && preparedKey === key && (stage === "preview" || stage === "preparing");
-  const wantCourse = step === "setup" && needsCourse(p);
+  // A later step named by the address (a link, a reload) without a travel mode picked: back to the first step, also in the address.
+  const shown = stepToShow(step, activityPicked);
+  useEffect(() => { if (shown !== step) go(shown, "replace"); }, [shown, step, go]);
+  const wantCourse = shown === "setup" && needsCourse(p);
   // Plans a course when none fits the choices and none is on its way for them. prepare() marks itself as planning these choices at once,
   // so this does not ask twice; an answer for older choices is discarded by the session.
   useEffect(() => {
@@ -242,14 +251,14 @@ export default function NewGame() {
   const S = t().newGame;
 
   // ---------- Step 1: activity ----------
-  if (step === "activity") {
+  if (shown === "activity") {
     return (
       <main className="page newgame ngstep">
         <StepHeader title={S.title} />
         <p className="ngprompt">{S.activityPrompt}</p>
         <div className="imgcards two">
           {(NEW_GAME_ACTIVITIES as ("walk" | "mtb")[]).map((a) => (
-            <ImageCard key={a} id={`act-${a}`} card={a === "mtb" ? "bike" : "foot"} title={S.activityCard[a]} sub={S.activitySub[a]} current={p.activity === a} onClick={() => pickActivity(a)} />
+            <ImageCard key={a} id={`act-${a}`} card={a === "mtb" ? "bike" : "foot"} title={S.activityCard[a]} sub={S.activitySub[a]} current={isActivityChosen(activityPicked, p.activity, a)} onClick={() => pickActivity(a)} />
           ))}
         </div>
         {!ctx && <div className="muted">{S.loading}</div>}
@@ -258,7 +267,7 @@ export default function NewGame() {
   }
 
   // ---------- Step 2: mode ----------
-  if (step === "mode") {
+  if (shown === "mode") {
     const card: Record<GameMode, string> = { mission: "checkpoints", escape: "atob", survival: "survival" };
     return (
       <main className="page newgame ngstep">

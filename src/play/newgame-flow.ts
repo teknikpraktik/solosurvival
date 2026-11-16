@@ -33,6 +33,19 @@ export function prevStep(step: Step): Step | null {
 }
 
 /**
+ * The step to show. How to travel is never chosen for the player: until one of the two has been picked in this setup, only the first
+ * step can be shown (also for a link or a reload that names a later step).
+ */
+export function stepToShow(step: Step, activityPicked: boolean): Step {
+  return activityPicked ? step : "activity";
+}
+
+/** Whether an activity card is shown as the choice: only the one the player picked in this setup, never a default or a saved one. */
+export function isActivityChosen(activityPicked: boolean, chosen: Activity, card: Activity): boolean {
+  return activityPicked && chosen === card;
+}
+
+/**
  * Choosing an activity. The same activity again keeps every setting (a player who went back to look changes nothing); another one
  * resets distance and match length to that activity's defaults (as before) and drops B, which was checked against the old activity.
  */

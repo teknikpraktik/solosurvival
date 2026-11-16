@@ -10,7 +10,7 @@ import { openDb } from "@/play/idb";
 import { PlaySession } from "@/play/session";
 import type { LatLon } from "@/geo/geometry";
 import {
-  LAST_SETUP_KEY, chooseActivity, chooseMode, courseKey, loadSetup, needsCourse, paramsFromSetup, prevStep, saveSetup, stepFromSearch, stepUrl,
+  LAST_SETUP_KEY, chooseActivity, chooseMode, courseKey, isActivityChosen, loadSetup, needsCourse, paramsFromSetup, prevStep, saveSetup, stepFromSearch, stepToShow, stepUrl,
 } from "@/play/newgame-flow";
 
 /** In-memory Storage with the two methods New game uses. */
@@ -164,4 +164,26 @@ describe("PlaySession.prepare: late answers (simulated, not field evidence)", ()
     expect(await session.startMatch()).toBe(true);
     expect(session.getView().match?.difficulty).toBe("hard");
   }, 60_000);
+});
+
+describe("New game: how to travel is never chosen for the player", () => {
+  it("until one is picked, neither card is the choice, whatever the default or the saved setup says", () => {
+    for (const saved of ["walk", "mtb"] as const) for (const card of ["walk", "mtb"] as const) expect(isActivityChosen(false, saved, card)).toBe(false);
+  });
+  it("once picked, exactly that card is the choice, and picking the other one moves it", () => {
+    expect([isActivityChosen(true, "walk", "walk"), isActivityChosen(true, "walk", "mtb")]).toEqual([true, false]);
+    expect([isActivityChosen(true, "mtb", "walk"), isActivityChosen(true, "mtb", "mtb")]).toEqual([false, true]);
+  });
+  it("the later steps cannot be shown before a travel mode is picked (a link or a reload naming them shows the first step)", () => {
+    for (const step of ["activity", "mode", "setup"] as const) expect(stepToShow(step, false)).toBe("activity");
+    for (const step of ["activity", "mode", "setup"] as const) expect(stepToShow(step, true)).toBe(step);
+  });
+  it("a saved setup still carries its activity for the other settings, but that is not a selection", () => {
+    const kv = new Map<string, string>();
+    const store = { getItem: (k: string) => kv.get(k) ?? null, setItem: (k: string, v: string) => void kv.set(k, v) };
+    saveSetup(store, { ...withActivity(defaultParams("walk"), "mtb"), mode: "survival" });
+    const p = paramsFromSetup(loadSetup(store)!);
+    expect(p.activity).toBe("mtb");
+    expect(isActivityChosen(false, p.activity, "mtb")).toBe(false);
+  });
 });

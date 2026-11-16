@@ -24,7 +24,23 @@ const watch = (page) => { page.on("pageerror", (e) => errors.push(e.message)); }
   const ctx = await newCtx();
   const page = await ctx.newPage(); watch(page);
   await page.goto(BASE + "/new"); await page.waitForTimeout(1500);
-  check("step 1: two picture cards named ON FOOT and BY BIKE (title only; subtitle as description; the earlier choice aria-current)", (await page.locator(".imgcards.two .imgcard").count()) === 2 && (await page.getByRole("button", { name: "ON FOOT", exact: true }).count()) === 1 && (await page.getByRole("button", { name: "BY BIKE", exact: true }).count()) === 1 && (await page.getByRole("button", { name: "ON FOOT", exact: true }).getAttribute("aria-current")) === "true");
+  check("step 1: two picture cards named ON FOOT and BY BIKE (title only; subtitle as description)", (await page.locator(".imgcards.two .imgcard").count()) === 2 && (await page.getByRole("button", { name: "ON FOOT", exact: true }).count()) === 1 && (await page.getByRole("button", { name: "BY BIKE", exact: true }).count()) === 1);
+  const unpicked = async () => (await page.locator(".imgcard[data-current], .imgcard[aria-current]").count()) === 0 && (await page.locator(".imgcard-mark").count()) === 0;
+  check("step 1, fresh setup: neither ON FOOT nor BY BIKE is selected (no red border, no check mark)", await unpicked());
+  const borders = await page.locator(".imgcards.two .imgcard").evaluateAll((els) => els.map((e) => getComputedStyle(e).borderTopColor));
+  check("step 1, fresh setup: both cards have the same, unselected border", borders[0] === borders[1], borders.join(" / "));
+  // A later step cannot be reached without picking: its address shows the first step.
+  await page.goto(BASE + "/new?step=setup"); await page.waitForTimeout(1200);
+  check("without a travel mode the setup step is not shown (its address leads to the first step)", step(page) === "activity" && (await page.locator(".imgcards.two .imgcard").count()) === 2 && (await startBtn(page).count()) === 0 && (await unpicked()));
+  await page.goto(BASE + "/new?step=mode"); await page.waitForTimeout(1200);
+  check("without a travel mode the mode step is not shown either", step(page) === "activity" && (await page.locator(".imgcards.three").count()) === 0);
+  // Picking ON FOOT, then changing to BY BIKE: exactly one card is the choice each time.
+  await card(page, "ON FOOT").click(); await page.waitForTimeout(400);
+  check("picking ON FOOT moves on and says so", step(page) === "mode" && (await page.locator(".ngprompt").innerText()).toUpperCase().includes("FOOT"));
+  await page.goBack(); await page.waitForTimeout(400);
+  check("back on step 1: ON FOOT is marked (red border, check mark), BY BIKE is not", (await card(page, "ON FOOT").getAttribute("data-current")) !== null && (await card(page, "BY BIKE").getAttribute("data-current")) === null && (await page.locator(".imgcard-mark").count()) === 1 && (await card(page, "ON FOOT").getAttribute("aria-current")) === "true");
+  await page.goto(BASE + "/new"); await page.waitForTimeout(1200);
+  check("opening New game again is a new setup: nothing is selected", await unpicked());
   check("step 1: no shortcut for a new player", (await page.locator(".lastsetup").count()) === 0);
   check("step 1: no Next button", (await page.getByRole("button", { name: /NEXT/i }).count()) === 0);
   check("step 1: the pictures are CSS backgrounds (no <img>, nothing read twice)", (await page.locator(".imgcard img").count()) === 0 && (await page.locator(".imgcard-bg[aria-hidden=true]").count()) === 2);
@@ -210,11 +226,15 @@ for (const act of ["ON FOOT", "BY BIKE"]) {
   await page.evaluate(() => window.__outbreak?.abort?.());
   await page.goto(BASE + "/new"); await page.waitForTimeout(1500);
   check("step 1: no LAST SETUP box, summary or button for the last choices", (await page.locator(".lastsetup").count()) === 0 && (await page.getByText(/last setup/i).count()) === 0);
-  check("the last choices are the starting point: BY BIKE is the current card", (await card(page, "BY BIKE").getAttribute("data-current")) !== null);
+  check("a new setup after a bike match: neither card is selected (the last game does not choose for the player)", (await page.locator(".imgcard[data-current], .imgcard[aria-current]").count()) === 0 && (await page.locator(".imgcard-mark").count()) === 0);
+  await card(page, "ON FOOT").click(); await page.waitForTimeout(400);
+  check("…and the other travel mode can be picked", step(page) === "mode" && (await page.locator(".ngprompt").innerText()).toUpperCase().includes("FOOT"));
   // Broken saved data: the flow works with the defaults.
   await page.evaluate(() => localStorage.setItem("outbreak.newgame.last", "{broken"));
   await page.goto(BASE + "/new"); await page.waitForTimeout(1200);
-  check("unreadable saved setup: the flow works with the defaults", (await card(page, "ON FOOT").getAttribute("data-current")) !== null);
+  check("unreadable saved setup: nothing selected, and the flow works", (await page.locator(".imgcard[data-current]").count()) === 0);
+  await card(page, "BY BIKE").click(); await page.waitForTimeout(400);
+  check("…picking a travel mode moves on to the mode step", step(page) === "mode" && (await page.locator(".imgcards.three .imgcard").count()) === 3);
   await ctx.close();
 }
 
