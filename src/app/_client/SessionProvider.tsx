@@ -42,6 +42,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         compass: createBrowserCompass(),
         campaignStore: campaignKv(),
         terrainTiles: openFreeMapFetcher(),
+        // Zombie AI with pursuers and interceptors in Free Play (docs/ZOMBIE-AI-ROLES.md). Remove the line for the AI as it was.
+        zombieAi: "roles",
         traceEnabled,
         jumpScares: () => true, // hidden feature: always on (never on Bike, decided by the session)
         // Cues vibrate and speak; every sound file comes from the soundscape (onSound), so nothing is heard twice.

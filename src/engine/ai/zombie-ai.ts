@@ -6,6 +6,7 @@ import { rand, type RngHolder } from "../core/rng";
 import type { Observation, Zombie, ZombieState } from "../core/types";
 import { zombieLatLon } from "../core/movement";
 import { STEP_S, type Rules } from "@/config/game-rules";
+import { closeContact, dropMeeting, interceptorStep, roleOf, waitAtMeeting } from "./roles";
 
 export interface AiContext {
   g: TrailGraph;
@@ -22,8 +23,11 @@ export interface AiContext {
   /** Sant om positionen är giltig nog att upptäcka spelaren. */
   detectionEnabled: boolean;
   events: ({ type: "zombie_detected"; zombieId: string } | { type: "zombie_intercept"; zombieId: string })[];
-  /** Interception model "track" (rules.interceptModel): the player's recent snapped positions, oldest first. Missing = the original model. */
+  /** Interception model "track" (rules.interceptModel) and AI with roles: the player's recent snapped positions, oldest first. */
   track?: Observation[];
+  /** AI with roles: every zombie in the match (interceptors avoid each other's meeting points) and the player's network component. */
+  zombies?: Zombie[];
+  component?: number;
 }
 
 const REPLAN_MIN_S = 5;
@@ -335,6 +339,9 @@ export function updateZombieAI(ctx: AiContext, z: Zombie, arrived: boolean): voi
       }
       break;
     case "intercept":
+      // AI with roles: the plan has its own end (the expected meeting time, engine/ai/roles.ts), so losing contact does not end it.
+      // Arriving early is not an end either: it waits there (engine/ai/roles.ts, waitAtMeeting).
+      if (rules.zombieAi === "roles") break;
       if (arrived || z.contactLostS > CONTACT_LOSS_S) {
         setState(z, z.contactLostS > CONTACT_LOSS_S ? "investigate" : "chase", timeS);
         z.replanAtS = timeS;
@@ -351,6 +358,21 @@ export function updateZombieAI(ctx: AiContext, z: Zombie, arrived: boolean): voi
   ) {
     if (!planToLastKnown(ctx, z)) setState(z, "patrol", timeS);
     scheduleReplan(ctx, z, inContact && z.state === "chase");
+  }
+
+  // 5. AI with roles: pursuers are done (step 4); interceptors forecast and pick a meeting point (engine/ai/roles.ts).
+  if (rules.zombieAi === "roles") {
+    if (z.state !== "intercept" && z.meeting) z.meeting = undefined; // left the plan in step 3 (arrived, or lost contact)
+    if (roleOf(z) !== "interceptor") return;
+    if (z.state === "intercept" && closeContact(ctx, zll)) {
+      dropMeeting(ctx, z);
+      if (planToLastKnown(ctx, z)) scheduleReplan(ctx, z, inContact);
+      return;
+    }
+    if (timeS - z.stateSinceS < MIN_DECISION_S && z.state === "chase") return;
+    waitAtMeeting(z);
+    interceptorStep({ g: ctx.g, rules, rng: ctx.rng, timeS, track: ctx.track, zombies: ctx.zombies, component: ctx.component, events: ctx.events as { type: "zombie_intercept"; zombieId: string }[] }, z);
+    return;
   }
 
   // 5. Taktisk omplanering: försök genskjuta.
