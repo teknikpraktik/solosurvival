@@ -5,6 +5,7 @@ import type { LatLon } from "@/geo/geometry";
 import type { Dir } from "@/geo/graph/types";
 import type { RouteStep } from "../pathfinding/astar";
 import type { GameMode, ObjectiveSet } from "../objectives/objectives";
+import type { ZombieRole } from "@/config/zombie-ai";
 
 export type GamePhase = "preparing" | "head_start" | "survival" | "extraction" | "finished";
 export type GameResult = "survived" | "infected" | "failed" | "aborted" | "incomplete";
@@ -52,6 +53,13 @@ export interface Zombie {
   tacticalAtS: number;
   contactLostS: number;
   canIntercept: boolean;
+  /** AI with roles (rules.zombieAi): the zombie's role for its whole life. Missing in older saved matches and without that AI. */
+  role?: ZombieRole;
+  /**
+   * AI with roles: the interceptor's current plan. `lat`/`lon` = the meeting point, `playerAtS` = game time the player was expected
+   * there, `prob` = how likely the forecast held the player to pass it, `madeAtS` = when the plan was made.
+   */
+  meeting?: { lat: number; lon: number; playerAtS: number; prob: number; madeAtS: number };
   /** Spurt: spelklocka (s) då pågående spurt slutar. Saknas när zombien inte spurtar. */
   sprintUntilS?: number;
   /** Spurt: spelklocka (s) då pågående spurt började (för ramp/avtagande). Saknas i äldre sparade matcher. */
@@ -69,7 +77,10 @@ export interface PlayerState {
   magnetObservation?: Observation;
   /** Recent positions (game time) for the pass-through speed; the oldest is at least `PASS_THROUGH_WINDOW_S` old once available. */
   speedTrail?: { t: number; lat: number; lon: number }[];
-  /** Interception model "track": the player's snapped positions over the last half minute or so (about one every 4 s), oldest first. */
+  /**
+   * Interception model "track" and AI with roles: the player's snapped positions over the last half minute or so (about one every 4 s),
+   * oldest first. This is the observation history: everything in it was given to the zombies by a discovery rule (magnet chase or reveal).
+   */
   track?: Observation[];
 }
 

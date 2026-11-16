@@ -1,5 +1,6 @@
 import { ACTIVITIES, type Activity } from "./activities";
 import { DIFFICULTIES, type Difficulty } from "./difficulty";
+import { ZOMBIE_AI, type ZombieAiModel } from "./zombie-ai";
 
 export const RULES_VERSION = "2.7.0";
 
@@ -136,6 +137,12 @@ export interface Rules {
    * It also works with a terrain lattice in the graph. Missing = the original model (two consecutive observations, trail-only graphs).
    */
   interceptModel?: "track";
+  /**
+   * Zombie AI model. "roles": every zombie is a pursuer or an interceptor for life (`interceptShare` is the interceptors' share, dealt out
+   * by spawn order); interceptors forecast the player's way from the observation history and head for a meeting point (engine/ai/roles.ts,
+   * values in config/zombie-ai.ts). Missing = the AI as it was (and `interceptModel` decides the interception).
+   */
+  zombieAi?: ZombieAiModel;
   /** Signal transmission: this many extra zombies are added to the population each time a transmission begins. */
   transmitSpawn?: number;
   /** Extraction opened but no landing point could be chosen: try again every 15 s instead of leaving the match without one. */
@@ -208,6 +215,15 @@ export function applyEnemySpeedMultiplier(r: Rules, multiplier = 1): Rules {
   if (multiplier === 1) return r;
   if (!(multiplier > 0) || !Number.isFinite(multiplier)) throw new Error(`Invalid enemy speed multiplier: ${multiplier}`);
   return { ...r, zombieSpeedMps: r.zombieSpeedMps * multiplier };
+}
+
+/**
+ * Switches a set of rules to the zombie AI with roles (see config/zombie-ai.ts), or leaves them as they are. The one place the new AI is
+ * turned on: play/rules.ts does it for matches whose parameters ask for it, simulations and tests through `rulesPatch`.
+ */
+export function applyZombieAi(r: Rules, model?: ZombieAiModel): Rules {
+  if (model !== "roles") return r;
+  return { ...r, zombieAi: "roles", interceptShare: ZOMBIE_AI.interceptorShare, interceptModel: undefined };
 }
 
 /** Spurtens totala längd (ramp + topp + avtagande). */

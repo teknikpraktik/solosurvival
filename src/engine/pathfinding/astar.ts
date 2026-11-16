@@ -33,6 +33,9 @@ interface AStarResult {
   source: number;
 }
 
+/** Counts route searches (measurement only: scripts/ai-compare.ts). `nodes` = nodes taken off the queue in all of them. */
+export const pathStats = { astar: 0, trees: 0, fields: 0, nodes: 0 };
+
 /** Multi-käll A* med kostnad C(e) = L(e)/v(e). Kantriktningar (oneway) respekteras. */
 export function astar(
   g: TrailGraph,
@@ -55,10 +58,12 @@ export function astar(
     }
   });
   const closed = new Set<string>();
+  pathStats.astar++;
   while (open.size) {
     const { v: n } = open.pop()!;
     if (closed.has(n)) continue;
     closed.add(n);
+    pathStats.nodes++;
     if (n === goal) {
       const steps: RouteStep[] = [];
       let cur = n;
@@ -211,10 +216,12 @@ export function buildTargetTree(g: TrailGraph, to: EdgePos, speed: SpeedFn): Tar
   seed(e1.from, to.distM / speed(e1), 1);
   seed(e1.to, (e1.lengthM - to.distM) / speed(e1), -1);
   const done = new Set<string>();
+  pathStats.trees++;
   while (heap.size) {
     const { v: m } = heap.pop()!;
     if (done.has(m)) continue;
     done.add(m);
+    pathStats.nodes++;
     const cm = cost.get(m)!;
     for (const a of g.adj.get(m) ?? []) {
       const c = cm + a.lengthM / speed(g.edges.get(a.edgeId)!);
@@ -260,6 +267,74 @@ export function buildTargetTree(g: TrailGraph, to: EdgePos, speed: SpeedFn): Tar
         best = { firstDir: dir, steps, stopAtM: to.distM, etaS: eta, lengthM: len + steps.reduce((s, st) => s + g.edges.get(st.edgeId)!.lengthM, 0) };
       }
       return best;
+    },
+  };
+}
+
+/**
+ * Travel times from one position to every node that can be reached within `maxS` seconds, and the fastest route to any of them: one
+ * bounded search instead of one A* per candidate. Same cost model as `planRoute` (length / speed per edge), one-way edges respected.
+ * A route ends at the node itself.
+ */
+export interface TravelTimes {
+  etaS(nodeId: string): number | undefined;
+  routeTo(nodeId: string): Route | null;
+}
+
+export function travelTimes(g: TrailGraph, from: EdgePos, speed: SpeedFn, maxS: number): TravelTimes | null {
+  const e0 = g.edges.get(from.edgeId);
+  if (!e0) return null;
+  const cost = new Map<string, number>();
+  const prev = new Map<string, { node: string; step: RouteStep } | { first: Dir }>();
+  const heap = new MinHeap<string>();
+  const seed = (node: string, c: number, first: Dir) => {
+    if (c < (cost.get(node) ?? Infinity)) {
+      cost.set(node, c);
+      prev.set(node, { first });
+      heap.push(c, node);
+    }
+  };
+  seed(e0.to, (e0.lengthM - from.distM) / speed(e0), 1);
+  if (!e0.oneway) seed(e0.from, from.distM / speed(e0), -1);
+  const done = new Set<string>();
+  pathStats.fields++;
+  while (heap.size) {
+    const { v: n } = heap.pop()!;
+    if (done.has(n)) continue;
+    done.add(n);
+    pathStats.nodes++;
+    const cn = cost.get(n)!;
+    if (cn > maxS) break;
+    for (const a of g.adj.get(n) ?? []) {
+      const c = cn + a.lengthM / speed(g.edges.get(a.edgeId)!);
+      if (c < (cost.get(a.to) ?? Infinity)) {
+        cost.set(a.to, c);
+        prev.set(a.to, { node: n, step: { edgeId: a.edgeId, dir: a.dir } });
+        heap.push(c, a.to);
+      }
+    }
+  }
+  return {
+    etaS: (nodeId) => (done.has(nodeId) ? cost.get(nodeId) : undefined),
+    routeTo(nodeId) {
+      if (!done.has(nodeId)) return null;
+      const steps: RouteStep[] = [];
+      let cur = nodeId;
+      for (let guard = 0; guard < 100000; guard++) {
+        const p = prev.get(cur);
+        if (!p) return null;
+        if ("first" in p) {
+          steps.reverse();
+          const last = steps.at(-1);
+          const lastEdge = last ? g.edges.get(last.edgeId)! : e0;
+          const lastDir = last ? last.dir : p.first;
+          const lengthM = (p.first === 1 ? e0.lengthM - from.distM : from.distM) + steps.reduce((s, st) => s + g.edges.get(st.edgeId)!.lengthM, 0);
+          return { firstDir: p.first, steps, stopAtM: lastDir === 1 ? lastEdge.lengthM : 0, etaS: cost.get(nodeId)!, lengthM };
+        }
+        steps.push(p.step);
+        cur = p.node;
+      }
+      return null;
     },
   };
 }

@@ -10,6 +10,7 @@ import { GpsProvider, type GeoLike, type GpsErrorCode, type GpsEvent } from "@/g
 import type { GPSFix, GpsQuality } from "@/gps/types";
 import type { TileStore } from "@/data/store";
 import type { RouteProposal } from "@/routes/types";
+import type { ZombieAiModel } from "@/config/zombie-ai";
 import { applyProfile, proximityRadiusM, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
 import type { ProductProfile } from "@/config/product";
 import { FieldLog } from "./fieldlog";
@@ -130,6 +131,11 @@ export interface SessionDeps {
   jumpScares?: () => boolean;
   /** Produktprofil (src/config/product.ts): tillåtna aktiviteter och lägen, fiendefart, skrämmor. Utelämnad = vuxenappens beteende. */
   profile?: ProductProfile;
+  /**
+   * Zombie AI for new Free Play matches (internal switch, no setting for the player; see config/zombie-ai.ts). Omitted = the AI as it was.
+   * Saved with the match; campaign missions never use it.
+   */
+  zombieAi?: ZombieAiModel;
   random?: () => number;
   onCue?: (cue: Cue, text: string) => void;
   /** Game moments for a soundscape (see SoundEvent). Omitted = no such events (Mini Outbreak). */
@@ -482,7 +488,8 @@ export class PlaySession {
   // --- match ---
   async startMatch(): Promise<boolean> {
     const prep = this.prepared;
-    const params = this.params && applyProfile(this.params, this.d.profile);
+    const allowed = this.params && applyProfile(this.params, this.d.profile);
+    const params = allowed && this.d.zombieAi && !allowed.campaign ? { ...allowed, zombieAi: this.d.zombieAi } : allowed;
     const start = this.currentStart();
     if (!prep || !params || !prep.graph || !start || prep.status === "off_network" || prep.status === "outside_region" || prep.status === "sparse" || prep.status === "no_route") return false;
     if (this.previewStart && haversineM(start, this.previewStart) > START_MOVED_LIMIT_M) {
@@ -499,6 +506,7 @@ export class PlaySession {
     this.proposal = proposal;
     this.startedAt = t;
     this.live = createLiveMatch({ id, params, start, proposal, graph: prep.graph, dataVersion: this.dataVersion });
+    if (params.zombieAi) this.params = params; // saved with the match (attachMatch/storage use this.params)
     if (this.lastRaw) this.live.pushFix(this.lastRaw, t);
     this.attachMatch(true);
     this.autoStart = true;
@@ -536,7 +544,7 @@ export class PlaySession {
     this.scareTimes = this.d.jumpScares?.() && (this.d.profile?.jumpScares ?? true) && params.activity !== "mtb" ? planScares(random).map((x) => x + (fresh ? 0 : live.state.elapsedSeconds)) : [];
     this.log.add(t, "match_start", {
       zombiesInitial: live.state.zombies.length, rulesZombies: { initial: live.rules.initialZombies, max: live.rules.maxZombies, headStartS: live.rules.headStartS, spawnMinM: live.rules.spawnMinDistanceM }, proximityM: proximityRadiusM(params),
-      mode: params.mode, activity: params.activity, difficulty: params.difficulty,
+      mode: params.mode, activity: params.activity, difficulty: params.difficulty, zombieAi: live.rules.zombieAi ?? "old",
       plannedLengthM: this.proposal ? Math.round(this.proposal.lengthM) : null, routeGenerationMs: Math.round(this.routeGenMs),
       tiles: this.prepared?.load ? { n: this.prepared.load.tiles, cache: this.prepared.load.fromCache, net: this.prepared.load.fromNetwork, gzBytes: this.prepared.load.networkGzipBytes } : undefined,
       restored: !fresh,
@@ -699,6 +707,12 @@ export class PlaySession {
         case "infection_contact": this.cue("danger", "Zombie close – move away!"); this.sound({ type: "contact", stale: this.replaying }); this.log?.add(t, "infection_contact"); break;
         case "zombie_spawned": this.log?.add(t, "zombie_spawned", { id: e.zombieId, n: live.state.zombies.length }); break;
         case "zombie_culled": this.log?.add(t, "zombie_culled", { id: e.zombieId, n: live.state.zombies.length }); break;
+        case "zombie_intercept": {
+          // Field test of the zombie AI with roles: when an interceptor heads for a meeting point, and how far ahead it expects the player.
+          const z = live.state.zombies.find((x) => x.id === e.zombieId);
+          this.log?.add(t, "zombie_intercept", { id: e.zombieId, inS: z?.meeting ? Math.round(z.meeting.playerAtS - live.state.elapsedSeconds) : null });
+          break;
+        }
         case "zombie_sprint":
           this.log?.add(t, "zombie_sprint", { id: e.zombieId });
           if (t - this.lastSprintCueMs > SPRINT_CUE_COOLDOWN_MS) { this.lastSprintCueMs = t; this.cue("sprint", "Zombie sprinting!"); this.sound({ type: "sprint", stale: this.replaying }); }

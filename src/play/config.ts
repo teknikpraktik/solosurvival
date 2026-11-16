@@ -4,6 +4,7 @@ import type { Difficulty } from "@/config/difficulty";
 import type { GameMode } from "@/engine/objectives/objectives";
 import type { ProductProfile } from "@/config/product";
 import type { CampaignRef } from "@/campaign/types";
+import type { ZombieAiModel } from "@/config/zombie-ai";
 
 export interface MatchParams {
   mode: GameMode;
@@ -21,6 +22,11 @@ export interface MatchParams {
   enemySpeedMultiplier?: number;
   /** A campaign mission (src/campaign): its rules, goals and story are laid over the mode. Missing = Free Play. */
   campaign?: CampaignRef;
+  /**
+   * Zombie AI (config/zombie-ai.ts). Set by the session when a match starts (PlaySession `zombieAi`, Free Play only) and saved with the
+   * match, so a restored match keeps the AI it began with. Missing = the AI as it was (also every match saved before roles existed).
+   */
+  zombieAi?: ZombieAiModel;
 }
 
 /** Skjutreglage för sträcka (Escape/Mission) per aktivitet: min, max, steg och förvalt värde (m). */

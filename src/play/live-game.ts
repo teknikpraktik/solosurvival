@@ -1,6 +1,7 @@
 import { ACTIVITIES } from "@/config/activities";
 import { RESUME_NEUTRAL_S, STEP_S, type Rules } from "@/config/game-rules";
 import { resolveMatchRules } from "./rules";
+import type { ZombieAiModel } from "@/config/zombie-ai";
 import type { CampaignRef } from "@/campaign/types";
 import { abortGame, pauseGame, resumeGame, stepGame } from "@/engine/core/engine";
 import type { GameEvent, GameState } from "@/engine/core/types";
@@ -114,7 +115,7 @@ export class LiveGame {
    * Återställer en sparad match: motorns tillstånd (inkl. RNG och zombie-AI) är oförändrat. Filtret börjar tomt:
    * ingen position gäller förrän nya fixar kommit, och spelet förblir pausat tills spelaren fortsätter.
    */
-  static restore(g: TrailGraph, state: GameState, params: { activity: GameState["config"]["activity"]; mode: GameState["config"]["mode"]; difficulty: GameState["config"]["difficulty"]; enemySpeedMultiplier?: number; campaign?: CampaignRef }, proposal: unknown, counters: FixCounters, lastFix: LastFix | null, fixSeq: number): LiveGame {
+  static restore(g: TrailGraph, state: GameState, params: { activity: GameState["config"]["activity"]; mode: GameState["config"]["mode"]; difficulty: GameState["config"]["difficulty"]; enemySpeedMultiplier?: number; campaign?: CampaignRef; zombieAi?: ZombieAiModel }, proposal: unknown, counters: FixCounters, lastFix: LastFix | null, fixSeq: number): LiveGame {
     void proposal;
     const dest = state.objectives?.targets.find((t) => t.kind === "destination");
     const rules = resolveMatchRules({ ...params, mode: params.mode ?? "survival" }, state.config.durationSeconds, dest && state.startPos ? haversineM(state.startPos, dest) : undefined);

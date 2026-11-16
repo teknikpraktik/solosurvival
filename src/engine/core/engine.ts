@@ -22,10 +22,11 @@ import { CONTACT_CHECK_M, infectionContactM } from "../infection/contact";
 import { updateInfection } from "../infection/infection";
 import { OFF_WAIT_M, initialOffNetwork, isExposed, updateOffNetwork } from "../offnetwork";
 import { findSpawn } from "../spawning/spawn";
+import { roleForIndex } from "@/config/zombie-ai";
 import { advanceZombie, zombieLatLon } from "./movement";
 import { rand } from "./rng";
 import { OBJECTIVE_MIN_FIXES, OBJECTIVE_SPAWN_EXCLUSION_M, VERIFY_OK_ACCURACY_M, updateObjectives, type ObjectiveSet } from "../objectives/objectives";
-import type { GameConfig, GameEvent, GamePhase, GameResult, GameState, Zombie } from "./types";
+import type { GameConfig, GameEvent, GamePhase, GameResult, GameState, Observation, Zombie } from "./types";
 
 export interface StepInput {
   /** Filtrerad spelposition, null om den saknas. */
@@ -41,6 +42,15 @@ export class GameSetupError extends Error {}
 /** Interception model "track": one sample of the player's position every this many seconds, and how many are kept. */
 export const TRACK_SAMPLE_S = 4;
 export const TRACK_SAMPLES = 8;
+
+/** Adds an observation to the player's observation history (oldest dropped). */
+function pushTrack(s: GameState, o: Observation) {
+  const track = (s.player.track ??= []);
+  const last = track[track.length - 1];
+  if (last && last.observedAtS >= o.observedAtS) return;
+  track.push(o);
+  while (track.length > TRACK_SAMPLES) track.shift();
+}
 
 /** Aktuell fartfaktor för en zombie (1 utanför spurt). Äldre sparade matcher saknar `sprintStartS`: då antas en spurt utan ramp/avtagande. */
 export function zombieSpeedFactor(rules: Rules, z: Pick<Zombie, "sprintUntilS" | "sprintStartS">, t: number): number {
@@ -163,6 +173,7 @@ function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos,
     events.push({ type: "spawn_skipped" });
     return false;
   }
+  const index = s.zombieCounter;
   const z: Zombie = {
     id: `z${s.zombieCounter++}`,
     edgeId: spawn.edgeId,
@@ -178,6 +189,11 @@ function trySpawn(g: TrailGraph, s: GameState, rules: Rules, playerPos: EdgePos,
     // The original interception is undefined on open ground; the "track" model only looks along real trails, so a lattice does not stop it.
     canIntercept: rand(s) < rules.interceptShare && (!g.hasOfftrail || rules.interceptModel === "track"),
   };
+  // AI with roles: the role comes from the spawn order, not chance (the draw above is still made, so spawns stay the same as without roles).
+  if (rules.zombieAi === "roles") {
+    z.canIntercept = false;
+    z.role = roleForIndex(index, rules.interceptShare);
+  }
   s.zombies.push(z);
   s.peakZombies = Math.max(s.peakZombies, s.zombies.length);
   events.push({ type: "zombie_spawned", zombieId: z.id });
@@ -279,6 +295,9 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
     s.nextRevealAtS += rules.revealIntervalS;
     s.player.lastObservation = makeObservation(g, input.position, t, s.component, s.player.magnetObservation ?? s.player.lastObservation) ?? s.player.lastObservation;
     events.push({ type: "reveal" });
+    // AI with roles: a reveal is an observation too (the only one when there is no magnet chase).
+    const o = s.player.lastObservation;
+    if (rules.zombieAi === "roles" && o && o.observedAtS === t) pushTrack(s, o);
   }
 
   // Successivt fler zombier.
@@ -299,13 +318,9 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
     if (!m || t - m.observedAtS >= 1) s.player.magnetObservation = makeObservation(g, input.position, t, s.component, m ?? s.player.lastObservation) ?? m;
     // Interception model "track": a sparse trail of those positions, the only thing the interceptors estimate the player's direction from.
     const now = s.player.magnetObservation;
-    if (rules.interceptModel === "track" && now) {
-      const track = (s.player.track ??= []);
-      const last = track[track.length - 1];
-      if (!last || now.observedAtS - last.observedAtS >= TRACK_SAMPLE_S) {
-        track.push(now);
-        while (track.length > TRACK_SAMPLES) track.shift();
-      }
+    if ((rules.interceptModel === "track" || rules.zombieAi === "roles") && now) {
+      const last = s.player.track?.at(-1);
+      if (!last || now.observedAtS - last.observedAtS >= TRACK_SAMPLE_S) pushTrack(s, now);
     }
   }
 
@@ -344,7 +359,9 @@ export function stepGame(g: TrailGraph, s: GameState, rules: Rules, input: StepI
           playerPos: input.position,
           playerObservation: s.player.lastObservation ?? null,
           magnetObservation: rules.magnetic && detection ? (s.player.magnetObservation ?? null) : null,
-          track: rules.interceptModel === "track" ? s.player.track : undefined,
+          track: rules.interceptModel === "track" || rules.zombieAi === "roles" ? s.player.track : undefined,
+          zombies: s.zombies,
+          component: s.component,
           reveal,
           detectionEnabled: detection,
           events: aiEvents,
