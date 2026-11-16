@@ -1,6 +1,6 @@
 # Zombie-AI med roller: jämförelse gammal/ny AI (rådata)
 
-Kör: `npx tsx scripts/ai-compare.ts <matcher> <nät> <aktiviteter> <spelare> <svårighet> <tempo>`. Förklaring av kolumnerna: [ZOMBIE-AI-ROLES.md](ZOMBIE-AI-ROLES.md), avsnitt 6. Sista cellen (skog, cykel, rakt fram) i första tabellen kan saknas om körningen inte hann bli klar.
+Kör: `npx tsx scripts/ai-compare.ts <matcher> <nät> <aktiviteter> <spelare> <svårighet> <tempo>`. Förklaring av kolumnerna: [ZOMBIE-AI-ROLES.md](ZOMBIE-AI-ROLES.md), avsnitt 6.
 
 ## Zombie AI: old against roles (normal, Survival, 16 matches per cell, seeds 100…115, player pace {"walk":1.5,"mtb":1})
 
@@ -41,6 +41,7 @@ Kör: `npx tsx scripts/ai-compare.ts <matcher> <nät> <aktiviteter> <spelare> <s
 | skog | mtb | random | old | 100% (81%–100%) | 12.2 | 0.1 | 0% / 0% / 0% / 100% | 52% | 0.33 | 0% | 6% | 139.2 | 15391 | 1.037 |
 | skog | mtb | random | roles | 100% (81%–100%) | 12.2 | 1.6 | 0% / 19% / 0% / 81% | 49% | 0.26 | 0% | 31% | 163.7 | 14555 | 1.030 |
 | skog | mtb | straight | old | 100% (81%–100%) | 19.2 | 0.1 | 0% / 0% / 0% / 100% | 61% | 0.31 | 0% | 44% | 157.9 | 9982 | 0.985 |
+| skog | mtb | straight | roles | 100% (81%–100%) | 17.9 | 0.7 | 0% / 45% / 0% / 55% | 68% | 0.23 | 0% | 31% | 180.0 | 11586 | 1.022 |
 
 ## Zombie AI: old against roles (normal, Survival, 12 matches per cell, seeds 100…111, player pace {"walk":1.5,"mtb":1})
 
