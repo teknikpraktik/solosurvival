@@ -182,3 +182,4 @@ introt (samt bakom resultatet i uppdrag 1, 2 och 4). Vilken del som syns i de sm
 - `campaign-audio.test.ts` – radiorepliker i ljudlagret.
 - `src/tests/simulation/campaign.test.ts` – genskjutning, motorregler, hela simulerade uppdrag.
 - `e2e/campaign.e2e.mjs` – flödet i mobilstorlek i Chromium (`npm run e2e:campaign` mot en startad server).
+- `story-bible.test.ts` – Story Bibles ordagranna citat av kampanjen (avsnitt 7 och 11) stämmer med `the-fall.ts`, fält för fält. Se `CLAUDE.md`.
