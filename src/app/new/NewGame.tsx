@@ -12,8 +12,8 @@ import { haversineM } from "@/geo/geometry";
 import { errorText } from "@/gps/provider/provider";
 import { matchDurationS } from "@/play/match";
 import {
-  NEW_GAME_ACTIVITIES, NEW_GAME_MODES, chooseActivity, chooseMode, courseKey, isActivityChosen, loadSetup, needsCourse, paramsFromSetup, prevStep, saveSetup,
-  stepFromSearch, stepToShow, stepUrl, type Step,
+  ALL_PICKED, NEW_GAME_ACTIVITIES, NEW_GAME_MODES, NOTHING_PICKED, chooseActivity, chooseMode, courseKey, isActivityChosen, missingChoice, needsCourse, prevStep, saveSetup,
+  shownChoice, stepFromSearch, stepToShow, stepUrl, type Picked, type Step,
 } from "@/play/newgame-flow";
 import { ACTIVITY_LABEL, DIFFICULTY_LABEL, MODE_LABEL, fmtKm } from "../_client/format";
 import { REGENERATE_SVG } from "../_client/symbols";
@@ -29,7 +29,7 @@ interface Opt<T extends string> { v: T; t: string }
 
 /** Difficulty on the setup step, always shown (nothing to expand): a labelled row of toggle buttons (the chosen one has a red accent, a check mark and `aria-pressed`;
  * `aria-label` keeps the CSS check mark out of the button's name). */
-function Choice<T extends string>({ id, label, value, options, onChange }: { id: string; label: string; value: T; options: Opt<T>[]; onChange: (v: T) => void }) {
+function Choice<T extends string>({ id, label, value, options, onChange }: { id: string; label: string; value: T | null; options: Opt<T>[]; onChange: (v: T) => void }) {
   return (
     <section className="ngsec">
       <h2 className="nglabel" id={`${id}-label`}>{label}</h2>
@@ -108,10 +108,11 @@ export default function NewGame() {
   const view = useSessionView(session);
   const [p, setP] = useState<MatchParams>(() => defaultParams("walk"));
   const [step, setStep] = useState<Step>("activity");
-  // How to travel has been picked in this setup. It starts unpicked every time New game is opened: neither card is marked, whatever the
-  // last game or the saved setup used, and the later steps cannot be reached until the player has chosen. Going back and forth within
-  // the setup keeps the choice (this component lives as long as the setup does). PLAY AGAIN repeats a finished match's own settings.
-  const [activityPicked, setActivityPicked] = useState(false);
+  // What the player has picked in this setup. Nothing is picked when New game is opened: no card and no difficulty is marked, whatever
+  // the defaults or the last game used, and a later step cannot be reached before the choice it needs. Going back and forth within the
+  // setup keeps the choices (this component lives as long as the setup does). PLAY AGAIN repeats a finished match's own settings.
+  const [picked, setPicked] = useState<Picked>(NOTHING_PICKED);
+  const activityPicked = picked.activity;
   const [busy, setBusy] = useState(false);
   // Pressing START: keep the setup on screen until /play has taken over.
   const [starting, setStarting] = useState(false);
@@ -139,9 +140,7 @@ export default function NewGame() {
     else go(prev, "replace");
   };
   useEffect(() => {
-    // The last valid setup is the starting point of the other choices (mode, difficulty, distance); how to travel is always picked anew.
-    const s = loadSetup(storage());
-    if (s) setP(paramsFromSetup(s));
+    // A new setup starts from the game's own starting values, never from the last game: the saved setup is not read here.
     setStep(stepFromSearch(window.location.search));
     const onPop = () => { arrivedFrom.current = {}; setStep(stepFromSearch(window.location.search)); };
     window.addEventListener("popstate", onPop);
@@ -192,7 +191,7 @@ export default function NewGame() {
     if (again) {
       const next = clampParams({ ...again, pointA: null, pointB: again.mode === "escape" ? null : again.pointB });
       setP(next);
-      setActivityPicked(true);
+      setPicked(ALL_PICKED);
       go("setup", "replace");
       if (next.mode === "survival" && session.currentStart()) startWith(next);
     }
@@ -210,12 +209,13 @@ export default function NewGame() {
   const pickActivity = (a: Activity) => {
     const next = chooseActivity(p, a);
     if (next !== p) { setP(next); setPickProblem(null); session?.backToConfig(); }
-    setActivityPicked(true);
+    setPicked((k) => ({ ...k, activity: true }));
     go("mode");
   };
   const pickMode = (m: GameMode) => {
     const next = chooseMode(p, m);
     if (next !== p) { setP(next); setPickProblem(null); session?.backToConfig(); }
+    setPicked((k) => ({ ...k, mode: true }));
     go("setup");
   };
 
@@ -225,7 +225,7 @@ export default function NewGame() {
   const preparedKey = view?.params ? courseKey(view.params) : null;
   const fresh = !!prepared && preparedKey === key && (stage === "preview" || stage === "preparing");
   // A later step named by the address (a link, a reload) without a travel mode picked: back to the first step, also in the address.
-  const shown = stepToShow(step, activityPicked);
+  const shown = stepToShow(step, activityPicked, picked.mode);
   useEffect(() => { if (shown !== step) go(shown, "replace"); }, [shown, step, go]);
   const wantCourse = shown === "setup" && needsCourse(p);
   // Plans a course when none fits the choices and none is on its way for them. prepare() marks itself as planning these choices at once,
@@ -275,7 +275,7 @@ export default function NewGame() {
         <p className="ngprompt"><span className="ngprompt-k">{ACTIVITY_LABEL[p.activity]}</span> · {S.modePrompt}</p>
         <div className="imgcards three">
           {NEW_GAME_MODES.map((m) => (
-            <ImageCard key={m} id={`mode-${m}`} card={card[m]} title={MODE_LABEL[m]} sub={S.modeWin[m]} current={p.mode === m} onClick={() => pickMode(m)} />
+            <ImageCard key={m} id={`mode-${m}`} card={card[m]} title={MODE_LABEL[m]} sub={S.modeWin[m]} current={picked.mode && p.mode === m} onClick={() => pickMode(m)} />
           ))}
         </div>
       </main>
@@ -319,9 +319,11 @@ export default function NewGame() {
   ] : null;
   const title = isAB ? (p.pointB ? K.bSet : K.tapForB) : isSurvival ? P.yourMatch : P.yourCourse;
 
-  const canStart = isSurvival
+  // START needs every gameplay choice made by the player; the difficulty is the one made on this step.
+  const missing = missingChoice(picked);
+  const canStart = !missing && (isSurvival
     ? haveStart && !busy && !starting && stage !== "preparing"
-    : showCourse && !view?.movedFromPreview && haveStart && !busy && !starting;
+    : showCourse && !view?.movedFromPreview && haveStart && !busy && !starting);
   const start = () => {
     if (isSurvival) { startWith(p); return; }
     void run(async () => {
@@ -388,7 +390,7 @@ export default function NewGame() {
         {gps && <div className={`card ${gps.tone}`} role="status">{gps.text}</div>}
         {isAB && pickProblem && <div className="card warn" role="status">{pickProblem}</div>}
         <div id="ngsettings" className="ngsettings">
-          <Choice<Difficulty> id="difficulty" label={S.difficulty} value={p.difficulty} onChange={(difficulty) => set({ difficulty })}
+          <Choice<Difficulty> id="difficulty" label={S.difficulty} value={shownChoice(picked.difficulty, p.difficulty)} onChange={(difficulty) => { set({ difficulty }); setPicked((k) => ({ ...k, difficulty: true })); }}
             options={(["easy", "normal", "hard"] as Difficulty[]).map((d) => ({ v: d, t: DIFFICULTY_LABEL[d] }))} />
           {isSurvival ? (
             <RangeField id="dur" label={S.matchLength} shown={`${Math.round(p.durationS / 60)} min`} min={dur.minMin} max={dur.maxMin} step={dur.stepMin} value={Math.round(p.durationS / 60)}
@@ -413,13 +415,14 @@ export default function NewGame() {
           </div>
         )}
         {view?.messages.map((m) => <div key={m} className="card warn">{m}</div>)}
+        {missing === "difficulty" && <p className="ngneed" id="ngneed" role="status">{S.needDifficulty}</p>}
         <div className="pvactions">
           {p.mode === "mission" && (
             <button className="btn pvregen" aria-label={P.regenerateLabel} disabled={busy || starting || !fresh || stage === "preparing"} onClick={() => run(() => session!.regenerate())}>
               <span className="regenicon" aria-hidden="true" dangerouslySetInnerHTML={{ __html: REGENERATE_SVG }} />{P.regenerate}
             </button>
           )}
-          <button className="btn primary big cta pvstart" disabled={!canStart} onClick={start}>
+          <button className="btn primary big cta pvstart" disabled={!canStart} aria-describedby={missing === "difficulty" ? "ngneed" : undefined} onClick={start}>
             {isSurvival && (busy || starting) ? S.loadingMap : P.startGame}
           </button>
         </div>

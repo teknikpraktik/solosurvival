@@ -17,8 +17,8 @@ async function play(mode) {
   await page.goto(BASE + "/new"); await page.waitForTimeout(1500); await fixes();
   await page.getByRole("button", { name: "ON FOOT", exact: true }).click();
   await page.getByRole("button", { name: mode, exact: true }).click(); await fixes();
-  if (mode === "SURVIVAL") await page.getByRole("button", { name: "START GAME" }).click();
-  if (mode !== "SURVIVAL") { await page.locator(".pvstats").waitFor({ timeout: 90000 }); await fixes(); await page.getByRole("button", { name: "START GAME" }).click(); }
+  if (mode === "SURVIVAL") { if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) await page.getByRole("button", { name: "Normal", exact: true }).click(); /* a difficulty must be chosen before START */ await page.getByRole("button", { name: "START GAME" }).click(); }
+  if (mode !== "SURVIVAL") { await page.locator(".pvstats").waitFor({ timeout: 90000 }); await fixes(); { if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) await page.getByRole("button", { name: "Normal", exact: true }).click(); /* a difficulty must be chosen before START */ await page.getByRole("button", { name: "START GAME" }).click(); } }
   await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(800);
   await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match await page.waitForTimeout(1500); await fixes(2);
   return { ctx, page, fixes };
@@ -97,7 +97,7 @@ const place = (page, list) => page.evaluate((list) => {
   await page.getByRole("button", { name: "BY BIKE", exact: true }).click();
   await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
   for (let i = 0; i < 2; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-  await page.getByRole("button", { name: "START GAME" }).click(); await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(800);
+  { if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) await page.getByRole("button", { name: "Normal", exact: true }).click(); /* a difficulty must be chosen before START */ await page.getByRole("button", { name: "START GAME" }).click(); } await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(800);
   await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match await page.waitForTimeout(1200);
   check("Bike: speed shown, HUD at most three rows", (await page.getByLabel("Your speed").count()) === 1 && (await page.locator(".hudbar > .line").count()) <= 3);
   const bs = await page.evaluate(() => { const g = document.querySelector(".pill.tripstats"); if (!g) return null; const r = g.getBoundingClientRect(); return { cells: g.querySelectorAll(".cell").length, bike: g.querySelectorAll(".tripicon svg").length, top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width), dup: document.querySelectorAll(".pill.activity").length, labels: [...g.querySelectorAll(".cell")].map((c) => c.getAttribute("aria-label")) }; });

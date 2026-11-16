@@ -16,6 +16,8 @@ const step = (page) => new URL(page.url()).searchParams.get("step") ?? "activity
 const card = (page, name) => page.locator(".imgcard", { has: page.locator(".imgcard-title", { hasText: new RegExp(`^${name}`) }) });
 const sessionStage = (page) => page.evaluate(() => window.__outbreak?.getView().stage);
 const startBtn = (page) => page.getByRole("button", { name: /^(START GAME|LOADING MAP…)$/ });
+/** A difficulty is never chosen for the player: picks Normal when none is marked yet (START stays off until then). */
+const pickDiff = async (page) => { if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) { await page.getByRole("button", { name: "Normal", exact: true }).click(); await page.waitForTimeout(200); } };
 const errors = [];
 const watch = (page) => { page.on("pageerror", (e) => errors.push(e.message)); };
 
@@ -80,8 +82,11 @@ for (const act of ["ON FOOT", "BY BIKE"]) {
     const chipOk = chips.length === 2 && chips[0].toUpperCase().includes(act === "ON FOOT" ? "ON FOOT" : "BIKE") && chips[1].toUpperCase().includes(mode);
     const settingOk = mode === "CHECKPOINTS" ? (await page.locator("#dist").count()) === 1 : mode === "SURVIVAL" ? (await page.locator("#dur").count()) === 1 : (await page.locator(".ngrange").count()) === 0;
     check(`${tag}: setup shows the choices as buttons and only the settings this mode uses`, step(page) === "setup" && chipOk && settingOk && (await page.getByRole("group", { name: "Difficulty" }).count()) === 1, chips.join("/"));
+    check(`${tag}: no difficulty is marked, START GAME is off and the panel says what to choose`, (await page.locator('.ngsettings .opt[aria-pressed="true"]').count()) === 0 && (await startBtn(page).isDisabled()) && /difficulty/i.test(await page.locator(".ngneed").innerText().catch(() => "")));
+    await pickDiff(page);
     if (mode === "CHECKPOINTS") {
       const shown = await page.locator(".pvstats").waitFor({ timeout: 90000 }).then(() => true, () => false);
+      await page.locator('[aria-label^="Objective"]').first().waitFor({ timeout: 15000 }).catch(() => undefined); // the markers follow once the map has loaded
       check(`${tag}: the course is planned on the setup step, numbered checkpoints on the map, START GAME enabled`, shown && (await page.locator('[aria-label^="Objective"]').count()) >= 2 && (await startBtn(page).isEnabled()), shown ? "" : await page.locator(".ngpanel").innerText());
       check(`${tag}: REGENERATE is there`, (await page.getByRole("button", { name: /Regenerate/ }).count()) === 1);
     } else if (mode === "A TO B") {
@@ -128,6 +133,7 @@ for (const act of ["ON FOOT", "BY BIKE"]) {
   await card(page, "ON FOOT").click(); await page.waitForTimeout(300);
   await card(page, "CHECKPOINTS").click();
   await page.locator(".pvstats").waitFor({ timeout: 90000 });
+  await pickDiff(page);
   // Change the distance: the old course must not be startable while the new one is being planned.
   await page.locator("#dist").fill("4000");
   await page.waitForTimeout(50);
@@ -218,6 +224,7 @@ for (const act of ["ON FOOT", "BY BIKE"]) {
   await page.getByRole("button", { name: "Easy", exact: true }).click();
   await page.locator("#dur").fill("45"); await page.waitForTimeout(200);
   await fixes(ctx, page, 2);
+  await pickDiff(page);
   await startBtn(page).click();
   await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(800);
   const kept = await page.evaluate(() => JSON.parse(localStorage.getItem("outbreak.newgame.last") ?? "null"));
@@ -265,6 +272,7 @@ async function startSurvival(page) {
   for (let i = 0; i < 3; i++) { await page.context().setGeolocation(START); await page.waitForTimeout(300); }
   await card(page, "ON FOOT").click(); await card(page, "SURVIVAL").click(); await page.waitForTimeout(400);
   for (let i = 0; i < 2; i++) { await page.context().setGeolocation(START); await page.waitForTimeout(300); }
+  await pickDiff(page);
   await startBtn(page).click();
   await page.waitForURL("**/play", { timeout: 90000 }); await page.waitForTimeout(1000);
 }

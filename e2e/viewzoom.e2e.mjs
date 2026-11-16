@@ -16,7 +16,7 @@ const tick = async (n = 3) => { for (let i = 0; i < n; i++) { await ctx.setGeolo
 await page.goto(BASE + "/new"); await tick(4);
 await page.getByRole("button", { name: FOOT ? "ON FOOT" : "BY BIKE", exact: true }).click();
 await page.getByRole("button", { name: "SURVIVAL", exact: true }).click(); await tick(2);
-await page.getByRole("button", { name: "START GAME", exact: true }).click(); await tick(); // Survival: START GAME on the setup step goes straight to the game
+{ if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) await page.getByRole("button", { name: "Normal", exact: true }).click(); /* a difficulty must be chosen before START */ await page.getByRole("button", { name: "START GAME", exact: true }).click(); } await tick(); // Survival: START GAME on the setup step goes straight to the game
 await page.waitForURL("**/play", { timeout: 90000 }); await tick();
 await page.getByRole("dialog").getByRole("button", { name: "START" }).click({ timeout: 2500 }).catch(() => {}); // no "Ready to start" dialog any more: START GAME starts the match
 await page.waitForTimeout(1500); await tick(2);

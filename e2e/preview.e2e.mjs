@@ -75,7 +75,7 @@ const allIn = (ms) => ms.length > 0 && ms.every((m) => m.in);
   check("back to the mode step and in again: the settings are kept", onMode && (await page.getByRole("button", { name: "Hard", exact: true }).getAttribute("aria-pressed")) === "true" && (await page.locator(".rangeval").innerText()) === "4.0 km");
   // Start.
   await page.locator(".pvstats").waitFor({ timeout: 90000 }); await page.waitForTimeout(800); await fixes();
-  await page.getByRole("button", { name: "START GAME" }).click();
+  { if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) await page.getByRole("button", { name: "Normal", exact: true }).click(); /* a difficulty must be chosen before START */ await page.getByRole("button", { name: "START GAME" }).click(); }
   check("START GAME starts the match", await page.waitForURL("**/play", { timeout: 60000 }).then(() => true, () => false));
   await ctx.close();
 }

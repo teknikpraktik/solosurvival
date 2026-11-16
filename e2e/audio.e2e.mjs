@@ -47,7 +47,7 @@ async function startMatch(o, mode) {
   await page.getByRole("button", { name: "ON FOOT", exact: true }).click();
   await page.getByRole("button", { name: mode, exact: true }).click(); await wait(800);
   if (mode !== "SURVIVAL") await page.locator(".pvstats").waitFor({ timeout: 90000 });
-  await page.getByRole("button", { name: "START GAME" }).click();
+  { if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) await page.getByRole("button", { name: "Normal", exact: true }).click(); /* a difficulty must be chosen before START */ await page.getByRole("button", { name: "START GAME" }).click(); }
   await page.waitForURL("**/play", { timeout: 90000 });
   for (let i = 0; i < 40 && !(await page.evaluate(() => { const m = window.__outbreak?.getView().match; return !!m && !m.paused; })); i++) await wait(400);
 }
@@ -79,7 +79,7 @@ async function startMatch(o, mode) {
   check("setup: the match sounds are fetched in the background", want.every((p) => reqs.includes(p)), [...new Set(reqs)].join(","));
   check("setup: helicopter sounds not fetched for a Checkpoints match", !reqs.some((p) => p.includes("heli")));
   await page.locator(".pvstats").waitFor({ timeout: 90000 });
-  await page.getByRole("button", { name: "START GAME" }).click();
+  { if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) await page.getByRole("button", { name: "Normal", exact: true }).click(); /* a difficulty must be chosen before START */ await page.getByRole("button", { name: "START GAME" }).click(); }
   await page.waitForURL("**/play", { timeout: 90000 });
   for (let i = 0; i < 40 && !(await page.evaluate(() => { const m = window.__outbreak?.getView().match; return !!m && !m.paused; })); i++) await wait(400);
   const gStart = (await music(page)).els[el0]?.gain ?? 0;
@@ -171,7 +171,7 @@ let v;
   }
   v = await voices(page);
   check("A TO B setup: no line before the match starts", v.log.length === 0, JSON.stringify(v));
-  await page.getByRole("button", { name: "START GAME" }).click();
+  { if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) await page.getByRole("button", { name: "Normal", exact: true }).click(); /* a difficulty must be chosen before START */ await page.getByRole("button", { name: "START GAME" }).click(); }
   await page.waitForURL("**/play", { timeout: 90000 });
   for (let i = 0; i < 40 && !(await page.evaluate(() => { const m = window.__outbreak?.getView().match; return !!m && !m.paused; })); i++) await wait(400);
   await wait(1200);

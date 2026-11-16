@@ -33,7 +33,7 @@ await page.waitForTimeout(800);
 await page.getByRole("button", { name: "ON FOOT", exact: true }).click();
 await page.getByRole("button", { name: "SURVIVAL", exact: true }).click();
 for (let i = 0; i < 2; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
-await page.getByRole("button", { name: "START GAME", exact: true }).click(); // Survival: START GAME on the setup step goes straight to the game
+{ if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) await page.getByRole("button", { name: "Normal", exact: true }).click(); /* a difficulty must be chosen before START */ await page.getByRole("button", { name: "START GAME", exact: true }).click(); } // Survival: START GAME on the setup step goes straight to the game
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }
 await page.waitForURL("**/play", { timeout: 90000 });
 for (let i = 0; i < 3; i++) { await ctx.setGeolocation(START); await page.waitForTimeout(300); }

@@ -38,7 +38,7 @@ for (const mode of ["SURVIVAL", "CHECKPOINTS"]) {
   await page.getByRole("button", { name: mode, exact: true }).click();
   if (mode === "SURVIVAL") {
     // Survival has no course: START GAME on the setup step goes straight to the game.
-    await page.getByRole("button", { name: "START GAME", exact: true }).click();
+    { if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) await page.getByRole("button", { name: "Normal", exact: true }).click(); /* a difficulty must be chosen before START */ await page.getByRole("button", { name: "START GAME", exact: true }).click(); }
     await page.waitForURL("**/play", { timeout: 90000 });
     check("SURVIVAL: START leder direkt till spelet", true);
     await page.goto(BASE + "/");

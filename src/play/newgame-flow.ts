@@ -36,8 +36,26 @@ export function prevStep(step: Step): Step | null {
  * The step to show. How to travel is never chosen for the player: until one of the two has been picked in this setup, only the first
  * step can be shown (also for a link or a reload that names a later step).
  */
-export function stepToShow(step: Step, activityPicked: boolean): Step {
-  return activityPicked ? step : "activity";
+export function stepToShow(step: Step, activityPicked: boolean, modePicked = true): Step {
+  if (!activityPicked) return "activity";
+  // The setup step belongs to a game mode: without one picked in this setup, the mode step is shown.
+  return step === "setup" && !modePicked ? "mode" : step;
+}
+
+/**
+ * What the player has picked in this setup. Gameplay choices are never made for the player: a new setup starts with nothing picked
+ * (whatever the defaults or an earlier game used), and a choice stays picked while the player moves back and forth within the setup.
+ */
+export interface Picked { activity: boolean; mode: boolean; difficulty: boolean }
+export const NOTHING_PICKED: Picked = { activity: false, mode: false, difficulty: false };
+export const ALL_PICKED: Picked = { activity: true, mode: true, difficulty: true };
+
+/** A choice is shown as selected only when the player picked it in this setup. */
+export const shownChoice = <T,>(picked: boolean, value: T): T | null => (picked ? value : null);
+
+/** What still has to be chosen before START on the setup step (null = nothing). */
+export function missingChoice(picked: Picked): "activity" | "mode" | "difficulty" | null {
+  return !picked.activity ? "activity" : !picked.mode ? "mode" : !picked.difficulty ? "difficulty" : null;
 }
 
 /** Whether an activity card is shown as the choice: only the one the player picked in this setup, never a default or a saved one. */

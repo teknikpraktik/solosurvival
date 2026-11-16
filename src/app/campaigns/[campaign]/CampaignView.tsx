@@ -155,13 +155,19 @@ export default function CampaignView({ id }: { id: string }) {
   const { progress, ready, update } = useCampaignProgress(c!);
   const [open, setOpen] = useState<string | null>(null);
   const pushed = useRef(false);
+  // A mission was tapped before a difficulty was chosen: say what is needed, at the difficulty buttons.
+  const [needDifficulty, setNeedDifficulty] = useState(false);
+  const diffRef = useRef<HTMLElement>(null);
 
   // The open mission is in the URL (?mission=02), so the phone's back button closes the briefing and "retry" can link straight to it.
   useEffect(() => {
     if (!ready || !c) return;
     const read = () => {
       const mid = new URLSearchParams(window.location.search).get("mission");
-      setOpen(mid && c.missions.some((m) => m.id === mid) && canPlay(c, progress, mid) ? mid : null);
+      // A mission opens only once the player has chosen a difficulty (the campaign is begun): none is chosen for them.
+      // A link to a mission that cannot open yet is dropped from the address too, so choosing the difficulty afterwards opens nothing by itself.
+      if (mid && !progress.started) window.history.replaceState(null, "", missionUrl(c.id, null));
+      setOpen(mid && progress.started && c.missions.some((m) => m.id === mid) && canPlay(c, progress, mid) ? mid : null);
     };
     read();
     window.addEventListener("popstate", read);
@@ -172,6 +178,7 @@ export default function CampaignView({ id }: { id: string }) {
 
   const openMission = (mid: string) => {
     if (!canPlay(c, progress, mid)) return;
+    if (!progress.started) { setNeedDifficulty(true); diffRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); return; }
     pushed.current = true;
     window.history.pushState(null, "", missionUrl(c.id, mid));
     setOpen(mid);
@@ -201,13 +208,14 @@ export default function CampaignView({ id }: { id: string }) {
         </div>
       </div>
 
-      <section className="campdiff" aria-labelledby="campdiff-label" data-prompt={(ready && !progress.started) || undefined}>
+      <section className="campdiff" ref={diffRef} aria-labelledby="campdiff-label" data-prompt={(ready && !progress.started) || undefined}>
         <h2 className="nglabel" id="campdiff-label">{ready && !progress.started ? S.chooseDifficulty : S.difficulty}</h2>
         <div className="seg" role="group" aria-labelledby="campdiff-label">
           {DIFFICULTIES.map((d) => (
-            <button key={d} type="button" aria-pressed={progress.difficulty === d} onClick={() => update((p) => setDifficulty(p, d))}>{DIFFICULTY_LABEL[d].toUpperCase()}</button>
+            <button key={d} type="button" aria-pressed={ready && progress.started && progress.difficulty === d} onClick={() => { setNeedDifficulty(false); update((p) => setDifficulty(p, d)); }}>{DIFFICULTY_LABEL[d].toUpperCase()}</button>
           ))}
         </div>
+        {needDifficulty && !progress.started && <p className="ngneed" role="alert">{S.needDifficultyFirst}</p>}
         <p className="ngnote">{S.difficultyNote}</p>
       </section>
 

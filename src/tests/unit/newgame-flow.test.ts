@@ -10,7 +10,7 @@ import { openDb } from "@/play/idb";
 import { PlaySession } from "@/play/session";
 import type { LatLon } from "@/geo/geometry";
 import {
-  LAST_SETUP_KEY, chooseActivity, chooseMode, courseKey, isActivityChosen, loadSetup, needsCourse, paramsFromSetup, prevStep, saveSetup, stepFromSearch, stepToShow, stepUrl,
+  LAST_SETUP_KEY, chooseActivity, chooseMode, courseKey, ALL_PICKED, NOTHING_PICKED, isActivityChosen, loadSetup, missingChoice, needsCourse, paramsFromSetup, prevStep, saveSetup, shownChoice, stepFromSearch, stepToShow, stepUrl,
 } from "@/play/newgame-flow";
 
 /** In-memory Storage with the two methods New game uses. */
@@ -185,5 +185,29 @@ describe("New game: how to travel is never chosen for the player", () => {
     const p = paramsFromSetup(loadSetup(store)!);
     expect(p.activity).toBe("mtb");
     expect(isActivityChosen(false, p.activity, "mtb")).toBe(false);
+  });
+});
+
+describe("New game: no gameplay choice is made for the player", () => {
+  it("a new setup has nothing picked; PLAY AGAIN has everything picked", () => {
+    expect(NOTHING_PICKED).toEqual({ activity: false, mode: false, difficulty: false });
+    expect(ALL_PICKED).toEqual({ activity: true, mode: true, difficulty: true });
+  });
+  it("a default or saved value is not shown as selected until the player picks it", () => {
+    expect(shownChoice(false, defaultParams("walk").difficulty)).toBeNull();
+    expect(shownChoice(false, defaultParams("walk").mode)).toBeNull();
+    expect(shownChoice(true, "hard")).toBe("hard");
+  });
+  it("the setup step cannot be shown before a game mode is picked (a link or a reload naming it shows the mode step)", () => {
+    expect(stepToShow("setup", true, false)).toBe("mode");
+    expect(stepToShow("mode", true, false)).toBe("mode");
+    expect(stepToShow("setup", true, true)).toBe("setup");
+    expect(stepToShow("setup", false, true)).toBe("activity");
+  });
+  it("START waits for each choice in turn: travel, mode, then difficulty", () => {
+    expect(missingChoice(NOTHING_PICKED)).toBe("activity");
+    expect(missingChoice({ activity: true, mode: false, difficulty: false })).toBe("mode");
+    expect(missingChoice({ activity: true, mode: true, difficulty: false })).toBe("difficulty");
+    expect(missingChoice(ALL_PICKED)).toBeNull();
   });
 });

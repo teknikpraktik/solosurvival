@@ -12,6 +12,7 @@ const en = {
     modeSubtitle: { mission: "Collect & return", escape: "Reach the target", survival: "Stay alive & escape" } satisfies Record<GameMode, string>,
     activity: "Activity",
     difficulty: "Difficulty",
+    needDifficulty: "Choose a difficulty to start.",
     courseDistance: "Course distance",
     matchLength: "Match length",
     short: "Short",
@@ -96,21 +97,17 @@ const en = {
     note: "The speaker button in the game turns all sound off and on. On iPhone the ring/silent switch also mutes the game.",
   },
   home: {
-    campaigns: "CAMPAIGNS",
-    campaignsKicker: "STORY MISSIONS",
-    /** The campaign card's second line: where the player is. */
-    missionLine: (n: string, title: string) => `Mission ${n} · ${title}`,
-    allDone: (n: number) => `All ${n} missions completed`,
-    /** The card's action, from the campaign's real state: nothing played yet, a mission to go on with, or everything done. */
-    start: "START CAMPAIGN",
-    continue: "CONTINUE",
-    replay: "REPLAY MISSIONS",
+    /** The two ways to play: a name and one line under it. */
+    campaign: "CAMPAIGN",
+    campaignSub: "STORY MISSIONS",
     freePlay: "FREE PLAY",
-    freePlaySub: "Create your own survival experience",
+    freePlaySub: "YOUR SURVIVAL. YOUR RULES.",
+    /** The menu behind the three bars. */
     previous: "PREVIOUS GAMES",
     howTo: "HOW TO PLAY",
     settings: "SETTINGS",
-    more: "More",
+    more: "Menu",
+    close: "CLOSE",
   },
   campaign: {
     listTitle: "CAMPAIGNS",
@@ -120,6 +117,7 @@ const en = {
     inProgress: "IN PROGRESS",
     open: "OPEN CAMPAIGN",
     difficulty: "Difficulty",
+    needDifficultyFirst: "Choose a difficulty to open the mission.",
     difficultyNote: "Applies to every mission you start from now on. You can change it between missions; your progress stays.",
     chooseDifficulty: "Choose your difficulty to begin",
     mission: (n: string) => `MISSION ${n}`,

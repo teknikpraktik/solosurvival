@@ -106,7 +106,7 @@ export default function HowToPlay() {
           <li><b>Sound:</b> the theme plays as a match begins, once more during it and when it is over; between them a low pulse sounds while zombies are near. At 200 m the operator warns &quot;Zombies approaching!&quot;, at 100 m you hear the
             zombies, and from 50 m the distance is spoken: 50, 40, 30, 20, 10 m. Phones that can vibrate do so when a zombie comes within 200 m. The operator calls the important
             moments over the radio: the start, checkpoints, the helicopter and the rescue.
-            Set music, effects and voice under <b>SETTINGS</b> on the start page.</li>
+            Set music, effects and voice under <b>SETTINGS</b>, behind the menu button (three bars) on the start page.</li>
         </ul>
       </details>
 
@@ -125,7 +125,7 @@ export default function HowToPlay() {
         <summary>Map data and privacy</summary>
         <p>Trails and roads come from OpenStreetMap (© OpenStreetMap contributors, ODbL) and can be incomplete or wrong: a stretch in the
           game is not a promise that it is safe or allowed. The background map comes from OpenFreeMap (© OpenMapTiles), which sees your
-          IP address and the map area shown. Matches and location data stay on your device; delete them under PREVIOUS GAMES.</p>
+          IP address and the map area shown. Matches and location data stay on your device; delete them under PREVIOUS GAMES (the menu button on the start page).</p>
       </details>
 
       <details>

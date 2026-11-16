@@ -42,7 +42,7 @@ async function startFromSetup(o, mode) {
       if (await page.locator(".pvstats").waitFor({ timeout: 60000 }).then(() => true, () => false) && await page.getByRole("button", { name: "START GAME" }).isEnabled()) break;
     }
   } else if (mode === "CHECKPOINTS") await page.locator(".pvstats").waitFor({ timeout: 90000 });
-  await page.getByRole("button", { name: "START GAME" }).click();
+  { if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) await page.getByRole("button", { name: "Normal", exact: true }).click(); /* a difficulty must be chosen before START */ await page.getByRole("button", { name: "START GAME" }).click(); }
   await page.waitForURL("**/play", { timeout: 90000 });
   for (let i = 0; i < 40 && !(await page.evaluate(() => { const m = window.__outbreak?.getView().match; return !!m && !m.paused; })); i++) await wait(400);
 }

@@ -25,7 +25,7 @@ async function startMatch({ page, wait }, act, mode) {
   await page.getByRole("button", { name: act, exact: true }).click();
   await page.getByRole("button", { name: mode, exact: true }).click(); await wait(800);
   if (mode !== "SURVIVAL") await page.locator(".pvstats").waitFor({ timeout: 90000 });
-  await page.getByRole("button", { name: "START GAME" }).click();
+  { if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) await page.getByRole("button", { name: "Normal", exact: true }).click(); /* a difficulty must be chosen before START */ await page.getByRole("button", { name: "START GAME" }).click(); }
   await page.waitForURL("**/play", { timeout: 90000 });
   for (let i = 0; i < 40 && !(await page.evaluate(() => { const m = window.__outbreak?.getView().match; return !!m && !m.paused; })); i++) await wait(400);
 }
