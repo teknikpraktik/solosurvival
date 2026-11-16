@@ -10,8 +10,9 @@ beslut om native-skal (bakgrunds-GPS, vibration på iPhone).
 
 ## Kampanjer
 
-Huvudmenyn leder till CAMPAIGNS (berättelsedrivna uppdrag) och FREE PLAY (de tre fristående lägena, oförändrade). Första kampanjen är
-THE FALL: fem uppdrag till fots på samma motor som Free Play. Arkitektur, balans, röstmanus och fälttestlista finns i
+Huvudmenyn leder till CAMPAIGN (berättelsedrivna uppdrag) och FREE PLAY (de tre fristående lägena, oförändrade). CAMPAIGN består av
+stories i kapitel och uppdrag. Första storyn är **REGENESIS** (fem kapitel, se [Story Bible](docs/OUTBREAK_STORY_BIBLE_V2_2.md)); dess
+kapitel 1, THE FALL, är spelbart: fem uppdrag till fots på samma motor som Free Play. Arkitektur, balans, röstmanus och fälttestlista finns i
 [`docs/CAMPAIGN-THE-FALL.md`](docs/CAMPAIGN-THE-FALL.md). Kod: `src/campaign/`. Verktyg: `npm run campaign:voice` (röstmanus och lista över
 inspelade repliker), `npx tsx scripts/campaign-balance.ts` (simulerade vinster per uppdrag och nivå), `npm run e2e:campaign`.
 

@@ -1,9 +1,9 @@
 # Kampanj: THE FALL
 
-Första kampanjen i OUTBREAK. Fem uppdrag till fots, vart och ett en egen session som läggs ut runt den plats där spelaren startar.
+Kapitel 1 i storyn **REGENESIS** och det första spelbara kapitlet under CAMPAIGN. Fem uppdrag till fots, vart och ett en egen session som läggs ut runt den plats där spelaren startar.
 Kampanjer är huvudprodukten; de tre fristående lägena ligger under FREE PLAY och är oförändrade.
 
-Berättelsen (roller, tidslinje, kommande kampanjer) styrs av den kanoniska Story Bible: [`OUTBREAK_STORY_BIBLE_V2_2.md`](OUTBREAK_STORY_BIBLE_V2_2.md).
+Berättelsen (roller, tidslinje, kommande kapitel) styrs av den kanoniska Story Bible: [`OUTBREAK_STORY_BIBLE_V2_2.md`](OUTBREAK_STORY_BIBLE_V2_2.md).
 Detta dokument beskriver den tekniska implementationen. Kampanjens text är **Story v1.1** (THE WAYSTATION i uppdrag 3, epilogens
 fragment från evakueringsstyrkan).
 
@@ -14,7 +14,8 @@ En motor, två ingångar. Kampanjen är **data och ett tunt lager ovanpå** samm
 | Del | Fil | Ansvar |
 |---|---|---|
 | Uppdragsdefinitioner | `src/campaign/the-fall.ts`, `types.ts` | Deklarativt: basläge, layout, balans per svårighet, intro, mål, radiorepliker |
-| Register | `src/campaign/index.ts` | `CAMPAIGNS`. En ny kampanj = en definitionsfil till och en rad här |
+| Stories | `src/campaign/stories.ts` | `STORIES`: storyns titel och kapitelordning (Story → Chapter → Mission). Planerade kapitel är bara namn. Ett nytt spelbart kapitel = en definitionsfil (`CampaignDef`) och en post i sin story |
+| Register | `src/campaign/index.ts` | `CAMPAIGNS`: alla spelbara kapitel i storyordning, härlett ur `STORIES`. Id:t (`the-fall`) styr sparade framsteg, URL:er och röstfiler och byts aldrig |
 | Campaign Manager | `src/campaign/progress.ts` | Upplåsning, svårighet, sedda intron, resultat. Rena funktioner + localStorage |
 | Regler och mål | `src/campaign/setup.ts` | `missionRules`, `missionObjectives`, `missionDurationS`, `missionParams` |
 | Utläggning i terrängen | `src/campaign/prepare.ts` | `prepareMission`: banan (via Free Plays generator) eller destinationen |

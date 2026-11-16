@@ -110,7 +110,7 @@ const en = {
     close: "CLOSE",
   },
   campaign: {
-    listTitle: "CAMPAIGNS",
+    listTitle: "CAMPAIGN",
     missions: (done: number, total: number) => `${done} / ${total} missions`,
     completed: "COMPLETED",
     notStarted: "NEW",
@@ -139,7 +139,12 @@ const en = {
     quitNote: "Quitting or failing a mission never costs you earlier missions.",
     gpsWaiting: "Waiting for your location… Move to open sky.",
     locked: "This mission is locked. Complete the earlier missions first.",
-    notFound: "This campaign does not exist.",
+    notFound: "This chapter does not exist.",
+    /** Where a chapter sits in its story, e.g. "REGENESIS · CHAPTER 1". */
+    chapterOf: (story: string, n: number) => `${story} · CHAPTER ${n}`,
+    chapter: (n: number) => `CHAPTER ${n}`,
+    comingLater: (story: string) => `COMING LATER IN ${story}`,
+    soon: "COMING LATER",
     backToCampaigns: "Back to campaigns",
     backToCampaign: "BACK TO CAMPAIGN",
     result: {

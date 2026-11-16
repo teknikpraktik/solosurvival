@@ -1,5 +1,5 @@
 /**
- * THE FALL: the first campaign. Five missions, on foot, each its own session started from wherever the player is.
+ * THE FALL: chapter 1 of the story REGENESIS (stories.ts), and the first playable chapter of CAMPAIGN. Five missions, on foot, each its own session started from wherever the player is.
  *
  * Story in one breath: an outbreak nobody can explain spreads and society comes apart. The player, alone outside, is picked up on the
  * radio by WATCHTOWER, a civil-defence radio operator who is still at her post. She gets the player through the first night (01), has
@@ -283,7 +283,7 @@ export const THE_FALL: CampaignDef = {
   ],
   missions: [firstContact, supplyRun, noWayBack, lastSignal, finalExtraction],
   epilogue: {
-    title: "THE FALL – CAMPAIGN COMPLETED",
+    title: "THE FALL – CHAPTER COMPLETED",
     lines: [
       "From the air the fires reach the horizon.",
       "Watchtower's channel is still open. Other towns are calling in.",
