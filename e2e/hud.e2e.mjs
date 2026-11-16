@@ -51,8 +51,9 @@ const place = (page, list) => page.evaluate((list) => {
   check("a hunting zombie's label shows it closing in", (await page.locator(".zlabel.closing").count()) >= 1, `${await page.locator(".zlabel.closing").count()} closing`);
   const dot = await page.evaluate(() => { const d = document.querySelector(".zedge"); return d ? { n: document.querySelectorAll(".zedge").length, bg: getComputedStyle(d).backgroundColor } : { n: 0 }; });
   check("small red dots at the edge for zombies outside the visible map", dot.n >= 1 && dot.bg === "rgb(255, 42, 42)", JSON.stringify(dot));
-  const ring = await page.evaluate(() => [...document.querySelectorAll(".zmark .zring")].map((e) => getComputedStyle(e).stroke));
-  check("zombies are red (no amber)", ring.length > 0 && ring.every((c) => !c.includes("245, 158, 11")), JSON.stringify([...new Set(ring)]));
+  // The ring is the first box-shadow of the face (globals.css .zmark .zface).
+  const ring = await page.evaluate(() => [...document.querySelectorAll(".zmark .zface")].map((e) => getComputedStyle(e).boxShadow.match(/rgba?\([^)]*\)/)?.[0] ?? ""));
+  check("zombies are red (no amber)", ring.length > 0 && ring.every((c) => /^rgba?\((2[0-5]\d|1[89]\d), \d{1,2}, \d{1,2}/.test(c)), JSON.stringify([...new Set(ring)]));
   // No PAUSE button: the control row is AUTO and the menu button (it pauses; sound and QUIT are in its dialog).
   check("controls: AUTO and the menu only", (await page.locator(".controls button").count()) === 2 && (await page.locator(".controls .quit").count()) === 0);
   await page.locator(".controls .iconbtn").click(); await page.waitForTimeout(200);

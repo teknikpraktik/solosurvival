@@ -11,7 +11,8 @@ import { BEARING_COMPASS_TAU_S, BearingSmoother } from "@/play/bearing";
 import { wrap180, type FusedHeading, type HeadingSource } from "@/play/heading";
 import { ZombieAnimator, type ZombieTarget } from "@/play/zombie-anim";
 import { MAP_ATTRIBUTION, MAP_STYLE } from "./mapStyle";
-import { ARROW_SVG, DOT_SVG, EXTRACTION_SVG, GOAL_POINTER_SVG, HOME_SVG, ZOMBIE_DIR_SVG, ZOMBIE_SVG } from "./symbols";
+import { ARROW_SVG, DOT_SVG, EXTRACTION_SVG, GOAL_POINTER_SVG, HOME_SVG, ZOMBIE_DIR_SVG } from "./symbols";
+import { preloadZombieFaces, zombieFaceHtml } from "./zombieFaces";
 
 const fc = (features: GeoJSON.Feature[] = []): GeoJSON.FeatureCollection => ({ type: "FeatureCollection", features });
 const pt = (p: LatLon, props: Record<string, unknown> = {}): GeoJSON.Feature => ({ type: "Feature", properties: props, geometry: { type: "Point", coordinates: [p.lon, p.lat] } });
@@ -122,7 +123,7 @@ export interface GameMapProps {
   /** En tryckt punkt avvisades av kontrollen (texten kan visas för spelaren). `onPick` anropas inte. */
   onPickRejected?: (message: string) => void;
   onError?: (what: string) => void;
-  /** Fiendesymbol (SVG-markup) per fiende-id. Utelämnad = vuxenappens zombie. Läses när fienden först ritas. */
+  /** Fiendesymbol (markup) per fiende-id. Utelämnad = vuxenappens zombie, ett ansikte ur zombieFaces.ts. Läses när fienden först ritas. */
   enemySvg?: (id: string) => string;
   /** Bakgrundskartans stil. Utelämnad = MAP_STYLE. Läses när kartan skapas. */
   mapStyle?: StyleSpecification;
@@ -167,6 +168,7 @@ export default function GameMap(props: GameMapProps) {
     const c = propsRef.current.player ?? propsRef.current.start ?? { lat: 59.38, lon: 13.5 };
     const map = new MapLibreMap({ container: el.current, style: propsRef.current.mapStyle ?? MAP_STYLE, center: [c.lon, c.lat], zoom: propsRef.current.zoom ?? 15, minZoom: 10, maxZoom: 18, attributionControl: false, dragRotate: false, pitchWithRotate: false, fadeDuration: 0, maxTileCacheSize: 40, pixelRatio: Math.min(window.devicePixelRatio || 1, 2) });
     mapRef.current = map;
+    if (!propsRef.current.enemySvg) preloadZombieFaces();
     map.touchZoomRotate.disableRotation();
     if (propsRef.current.scale) map.addControl(new ScaleControl({ maxWidth: 90, unit: "metric" }), "bottom-left");
     const takeOver = () => {
@@ -401,7 +403,7 @@ export default function GameMap(props: GameMapProps) {
 
   // --- Zombier: en enda rAF-loop som animerar mellan motorns uppdateringar ---
   const animRef = useRef<ZombieAnimator | null>(null);
-  const zMarkers = useRef(new Map<string, { m: Marker; el: HTMLDivElement; dir: HTMLElement; label: HTMLElement; lat: number; lon: number; text: string }>());
+  const zMarkers = useRef(new Map<string, { m: Marker; el: HTMLDivElement; dir: HTMLElement; label: HTMLElement; lat: number; lon: number; text: string; chasing: boolean }>());
   const loopRef = useRef<{ raf: number; running: boolean; last: number }>({ raf: 0, running: false, last: 0 });
   const frozenRef = useRef(false);
   const closingHist = useRef(new Map<string, { t: number; d: number }[]>());
@@ -419,14 +421,19 @@ export default function GameMap(props: GameMapProps) {
         const el = document.createElement("div");
         el.className = "zmark";
         el.style.zIndex = "3";
-        el.innerHTML = `${propsRef.current.enemySvg?.(f.id) ?? ZOMBIE_SVG}<span class="zdir">${ZOMBIE_DIR_SVG}</span><span class="zlabel"></span>`;
-        z = { m: new Marker({ element: el, rotationAlignment: "viewport", pitchAlignment: "viewport" }).setLngLat([f.lon, f.lat]).addTo(map), el, dir: el.querySelector(".zdir") as HTMLElement, label: el.querySelector(".zlabel") as HTMLElement, lat: f.lat, lon: f.lon, text: "" };
+        el.innerHTML = `${propsRef.current.enemySvg?.(f.id) ?? zombieFaceHtml(f.id)}<span class="zdir">${ZOMBIE_DIR_SVG}</span><span class="zlabel"></span>`;
+        z = { m: new Marker({ element: el, rotationAlignment: "viewport", pitchAlignment: "viewport" }).setLngLat([f.lon, f.lat]).addTo(map), el, dir: el.querySelector(".zdir") as HTMLElement, label: el.querySelector(".zlabel") as HTMLElement, lat: f.lat, lon: f.lon, text: "", chasing: f.chasing };
         zMarkers.current.set(f.id, z);
       } else if (Math.abs(z.lat - f.lat) > 1e-8 || Math.abs(z.lon - f.lon) > 1e-8) {
         z.m.setLngLat([f.lon, f.lat]);
         z.lat = f.lat; z.lon = f.lon;
       }
       z.el.classList.toggle("chase", f.chasing);
+      z.el.classList.toggle("searching", f.searching && !f.chasing);
+      // The moment it starts chasing (it has seen the player): one short flash, not a lasting effect. Not for a zombie that appears chasing.
+      if (f.chasing && !z.chasing) { z.el.classList.remove("spotted"); void z.el.offsetWidth; z.el.classList.add("spotted"); }
+      else if (!f.chasing) z.el.classList.remove("spotted");
+      z.chasing = f.chasing;
       z.el.classList.toggle("sprint", f.sprinting);
       const me0 = propsRef.current.player;
       const dz = me0 ? haversineM(f, me0) : Infinity;
@@ -434,7 +441,7 @@ export default function GameMap(props: GameMapProps) {
       z.el.classList.toggle("far", dz > ZOMBIE_FAR_M);
       // Rörelsepil: tydlig rörelse även på låg zoom (zombier går ~1 m/s, bara någon pixel i sekunden). Vinkel relativt skärmen.
       if (f.bearing === null) z.dir.style.opacity = "0";
-      else { z.dir.style.opacity = "1"; z.dir.style.transform = `rotate(${f.bearing - bearingRef.current}deg) translateY(-24px)`; }
+      else { z.dir.style.opacity = "1"; z.dir.style.transform = `rotate(${f.bearing - bearingRef.current}deg) translateY(var(--zdir-r, -24px))`; }
     }
     // Avståndsetikett vid de tre zombier som är närmast spelaren, placerad åt spelarens håll (relativt skärmen).
     const me = propsRef.current.player;

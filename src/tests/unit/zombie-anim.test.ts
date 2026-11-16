@@ -74,3 +74,15 @@ describe("ZombieAnimator (Testfall C)", () => {
     expect(haversineM(a1, a.frames()[0])).toBeLessThan(1e-6);
   });
 });
+
+describe("ZombieAnimator: threat level reaches the map's frames", () => {
+  it("searching, chasing and sprinting pass through; a missing flag is false (Mini Outbreak sends no 'searching')", () => {
+    const a = new ZombieAnimator(g);
+    a.setTargets([
+      { id: "z1", edgeId: e1.id, distM: 5, speedMps: 1, chasing: false, searching: true },
+      { id: "z2", edgeId: e1.id, distM: 9, speedMps: 1, chasing: true, sprinting: true },
+      { id: "z3", edgeId: e1.id, distM: 12, speedMps: 1, chasing: false },
+    ]);
+    expect(a.frames().map((f) => [f.id, f.searching, f.chasing, f.sprinting])).toEqual([["z1", true, false, false], ["z2", false, true, true], ["z3", false, false, false]]);
+  });
+});

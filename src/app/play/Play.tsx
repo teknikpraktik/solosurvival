@@ -14,6 +14,7 @@ import { Modal } from "../_client/Modal";
 import { AUTO_SVG, BIKE_SVG, HELI_SVG, MENU_SVG, SKULL_SVG, SOUND_OFF_SVG, SOUND_ON_SVG, WALK_SVG } from "../_client/symbols";
 import { Loader } from "../_client/Loader";
 import { threatRange } from "@/play/sound-rules";
+import { zombieTarget } from "@/play/zombie-anim";
 import { t } from "../_client/strings";
 import { personalRecord } from "@/play/recap";
 import { findMission } from "@/campaign";
@@ -175,7 +176,7 @@ export default function Play() {
   // Signal transmission: the zone to stay inside, round the active goal.
   const tx = m?.objectives?.transmit && m.objectives.next && m.phase !== "finished" ? m.objectives : null;
   const zone = useMemo(() => (tx?.next ? { center: { lat: tx.next.lat, lon: tx.next.lon }, radiusM: tx.radiusM, active: tx.holding } : null), [tx?.next?.id, tx?.radiusM, tx?.holding]); // eslint-disable-line react-hooks/exhaustive-deps
-  const zombies = useMemo(() => (m?.zombiesNear ?? []).map((z) => ({ id: z.id, edgeId: z.edgeId, distM: z.distM, speedMps: z.speedMps, chasing: z.state === "chase" || z.state === "intercept", sprinting: z.sprinting })), [m?.zombiesNear]);
+  const zombies = useMemo(() => (m?.zombiesNear ?? []).map(zombieTarget), [m?.zombiesNear]);
   useEffect(() => { if (m && !m.paused) setPauseDismissed(false); }, [m?.paused]); // eslint-disable-line react-hooks/exhaustive-deps
   // A new match started with START GAME begins by itself as soon as the location is fresh: no "Ready to start" dialog in between.
   // (Audio and the compass were unlocked by that tap on the previous page; a restored match still asks to CONTINUE.)
