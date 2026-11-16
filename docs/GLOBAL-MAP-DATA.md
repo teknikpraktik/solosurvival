@@ -91,8 +91,9 @@ npx tsx experiments/global/sim-ofm.ts 12
   korsningar där.
 - **Farliga passager** (stig som delar nod med större väg, järnväg eller vattendrag): 238 av 247 hittas i Karlstad (96 %) och 6 av 6
   i skogen. 97 % av OFM:s passager är äkta.
-- **Spelutfall** (`sim-ofm.ts`, Survival Normal, riskboten, 12 frön): samma fångstfrekvens på båda näten (11–12 av 12). Mediantiden
-  till fångst skiljer sig inom bruset, till exempel 9,9 mot 8,4 min till fots i Karlstad och 32 mot 25 min på cykel.
+- **Spelutfall** (`sim-ofm.ts`, Survival Normal, riskboten, 12 frön, appens kod): samma fångstfrekvens på båda näten (11–12 av 12).
+  Mediantiden till fångst till fots är nära (Karlstad 9,9 mot 10,9 min, I2-skogen 4,6 mot 4,1). På cykel skiljer den mer: Karlstad
+  32 mot 20 min, I2-skogen 24 mot 27 min. Med 12 matcher kan det vara brus, men cykel i tätort bör följas upp.
 - **Tid och data:**
 
   | | Tiles | Nedladdning | Avkodning och fogning | Grafbygge |
