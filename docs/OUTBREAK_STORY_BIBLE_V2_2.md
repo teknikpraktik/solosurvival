@@ -26,11 +26,13 @@
 **Viktigaste ändringarna i v2.2** (fullständig lista i avsnitt 22):
 
 1. Exakt **tre återkommande talande huvudroller**: WATCHTOWER, RAVEN TWO och DR. ELENA VOSS. Maya, Leo, Jonas och Sara är borttagna eller sammanslagna.
-2. Den försvunna **evakueringsstyrkan (anropssignal SHEPHERD)** är berättelsens huvudtråd från THE FALL till NO MAN'S LAND.
-3. THE FALL beskrivs som den faktiskt är implementerad, inklusive slutrepliker och epilog.
-4. THE WAYSTATION är den säkra zonen i THE FALL uppdrag 3.
-5. Tidslinjen justerad: THE FALL spänner över dag 0–1.
-6. Zombiernas genskjutning beskrivs som instinkt, i linje med implementerad zombie-AI.
+2. Den försvunna **evakueringsstyrkan (anropssignal SHEPHERD)** är berättelsens huvudtråd från THE FALL till NO MAN'S LAND. SHEPHERD är en enhet, inte en karaktär.
+3. SHEPHERD skickades till **NEXAGEN:s medicinska mottagnings- och logistikbyggnad**, registrerad som möjlig säker uppsamlingsplats i regionens beredskapsplan. Ingen utanför NEXAGEN kände till kopplingen till forskningen.
+4. **THE BUNKER** är ett fristående Safehouse. WATCHTOWER:s position är okänd för spelaren.
+5. THE FALL beskrivs som den faktiskt är implementerad, inklusive slutrepliker och epilog.
+6. THE WAYSTATION är den säkra zonen i THE FALL uppdrag 3.
+7. Tidslinjen justerad: THE FALL spänner över dag 0–1.
+8. Zombiernas genskjutning beskrivs som instinkt, i linje med implementerad zombie-AI.
 
 ---
 
@@ -61,7 +63,9 @@ Outbreak är ett berättelsedrivet GPS-spel där spelaren rör sig i sin verklig
 
 **Fiktiv biologi.** I REGENESIS används en modifierad biologisk bärare för att påverka nervsystemet. Tidiga avvikelser visar förhöjd aggression, överkänslighet för ljud och rörelse samt förlust av impulskontroll. Forskarna inser för sent att en förändrad variant kan överföras mellan människor. Detta är **fiktion**, inte en faktisk känd riskprofil för AI-utvecklade läkemedel, och spelet ska aldrig framställa det som en verklig risk. Exakta smittvägar och medicinska effekter lämnas medvetet på thriller-nivå.
 
-**NEXAGEN och civilförsvaret.** NEXAGEN-området har reservkraft, helikopterplatta, kylförvaring och stora ytor. I den regionala civilförsvarsplaneringen var området därför utpekat som **uppsamlingsplats vid evakuering**, enligt ett avtal som företaget själv hade erbjudit. Detta är kärnan i bryggan mellan THE FALL och GROUND ZERO (avsnitt 7).
+**NEXAGEN och beredskapsplanen.** I utkanten av NEXAGEN-området, åtskild från forskningsbyggnaderna, ligger företagets **medicinska mottagnings- och logistikbyggnad**: patientmottagning för kliniska prövningar, varumottagning, kylförvaring, reservkraft, stora lastytor och en helikopterplatta. Flera år före utbrottet erbjöd NEXAGEN byggnaden till regionens beredskapsplanering, och den registrerades som **möjlig säker uppsamlingsplats vid evakuering**. Det var en rimlig och vanlig typ av avtal: byggnaden hade allt en uppsamlingsplats behöver, och den låg utanför stadens centrum.
+
+När utbrottet kom fanns ingen anledning att misstänka byggnaden. **Ingen utanför NEXAGEN kände till kopplingen mellan företagets forskning och utbrottet.** Det är kärnan i bryggan mellan THE FALL och GROUND ZERO (avsnitt 7).
 
 ---
 
@@ -69,9 +73,9 @@ Outbreak är ett berättelsedrivet GPS-spel där spelaren rör sig i sin verklig
 
 **Yttre konflikt:** Människor mot en sjukdom som sprids snabbare än samhället hinner reagera. De infekterade är ett naturfenomen i berättelsen, inte en fiende med avsikter.
 
-**Mänsklig konflikt:** Tempo mot försiktighet. NEXAGEN:s ledning fördröjde larmet för att verifiera, skydda programmet och undvika panik. Elena Voss försökte varna, men först efter att själv ha accepterat för stora osäkerheter. Civilförsvaret följde en plan som byggde på uppgifter från företaget. Ingen av dem är skurk; alla bidrog.
+**Mänsklig konflikt:** Tempo mot försiktighet. NEXAGEN:s ledning fördröjde larmet för att verifiera, skydda programmet och undvika panik. Elena Voss försökte varna, men först efter att själv ha accepterat för stora osäkerheter. Civilförsvaret följde en beredskapsplan som pekade ut en NEXAGEN-byggnad som säker. Ingen av dem är skurk; alla bidrog.
 
-**Personlig konflikt (berättelsens motor):** WATCHTOWER skickade evakueringsstyrkan SHEPHERD mot NEXAGEN-området enligt planen, och tappade kontakten. Hon ber Runner Seven hjälpa henne att hitta dem. Det spelaren upptäcker längs vägen avslöjar steg för steg varför planen var fel, och att en varning fanns som aldrig nådde fram.
+**Personlig konflikt (berättelsens motor):** WATCHTOWER skickade evakueringsstyrkan SHEPHERD till NEXAGEN:s mottagningsbyggnad, eftersom planen angav den som säker uppsamlingsplats, och tappade kontakten. Hon ber Runner Seven hjälpa henne att hitta dem. Det spelaren upptäcker längs vägen avslöjar steg för steg varför planen var fel, och att en varning fanns som aldrig nådde fram.
 
 **Berättelsens fråga:** Kan det som gick förlorat i hastigheten räddas med tålamod: människorna, och kunskapen om vad som hände?
 
@@ -83,9 +87,9 @@ Outbreak är ett berättelsedrivet GPS-spel där spelaren rör sig i sin verklig
 |---|---|---|
 | Dag −3 | Allvarlig neurologisk avvikelse vid REGENESIS-försök | GROUND ZERO 2.2 |
 | Dag −2 | Misstänkt sekundärsmitta bland personal; internt säkerhetsstopp | GROUND ZERO 2.2 |
-| Dag −1 | NEXAGEN begär prioriterad evakuering av personal och material, utan att nämna smitta. Elena ringer civilförsvaret utanför företagets kanaler; samtalet hamnar i en kö och eskaleras aldrig. En smittad person lämnar området. | GROUND ZERO 2.3–2.5 |
+| Dag −1 | Rapporteringen fördröjs. Sjuka anställda söker sig till mottagningsbyggnaden. Elena ringer civilförsvaret utanför företagets kanaler och ber dem att inte använda byggnaden som uppsamlingsplats; meddelandet hamnar i en kö i sambandsnätet och eskaleras aldrig. En smittad person lämnar området. | GROUND ZERO 2.3–2.5 |
 | Dag 0, eftermiddag | Utbrottet bryter ut i staden. Räddningstjänst och kommunikation bryter samman. | THE FALL 01 [IMPLEMENTERAT] |
-| Natt dag 0–1 | Spelaren överlever natten (mellan uppdrag 1 och 2). Evakueringsstyrkan SHEPHERD utgår från THE WAYSTATION mot NEXAGEN-området enligt planen. | THE FALL 01 success-text; SHEPHERD:s rutt i GROUND ZERO 2.1 |
+| Natt dag 0–1 | Spelaren överlever natten (mellan uppdrag 1 och 2). WATCHTOWER skickar evakueringsstyrkan SHEPHERD från THE WAYSTATION till NEXAGEN:s mottagningsbyggnad för att öppna uppsamlingsplatsen. | THE FALL 01 success-text; SHEPHERD:s rutt i GROUND ZERO 2.1 |
 | Dag 1, dag | Förnödenheter till gruppen i källaren | THE FALL 02 [IMPLEMENTERAT] |
 | Dag 1, eftermiddag | Evakueringsvägen bryts. Spelaren når THE WAYSTATION. SHEPHERD tystnar. | THE FALL 03 [IMPLEMENTERAT] |
 | Dag 1, kväll | Sex timmar utan kontakt. Relänätet aktiveras; RAVEN TWO svarar. | THE FALL 04 [IMPLEMENTERAT] |
@@ -107,9 +111,11 @@ Berättelsen har **exakt tre återkommande talande huvudroller**. Ingen fjärde 
 Spelarens anropssignal, tilldelad av WATCHTOWER i slutet av FIRST CONTACT: *"I am logging you as Runner Seven."* [IMPLEMENTERAT]. Runner Seven talar aldrig, har inget namn, kön eller ålder i berättelsen. Alla relationer byggs genom vad andra säger till och om Runner Seven.
 
 ### WATCHTOWER
-**Roll:** Civilförsvarets radiooperatör i den regionala sambandscentralen, THE BUNKER. Spelarens huvudsakliga radiokontakt. Leder uppdragen och håller ihop berättelsen. Förmedlar information om överlevare, Safehouses och hot. Förekommer i alla fem kampanjer och i alla 25 uppdrag.
+**Roll:** Civilförsvarets radiooperatör. Spelarens huvudsakliga radiokontakt. Leder uppdragen och håller ihop berättelsen. Förmedlar information om överlevare, Safehouses och hot. Förekommer i alla fem kampanjer och i alla 25 uppdrag.
 
 **Identitet:** Kvinna i fyrtioårsåldern. Identifieras **endast med anropssignalen WATCHTOWER**. Hon har inget civilt namn i berättelsen och ska inte få något.
+
+**Position:** Var WATCHTOWER sänder ifrån är **okänt för spelaren** och ska förbli det tills ett särskilt beslut fattas (avsnitt 22). THE FALL säger bara att hon är kvar på sin post. Repliker får inte avslöja platsen, och inget Safehouse är hennes post.
 
 **Röst:** Lugn, exakt, trött men med kontroll. Procedurmässigt radiospråk utan drama; brådskande bara när spelaren är på väg att bli fångad. [IMPLEMENTERAT som röstregi i `the-fall.ts`]
 
@@ -118,7 +124,7 @@ Spelarens anropssignal, tilldelad av WATCHTOWER i slutet av FIRST CONTACT: *"I a
 | Kampanj | Utveckling |
 |---|---|
 | THE FALL | Från procedur ("Any station, this is Watchtower") till ett första personligt band: hon ger spelaren en anropssignal och ser till att *en* människa kommer ut. |
-| GROUND ZERO | Personlig skuld. Hon skickade SHEPHERD dit planen sa. Hon ber Runner Seven om hjälp, inte på order. När hon hör Elenas köade varning (2.4) förstår hon att varningen fanns i hennes eget system. |
+| GROUND ZERO | Personlig skuld. Hon skickade SHEPHERD till en byggnad som planen kallade säker. Hon ber Runner Seven om hjälp, inte på order. När Elenas köade varning spelas upp (2.4) förstår hon att varningen fanns i hennes eget sambandsnät. |
 | THE HUNT | Hon gör misstag (3.3) och säger det. Hon börjar fatta egna beslut utanför den officiella strukturen, som inte längre finns. |
 | NO MAN'S LAND | Hon är skeptisk och ibland skarp mot Elena; det är hennes organisation som fick bära företagets fel. Hon väljer ändå att rädda henne, för att människorna på gården behöver det. |
 | THE LAST HOPE | Hon har tagit ansvar för ett litet nät av överlevare. Sista repliken i hela berättelsen är hennes. |
@@ -200,7 +206,7 @@ Berättelsen behöver människor att rädda, men inte fler röster att följa. A
 | JONAS (skogsvaktare, radioamatör) | Borttagen | Hans kunskap blir ett fynd: en anonym skogsvaktares fältanteckningar (E-09) vid THE RANGER STATION. Varningen i 3.3 och förslaget om sirenen i 4.4 flyttas till WATCHTOWER. |
 | SARA (sjuksköterska) | Sammanslagen med Elena och WATCHTOWER | Elena leder vårdstationen och står för det medicinska. Den skeptiska rösten som balanserar Elena blir WATCHTOWER:s. |
 | Radioamatörerna på THE ROOFTOP | Anonym grupp utan röst | WATCHTOWER talar om dem. |
-| Räddningsgruppen i GROUND ZERO (ny i v2.0) | Ersatt | Den befintliga evakueringsstyrkan från THE FALL, SHEPHERD (avsnitt 7). |
+| Räddningsgruppen i GROUND ZERO (ny i v2.0) | Ersatt | Den befintliga evakueringsstyrkan från THE FALL, SHEPHERD (avsnitt 7). En enhet med anropssignal, inte en karaktär. |
 | Internationell forskargrupp | Anonym | En anonym röst, en gång (THE LAST HOPE 5.4). |
 
 ---
@@ -208,6 +214,12 @@ Berättelsen behöver människor att rädda, men inte fler röster att följa. A
 ## 7. Huvudtråden: evakueringsstyrkan SHEPHERD
 
 **Vad den är:** En civil evakueringsstyrka från räddningstjänst, ambulanssjukvård och civilförsvar: fordon, sjukvårdare och ett sambandsfordon. Anropssignal **SHEPHERD**. Inte militär.
+
+**SHEPHERD är en evakueringsstyrka, inte en huvudroll.** Regler:
+
+- Anropssignalen tillhör enheten, aldrig en person. Ingen medlem får namn, egen båge eller återkommande röst utanför GROUND ZERO.
+- I GROUND ZERO hörs styrkan i **3–5 korta inspelningar** (radiologgar, ett avbrutet anrop), alla från **samma anonyma sambandsoperatör**. Operatören har inget namn och ingen personlig historia; inspelningarna är information, inte en relation.
+- Efter GROUND ZERO hörs SHEPHERD inte mer. Elena och WATCHTOWER talar om de överlevande.
 
 **I THE FALL [IMPLEMENTERAT]:** Spelaren hör bara om "the evacuation force", aldrig anropssignalen.
 
@@ -217,7 +229,11 @@ Berättelsen behöver människor att rädda, men inte fler röster att följa. A
 - Uppdrag 4, intro: *"No one has heard from the evacuation force in six hours."*
 - Epilog: *"One call does not belong. The evacuation force, hours after she lost them: “…NEXAGEN perimeter… do not…” Then static."*
 
-**Varför styrkan hade koppling till NEXAGEN:** NEXAGEN-området var utpekad uppsamlingsplats i civilförsvarets plan (avsnitt 2). Dag −1 begärde NEXAGEN dessutom prioriterad evakuering av "personal och känsligt material", utan att nämna smitta. När utbrottet kom dag 0 följde WATCHTOWER planen: SHEPHERD gick från THE WAYSTATION mot NEXAGEN-området för att öppna uppsamlingsplatsen och hämta personalen. De kom fram dag 1, fann området redan i sammanbrott och försökte varna: *do not send anyone, do not bring the buses*. Sedan tystnade de.
+**Varför styrkan skickades till NEXAGEN:** NEXAGEN:s medicinska mottagnings- och logistikbyggnad var registrerad i regionens beredskapsplan som möjlig säker uppsamlingsplats (avsnitt 2). När staden började evakueras natten mellan dag 0 och dag 1 behövde WATCHTOWER en plats med kraft, utrymme och helikopterplatta, och planen pekade på byggnaden. Hon skickade SHEPHERD från THE WAYSTATION för att öppna den, så att bussar med evakuerade kunde följa efter. Ingen hos civilförsvaret visste något om REGENESIS.
+
+**Varför styrkan försvann:** Smittan hade börjat bland NEXAGEN:s personal, och sjuka anställda hade sökt sig till mottagningsbyggnaden, där den medicinska mottagningen fanns. SHEPHERD kom fram till en byggnad som redan var en smitthärd. De förstod vad det betydde för bussarna bakom dem och försökte varna: *do not send the buses, do not send anyone*. Sedan tystnade de.
+
+**Varför det driver berättelsen:** WATCHTOWER följde planen och skickade människor in i det de skulle evakueras undan. Det är hennes personliga skäl att ta reda på vad som hände, och det är därför sökandet efter SHEPHERD oundvikligen blir ett sökande efter sanningen om NEXAGEN.
 
 **Varför spelaren bryr sig:** Det är samma styrka som WATCHTOWER väntade på genom hela THE FALL, och evakueringen spelaren själv var en del av. WATCHTOWER skickade dem dit. Hon ber om hjälp att hitta dem.
 
@@ -226,9 +242,9 @@ Berättelsen behöver människor att rädda, men inte fler röster att följa. A
 | Kampanj | SHEPHERD |
 |---|---|
 | THE FALL | Tystnar (03). Ett brutet anrop i epilogen. |
-| GROUND ZERO | Spelaren följer deras väg: från THE WAYSTATION, via deras rutt, till NEXAGEN-områdets yttre gräns. De tog sig ut med en del av personalen, med hjälp av "the researcher". Ett okänt antal lever. |
+| GROUND ZERO | Spelaren följer deras väg: från THE WAYSTATION, via deras rutt, till mottagningsbyggnaden vid NEXAGEN-områdets yttre gräns. De tog sig ut med en del av personalen, med hjälp av "the researcher". Ett okänt antal lever. 3–5 inspelningar från den anonyma operatören. |
 | THE HUNT | Deras spår leder vidare via nödsignalen. |
-| NO MAN'S LAND | Två av SHEPHERD:s sjukvårdare finns på THE FARMHOUSE och räddas i 4.5. Tråden avslutas. |
+| NO MAN'S LAND | Två av SHEPHERD:s sjukvårdare finns på THE FARMHOUSE och räddas i 4.5. De talar inte; Elena och WATCHTOWER talar om dem. Tråden avslutas. |
 | THE LAST HOPE | WATCHTOWER nämner dem en gång: de hjälper till i nätet. |
 
 ---
@@ -242,13 +258,13 @@ Varje Safehouse har en **egen berättelsefunktion**. En plats som bara skiljer s
 | ID | Safehouse | Berättelsefunktion | Människor | Framträdanden | Förändring |
 |---|---|---|---|---|---|
 | SH-01 | **THE WAYSTATION**, provisoriskt vägskydd vid den gamla vägstationen | **Minnet.** Platsen där spelaren räddades, och där SHEPHERD utgick. Startpunkten för mysteriet. | Okända evakuerade (THE FALL), inga (GROUND ZERO) | THE FALL 03 [IMPLEMENTERAT], GROUND ZERO 2.1 | Trygg med stängd port → övergiven, med SHEPHERD:s radio kvar |
-| SH-02 | **THE BUNKER**, gammalt civilförsvarsskydd, regional sambandscentral | **Navet.** WATCHTOWER:s post. Dit fynd förs och där Evidence Log "förvaras". | WATCHTOWER, anonyma sambandsoperatörer | Omnämnd från THE FALL ("Watchtower's channel"); destination i GROUND ZERO 2.3, 2.4; THE LAST HOPE 5.1 | Reservkraften sviktar (2.4); förlorar delar av den (5.1) |
+| SH-02 | **THE BUNKER**, gammalt civilförsvarsskydd med en nod i sambandsnätet | **Arkivet.** En nod i sambandsnätet som ingen operatör längre bemannar: radioutrustning och en meddelandelagring som sparar trafik som inte kunnat vidarebefordras. Där kan fynd läsas in och sändas till WATCHTOWER, och där ligger nätets glömda meddelanden. **Inte WATCHTOWER:s post.** | En anonym grupp överlevare som tagit skydd där | GROUND ZERO 2.3, 2.4; THE LAST HOPE 5.1 | Trygg (2.3) → hotad när reservkraften sviktar (2.4) → förlorar delar av kraften och överges när gruppen flyttar till THE ROOFTOP (5.1) |
 | SH-03 | **THE TREEHOUSE**, gömställe i träden | **Människorna att skydda.** Det första stället där spelaren gör skillnad för andra genom att återvända. | En anonym familj, två barn och en vuxen | THE HUNT 3.1, 3.4; omnämnd i THE LAST HOPE 5.5 | Trygg → hotad av en hord → utrymd och övergiven |
 | SH-04 | **THE RANGER STATION**, obemannad skogsstuga med gammal repeater och brandsiren | **Verktyget.** Kunskap och utrustning: fältanteckningar om ljud, repeatern, sirenen. | Inga (den anonyma skogsvaktaren är försvunnen) | THE HUNT 3.2, 3.3; NO MAN'S LAND 4.4 | Observationspunkt → fälla (3.3) → sirenen används för avledning (4.4) |
 | SH-05 | **THE FARMHOUSE**, befäst gård, provisorisk vårdstation | **Räddningsmålet.** Elenas station och slutet på SHEPHERD-tråden. | Elena, anonyma patienter, två SHEPHERD-sjukvårdare | NO MAN'S LAND 4.1–4.5 | Fungerande vårdstation → omringad → evakuerad |
 | SH-06 | **THE ROOFTOP**, takläger med sändare | **Rösten utåt.** Den enda platsen som kan nå omvärlden. | En anonym grupp radioamatörer | THE LAST HOPE 5.2–5.5 | Sändarplats → under press under överföringen → övergiven i gryningen |
 
-**Andra platser är inte Safehouses.** Källaren med elva personer (THE FALL 02) och NEXAGEN-områdets yttre gräns (GROUND ZERO 2.5) är engångsplatser.
+**Andra platser är inte Safehouses.** Källaren med elva personer (THE FALL 02) och NEXAGEN:s mottagningsbyggnad (GROUND ZERO 2.5, endast som fiktiva zoner runt den) är engångsplatser.
 
 **Safehouse-loop [KRÄVER NY MEKANIK]:** GPS-zon nås → kort filmisk bild och miljöljud → radiodialog → fynd eller beslut → nästa mål. Längre scener och Evidence Log läses efter avslutat uppdrag, inte under rörelse.
 
@@ -286,14 +302,14 @@ Varje Safehouse har en **egen berättelsefunktion**. En plats som bara skiljer s
 |---|---|---|---|---|---|---|---|
 | 1 | **THE FALL** [IMPLEMENTERAT] | SURVIVE | *The world is ending. Stay alive.* | 0–1 | Kommer spelaren undan den första vågen? | WATCHTOWER, RAVEN TWO | THE WAYSTATION |
 | 2 | **GROUND ZERO** | DISCOVER | *Find the missing. Uncover the truth.* | 2–4 | Vad hände med SHEPHERD, och varför tystnade de? | WATCHTOWER; Elena som inspelning; anonym SHEPHERD-röst | THE WAYSTATION, THE BUNKER |
-| 3 | **THE HUNT** | CONNECT | *They follow sound. They follow you.* | 5–7 | Kan spelaren spåra nödsignalen och samtidigt skydda dem som finns på vägen? | WATCHTOWER; RAVEN TWO (en gång); Elena live (3.5) | THE TREEHOUSE, THE RANGER STATION, THE BUNKER |
+| 3 | **THE HUNT** | CONNECT | *They follow sound. They follow you.* | 5–7 | Kan spelaren spåra nödsignalen och samtidigt skydda dem som finns på vägen? | WATCHTOWER; RAVEN TWO (en gång); Elena live (3.5) | THE TREEHOUSE, THE RANGER STATION |
 | 4 | **NO MAN'S LAND** | RESCUE | *Someone is still alive. Get them out.* | 8–10 | Går det att rädda en hel grupp när de infekterade redan närmar sig? | WATCHTOWER, Elena, RAVEN TWO | THE FARMHOUSE, THE RANGER STATION |
 | 5 | **THE LAST HOPE** | PRESERVE | *Save the research. Give them a chance.* | 11–12 | Kan kunskapen nå omvärlden innan sambandet försvinner? | WATCHTOWER, Elena, RAVEN TWO; anonym forskarröst (en gång) | THE BUNKER, THE ROOFTOP |
 
 **Hur kampanjerna hänger ihop:**
 
 1. **THE FALL** slutar med att spelaren är räddad, men SHEPHERD saknas och ett brutet anrop nämner NEXAGEN.
-2. **GROUND ZERO** är ett räddningsuppdrag som blir ett avslöjande: spelaren följer SHEPHERD och förstår att NEXAGEN visste före alla andra. Slutar med att SHEPHERD:s överlevande kan ha tagit sig vidare med en forskare, och en svag nödsändare.
+2. **GROUND ZERO** är ett räddningsuppdrag som blir ett avslöjande: spelaren följer SHEPHERD till byggnaden som planen kallade säker och förstår att NEXAGEN visste före alla andra. Slutar med att SHEPHERD:s överlevande kan ha tagit sig vidare med en forskare, och en svag nödsändare.
 3. **THE HUNT** spårar nödsändaren. Spelaren lär sig hur de infekterade reagerar på ljud, hjälper en familj att utrymma sitt gömställe och får till sist Elenas eget nödmeddelande.
 4. **NO MAN'S LAND** räddar Elena, patienterna och SHEPHERD:s sista sjukvårdare. Elena har preliminära data, men inget botemedel.
 5. **THE LAST HOPE** ser till att datan når omvärlden. Ingen räddas över en natt, men kunskapen överlever.
@@ -362,7 +378,7 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 > One call does not belong. The evacuation force, hours after she lost them: “…NEXAGEN perimeter… do not…” Then static.
 > You got out. Most did not. This is not over.
 
-**Brygga till GROUND ZERO:** Raven Two flyger Runner Seven till THE BUNKER, WATCHTOWER:s post. Där börjar GROUND ZERO: WATCHTOWER har spelat upp fragmentet hundra gånger. Hon skickade SHEPHERD dit. Hon ber Runner Seven gå tillbaka ut.
+**Brygga till GROUND ZERO:** RAVEN TWO sätter av Runner Seven vid en uppsamlingsplats som inte beskrivs närmare. WATCHTOWER:s kanal är fortfarande öppen, och hon har spelat upp fragmentet hundra gånger. Hon skickade SHEPHERD till byggnaden. Hon ber Runner Seven gå tillbaka ut. Var hon själv befinner sig sägs inte.
 
 ---
 
@@ -375,13 +391,15 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 **Röster:** WATCHTOWER; anonym SHEPHERD-röst (inspelningar); Elena (inspelning från 2.4). Ingen RAVEN TWO.
 **Ny spelmekanik:** Evidence Log, dynamiska mål, förföljande hord, blockad.
 
+**SHEPHERD-inspelningar:** 3–5 totalt i kampanjen, från samma anonyma operatör (2.1, 2.2 eventuellt, 2.5). Se regler i avsnitt 7.
+
 **Avslöjandetakt:** 2.1 avslöjar bara *var* SHEPHERD var och att de varnade. NEXAGEN är fortfarande bara ett namn. REGENESIS dyker upp i 2.2; tidslinjen i 2.3; Elenas röst i 2.4; smittans början i 2.5. AI-accelerationens roll och Elenas eget ansvar sparas till NO MAN'S LAND.
 
 ### 2.1 BACK INSIDE — A till B + dynamiskt mål, cirka 15 min
 - **Röster:** WATCHTOWER; SHEPHERD (inspelning).
 - **Varför:** WATCHTOWER ber om hjälp, personligt: *"I sent them there, Runner. I need to know."* SHEPHERD utgick från THE WAYSTATION; det är det sista säkra ställe hon vet att de var på.
-- **Händelse:** Spelaren återvänder till THE WAYSTATION, nu övergivet. SHEPHERD:s radio står kvar på loggläge och spelar upp anropet i längre form: *"Shepherd to Watchtower… at the NEXAGEN perimeter… do not send the buses. Do not send anyone…"* Vid ankomst ändras destinationen till SHEPHERD:s första loggade brytpunkt. En liten grupp infekterade samlas längs den ursprungliga vägen. [KRÄVER NY MEKANIK: dynamiskt mål]
-- **Ny information:** SHEPHERD:s anropssignal; de var vid NEXAGEN-området; de varnade för att skicka fler.
+- **Händelse:** Spelaren återvänder till THE WAYSTATION, nu övergivet. SHEPHERD:s radio står kvar på loggläge och spelar upp anropet i längre form: *"Shepherd to Watchtower… at the NEXAGEN perimeter… the reception building is not safe. Do not send the buses. Do not send anyone…"* Vid ankomst ändras destinationen till SHEPHERD:s första loggade brytpunkt. En liten grupp infekterade samlas längs den ursprungliga vägen. [KRÄVER NY MEKANIK: dynamiskt mål]
+- **Ny information:** SHEPHERD:s anropssignal; de nådde uppsamlingsplatsen vid NEXAGEN; byggnaden var inte säker; de varnade för att skicka fler. WATCHTOWER förklarar kort varför hon skickade dem: *"It was on the plan. A safe assembly point. I didn't question it."*
 - **Framdrift:** Personligt motiv (WATCHTOWER) blir en konkret rutt att följa.
 - **Skiljer sig från närliggande:** Första återbesöket av en känd plats; den enda kampanjinledningen som börjar i en plats spelaren redan känner.
 - **Fynd:** E-01 *The Missing Evacuation Call*.
@@ -402,19 +420,19 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 
 ### 2.3 THE PURSUIT — A till B + hordjakt, cirka 20 min
 - **Röster:** WATCHTOWER.
-- **Varför:** Fynden måste till THE BUNKER innan WATCHTOWER kan jämföra dem med sina egna loggar.
+- **Varför:** Fynden måste till THE BUNKER, ett gammalt civilförsvarsskydd där en grupp överlevare tagit skydd. Där finns en nod i sambandsnätet som kan läsa in och sända fynden till WATCHTOWER, så att hon kan jämföra dem med sina egna loggar. Spelarens första besök: platsen är trygg.
 - **Händelse:** En hord följer spelarens tidigare färdväg, med tydlig förvarning i ljud och på kartan. Horden växer gradvis och har en begränsad, balanserad hastighet. [KRÄVER NY MEKANIK: förföljande hord]
-- **Ny information:** WATCHTOWER ser att NEXAGEN:s begäran om evakuering kom dag −1, ett dygn före utbrottet: *"They asked for buses before anyone was sick. They knew."*
+- **Ny information:** WATCHTOWER ser att NEXAGEN:s interna säkerhetsstopp (E-03) är daterat dag −2, två dygn före det första fallet i staden: *"Two days before our first call. They knew."*
 - **Framdrift:** Misstanken flyttas från "olycka" till "fördröjt larm".
-- **Skiljer sig:** Första förföljelsen bakifrån i berättelsen; destination är navet, inte en ny plats.
+- **Skiljer sig:** Första förföljelsen bakifrån i berättelsen; första besöket i THE BUNKER.
 - **Fynd:** E-05 *Containment Timeline*.
 - **Krok:** Det var inte ett naturligt utbrott.
 
 ### 2.4 THE BLOCKADE — A till B + vägval, cirka 20 min
 - **Röster:** WATCHTOWER; Elena (inspelning, **första tydliga framträdandet**).
-- **Varför:** Reservkraften i THE BUNKER sviktar. En reläpunkt måste nås för att hålla sambandet.
-- **Händelse:** En grupp infekterade blockerar en viktig förbindelse. Minst en säker alternativ rutt måste finnas innan blockaden aktiveras. När strömmen återkommer spelar arkivet upp köade meddelanden. Ett av dem är från dag −1: *"This is Dr. Elena Voss at NEXAGEN. I am calling outside company channels. Please do not use our site as an assembly point. I can't say more on an open line. Please call me back."* [KRÄVER NY MEKANIK: blockad]
-- **Ny information:** Det fanns en varning, och den låg i civilförsvarets eget system.
+- **Varför:** Reservkraften i THE BUNKER sviktar. Utan den förlorar gruppen där sitt skydd och WATCHTOWER sin nod i nätet. En reläpunkt måste nås för att hålla sambandet. Andra besöket: platsen är hotad.
+- **Händelse:** En grupp infekterade blockerar en viktig förbindelse. Minst en säker alternativ rutt måste finnas innan blockaden aktiveras. När strömmen återkommer spelar nodens meddelandelagring upp trafik som aldrig vidarebefordrats. Ett av dem är från dag −1: *"This is Dr. Elena Voss at NEXAGEN. I am calling outside company channels. Please do not use our reception building as an assembly point. I can't say more on an open line. Please call me back."* [KRÄVER NY MEKANIK: blockad]
+- **Ny information:** Det fanns en varning om just mottagningsbyggnaden, och den låg i civilförsvarets eget sambandsnät.
 - **Framdrift:** WATCHTOWER:s skuld blir konkret. Elena blir en människa, inte en underskrift.
 - **Skiljer sig:** Hotet står framför, inte bakom; uppdraget handlar om val av väg.
 - **Fynd:** E-06 *The Unanswered Call*.
@@ -422,8 +440,8 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 
 ### 2.5 PATIENT ZERO — Checkpoints → flykt, cirka 25 min
 - **Röster:** WATCHTOWER; SHEPHERD (inspelning).
-- **Varför:** SHEPHERD:s sista brytpunkt ligger vid NEXAGEN-områdets yttre gräns. Om någon lever finns spåren där.
-- **Händelse:** Fiktiva zoner längs gränsen, aldrig ett verkligt område. Sista loggen från SHEPHERD: de fick ut en del av personalen med hjälp av "the researcher", och skulle gå mot en vårdplats. Efter sista fyndet övergår uppdraget till flykt undan en tillströmmande hord. [KRÄVER NY MEKANIK: målbyte mitt i uppdrag]
+- **Varför:** SHEPHERD:s sista brytpunkt ligger vid mottagningsbyggnaden i NEXAGEN-områdets yttre gräns. Om någon lever finns spåren där.
+- **Händelse:** Fiktiva zoner runt byggnaden, aldrig ett verkligt område eller en verklig byggnad. Sista loggen från SHEPHERD: de fick ut en del av personalen med hjälp av "the researcher", och skulle gå mot en vårdplats. Efter sista fyndet övergår uppdraget till flykt undan en tillströmmande hord. [KRÄVER NY MEKANIK: målbyte mitt i uppdrag]
 - **Ny information:** Den sannolika tidiga smittkedjan bland personalen. SHEPHERD:s överlevande och en forskare tog sig vidare.
 - **Framdrift:** Från "vad hände" till "var är de nu".
 - **Skiljer sig:** Kampanjens final; kombinerar fynd och flykt.
@@ -437,7 +455,7 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 **Tagline:** *They follow sound. They follow you.*
 **Tidsläge:** Dag 5–7
 **Dramatisk fråga:** Kan spelaren spåra nödsignalen och samtidigt skydda dem som finns på vägen?
-**Safehouses:** THE TREEHOUSE, THE RANGER STATION, THE BUNKER
+**Safehouses:** THE TREEHOUSE, THE RANGER STATION
 **Röster:** WATCHTOWER; RAVEN TWO en gång (3.4); Elena live (3.5).
 **Kampanjens tema:** Ljud. Spelaren lär sig hur de infekterade reagerar på ljud (3.2), drabbas av det (3.3), använder det (3.4) och kapplöper mot det (3.5).
 
@@ -516,7 +534,7 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 - **Händelse:** Tre korta sändningar leder till kontaktpunkten. Elena bekräftar läget: patienter som inte kan gå, två SHEPHERD-sjukvårdare, en av dem skadad.
 - **Ny information:** Vilka som finns på gården (anonymt). En större hord rör sig mot gården.
 - **Fynd:** E-13 *Patient Register* (utan identifierbara personuppgifter).
-- **Krok:** WATCHTOWER till Elena: *"Your site was on my evacuation plan, Doctor."* Elena: *"I know. I tried to take it off."*
+- **Krok:** WATCHTOWER till Elena: *"Your building was on my evacuation plan, Doctor."* Elena: *"I know. I tried to take it off."*
 
 ### 4.3 SURROUNDED — Survival + blockad, cirka 25 min
 - **Röster:** WATCHTOWER, RAVEN TWO.
@@ -553,10 +571,10 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 
 ### 5.1 THE NETWORK — Tre checkpoints, cirka 20 min
 - **Röster:** WATCHTOWER.
-- **Varför:** THE BUNKER har förlorat delar av reservkraften. Tre virtuella reläer behövs för att nå THE ROOFTOP.
+- **Varför:** THE BUNKER har förlorat delar av reservkraften. Tre virtuella reläer behövs för att nå THE ROOFTOP. Tredje besöket: gruppen i THE BUNKER flyttar till THE ROOFTOP när kedjan står, och **THE BUNKER överges**.
 - **Händelse:** Checkpointkedja med gradvis återkommande radiotrafik.
 - **Fynd:** E-17 *Network Restoration*.
-- **Relation:** WATCHTOWER får kontakt med flera avskurna grupper; hon har blivit nav för ett litet nät av överlevare.
+- **Relation:** WATCHTOWER får kontakt med flera avskurna grupper; hon har blivit nav för ett litet nät av överlevare. Var hon sänder ifrån sägs fortfarande inte.
 
 ### 5.2 THE SWARM — Hordjakt, cirka 25 min
 - **Röster:** WATCHTOWER.
@@ -600,7 +618,7 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 | E-02 | 2.2 | REGENESIS Overview | Text | Vad företaget utvecklade |
 | E-03 | 2.2 | Safety Hold | Text | Tidig varning |
 | E-04 | 2.2 | Signed: E. Voss | Text | Elenas namn, utan röst |
-| E-05 | 2.3 | Containment Timeline | Text + WATCHTOWER | Fördröjt larm |
+| E-05 | 2.3 | Containment Timeline | Text + WATCHTOWER | Fördröjt larm: stoppet dag −2 mot första fallet dag 0 |
 | E-06 | 2.4 | The Unanswered Call | Elena-inspelning | Elenas första framträdande; WATCHTOWER:s skuld |
 | E-07 | 2.5 | Initial Exposure Report | Text + SHEPHERD-inspelning | Utbrottets sannolika början; överlevare tog sig vidare |
 | E-08 | 3.1 | Treehouse Frequency | WATCHTOWER | Familjen i trädhuset; repeaterkedjan |
@@ -624,7 +642,7 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 | Efter | Spelaren vet | Spelaren vet inte |
 |---|---|---|
 | THE FALL | Utbrottet är oförklarat. Evakueringsstyrkan försvann. Ett anrop nämnde "NEXAGEN perimeter". | Vad NEXAGEN är. Allt om REGENESIS, Elena, AI. |
-| GROUND ZERO | NEXAGEN, REGENESIS, säkerhetsstoppet, att företaget visste dag −1, att Elena varnade och inte fick svar, ungefär hur smittan började. SHEPHERD:s överlevande lever kanske. | Var Elena är. AI:s roll. Elenas eget ansvar. |
+| GROUND ZERO | Mottagningsbyggnaden var en smitthärd; NEXAGEN, REGENESIS, säkerhetsstoppet dag −2; att Elena varnade för byggnaden och inte fick svar; ungefär hur smittan började. SHEPHERD:s överlevande lever kanske. | Var Elena är. AI:s roll. Elenas eget ansvar. Var WATCHTOWER finns. |
 | THE HUNT | Ljudets betydelse. Elena lever och var hon finns. | AI:s roll. Om det finns hopp. |
 | NO MAN'S LAND | Elenas ansvar; att AI-tempot fick säkerheten att släppas; att det finns preliminära data. SHEPHERD-tråden är avslutad. | Om datan når fram. |
 | THE LAST HOPE | Datan har nått fram. Ingen behandling ännu. | – |
@@ -742,8 +760,8 @@ Free Play har sedan #60 en zombie-AI med roller (förföljare och genskjutare, `
 
 | Typ | Behov |
 |---|---|
-| Bilder | Kampanjomslag; fem uppdragsbilder (övergiven WAYSTATION med radion kvar; brytpunkt med triageanteckningar och REGENESIS-armband; hord på en väg i skymning; THE BUNKER med sviktande nödbelysning; NEXAGEN-områdets stängsel på avstånd i dimma, utan logotyp); Safehouse-bilder för THE WAYSTATION (övergiven variant) och THE BUNKER |
-| Röster | WATCHTOWER ≈ 40–50 repliker (befintlig röst); SHEPHERD-operatör (anonym) 3–5 inspelningar; Elena 1–2 inspelningar (2.4, eventuellt 2.5); RAVEN TWO inga |
+| Bilder | Kampanjomslag; fem uppdragsbilder (övergiven WAYSTATION med radion kvar; brytpunkt med triageanteckningar och REGENESIS-armband; hord på en väg i skymning; THE BUNKER med sviktande nödbelysning; NEXAGEN:s mottagningsbyggnad bakom ett stängsel i dimma, utan logotyp); Safehouse-bilder för THE WAYSTATION (övergiven variant) och THE BUNKER (trygg och hotad variant) |
+| Röster | WATCHTOWER ≈ 40–50 repliker (befintlig röst); SHEPHERD, 3–5 inspelningar från en anonym operatör (en delad anonym röst, avsnitt 6); Elena 1–2 inspelningar (2.4, eventuellt 2.5); RAVEN TWO inga |
 | Ljud | Miljö för övergiven vägstation; THE BUNKER med generatorbrum och strömavbrott; reläpåslag; hordljud som närmar sig bakifrån; inspelningsljud (bandbrus, avbrott); ljudsignal för nytt fynd |
 | Mekanik | Evidence Log, Dynamic Events, Pursuit, Blockade, målbyte mitt i uppdrag (se avsnitt 17) |
 
@@ -765,6 +783,7 @@ Free Play har sedan #60 en zombie-AI med roller (förföljare och genskjutare, `
 - Ska THE FALL 03:s radiorepliker någon gång spelas in igen med namnet Waystation? Inte nödvändigt: texten namnger platsen och radion beskriver den.
 - Ska SHEPHERD:s anropssignal höras redan i THE FALL? Bara om GROUND ZERO:s fälttest visar att kopplingen inte uppfattas. Det kräver ny inspelning av en befintlig replik.
 - ElevenLabs-röst för Elena: välj i Fas B, med lyssningstest mot WATCHTOWER så att rösterna inte förväxlas.
+- Var befinner sig WATCHTOWER? Medvetet okänt. Avgör senast under produktionen av THE LAST HOPE om platsen ska avslöjas; till dess får ingen replik eller bild placera henne.
 
 ---
 
@@ -775,7 +794,8 @@ Free Play har sedan #60 en zombie-AI med roller (förföljare och genskjutare, `
 - Rollbesättningen reducerad till tre återkommande talande huvudroller. Borttaget: WATCHTOWER:s civila namn "Morgan", Maya, Leo, Jonas, Sara. Regler för anonyma röster tillagda (avsnitt 6).
 - Röstproduktion: karaktärsnamn skiljs från ElevenLabs-röstnamn. "Morgan" är RAVEN TWO:s röstmodell.
 - Spelarens anropssignal RUNNER SEVEN dokumenterad.
-- Räddningsgruppen ersatt av den befintliga evakueringsstyrkan, nu med anropssignal SHEPHERD och förklarad koppling till NEXAGEN (uppsamlingsplats i civilförsvarets plan).
+- Räddningsgruppen ersatt av den befintliga evakueringsstyrkan, nu med anropssignal SHEPHERD och förklarad koppling till NEXAGEN.
+- Slutjustering före merge: SHEPHERD är uttryckligen en enhet, inte en huvudroll (3–5 inspelningar från en anonym operatör i GROUND ZERO). SHEPHERD skickades till NEXAGEN:s medicinska mottagnings- och logistikbyggnad, registrerad som möjlig säker uppsamlingsplats i regionens beredskapsplan; ingen utanför NEXAGEN kände till kopplingen. NEXAGEN:s påstådda evakueringsbegäran dag −1 struken. THE BUNKER är ett fristående Safehouse (besöks, hotas, överges), inte WATCHTOWER:s post; WATCHTOWER:s position är okänd. Berörda uppdrag: 2.1, 2.3, 2.4, 2.5, 4.2, 5.1; THE BUNKER struken ur THE HUNT.
 - THE FALL beskriven efter koden, med faktiska slutrepliker och epilog. v2.0:s påhittade slutrepliker ("You're safe now. Get some rest." / "We've lost contact with three more evacuation zones.") strukna.
 - THE WAYSTATION placerad i THE FALL 03 i stället för som antydan i 02.
 - Tidslinje: THE FALL dag 0–1; övriga kampanjer förskjutna en dag.
