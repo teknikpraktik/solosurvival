@@ -9,6 +9,16 @@ export interface ZombieTarget {
   speedMps: number;
   chasing: boolean;
   sprinting?: boolean;
+  /** Searching: the zombie has a lead on the player (engine state "investigate") but is not chasing. Presentation only. */
+  searching?: boolean;
+}
+
+/**
+ * A zombie as the map draws it, from the session's view: only states the engine already has. Chasing = "chase" or "intercept" (it has the
+ * player), searching = "investigate" (it has a lead, not the player), wandering = "patrol". Presentation only; no rule depends on it.
+ */
+export function zombieTarget(z: { id: string; edgeId: string; distM: number; speedMps: number; state: string; sprinting: boolean }): ZombieTarget {
+  return { id: z.id, edgeId: z.edgeId, distM: z.distM, speedMps: z.speedMps, chasing: z.state === "chase" || z.state === "intercept", searching: z.state === "investigate", sprinting: z.sprinting };
 }
 
 export interface ZombieFrame {
@@ -17,6 +27,7 @@ export interface ZombieFrame {
   lon: number;
   chasing: boolean;
   sprinting: boolean;
+  searching: boolean;
   /** Färdriktning (0–360, 0 = norr) senast den rörde sig, annars null. */
   bearing: number | null;
 }
@@ -107,7 +118,7 @@ export class ZombieAnimator {
       // Riktning ur den visuella förflyttningen (minst 0,3 m), så pilen följer stigens faktiska riktning.
       if (!z.last) z.last = p;
       else if (haversineM(z.last, p) >= 0.3) { z.bearing = bearingDeg(z.last, p); z.last = p; }
-      out.push({ id, lat: p.lat, lon: p.lon, chasing: z.target.chasing, sprinting: !!z.target.sprinting, bearing: z.bearing });
+      out.push({ id, lat: p.lat, lon: p.lon, chasing: z.target.chasing, sprinting: !!z.target.sprinting, searching: !!z.target.searching, bearing: z.bearing });
     }
     return out;
   }

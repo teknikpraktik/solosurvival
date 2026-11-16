@@ -111,7 +111,7 @@ const placed = await page.evaluate(() => {
   return best;
 });
 await page.waitForTimeout(1500);
-check("zombiemarkör (SVG-ansikte) syns när zombie är 300 m bort", (await page.locator(".zmark svg.zsvg").count()) >= 1, JSON.stringify(placed));
+check("zombiemarkör (ansikte) syns när zombie är 300 m bort", (await page.locator(".zmark .zface").count()) >= 1 && (await page.locator(".zmark .zface").first().evaluate((e) => getComputedStyle(e).backgroundImage)).includes("/img/zombies/zombie-"), JSON.stringify(placed));
 await page.screenshot({ path: `${OUT}/zombie-on-map.png` });
 const labels = await page.locator(".zlabel").evaluateAll((els) => els.filter((e) => getComputedStyle(e).opacity !== "0").map((e) => e.textContent));
 console.log("avståndsetiketter:", JSON.stringify(labels));

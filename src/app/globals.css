@@ -93,10 +93,17 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .pmark { width: 40px; height: 40px; pointer-events: none; }
 .pmark .arrow, .pmark .dot { position: absolute; inset: 0; transition: opacity .3s; will-change: transform; } /* pilens vinkel sätts varje bildruta (mjukad i JS): ingen CSS-fördröjning */
 .pmark .dot { opacity: 1; } .pmark.has-heading .dot { opacity: 0; } .pmark:not(.has-heading) .arrow { opacity: 0; }
-.zmark { width: 34px; height: 34px; pointer-events: none; filter: drop-shadow(0 0 3px #000c); }
-.zmark .zring { transition: stroke .3s; }
-.zmark.chase .zring { stroke: #ff4d4d; stroke-width: 2.4; }
-.zmark.chase .zeye { fill: #ff2a2a; }
+/* Zombie on the map: a face (src/app/_client/zombieFaces.ts) in a red ring. The ring is a box-shadow (no filter, no SVG per marker), and its
+   strength is the threat level, from engine states the game already has: searching (has a lead) < chasing < within 100 m. */
+.zmark { width: 40px; height: 40px; pointer-events: none; --zdir-r: -28px; }
+/* A light hairline outside the ring keeps even a wandering zombie as easy to spot on the dark map as the old pale skull. */
+.zmark .zface { position: absolute; inset: 0; border-radius: 50%; background: #0a0304 center / cover no-repeat; box-shadow: 0 0 0 2px #d42a2a, 0 0 0 3px #f5d0d0b3, 0 1px 6px 1px #000c; transition: box-shadow .3s, scale .3s; }
+.zmark.searching .zface { box-shadow: 0 0 0 2.5px #ff4040, 0 0 0 3.5px #ffe0e0cc, 0 0 6px 1px #ff2a2a66; }
+.zmark.chase .zface { box-shadow: 0 0 0 3px #ff3b3b, 0 0 0 4px #ffe4e4e6, 0 0 12px 3px #ff2a2a99; }
+/* The moment it starts chasing: one short swell and flash (JS adds .spotted on the change, not on every frame). */
+.zmark.spotted .zface { animation: zspot .9s ease-out; }
+@keyframes zspot { 30% { scale: 1.3; box-shadow: 0 0 0 4px #ff6b6b, 0 0 0 5px #fff, 0 0 18px 6px #ff2a2acc; } }
+@media (prefers-reduced-motion: reduce) { .zmark.spotted .zface { animation: none; } }
 /* Dialoger */
 .modal-backdrop { position: fixed; inset: 0; z-index: 50; background: #0b0f14d9; display: flex; align-items: center; justify-content: center;
   padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
@@ -316,13 +323,11 @@ button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 /* ---------- Game view: one meaning per colour (amber = caution, red = danger, magenta = goal), less HUD over the map ---------- */
-/* Zombie threat levels: chasing = amber ring, within 100 m = red and larger, far and idle = dimmed. Shape and size change too, not only colour. */
 /* Zombies are always red; how dangerous one is shows in size and pulse (far = small and faded, within 100 m = larger with a fast pulse). */
-.zmark.near .zring { stroke: #ff3b3b; stroke-width: 2.8; }
+.zmark.near .zface { scale: 1.15; box-shadow: 0 0 0 3px #ff3b3b, 0 0 0 4px #ffe4e4e6, 0 0 14px 4px #ff2a2aaa; }
 .zmark.near::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 3px solid #ff3b3b; opacity: 0; animation: zpulse .8s ease-out infinite; pointer-events: none; }
-.zmark.near > svg { scale: 1.22; }
 .zmark.far { opacity: .6; }
-.zmark.far > svg { scale: .8; }
+.zmark.far .zface { scale: .8; }
 .zmark.far::after { animation: none; }
 /* Closing in: filled label with a marker; moving away: muted. */
 .zmark .zlabel.closing { background: #7f1d1d; border-color: #ff3b3b; }
