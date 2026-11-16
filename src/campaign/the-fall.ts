@@ -1,10 +1,13 @@
 /**
  * THE FALL: the first campaign. Five missions, on foot, each its own session started from wherever the player is.
  *
- * Story in one breath: an unknown virus spreads and society comes apart. The player, alone outside, is picked up on the radio by
- * WATCHTOWER, a civil-defence radio operator who is still at her post. She gets the player through the first night (01), has them fetch
- * supplies for a group of survivors (02), sends them to a fallback safe zone when the evacuation route is cut (03), needs them to bring
- * an old relay network on the air when the evacuation force goes silent (04), and talks them onto the helicopter (05).
+ * Story in one breath: an outbreak nobody can explain spreads and society comes apart. The player, alone outside, is picked up on the
+ * radio by WATCHTOWER, a civil-defence radio operator who is still at her post. She gets the player through the first night (01), has
+ * them fetch supplies for a group of survivors (02), sends them to the Waystation, a fallback shelter, when the evacuation route is cut
+ * (03), needs them to bring an old relay network on the air when the evacuation force goes silent (04), and talks them onto the
+ * helicopter (05). The epilogue holds the hook to GROUND ZERO: a broken call from the lost evacuation force.
+ *
+ * The story canon (characters, timeline, what comes next) is docs/OUTBREAK_STORY_BIBLE_V2_2.md. THE FALL never explains the outbreak.
  *
  * Writing rules for the radio lines: short, plain, procedural. Call signs, no speeches, no jokes. WATCHTOWER is calm and exact and only
  * raises her voice when the player is about to be caught. RAVEN TWO (the helicopter crew) is clipped aviation radio. A line is also shown
@@ -126,13 +129,13 @@ const noWayBack: MissionDef = {
   imagePosition: "50% 44%",
   intro: [
     "The evacuation road is blocked. Cars, barriers, and what is left of the people who tried.",
-    "There is one more safe zone. It will not stay open.",
+    "One shelter is still taking people: the Waystation. Not for long.",
     "And the infected have started to hunt differently.",
   ],
   objective: "Reach the safe zone before it is sealed. Some infected will try to cut you off: change your route to fool them.",
   hud: "Safe zone",
   ending: "safehouse",
-  success: "You are inside the safe zone. But the evacuation force has gone silent.",
+  success: "You are inside the Waystation. But the evacuation force has gone silent.",
   beats: [
     { id: "tf-m03-start", speaker: "watchtower", trigger: { on: "start" }, fallbackVoice: "safehouseOnMap",
       text: "Runner Seven, the east road is gone. New safe zone on your map. Get there before they seal it." },
@@ -283,7 +286,8 @@ export const THE_FALL: CampaignDef = {
     title: "THE FALL – CAMPAIGN COMPLETED",
     lines: [
       "From the air the fires reach the horizon.",
-      "Watchtower's channel is still open. Other voices are calling in, from other towns.",
+      "Watchtower's channel is still open. Other towns are calling in.",
+      "One call does not belong. The evacuation force, hours after she lost them: “…NEXAGEN perimeter… do not…” Then static.",
       "You got out. Most did not. This is not over.",
     ],
   },
