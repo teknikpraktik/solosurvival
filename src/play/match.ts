@@ -46,7 +46,7 @@ export function createLiveMatch(s: MatchSetup): LiveGame {
       activity: p.activity,
       difficulty: p.difficulty,
       durationSeconds: durationS,
-      areaId: `varmland@${s.dataVersion}`,
+      areaId: s.dataVersion.startsWith("ofm-") ? `openfreemap@${s.dataVersion.slice(4)}` : `varmland@${s.dataVersion}`,
       seed: p.seed,
       rulesVersion: RULES_VERSION,
       mode: p.mode,

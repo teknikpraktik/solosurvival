@@ -8,7 +8,7 @@ import { haversineM, type LatLon } from "@/geo/geometry";
 import { GpsFilter, type FilterVerdict } from "@/gps/filters/filter";
 import { GpsProvider, type GeoLike, type GpsErrorCode, type GpsEvent } from "@/gps/provider/provider";
 import type { GPSFix, GpsQuality } from "@/gps/types";
-import type { TileStore } from "@/data/store";
+import type { WayStore } from "@/data/store";
 import type { RouteProposal } from "@/routes/types";
 import type { ZombieAiModel } from "@/config/zombie-ai";
 import { applyProfile, proximityRadiusM, START_MAX_ACCURACY_M, START_MOVED_LIMIT_M, type MatchParams } from "./config";
@@ -117,7 +117,8 @@ export interface CampaignMatchView {
 export interface SessionDeps {
   geo: GeoLike | undefined;
   db: Db | null;
-  store: TileStore;
+  /** Source of trails and roads: OSM tiles, OpenFreeMap, or OSM with OpenFreeMap where the tiles do not reach (data/store.ts). */
+  store: WayStore;
   now?: () => number;
   /** Fabrik för intervall så att tester kan styra tiden. */
   setInterval?: (fn: () => void, ms: number) => unknown;
@@ -544,7 +545,7 @@ export class PlaySession {
     this.scareTimes = this.d.jumpScares?.() && (this.d.profile?.jumpScares ?? true) && params.activity !== "mtb" ? planScares(random).map((x) => x + (fresh ? 0 : live.state.elapsedSeconds)) : [];
     this.log.add(t, "match_start", {
       zombiesInitial: live.state.zombies.length, rulesZombies: { initial: live.rules.initialZombies, max: live.rules.maxZombies, headStartS: live.rules.headStartS, spawnMinM: live.rules.spawnMinDistanceM }, proximityM: proximityRadiusM(params),
-      mode: params.mode, activity: params.activity, difficulty: params.difficulty, zombieAi: live.rules.zombieAi ?? "old",
+      mode: params.mode, activity: params.activity, difficulty: params.difficulty, zombieAi: live.rules.zombieAi ?? "old", data: this.dataVersion,
       plannedLengthM: this.proposal ? Math.round(this.proposal.lengthM) : null, routeGenerationMs: Math.round(this.routeGenMs),
       tiles: this.prepared?.load ? { n: this.prepared.load.tiles, cache: this.prepared.load.fromCache, net: this.prepared.load.fromNetwork, gzBytes: this.prepared.load.networkGzipBytes } : undefined,
       restored: !fresh,

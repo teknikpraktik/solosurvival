@@ -25,6 +25,12 @@ Verktyg för balans och granskning (alla använder samma motor som spelet):
 - `scripts/infection-noise.ts` (GPS-brus mot infektionsregeln), `scripts/background-exploit.ts` (regler för frånvaro), `scripts/graph-audit.ts` / `graph-audit-karlstad.ts` (passager mot facit).
 - `npm run lint` – `tsc` med `noUnusedLocals/Parameters` (ESLint stöder ännu inte TypeScript 7).
 
+## Kartdata utanför Värmland
+
+Vuxenappen använder det exakta OSM-underlaget i `public/data/v1/varmland` där det räcker och bygger annars stignätet ur OpenFreeMaps
+globala vektortiles (`src/data/ofm-store.ts`, `FallbackStore` i `src/data/store.ts`). Mini Outbreak är fortfarande begränsad till
+Värmland. Mätningar, brister och plan: [`docs/GLOBAL-MAP-DATA.md`](docs/GLOBAL-MAP-DATA.md).
+
 ## Zombie-AI med roller
 
 Förföljare och genskjutare (Free Play i vuxenappen; kampanjen och Mini Outbreak oförändrade). Beteende, informationsregler, parametrar

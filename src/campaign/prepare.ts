@@ -7,7 +7,7 @@ import { networkDistances } from "@/engine/pathfinding/astar";
 import { haversineM, type LatLon } from "@/geo/geometry";
 import { snapToGraph } from "@/geo/graph/graph";
 import type { TrailGraph } from "@/geo/graph/types";
-import type { TileStore } from "@/data/store";
+import type { WayStore } from "@/data/store";
 import type { MatchParams } from "@/play/config";
 import { prepareMatch, type PrepareOptions, type Prepared } from "@/play/prepare";
 import { analyzeNetwork } from "@/routes/analysis";
@@ -67,7 +67,7 @@ export function pickDestination(g: TrailGraph, start: LatLon, hazardNodes: Set<s
  * A mission is only offered when its goals can really be reached on the local network; with a small network the generator's closest
  * course is used, down to the mission's minimum number of goals, before the mission is refused.
  */
-export async function prepareMission(store: TileStore, start: LatLon, m: MissionDef, p: MatchParams, opts: PrepareOptions = {}): Promise<Prepared> {
+export async function prepareMission(store: WayStore, start: LatLon, m: MissionDef, p: MatchParams, opts: PrepareOptions = {}): Promise<Prepared> {
   const l = m.layout;
   if (l.kind === "destination") {
     const r = await prepareMatch(store, start, p, { ...opts, autoDestination: (g, s, hazard) => pickDestination(g, s, hazard, l.routeLengthM, p.seed) });

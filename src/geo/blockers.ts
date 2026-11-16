@@ -100,13 +100,31 @@ export function makeBlockers(polys: LatLon[][][]): Blockers {
 
 /** The background map's vector tiles (the same OpenFreeMap tiles the map shows, so they are often in the browser's cache already). */
 export function openFreeMapFetcher(fetchFn: typeof fetch = fetch): TileFetcher {
+  return openFreeMap(fetchFn).tile;
+}
+
+/**
+ * OpenFreeMap: tiles, and the version of the tile set (the build named in the tile URL, e.g. "20261101_080013_pt"). The TileJSON is
+ * fetched once; a failed fetch is tried again next time.
+ */
+export function openFreeMap(fetchFn: typeof fetch = fetch): { tile: TileFetcher; version(): Promise<string> } {
   let template: Promise<string> | null = null;
-  return async (z, x, y) => {
+  const tpl = () => {
     template ??= fetchFn("https://tiles.openfreemap.org/planet").then((r) => r.json()).then((j: { tiles: string[] }) => j.tiles[0]);
-    const url = (await template).replace("{z}", String(z)).replace("{x}", String(x)).replace("{y}", String(y));
-    const res = await fetchFn(url);
-    if (res.status === 204 || res.status === 404) return null;
-    if (!res.ok) throw new Error(`tile ${z}/${x}/${y}: ${res.status}`);
-    return new Uint8Array(await res.arrayBuffer());
+    template.catch(() => { template = null; });
+    return template;
+  };
+  return {
+    async tile(z, x, y) {
+      const url = (await tpl()).replace("{z}", String(z)).replace("{x}", String(x)).replace("{y}", String(y));
+      const res = await fetchFn(url);
+      if (res.status === 204 || res.status === 404) return null;
+      if (!res.ok) throw new Error(`tile ${z}/${x}/${y}: ${res.status}`);
+      return new Uint8Array(await res.arrayBuffer());
+    },
+    async version() {
+      const t = await tpl();
+      return /\/planet\/([^/]+)\//.exec(t)?.[1] ?? "unknown";
+    },
   };
 }

@@ -2,7 +2,7 @@
  * same graph builder. See docs/GLOBAL-MAP-DATA.md.
  *   npx tsx experiments/global/compare-ofm.ts [radius m] [areas]      areas: karlstad,i2-skogen,skutberget,sormon (Värmland, with reference)
  *                                                                     or any name:lat,lon (no reference, network figures only)
- * Tiles are cached in $OFM_CACHE (default: experiments/global/.cache, not committed). */
+ * The OpenFreeMap side is the app's own code (src/data/ofm-store.ts). Tiles are cached in $OFM_CACHE (default: experiments/global/.cache, not committed). */
 import { mkdirSync, readFileSync, existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { TileStore } from "../../src/data/store";
@@ -11,9 +11,10 @@ import { indexGraph } from "../../src/geo/graph/graph";
 import { pointAlong, toLocal, type LatLon } from "../../src/geo/geometry";
 import type { Activity } from "../../src/config/activities";
 import type { SerializedGraph } from "../../src/geo/graph/types";
-import { DEFAULT_OFM, ofmWays, type TileFetcher } from "./ofm-ways";
-/** OFM_STITCH (units, 0 = off) and OFM_CROSS=1 change how lines are joined (see ofm-ways.ts). */
-const OPTS = { stitchUnits: Number(process.env.OFM_STITCH ?? DEFAULT_OFM.stitchUnits), crossings: process.env.OFM_CROSS === "1" };
+import { waysFromTiles, tilesAround } from "../../src/data/ofm-store";
+import type { TileFetcher } from "../../src/geo/blockers";
+/** OFM_STITCH (units, 0 = off) changes how line ends are joined (see src/data/ofm-store.ts). */
+const STITCH = Number(process.env.OFM_STITCH ?? 3);
 
 const RADIUS = Number(process.argv[2] ?? 1500);
 const KNOWN: Record<string, LatLon> = {
@@ -85,11 +86,15 @@ function sampler(g: SerializedGraph, origin: LatLon) {
 const pct = (x: number) => `${(100 * x).toFixed(1)} %`;
 const within = (pts: { x: number; y: number }[], other: { x: number; y: number }[], m: number) => pts.filter((p) => other.some((q) => Math.abs(q.x - p.x) <= m && Math.abs(q.y - p.y) <= m && Math.hypot(q.x - p.x, q.y - p.y) <= m)).length / Math.max(1, pts.length);
 
-console.log(`# Network from OpenFreeMap tiles against OSM tiles (radius ${RADIUS} m, joining ${JSON.stringify(OPTS)})\n`);
+console.log(`# Network from OpenFreeMap tiles against OSM tiles (radius ${RADIUS} m, line ends joined within ${STITCH} units)\n`);
 console.log("| area | activity | source | km | edges | junctions | components | largest comp. km | crossings/hazard stubs | junctions matched (5 m) | covered by other (10 m) | tiles | download | ms |");
 console.log("|---|---|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|");
 for (const area of AREAS) {
-  const ofm = await ofmWays(fetchTile, area.c, RADIUS + 300, 14, OPTS);
+  const tt0 = Date.now();
+  let bytes = 0;
+  const keys = tilesAround(area.c, RADIUS + 300);
+  const tiles = (await Promise.all(keys.map(async ([x, y]) => { const pbf = await fetchTile(14, x, y); if (pbf) bytes += pbf.length; return pbf ? { z: 14, x, y, pbf } : null; }))).filter((t) => !!t);
+  const ofm = { ways: waysFromTiles(tiles, STITCH), tiles: keys.length, bytes, ms: Date.now() - tt0 };
   const ref = area.ref ? await store.loadAround(area.c, RADIUS + 300) : null;
   for (const activity of ["walk", "mtb"] as Activity[]) {
     const t0 = Date.now();

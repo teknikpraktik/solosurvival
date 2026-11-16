@@ -8,7 +8,7 @@ import { edgeLatLon, indexGraph, snapToGraph } from "../../src/geo/graph/graph";
 import { SimSession } from "../../src/sim/runner";
 import { makeRiskBot } from "../../src/sim/risk-bot";
 import { STEP_S } from "../../src/config/game-rules";
-import { ofmWays } from "./ofm-ways";
+import { OfmStore } from "../../src/data/ofm-store";
 import type { Activity } from "../../src/config/activities";
 const N = Number(process.argv[2] ?? 12);
 const fetchTile = async (z: number, x: number, y: number) => { try { const b = readFileSync(`experiments/global/.cache/${z}_${x}_${y}.pbf`); return b.length ? new Uint8Array(b) : null; } catch { return null; } };
@@ -19,7 +19,7 @@ const median = (a: number[]) => [...a].sort((x, y) => x - y)[Math.floor(a.length
 console.log("| area | activity | source | caught | median min | survived |\n|---|---|---|--:|--:|--:|");
 for (const [name, c] of [["karlstad", { lat: 59.3793, lon: 13.5036 }], ["i2-skogen", { lat: 59.41, lon: 13.466 }]] as const) for (const activity of ["walk", "mtb"] as Activity[]) {
   const R = activity === "mtb" ? 4000 : 1500;
-  const sources = { "OSM": (await store.loadAround(c, R + 300)).ways, "OpenFreeMap": (await ofmWays(fetchTile, c, R + 300, 14, { stitchUnits: 3, crossings: true })).ways };
+  const sources = { "OSM": (await store.loadAround(c, R + 300)).ways, "OpenFreeMap": (await new OfmStore({ tile: fetchTile, version: async () => "cached" }).loadAround(c, R + 300)).ways };
   for (const [src, ways] of Object.entries(sources)) {
     const reg = buildRegionGraph(ways, activity, c, R, c, { strict: false });
     const g = indexGraph({ ...reg.play.graph, crossingNodes: [...reg.play.crossingNodes] });
