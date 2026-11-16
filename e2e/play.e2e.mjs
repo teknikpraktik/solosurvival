@@ -30,10 +30,10 @@ try {
   let startOk = false, startText = "";
   for (let i = 0; i < 20 && !startOk; i++) {
     startText = await page.locator("body").innerText();
-    startOk = ["CAMPAIGNS", "FREE PLAY", "PREVIOUS GAMES", "HOW TO PLAY", "SETTINGS"].every((t) => startText.includes(t)) && (await page.locator("a.btn").count()) === 4;
+    startOk = ["CAMPAIGNS", "FREE PLAY", "PREVIOUS GAMES", "HOW TO PLAY", "SETTINGS"].every((t) => startText.includes(t)) && (await page.locator(".homenav a").count()) === 3;
     if (!startOk) await page.waitForTimeout(250);
   }
-  check("startsida har kampanjkort och fyra knappar", startOk);
+  check("startsida har kampanjkort, Free Play-kort och tre navigeringsval", startOk);
   await page.screenshot({ path: `${OUT}/01-start.png` });
 
   await page.getByRole("link", { name: "FREE PLAY" }).click();

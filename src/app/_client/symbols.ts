@@ -133,3 +133,14 @@ export const AUTO_SVG = `<svg viewBox="0 0 24 24" width="24" height="24" xmlns="
 <path d="M12 1.2v3" stroke-width="2.2"/>
 <path d="M12 6.6l4.3 9.8L12 14.2l-4.3 2.2z" fill="currentColor" stroke-width="1.4"/>
 </svg>`;
+
+/** Start page, secondary navigation: previous games (a clock running backwards), how to play (an open book), settings (a gear). currentColor. */
+export const HISTORY_SVG = `<svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.2 4.2v4.2h4.2"/><path d="M12 7.6V12l3 1.9"/>
+</svg>`;
+export const BOOK_SVG = `<svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 6.4C10.2 5 7.6 4.5 4 4.8v13c3.6-.3 6.2.2 8 1.6 1.8-1.4 4.4-1.9 8-1.6v-13c-3.6-.3-6.2.2-8 1.6Z"/><path d="M12 6.4v13"/>
+</svg>`;
+export const GEAR_SVG = `<svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="3.1"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3 5.5 5.5"/><circle cx="12" cy="12" r="6.6"/>
+</svg>`;

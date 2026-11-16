@@ -98,10 +98,19 @@ const en = {
   home: {
     campaigns: "CAMPAIGNS",
     campaignsKicker: "STORY MISSIONS",
-    campaignsNew: "Begin the story",
-    campaignsContinue: (n: string, title: string) => `Continue · Mission ${n} · ${title}`,
-    campaignsDone: "Campaign completed · replay any mission",
+    /** The campaign card's second line: where the player is. */
+    missionLine: (n: string, title: string) => `Mission ${n} · ${title}`,
+    allDone: (n: number) => `All ${n} missions completed`,
+    /** The card's action, from the campaign's real state: nothing played yet, a mission to go on with, or everything done. */
+    start: "START CAMPAIGN",
+    continue: "CONTINUE",
+    replay: "REPLAY MISSIONS",
     freePlay: "FREE PLAY",
+    freePlaySub: "Create your own survival experience",
+    previous: "PREVIOUS GAMES",
+    howTo: "HOW TO PLAY",
+    settings: "SETTINGS",
+    more: "More",
   },
   campaign: {
     listTitle: "CAMPAIGNS",

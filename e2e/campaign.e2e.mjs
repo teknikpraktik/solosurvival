@@ -67,18 +67,34 @@ try {
   await page.goto(BASE + "/");
   await page.getByRole("link", { name: /CAMPAIGNS/ }).waitFor({ timeout: 15000 });
   await page.waitForTimeout(1200); // the start page re-renders once while hydrating in headless runs
-  const menu = await page.locator("main a").evaluateAll((as) => as.map((a) => a.textContent.trim()));
-  check("main menu: campaigns first, then free play, previous games, how to play, settings",
-    /CAMPAIGNS/.test(menu[0]) && menu[1] === "FREE PLAY" && menu[2] === "PREVIOUS GAMES" && menu[3] === "HOW TO PLAY" && menu[4] === "SETTINGS" && menu.length === 5, menu.join(" | "));
+  const menu = await page.locator("main a").evaluateAll((as) => as.map((a) => a.getAttribute("aria-label") ?? a.textContent.trim()));
+  check("main menu: campaigns first, then free play, then previous games, how to play, settings",
+    /^CAMPAIGNS/.test(menu[0]) && /^FREE PLAY/.test(menu[1]) && menu[2] === "PREVIOUS GAMES" && menu[3] === "HOW TO PLAY" && menu[4] === "SETTINGS" && menu.length === 5, menu.join(" | "));
   const sizes = await page.evaluate(() => { const r = (s) => document.querySelector(s).getBoundingClientRect(); return { camp: r(".campcta").height, free: r(".freeplay").height }; });
-  check("main menu: campaigns is the dominant entry", sizes.camp > sizes.free * 1.8, `${Math.round(sizes.camp)} px vs ${Math.round(sizes.free)} px`);
+  check("main menu: campaigns is the dominant entry, Free Play a compact card", sizes.camp > sizes.free * 1.8 && sizes.free >= 60, `${Math.round(sizes.camp)} px vs ${Math.round(sizes.free)} px`);
   check("main menu fits the phone", await fits());
+  const newCard = await page.locator(".campcta").evaluate((a) => ({ state: a.dataset.state, href: a.getAttribute("href"), text: a.innerText.replace(/\s+/g, " ") }));
+  check("new campaign: the card says START CAMPAIGN (never CONTINUE) and names the first mission", newCard.state === "new" && /START CAMPAIGN/.test(newCard.text) && !/CONTINUE/.test(newCard.text) && /THE FALL/.test(newCard.text) && /Mission 01 · First Contact/.test(newCard.text), newCard.text);
+  const nav = await page.locator(".homenav a").evaluateAll((as) => as.map((a) => { const r = a.getBoundingClientRect(); return { href: a.getAttribute("href"), w: r.width, h: r.height, icon: !!a.querySelector("svg"), label: a.querySelector(".homenav-label")?.textContent, inView: r.bottom <= innerHeight + 1 }; }));
+  check("secondary navigation: three items with icon and label, each at least 44 × 44, reachable",
+    nav.length === 3 && nav.map((n) => n.href).join() === "/history,/how-to-play,/settings" && nav.every((n) => n.icon && n.label && n.w >= 44 && n.h >= 44 && n.inView), nav.map((n) => `${n.label} ${Math.round(n.w)}×${Math.round(n.h)}`).join(", "));
   await page.waitForTimeout(700);
   await shot("c01-menu");
+  for (const [name, url] of [["PREVIOUS GAMES", "**/history"], ["HOW TO PLAY", "**/how-to-play"], ["SETTINGS", "**/settings"]]) {
+    await page.getByRole("link", { name, exact: true }).click();
+    await page.waitForURL(url, { timeout: 15000 });
+    await page.goto(BASE + "/");
+    await page.getByRole("link", { name: /CAMPAIGNS/ }).waitFor();
+    await page.waitForTimeout(500);
+  }
+  check("secondary navigation leads to previous games, how to play and settings", true);
 
   // --- Campaign list and campaign ---
   await page.getByRole("link", { name: /CAMPAIGNS/ }).click();
-  await page.waitForURL("**/campaigns");
+  await page.waitForURL("**/campaigns/the-fall");
+  check("a new campaign's card opens the campaign itself (one tap, no list in between)", (await page.locator(".missioncard").first().waitFor().then(() => true)));
+  await page.goto(BASE + "/campaigns");
+  await page.locator(".campcard").waitFor();
   check("campaign list: exactly one campaign, THE FALL", (await page.locator(".campcard").count()) === 1 && (await page.locator(".campcard-title").innerText()) === "THE FALL");
   await page.waitForTimeout(500);
   await shot("c02-campaigns");
@@ -166,6 +182,21 @@ try {
   await page.goto(BASE + "/campaigns/the-fall?mission=05");
   await page.locator(".missioncard").first().waitFor();
   check("a locked mission's link shows the campaign, not the mission", (await page.locator(".brief, .cine").count()) === 0);
+
+  // --- Returning player: the card continues at the next mission, straight to its briefing ---
+  await page.goto(BASE + "/");
+  await page.locator('.campcta[data-state="resume"]').waitFor({ timeout: 15000 });
+  const card = await page.locator(".campcta").evaluate((a) => ({ href: a.getAttribute("href"), text: a.innerText.replace(/\s+/g, " "), pips: a.querySelectorAll(".campcta-pips i[data-on]").length }));
+  check("returning player: CONTINUE with the next mission and the real progress", /CONTINUE/.test(card.text) && /Mission 02 · The Supply Run/.test(card.text) && card.pips === 1 && card.href === "/campaigns/the-fall?mission=02", `${card.text} → ${card.href}`);
+  await page.waitForTimeout(500);
+  await shot("c13-menu-continue");
+  await page.locator(".campcta").click();
+  await page.waitForURL("**/campaigns/the-fall?mission=02");
+  await page.getByRole("button", { name: "START MISSION" }).waitFor({ timeout: 15000 });
+  check("CONTINUE opens the next mission's briefing in one tap (no match starts by itself)", (await page.locator(".brief").count()) === 1 && (await page.evaluate(() => !window.__outbreak?.getView().match)));
+  await page.getByRole("button", { name: "BACK TO CAMPAIGN" }).click();
+  await page.locator(".missioncard").first().waitFor();
+  check("back from a continued briefing shows the campaign", (await page.locator(".missioncard").count()) === 5);
 
   // --- Free Play is where New game was ---
   await page.goto(BASE + "/");
