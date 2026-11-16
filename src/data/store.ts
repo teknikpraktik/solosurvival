@@ -17,9 +17,36 @@ export interface LoadStats {
   /** Överförda bytes (komprimerad storlek enligt manifestet) – uppskattning för nätverkstiles. */
   networkGzipBytes: number;
   ms: number;
+  /** Where the ways came from: our OSM tiles or OpenFreeMap's vector tiles (data/ofm-store.ts). Missing = OSM tiles. */
+  source?: "osm" | "openfreemap";
+  /** Version of the data the ways came from (cache key, saved with the match). */
+  dataVersion?: string;
 }
 
-export class TileStore {
+/** What `prepareMatch` needs from a source of ways: OSM tiles (`TileStore`), OpenFreeMap (`OfmStore`) or both (`FallbackStore`). */
+export interface WayStore {
+  loadManifest(): Promise<{ dataVersion: string }>;
+  covers(p: LatLon): boolean;
+  loadAround(center: LatLon, radiusM: number): Promise<{ ways: TileWay[]; stats: LoadStats }>;
+}
+
+/**
+ * Our OSM tiles where they cover the whole circle (exact data: every tag, the real topology), OpenFreeMap everywhere else. A circle that
+ * reaches outside the OSM tiles' area is loaded entirely from OpenFreeMap, so one match never mixes two sources.
+ */
+export class FallbackStore implements WayStore {
+  constructor(readonly primary: TileStore, readonly fallback: WayStore) {}
+  async loadManifest(): Promise<{ dataVersion: string }> {
+    try { return await this.primary.loadManifest(); } catch { return this.fallback.loadManifest(); }
+  }
+  covers(_p: LatLon): boolean { return true; }
+  async loadAround(center: LatLon, radiusM: number): Promise<{ ways: TileWay[]; stats: LoadStats }> {
+    if (await this.primary.coversCircle(center, radiusM)) return this.primary.loadAround(center, radiusM);
+    return this.fallback.loadAround(center, radiusM);
+  }
+}
+
+export class TileStore implements WayStore {
   private manifest?: TileManifest;
   private memory = new Map<string, TileWay[]>();
   private inflight = new Map<string, Promise<TileWay[] | null>>();
@@ -38,6 +65,14 @@ export class TileStore {
     if (this.manifest && this.manifest.dataVersion !== m.dataVersion) this.memory.clear();
     this.manifest = m;
     return m;
+  }
+
+  /** The whole circle lies inside the tiles' area (false when the manifest cannot be loaded). */
+  async coversCircle(center: LatLon, radiusM: number): Promise<boolean> {
+    try { if (!this.manifest) await this.loadManifest(); } catch { return false; }
+    const b = this.manifest!.bbox;
+    const dLat = radiusM / 111_320, dLon = radiusM / (111_320 * Math.cos((center.lat * Math.PI) / 180));
+    return center.lat - dLat >= b[0] && center.lat + dLat <= b[2] && center.lon - dLon >= b[1] && center.lon + dLon <= b[3];
   }
 
   get dataVersion(): string | undefined {
@@ -85,7 +120,7 @@ export class TileStore {
     if (!this.manifest) await this.loadManifest();
     const t0 = Date.now();
     const keys = tilesInRadius(center, radiusM, this.manifest!.tile);
-    const stats: LoadStats = { tiles: keys.length, fromCache: 0, fromNetwork: 0, missing: 0, networkGzipBytes: 0, ms: 0 };
+    const stats: LoadStats = { tiles: keys.length, fromCache: 0, fromNetwork: 0, missing: 0, networkGzipBytes: 0, ms: 0, source: "osm", dataVersion: this.manifest!.dataVersion };
     const results = await Promise.all(keys.map(([ty, tx]) => this.loadTile(ty, tx, stats)));
     const byId = new Map<string, TileWay>();
     for (const r of results) for (const w of r ?? []) byId.set(w.id, w);

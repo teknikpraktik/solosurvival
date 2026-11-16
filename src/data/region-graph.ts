@@ -1,3 +1,4 @@
+import { NO_ROUTE_TAG } from "./ofm-store";
 import type { Activity } from "@/config/activities";
 import { buildGraph, type RawWay } from "@/geo/graph/build";
 import { indexGraph } from "@/geo/graph/graph";
@@ -149,6 +150,12 @@ function assemble(ways: TileWay[], activity: Activity, center: LatLon, radiusM: 
   const crossingNodes = new Set<string>();
   const decided: { w: TileWay; d: Extract<ReturnType<typeof decideWay>, { ok: true }> }[] = [];
   for (const w of ways) {
+    // Ways that routes and checkpoints must not use (OpenFreeMap data: a path through alpine terrain, see data/ofm-store.ts).
+    // The play network (`bridge`) keeps them: zombies may use them, nothing is laid out on them.
+    if (!bridge && w.tags[NO_ROUTE_TAG] === "no") {
+      excluded["route-unsafe"] = (excluded["route-unsafe"] ?? 0) + 1;
+      continue;
+    }
     const d = decideWay(w.tags, activity);
     if (!d.ok) {
       excluded[d.reason] = (excluded[d.reason] ?? 0) + 1;

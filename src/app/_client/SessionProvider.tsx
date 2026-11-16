@@ -1,14 +1,15 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
-import { TileStore } from "@/data/store";
+import { FallbackStore, TileStore } from "@/data/store";
+import { OfmStore } from "@/data/ofm-store";
 import { tryOpenDb } from "@/play/idb";
 import { PlaySession } from "@/play/session";
 import { IdbTileCache } from "@/play/tile-cache";
 import type { Db } from "@/play/idb";
 import { playCue } from "./cues";
 import { matchAudio, soundscape } from "./audio";
-import { openFreeMapFetcher } from "@/geo/blockers";
+import { openFreeMap } from "@/geo/blockers";
 import { createBrowserCompass } from "./compass";
 import { campaignKv } from "./campaignStore";
 
@@ -33,7 +34,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     (async () => {
       const db = await tryOpenDb();
       const cache = db ? new IdbTileCache(db) : undefined;
-      const store = new TileStore(DATA_BASE, (u) => fetch(u), cache);
+      const tiles = new TileStore(DATA_BASE, (u) => fetch(u), cache);
+      // Our OSM tiles (Värmland) where they reach, OpenFreeMap's vector tiles everywhere else (docs/GLOBAL-MAP-DATA.md).
+      const ofm = openFreeMap();
+      const store = new FallbackStore(tiles, new OfmStore(ofm));
       session = new PlaySession({
         geo: typeof navigator !== "undefined" ? navigator.geolocation : undefined,
         db,
@@ -41,7 +45,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         userAgent: navigator.userAgent,
         compass: createBrowserCompass(),
         campaignStore: campaignKv(),
-        terrainTiles: openFreeMapFetcher(),
+        terrainTiles: ofm.tile,
         // Zombie AI with pursuers and interceptors in Free Play (docs/ZOMBIE-AI-ROLES.md). Remove the line for the AI as it was.
         zombieAi: "roles",
         traceEnabled,
@@ -56,7 +60,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         wakeLock: "wakeLock" in navigator ? { request: () => (navigator as Navigator & { wakeLock: { request(t: "screen"): Promise<{ release(): Promise<void> }> } }).wakeLock.request("screen") } : undefined,
       });
       // Ny datauppsättning på servern rensar gamla tiles i cachen.
-      try { const m = await store.loadManifest(); await cache?.purgeOthers(m.dataVersion); } catch { /* offline: använd cache */ }
+      try { const m = await tiles.loadManifest(); await cache?.purgeOthers(m.dataVersion); } catch { /* offline: använd cache */ }
       if (cancelled) return;
       // Felsökningshak för fälttest/e2e: localStorage "outbreak.debug" = "on" exponerar sessionen som window.__outbreak.
       try { if (localStorage.getItem("outbreak.debug") === "on") (window as unknown as { __outbreak?: PlaySession }).__outbreak = session; } catch { /* ignoreras */ }

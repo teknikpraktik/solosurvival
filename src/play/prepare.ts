@@ -2,7 +2,7 @@ import { ACTIVITIES } from "@/config/activities";
 import { buildRegionGraph, MAX_START_SNAP_M, networkPieces, type ComponentPolicy, type RegionGraph } from "@/data/region-graph";
 import { buildTerrainMesh, MESH_HALF_WIDTH_M, MESH_MARGIN_M } from "@/geo/graph/terrain-mesh";
 import { BLOCKER_ZOOM, loadBlockers, type TileFetcher } from "@/geo/blockers";
-import type { LoadStats, TileStore } from "@/data/store";
+import type { LoadStats, WayStore } from "@/data/store";
 import type { LatLon } from "@/geo/geometry";
 import { indexGraph } from "@/geo/graph/graph";
 import type { TrailGraph } from "@/geo/graph/types";
@@ -56,7 +56,7 @@ export interface PrepareOptions {
   autoDestination?: (routeGraph: TrailGraph, start: LatLon, hazardNodes: Set<string>) => LatLon | null;
 }
 
-export async function prepareMatch(store: TileStore, start: LatLon, p: MatchParams, opts: PrepareOptions = {}): Promise<Prepared> {
+export async function prepareMatch(store: WayStore, start: LatLon, p: MatchParams, opts: PrepareOptions = {}): Promise<Prepared> {
   const t0 = performance.now();
   const base = { proposals: [], notes: [] as string[], timing: { ...emptyTiming } };
   const manifest = await store.loadManifest();
@@ -84,12 +84,14 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
   const t1 = performance.now();
   const { ways, stats } = await store.loadAround(center, radius);
   const t2 = performance.now();
+  const dataVersion = stats.dataVersion ?? manifest.dataVersion;
+  if (stats.source === "openfreemap") base.notes.push(`data: OpenFreeMap ${dataVersion}, ${stats.tiles} tiles, ${ways.length} ways`);
   const region = buildRegionGraph(ways, p.activity, center, radius, start, { strict: p.mode !== "survival", component: opts.component });
   const t3 = performance.now();
   const timing = { loadMs: t2 - t1, graphMs: t3 - t2, routeMs: 0, totalMs: 0 };
   const done = (r: Omit<Prepared, "timing" | "dataVersion" | "region" | "load">, graph?: TrailGraph): Prepared => {
     timing.totalMs = performance.now() - t0;
-    return { ...bikeNetworkAdvice(r, p.activity, region), graph, region, load: stats, timing, dataVersion: manifest.dataVersion };
+    return { ...bikeNetworkAdvice(r, p.activity, region), graph, region, load: stats, timing, dataVersion };
   };
   const label = p.activity === "mtb" ? "biking" : "walking and running";
   if (region.startSnapM === null || region.startSnapM > MAX_START_SNAP_M) {
@@ -173,13 +175,17 @@ export async function prepareMatch(store: TileStore, start: LatLon, p: MatchPara
  * Ingen rutt läggs ut: målet är exakt den punkt spelaren valde (inte snappad till en stig), och linjen A–B är bara en hjälplinje.
  * Fungerar var som helst (stigar tas bara från kartdata där det finns); en tom karta ger ett rent terrängnät.
  */
-async function prepareTerrainAtoB(store: TileStore, start: LatLon, b: LatLon, p: MatchParams, base: { proposals: RouteProposal[]; notes: string[]; timing: Prepared["timing"] }, dataVersion: string, t0: number, terrainTiles?: TileFetcher): Promise<Prepared> {
+async function prepareTerrainAtoB(store: WayStore, start: LatLon, b: LatLon, p: MatchParams, base: { proposals: RouteProposal[]; notes: string[]; timing: Prepared["timing"] }, dataVersion: string, t0: number, terrainTiles?: TileFetcher): Promise<Prepared> {
   const dist = haversineM(start, b);
   const center = { lat: (start.lat + b.lat) / 2, lon: (start.lon + b.lon) / 2 };
   const radius = dist / 2 + MESH_HALF_WIDTH_M + MESH_MARGIN_M + 300;
   const t1 = performance.now();
-  const { ways, stats } = await store.loadAround(center, radius);
+  // Trails where map data can be had; without it (OpenFreeMap unreachable, offline) a plain terrain lattice, as this mode always allowed.
+  const empty: LoadStats = { tiles: 0, fromCache: 0, fromNetwork: 0, missing: 0, networkGzipBytes: 0, ms: 0 };
+  const { ways, stats } = await store.loadAround(center, radius).catch(() => ({ ways: [], stats: empty }));
   const t2 = performance.now();
+  if (stats.dataVersion) dataVersion = stats.dataVersion;
+  if (stats.source === "openfreemap") base.notes.push(`data: OpenFreeMap ${dataVersion}, ${stats.tiles} tiles, ${ways.length} ways`);
   const trails = ways.length ? networkPieces(ways, p.activity, center, radius).graph : null;
   // Buildings and water from the background map: the lattice leaves them out (without the tiles it covers everything, as before).
   const blockers = terrainTiles ? await loadBlockers(center, dist / 2 + MESH_HALF_WIDTH_M + MESH_MARGIN_M, BLOCKER_ZOOM, terrainTiles).catch(() => null) : null;
