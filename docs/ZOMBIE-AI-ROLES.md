@@ -108,7 +108,7 @@ avslöjande där zombien går mot fel mål, stillastående spelare/GPS-brus/för
 flera genskjutare med stabila val, sparande och återupptagning (JSON-rundtur ger identisk fortsättning, äldre zombier utan roll, en
 återställd match behåller sin AI). Dessutom täcks informationsgränsen, att förföljare är oförändrade, att vuxenappens växel bara
 gäller Free Play och att en Mini-liknande profil behåller sin gamla AI. Den gamla AI:ns deterministiska fingeravtryck
-(`scripts/regression-fingerprint.ts`) är oförändrat och alla 645 tester i huvudappen samt 26 i Mini Outbreak passerar.
+(`scripts/regression-fingerprint.ts`) är oförändrat och alla 646 tester i huvudappen samt 26 i Mini Outbreak passerar.
 
 **Jämförelse** (`scripts/ai-compare.ts`): Survival med samma frön (100…) och samma scenarier för båda AI:erna. Spelartyper:
 `risk` (ser zombier inom 1 km och väjer), `random` (slumpar i korsningar) och `straight` (förutsägbar, håller kursen). Spelaren
@@ -116,7 +116,26 @@ håller sig alltid på stig. Nät: idealiskt rutnät, Karlstad (tätort) och sko
 (som i livespelet men utan byggnader och vatten). Spelaren jogger (1,5 × gångtempo) i Normal, eftersom zombierna annars springer
 ifrån en gående spelare, och går i Easy.
 
-RESULTS_PLACEHOLDER
+Alla tabeller finns i [`docs/ZOMBIE-AI-ROLES-RESULTAT.md`](ZOMBIE-AI-ROLES-RESULTAT.md) (12–16 matcher per cell, 95 %
+Wilson-intervall). Kolumnen "planer" räknar genskjutningsplaner per match. En plan slutar på ett av fyra sätt: **möte** (spelaren kom
+till punkten och zombien var där), **kontakt** (zombien var inom 60 m från spelaren när planen slutade), **passerad** (spelaren kom
+men zombien var inte framme) eller **missad** (spelaren kom aldrig).
+
+**Vad simuleringarna visar**
+
+| Fråga | Resultat |
+|---|---|
+| Genskjuter den gamla AI:n? | Nästan aldrig: 0,0–1,0 planer per match på stignät och exakt 0 på terrängnät. Free Play var i praktiken ren förföljelse. |
+| Når genskjutarna relevanta mötespunkter? | Ja, ibland. Planerna är 0,2–4,6 per match. Mot spelaren som går rakt fram slutar 26–100 % av planerna i möte eller kontakt (oftast kontakt, cirka 50 %). Mot den slumpvis gående spelaren 5–75 %, beroende på nät. |
+| Kan riktningsbyten lura dem? | Ja. Mot riskboten, som ser zombierna inom 1 km och väjer, missas 72–100 % av planerna. Mot den slumpvis gående spelaren, som svänger i två av tre korsningar, släpps de flesta planer vid omprövningen. En spelare som håller kursen blir oftare mött. |
+| Sprids rutterna, eller bildas fortfarande tåg? | Oförändrat. Andelen jagande zombier bakom spelaren och spridningen i deras riktningar skiljer sig med högst cirka ±5 procentenheter och ±0,07, utom på rutnät med cykel och rakt gående spelare (24 % → 3 % bakom). Förföljarna är 70 % och fångar fortfarande de flesta. Flankerare kan behövas om tåg syns i fält. |
+| Ger terränggenvägar oproportionerligt svåra lägen? | Inget tecken på att genskjutarna förvärrar det. Andelen fångster där fångande zombie gått i terräng den sista minuten är ungefär densamma för båda AI:erna (Karlstad med terräng och riskboten till fots: 58 % → 73 %, men med n = 11–12). Däremot är den hög för **båda** på cykel i Karlstad med terräng (82–100 %). Det är en befintlig egenskap hos terrängnätet som bör kontrolleras i fält. |
+| Fångstfrekvens och tid till fångst | Ingen systematisk skillnad. I Normal fångas nästan alla simulerade spelare oavsett AI. Där det skiljer sig överlappar intervallen: Karlstad med terräng och rakt gående spelare 42 % → 75 % till fots och 42 % → 33 % på cykel, skog med terräng i Easy 75 % → 50 %. Mediantiden till fångst rör sig åt båda hållen (till exempel 27 → 22 min för cykel i skog och 12,5 → 23 min för riskboten i Karlstad med terräng). |
+| Vägberäkningar och prestanda | Stignät: sökningar per minut lika eller lägre (250–400 → 250–390), avsökta noder ±10 %. Terrängnät: sökningar per minut ungefär fördubblade (6–10 → 11–17), eftersom varje beslut kostar en begränsad restidssökning och en A*, men avsökta noder är oförändrade (±5 %) eftersom förföljarnas delade träd dominerar. Tid per motorsteg är oförändrad (0,05–1,6 ms beroende på nät). |
+
+**Vad som kräver fälttest:** om genskjutningarna *upplevs* som begripliga och smarta, om väntande zombier ser konstiga ut, och om
+balansen med riktiga människor ändras. Simulerade spelare saknar både rädsla och kartläsning, och riskboten ser zombierna lika
+väl som spelet visar dem.
 
 ## 7. Kvarvarande begränsningar
 
