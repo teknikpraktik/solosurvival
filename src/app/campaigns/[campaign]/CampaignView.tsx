@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { findCampaign } from "@/campaign";
+import { chapterPlace, findCampaign } from "@/campaign";
 import { canPlay, completedCount, isCampaignComplete, markIntroSeen, missionStatus, nextMission, setDifficulty, type CampaignProgress } from "@/campaign/progress";
 import { missionParams } from "@/campaign/setup";
 import type { CampaignDef, MissionDef } from "@/campaign/types";
@@ -196,11 +196,14 @@ export default function CampaignView({ id }: { id: string }) {
   const done = completedCount(c, progress);
   const complete = isCampaignComplete(c, progress);
   const next = nextMission(c, progress);
+  // Where this chapter sits in its story. The chapters still to come are named once, below the missions, and cannot be opened.
+  const place = chapterPlace(c.id);
   return (
     <main className="page camp">
       <PageHeader title={c.title} href="/campaigns" />
       <div className="camphero">
         <div className="camphero-bg" aria-hidden="true" style={{ backgroundImage: `url(${c.cover})`, backgroundPosition: c.coverPosition }} />
+        {place && <span className="cine-k camphero-k">{S.chapterOf(place.story.title, place.number)}</span>}
         <p className="camphero-desc">{c.description}</p>
         <div className="campbar" role="img" aria-label={S.missions(done, c.missions.length)}>
           <span className="campbar-track" aria-hidden="true">{c.missions.map((m, i) => <i key={m.id} data-on={i < done || undefined} />)}</span>
@@ -229,6 +232,17 @@ export default function CampaignView({ id }: { id: string }) {
       <div className="missionlist" data-next={next ?? undefined}>
         {c.missions.map((m) => <MissionCard key={m.id} c={c} m={m} progress={progress} onOpen={() => openMission(m.id)} />)}
       </div>
+
+      {place && place.comingLater.length > 0 && (
+        <section className="campsoon" aria-labelledby="campsoon-label">
+          <h2 className="nglabel" id="campsoon-label">{S.comingLater(place.story.title)}</h2>
+          <ol start={place.number + 1}>
+            {place.comingLater.map((title, i) => (
+              <li key={title}><span className="campsoon-n">{S.chapter(place.number + 1 + i)}</span><b>{title}</b></li>
+            ))}
+          </ol>
+        </section>
+      )}
     </main>
   );
 }

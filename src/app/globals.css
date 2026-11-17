@@ -1009,3 +1009,11 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 /* Campaign difficulty: the chosen one carries the same check mark as every other choice in the game (in the campaign's own colour). */
 .campdiff .seg button { position: relative; }
 .campdiff .seg button[aria-pressed="true"]::after { content: "✓"; position: absolute; top: 4px; right: 6px; font-size: .72rem; font-weight: 800; line-height: 1; color: var(--lime); }
+
+/* Chapter page: where the chapter sits in its story, and the story's chapters still to come (names only, nothing to open). */
+.camphero-k { text-shadow: 0 1px 6px #000; }
+.campsoon { display: flex; flex-direction: column; gap: 8px; }
+.campsoon ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.campsoon li { display: flex; align-items: baseline; gap: 12px; padding: 10px 14px; border-radius: var(--r); border: 1px dashed #ffffff26; background: #04090b99; color: #9fb3b0; }
+.campsoon-n { font: 600 .75rem var(--font-display); letter-spacing: .24em; color: #6f8784; white-space: nowrap; }
+.campsoon li b { font: 700 1rem var(--font-display); letter-spacing: .14em; }

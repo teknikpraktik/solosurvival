@@ -1,7 +1,8 @@
-# OUTBREAK: THE ACCELERATION
-## Story Bible v2.2
+# OUTBREAK: REGENESIS
+## Story Bible v2.3
 
-**Format:** GPS-baserad överlevnadsthriller, fem kampanjer med fem uppdrag vardera
+**Spel:** OUTBREAK: SOLO SURVIVAL. Detta dokument beskriver spelets första story, **REGENESIS**.
+**Format:** GPS-baserad överlevnadsthriller, en story i fem kapitel med fem uppdrag vardera (25 uppdrag)
 **Status:** Kanonisk berättelsereferens. Kreativ riktning och produktionsunderlag, inte slutgiltigt manus
 **Språk:** Svenskt designunderlag; engelska uppdragstitlar och radiorepliker
 **Kärnlöfte:** *Your world. Their outbreak. Every route is a choice.*
@@ -12,16 +13,35 @@
 
 | | |
 |---|---|
-| Version | 2.2 (2026-11-16) |
-| Ersätter | Story Bible v2.0 (filnamn `OUTBREAK_STORY_BIBLE_V2_1.md`), arkiverad i [`docs/story/archive/`](story/archive/OUTBREAK_STORY_BIBLE_V2_1.md) |
+| Version | 2.3 (2026-11-16). Filnamnet `OUTBREAK_STORY_BIBLE_V2_2.md` behålls så att länkar från kod och dokument fortsätter att fungera. |
+| Titel | OUTBREAK: REGENESIS. Hette OUTBREAK: THE ACCELERATION till och med v2.2 (avsnitt 23). |
+| Ersätter | v2.2 (samma fil, se git-historiken och avsnitt 23). Story Bible v2.0 (filnamn `OUTBREAK_STORY_BIBLE_V2_1.md`) är arkiverad i [`docs/story/archive/`](story/archive/OUTBREAK_STORY_BIBLE_V2_1.md) |
 | Kanon | Detta dokument. Vid konflikt mellan detta dokument och koden gäller **koden för vad som finns**, och detta dokument för **vad som ska gälla**. En konflikt är en bugg i ett av dem och rättas. |
-| Implementerat innehåll | Endast THE FALL (kampanj 1), Story v1.1. Källa: `src/campaign/the-fall.ts`. Teknisk beskrivning: [`docs/CAMPAIGN-THE-FALL.md`](CAMPAIGN-THE-FALL.md) |
+| Implementerat innehåll | Endast THE FALL (kapitel 1), Story v1.1. Källa: `src/campaign/the-fall.ts`; storyns struktur i `src/campaign/stories.ts`. Teknisk beskrivning: [`docs/CAMPAIGN-THE-FALL.md`](CAMPAIGN-THE-FALL.md) |
 
 **Statusmarkeringar i dokumentet:**
 
 - **[IMPLEMENTERAT]**: finns i koden och spelas under normala förhållanden. Texten här citerar koden.
 - **[PLANERAT]**: berättelsebeslut för framtida innehåll. Inget av det finns i koden.
 - **[KRÄVER NY MEKANIK]**: planerat innehåll som förutsätter en funktion som motorn inte har i dag (se avsnitt 17).
+
+### Titeln REGENESIS
+
+**REGENESIS** har dubbel betydelse. Det är namnet på NEXAGEN:s experimentella behandling (avsnitt 2), och det är titeln på spelets första större berättelse. Titeln pekar alltså på berättelsens orsak. Spelaren ser ordet som storyns namn redan i THE FALL, men får inte veta vad det betyder förrän i GROUND ZERO (2.2): ingen replik, intro eller epilog i THE FALL nämner REGENESIS, och titeln förklaras inte i spelet (avsnitt 11 och 16). Titeln är ett löfte, inte ett avslöjande. Temat från den tidigare arbetstiteln THE ACCELERATION finns kvar oförändrat: AI-accelererad forskning där människor lät tempot gå före säkerheten är fortfarande berättelsens bakgrund och mänskliga konflikt (avsnitt 2 och 3).
+
+### Struktur och begrepp
+
+| Nivå | I REGENESIS | Betydelse |
+|---|---|---|
+| Spel | OUTBREAK: SOLO SURVIVAL | Hela spelet. Namnet ändras inte. |
+| CAMPAIGN | Spelläget i huvudmenyn | Berättelsedrivet spel, bredvid FREE PLAY. Rymmer en eller flera stories. |
+| STORY | **REGENESIS** | En sammanhängande större berättelse med egna kapitel. |
+| CHAPTER | THE FALL, GROUND ZERO, THE HUNT, NO MAN'S LAND, THE LAST HOPE | En del av storyn, spelad i ordning. |
+| MISSION | Fem per kapitel i REGENESIS, 25 totalt | Ett spelbart uppdrag. |
+
+REGENESIS har fem kapitel med fem uppdrag vardera. Det är ett beslut för den här storyn, inte en regel: framtida stories kan ha andra antal kapitel och uppdrag. Endast kapitel 1, THE FALL, är implementerat. I koden heter ett kapitel fortfarande `CampaignDef` och lagras under sitt kapitel-id (`the-fall`); se avsnitt 21.
+
+**Viktigaste ändringarna i v2.3:** Titeln OUTBREAK: THE ACCELERATION är bytt till OUTBREAK: REGENESIS, och hierarkin Story → Chapter → Mission är fastställd. Det som tidigare kallades "kampanj 1–5" heter nu "kapitel 1–5"; CAMPAIGN avser bara spelläget. Ingen berättelse, replik, tidslinje eller uppdrag är ändrad (avsnitt 23).
 
 **Viktigaste ändringarna i v2.2** (fullständig lista i avsnitt 22):
 
@@ -48,7 +68,7 @@ Outbreak är ett berättelsedrivet GPS-spel där spelaren rör sig i sin verklig
 - **Safehouses är återkommande berättelseplatser**, inte ett crafting- eller basbyggarsystem, och de har inga egna återkommande röster.
 - Spelaren börjar med att försöka överleva, och engagerar sig därefter i att hitta och rädda andra. Världens framtid är en följd av insatserna, inte en tidig hjälteorder. Forskningsmysteriet växer fram **som en konsekvens av räddningsuppdraget**; spelaren blir aldrig forskningsutredare.
 - AI-accelererad läkemedelsutveckling är bakgrund till katastrofen. **AI är inte en ond aktör** och styr inte zombierna. Ansvaret ligger hos människor som lät tempot gå före säkerheten.
-- Kampanj 1, **THE FALL**, är implementerad. Dess fem uppdrag, mål, spellängder, svårighetsgrader, radiorepliker, ljud och bilder bevaras. Ändringar i THE FALL görs bara som små textlager.
+- Kapitel 1, **THE FALL**, är implementerat. Dess fem uppdrag, mål, spellängder, svårighetsgrader, radiorepliker, ljud och bilder bevaras. Ändringar i THE FALL görs bara som små textlager.
 - Varje uppdrag ska fungera på olika verkliga kartor. Fiktiva miljöer representeras av säkra, offentligt tillgängliga GPS-zoner, aldrig av faktiska byggnader som spelaren måste gå in i.
 
 **Avgränsning:** Inget inventory, ingen crafting, ingen strid, ingen basbyggnad och ingen fysisk interaktion med omgivningen. Evidence Log är ett berättelsearkiv, inte ett resurssystem.
@@ -111,7 +131,7 @@ Berättelsen har **exakt tre återkommande talande huvudroller**. Ingen fjärde 
 Spelarens anropssignal, tilldelad av WATCHTOWER i slutet av FIRST CONTACT: *"I am logging you as Runner Seven."* [IMPLEMENTERAT]. Runner Seven talar aldrig, har inget namn, kön eller ålder i berättelsen. Alla relationer byggs genom vad andra säger till och om Runner Seven.
 
 ### WATCHTOWER
-**Roll:** Civilförsvarets radiooperatör. Spelarens huvudsakliga radiokontakt. Leder uppdragen och håller ihop berättelsen. Förmedlar information om överlevare, Safehouses och hot. Förekommer i alla fem kampanjer och i alla 25 uppdrag.
+**Roll:** Civilförsvarets radiooperatör. Spelarens huvudsakliga radiokontakt. Leder uppdragen och håller ihop berättelsen. Förmedlar information om överlevare, Safehouses och hot. Förekommer i alla fem kapitel och i alla 25 uppdrag.
 
 **Identitet:** Kvinna i fyrtioårsåldern. Identifieras **endast med anropssignalen WATCHTOWER**. Hon har inget civilt namn i berättelsen och ska inte få något.
 
@@ -121,7 +141,7 @@ Spelarens anropssignal, tilldelad av WATCHTOWER i slutet av FIRST CONTACT: *"I a
 
 **Båge:**
 
-| Kampanj | Utveckling |
+| Kapitel | Utveckling |
 |---|---|
 | THE FALL | Från procedur ("Any station, this is Watchtower") till ett första personligt band: hon ger spelaren en anropssignal och ser till att *en* människa kommer ut. |
 | GROUND ZERO | Personlig skuld. Hon skickade SHEPHERD till en byggnad som planen kallade säker. Hon ber Runner Seven om hjälp, inte på order. När Elenas köade varning spelas upp (2.4) förstår hon att varningen fanns i hennes eget sambandsnät. |
@@ -239,7 +259,7 @@ Berättelsen behöver människor att rädda, men inte fler röster att följa. A
 
 **Trådens förlopp:**
 
-| Kampanj | SHEPHERD |
+| Kapitel | SHEPHERD |
 |---|---|
 | THE FALL | Tystnar (03). Ett brutet anrop i epilogen. |
 | GROUND ZERO | Spelaren följer deras väg: från THE WAYSTATION, via deras rutt, till mottagningsbyggnaden vid NEXAGEN-områdets yttre gräns. De tog sig ut med en del av personalen, med hjälp av "the researcher". Ett okänt antal lever. 3–5 inspelningar från den anonyma operatören. |
@@ -296,9 +316,9 @@ Varje Safehouse har en **egen berättelsefunktion**. En plats som bara skiljer s
 
 ---
 
-## 10. Kampanjernas berättelsebågar
+## 10. Kapitlens berättelsebågar
 
-| # | Kampanj | Akt | Tagline | Dagar | Dramatisk fråga | Röster | Safehouses |
+| # | Kapitel | Akt | Tagline | Dagar | Dramatisk fråga | Röster | Safehouses |
 |---|---|---|---|---|---|---|---|
 | 1 | **THE FALL** [IMPLEMENTERAT] | SURVIVE | *The world is ending. Stay alive.* | 0–1 | Kommer spelaren undan den första vågen? | WATCHTOWER, RAVEN TWO | THE WAYSTATION |
 | 2 | **GROUND ZERO** | DISCOVER | *Find the missing. Uncover the truth.* | 2–4 | Vad hände med SHEPHERD, och varför tystnade de? | WATCHTOWER; Elena som inspelning; anonym SHEPHERD-röst | THE WAYSTATION, THE BUNKER |
@@ -306,7 +326,7 @@ Varje Safehouse har en **egen berättelsefunktion**. En plats som bara skiljer s
 | 4 | **NO MAN'S LAND** | RESCUE | *Someone is still alive. Get them out.* | 8–10 | Går det att rädda en hel grupp när de infekterade redan närmar sig? | WATCHTOWER, Elena, RAVEN TWO | THE FARMHOUSE, THE RANGER STATION |
 | 5 | **THE LAST HOPE** | PRESERVE | *Save the research. Give them a chance.* | 11–12 | Kan kunskapen nå omvärlden innan sambandet försvinner? | WATCHTOWER, Elena, RAVEN TWO; anonym forskarröst (en gång) | THE BUNKER, THE ROOFTOP |
 
-**Hur kampanjerna hänger ihop:**
+**Hur kapitlen hänger ihop:**
 
 1. **THE FALL** slutar med att spelaren är räddad, men SHEPHERD saknas och ett brutet anrop nämner NEXAGEN.
 2. **GROUND ZERO** är ett räddningsuppdrag som blir ett avslöjande: spelaren följer SHEPHERD till byggnaden som planen kallade säker och förstår att NEXAGEN visste före alla andra. Slutar med att SHEPHERD:s överlevande kan ha tagit sig vidare med en forskare, och en svag nödsändare.
@@ -314,11 +334,11 @@ Varje Safehouse har en **egen berättelsefunktion**. En plats som bara skiljer s
 4. **NO MAN'S LAND** räddar Elena, patienterna och SHEPHERD:s sista sjukvårdare. Elena har preliminära data, men inget botemedel.
 5. **THE LAST HOPE** ser till att datan når omvärlden. Ingen räddas över en natt, men kunskapen överlever.
 
-Varje kampanj har fem uppdrag, en ny information eller relation, en tydlig mekanisk variation och en avslutande dramatisk vändning.
+Varje kapitel i REGENESIS har fem uppdrag, en ny information eller relation, en tydlig mekanisk variation och en avslutande dramatisk vändning.
 
 ---
 
-## 11. Kampanj 1 – THE FALL [IMPLEMENTERAT, Story v1.1]
+## 11. Kapitel 1 – THE FALL [IMPLEMENTERAT, Story v1.1]
 
 **Tagline:** *The world is ending. Stay alive.*
 **Tidsläge:** Dag 0 eftermiddag – dag 1 natt
@@ -326,7 +346,7 @@ Varje kampanj har fem uppdrag, en ny information eller relation, en tydlig mekan
 **Källa:** `src/campaign/the-fall.ts`. All text nedan är citerad därifrån.
 **Produktstatus:** Implementerad, inte fälttestad. Ändra inte uppdragens mål, längd, svårighet, zombie-AI eller radiorepliker utan särskilt beslut. Alla 50 radiorepliker är inspelade; replik-id:n är permanenta.
 
-**Vad THE FALL är och inte är:** En överlevnadsberättelse. Den förklarar aldrig utbrottet ("People are attacking each other in the streets. Nobody knows why."). Den nämner inte REGENESIS eller Elena. Ordet NEXAGEN förekommer en enda gång, i epilogen, som ett oförklarat fragment.
+**Vad THE FALL är och inte är:** En överlevnadsberättelse. Den förklarar aldrig utbrottet ("People are attacking each other in the streets. Nobody knows why."). Den nämner inte REGENESIS eller Elena i någon replik, intro eller epilog; REGENESIS syns bara som storyns titel i menyerna, utan förklaring. Ordet NEXAGEN förekommer en enda gång, i epilogen, som ett oförklarat fragment.
 
 | # | Uppdrag | Mekanik (faktisk) | Röster | Motiv | Ny information | Safehouse |
 |---|---|---|---|---|---|---|
@@ -361,7 +381,7 @@ Varje kampanj har fem uppdrag, en ny information eller relation, en tydlig mekan
 - **Intro:** "No one has heard from the evacuation force in six hours." / "An old relay network still has power. Three sites. Each has to be brought on the air by hand." / "A signal that strong will be heard by everything out there."
 - **Slut:** WATCHTOWER *"Signal is out on all bands. … Wait. I have a carrier. Someone is answering."* → RAVEN TWO *"Watchtower, Raven Two. We read your signal. One aircraft, one pickup. Tell your runner to stay alive until we get there."*
 - **Success:** "The signal is out. A helicopter is coming, if you can stay alive until it lands."
-- **Bedömning:** Kampanjens bästa vändning. Ingen ytterligare replik får läggas här (radiokön rymmer två slutrepliker, avsnitt 18).
+- **Bedömning:** Kapitlets bästa vändning. Ingen ytterligare replik får läggas här (radiokön rymmer två slutrepliker, avsnitt 18).
 
 ### 05 FINAL EXTRACTION
 - **Intro:** "Raven Two is in the air. Twenty-two minutes out." / "The district is being overrun. Every street has them now." / "One aircraft. One pickup. They will not wait."
@@ -369,10 +389,10 @@ Varje kampanj har fem uppdrag, en ny information eller relation, en tydlig mekan
 - **Slut (RAVEN TWO):** *"We have Runner Seven. Lifting off. Watchtower, you got one out."*
 - **Success:** "You are aboard. Raven Two is lifting off."
 
-### Kampanjslut och epilog (v1.1)
-Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och därefter överst i kampanjvyn. Inget eget ljud; helikopterljudet och RAVEN TWO:s slutreplik bär slutet.
+### Kapitelslut och epilog (v1.1)
+Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och därefter överst i kapitelvyn (THE FALL:s sida under CAMPAIGN). Inget eget ljud; helikopterljudet och RAVEN TWO:s slutreplik bär slutet.
 
-> **THE FALL – CAMPAIGN COMPLETED**
+> **THE FALL – CHAPTER COMPLETED**
 > From the air the fires reach the horizon.
 > Watchtower's channel is still open. Other towns are calling in.
 > One call does not belong. The evacuation force, hours after she lost them: “…NEXAGEN perimeter… do not…” Then static.
@@ -382,7 +402,7 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 
 ---
 
-## 12. Kampanj 2 – GROUND ZERO [PLANERAT]
+## 12. Kapitel 2 – GROUND ZERO [PLANERAT]
 
 **Tagline:** *Find the missing. Uncover the truth.*
 **Tidsläge:** Dag 2–4
@@ -391,7 +411,7 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 **Röster:** WATCHTOWER; anonym SHEPHERD-röst (inspelningar); Elena (inspelning från 2.4). Ingen RAVEN TWO.
 **Ny spelmekanik:** Evidence Log, dynamiska mål, förföljande hord, blockad.
 
-**SHEPHERD-inspelningar:** 3–5 totalt i kampanjen, från samma anonyma operatör (2.1, 2.2 eventuellt, 2.5). Se regler i avsnitt 7.
+**SHEPHERD-inspelningar:** 3–5 totalt i kapitlet, från samma anonyma operatör (2.1, 2.2 eventuellt, 2.5). Se regler i avsnitt 7.
 
 **Avslöjandetakt:** 2.1 avslöjar bara *var* SHEPHERD var och att de varnade. NEXAGEN är fortfarande bara ett namn. REGENESIS dyker upp i 2.2; tidslinjen i 2.3; Elenas röst i 2.4; smittans början i 2.5. AI-accelerationens roll och Elenas eget ansvar sparas till NO MAN'S LAND.
 
@@ -401,7 +421,7 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 - **Händelse:** Spelaren återvänder till THE WAYSTATION, nu övergivet. SHEPHERD:s radio står kvar på loggläge och spelar upp anropet i längre form: *"Shepherd to Watchtower… at the NEXAGEN perimeter… the reception building is not safe. Do not send the buses. Do not send anyone…"* Vid ankomst ändras destinationen till SHEPHERD:s första loggade brytpunkt. En liten grupp infekterade samlas längs den ursprungliga vägen. [KRÄVER NY MEKANIK: dynamiskt mål]
 - **Ny information:** SHEPHERD:s anropssignal; de nådde uppsamlingsplatsen vid NEXAGEN; byggnaden var inte säker; de varnade för att skicka fler. WATCHTOWER förklarar kort varför hon skickade dem: *"It was on the plan. A safe assembly point. I didn't question it."*
 - **Framdrift:** Personligt motiv (WATCHTOWER) blir en konkret rutt att följa.
-- **Skiljer sig från närliggande:** Första återbesöket av en känd plats; den enda kampanjinledningen som börjar i en plats spelaren redan känner.
+- **Skiljer sig från närliggande:** Första återbesöket av en känd plats; den enda kapitelinledningen som börjar i en plats spelaren redan känner.
 - **Fynd:** E-01 *The Missing Evacuation Call*.
 - **Krok:** De hade hittat något de ville rapportera.
 
@@ -444,20 +464,20 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 - **Händelse:** Fiktiva zoner runt byggnaden, aldrig ett verkligt område eller en verklig byggnad. Sista loggen från SHEPHERD: de fick ut en del av personalen med hjälp av "the researcher", och skulle gå mot en vårdplats. Efter sista fyndet övergår uppdraget till flykt undan en tillströmmande hord. [KRÄVER NY MEKANIK: målbyte mitt i uppdrag]
 - **Ny information:** Den sannolika tidiga smittkedjan bland personalen. SHEPHERD:s överlevande och en forskare tog sig vidare.
 - **Framdrift:** Från "vad hände" till "var är de nu".
-- **Skiljer sig:** Kampanjens final; kombinerar fynd och flykt.
+- **Skiljer sig:** Kapitlets final; kombinerar fynd och flykt.
 - **Fynd:** E-07 *Initial Exposure Report*.
-- **Kampanjslut:** WATCHTOWER registrerar en svag nödsändare längre bort, med en återkommande anropskod. *"That's not Shepherd's code. … But someone is still out there."*
+- **Kapitelslut:** WATCHTOWER registrerar en svag nödsändare längre bort, med en återkommande anropskod. *"That's not Shepherd's code. … But someone is still out there."*
 
 ---
 
-## 13. Kampanj 3 – THE HUNT [PLANERAT]
+## 13. Kapitel 3 – THE HUNT [PLANERAT]
 
 **Tagline:** *They follow sound. They follow you.*
 **Tidsläge:** Dag 5–7
 **Dramatisk fråga:** Kan spelaren spåra nödsignalen och samtidigt skydda dem som finns på vägen?
 **Safehouses:** THE TREEHOUSE, THE RANGER STATION
 **Röster:** WATCHTOWER; RAVEN TWO en gång (3.4); Elena live (3.5).
-**Kampanjens tema:** Ljud. Spelaren lär sig hur de infekterade reagerar på ljud (3.2), drabbas av det (3.3), använder det (3.4) och kapplöper mot det (3.5).
+**Kapitlets tema:** Ljud. Spelaren lär sig hur de infekterade reagerar på ljud (3.2), drabbas av det (3.3), använder det (3.4) och kapplöper mot det (3.5).
 
 **Variation, så att THE HUNT inte blir fem förföljelser:**
 
@@ -508,11 +528,11 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 - **Händelse:** En hord dras mot signalen. Spelaren måste nå en säker aktiveringszon och få fram meddelandet innan horden tar över området. Horden har eget mål och förutsägbar väg. [KRÄVER NY MEKANIK: hord med eget mål]
 - **Ny information:** Elena lever. Hon är på en provisorisk vårdstation med patienter och två av SHEPHERD:s sjukvårdare.
 - **Fynd:** E-11 *Elena's Distress Message*: *"This is Elena Voss. I have nine patients and two medics from Shepherd. We cannot move them. If anyone is hearing this… please."*
-- **Kampanjslut:** WATCHTOWER svarar inte direkt. Sedan: *"Two of mine. … Runner, get some rest. We're going to get them."*
+- **Kapitelslut:** WATCHTOWER svarar inte direkt. Sedan: *"Two of mine. … Runner, get some rest. We're going to get them."*
 
 ---
 
-## 14. Kampanj 4 – NO MAN'S LAND [PLANERAT]
+## 14. Kapitel 4 – NO MAN'S LAND [PLANERAT]
 
 **Tagline:** *Someone is still alive. Get them out.*
 **Tidsläge:** Dag 8–10
@@ -556,11 +576,11 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 - **Händelse:** Spelaren måste nå en säker samlingszon före horden och bekräfta en framkomlig väg till RAVEN TWO:s nya landningsplats. De överlevandes rörelse sker i berättelsen; spelaren eskorterar inga verkliga personer. Mekaniskt närmast THE FALL 05, men målet är andras räddning, inte spelarens egen.
 - **Ny information:** Elena berättar under väntan, kort, vad REGENESIS var och vad hon själv godkände: AI-urvalet var bra, och det var därför de slutade vara försiktiga. *"The models were right about almost everything. We stopped checking the rest."*
 - **Fynd:** E-16 *Elena's Preliminary Results*.
-- **Kampanjslut:** Elena, patienterna och SHEPHERD:s sjukvårdare når säkerhet. **SHEPHERD-tråden avslutas.** Elena har preliminära data som kan hjälpa andra forskare att förstå hur sjukdomsförloppet kan bromsas, men ingen behandling.
+- **Kapitelslut:** Elena, patienterna och SHEPHERD:s sjukvårdare når säkerhet. **SHEPHERD-tråden avslutas.** Elena har preliminära data som kan hjälpa andra forskare att förstå hur sjukdomsförloppet kan bromsas, men ingen behandling.
 
 ---
 
-## 15. Kampanj 5 – THE LAST HOPE [PLANERAT]
+## 15. Kapitel 5 – THE LAST HOPE [PLANERAT]
 
 **Tagline:** *Save the research. Give them a chance.*
 **Tidsläge:** Dag 11–12
@@ -637,7 +657,7 @@ Visas som text i resultatdialogen efter första vinsten i uppdrag 5, och däreft
 
 **UI-regel:** Under spel visas fyndets namn, en mening och eventuell kort radioröst. Full text, ljudarkiv och tidslinje finns mellan uppdragen. Ingen spelare ska behöva läsa längre dokument under gång eller cykling.
 
-### Avslöjandeplan: vad spelaren vet efter varje kampanj
+### Avslöjandeplan: vad spelaren vet efter varje kapitel
 
 | Efter | Spelaren vet | Spelaren vet inte |
 |---|---|---|
@@ -689,13 +709,13 @@ Free Play har sedan #60 en zombie-AI med roller (förföljare och genskjutare, `
 
 **Produktionsregler för röster [IMPLEMENTERAT i THE FALL]:**
 
-- En MP3 per replik: `public/campaign/<kampanj>/voice/<replik-id>.mp3`. **Replik-id:n är permanenta;** byt aldrig namn på ett inspelat id.
-- Manus genereras ur definitionerna (`docs/campaign/<kampanj>-voice-script.csv`); röstmanifestet med `npm run campaign:voice`. CI kör `campaign:voice -- --check`.
+- En MP3 per replik: `public/campaign/<kapitel-id>/voice/<replik-id>.mp3`. **Replik-id:n är permanenta;** byt aldrig namn på ett inspelat id.
+- Manus genereras ur definitionerna (`docs/campaign/<kapitel-id>-voice-script.csv`); röstmanifestet med `npm run campaign:voice`. CI kör `campaign:voice -- --check`.
 - Ändras texten i en inspelad replik måste den spelas in igen (`npm run campaign:voice:generate -- --only <id> --force`), annars säger ljudet något annat än texten.
 - Intro, success-text och epilog är bara text. De kan ändras utan att något spelas in igen.
 - **Radiokön rymmer en replik som spelas och en som väntar.** Ett uppdragsslut får därför ha **högst två** slutrepliker i följd; en tredje tränger undan den andra.
 
-**Filmiska bilder.** Korta stillbilder, aldrig något som kräver att spelaren tittar på skärmen under rörelse: kampanjomslag, uppdragsbild (kort, briefing, intro, resultat), slutbild (helikopter, safehouse). Planerat: Safehouse-ankomst, återbesök av övergiven plats, fynd, evakuering, sändning. Håll gemensam färg- och ljussättning med THE FALL: skymning, rött ljus, regn, eld.
+**Filmiska bilder.** Korta stillbilder, aldrig något som kräver att spelaren tittar på skärmen under rörelse: kapitelomslag, uppdragsbild (kort, briefing, intro, resultat), slutbild (helikopter, safehouse). Planerat: Safehouse-ankomst, återbesök av övergiven plats, fynd, evakuering, sändning. Håll gemensam färg- och ljussättning med THE FALL: skymning, rött ljus, regn, eld.
 
 **Dramaturgisk rytm per uppdrag:** Briefing (15–30 s) → rörelse och första komplikation → mittpunkt med fynd eller ny information → eskalering → tydlig avslutning och kort efterspel. Exakta tider testas i fält.
 
@@ -704,10 +724,10 @@ Free Play har sedan #60 en zombie-AI med roller (förföljare och genskjutare, `
 ## 19. Misslyckande, progression och återspelbarhet
 
 - **THE FALL [IMPLEMENTERAT]:** Vinst låser upp nästa uppdrag. Fångad eller tiden ute räknas som ett misslyckat försök; inget tidigare framsteg går förlorat. Omspel tar aldrig bort något. Sparas lokalt (`outbreak.campaign.the-fall`). Se `docs/CAMPAIGN-THE-FALL.md` §5.
-- I nya kampanjer leder misslyckade kapplöpningar helst till en **alternativ gren inom samma uppdrag** eller ett begripligt omförsök, inte till godtycklig permanent karaktärsdöd.
+- I nya kapitel leder misslyckade kapplöpningar helst till en **alternativ gren inom samma uppdrag** eller ett begripligt omförsök, inte till godtycklig permanent karaktärsdöd.
 - Safehouses kan bli hotade eller övergivna som **författade berättelsehändelser**. En spelare ska aldrig förlora en karaktär eller en plats för att GPS-signalen tappades.
 - Ledtrådar ska kunna återläsas. Spelaren ska inte behöva minnas detaljer från ett tidigare träningspass.
-- Kampanjerna är linjära i version 1. Eventuella förgreningar är lokala och återgår till huvudberättelsen.
+- Kapitlen är linjära i version 1. Eventuella förgreningar är lokala och återgår till huvudberättelsen.
 
 ---
 
@@ -720,7 +740,7 @@ Free Play har sedan #60 en zombie-AI med roller (förföljare och genskjutare, `
 - Inga överraskande visuella interaktioner under rörelse; använd ljud och tydliga pauspunkter.
 - Spelaren ska alltid kunna pausa, avbryta och prioritera verklig säkerhet. (THE FALL: paus och QUIT finns; GPS-bortfall fryser klocka, zombier och berättelse.)
 - Fiktiva platser (NEXAGEN-området, Safehouses) är **aldrig** verkliga platser på kartan.
-- Cykelspel kräver separat validering. Kampanjerna är i första hand **on foot** tills annat testats.
+- Cykelspel kräver separat validering. Kapitlen är i första hand **on foot** tills annat testats.
 
 ---
 
@@ -731,7 +751,8 @@ Free Play har sedan #60 en zombie-AI med roller (förföljare och genskjutare, `
 | Del | Status |
 |---|---|
 | THE FALL, 5 uppdrag, 50 inspelade repliker, 6 bilder, epilog | [IMPLEMENTERAT] Story v1.1. Ej fälttestad. |
-| GROUND ZERO, THE HUNT, NO MAN'S LAND, THE LAST HOPE | [PLANERAT] Ingen kod, inga bilder, inga ljud. |
+| GROUND ZERO, THE HUNT, NO MAN'S LAND, THE LAST HOPE | [PLANERAT] Ingen kod, inga bilder, inga ljud. Visas i spelet bara som namn under "Coming later" på THE FALL:s sida. |
+| Story-nivån REGENESIS | [IMPLEMENTERAT] `src/campaign/stories.ts`: storyns titel och kapitelordning. Spelbara kapitel är `CampaignDef`; planerade kapitel är bara namn. |
 | Evidence Log, Safehouse Arrival, Dynamic Events, Pursuit, Blockade, Race, Sound Lure | [KRÄVER NY MEKANIK] |
 
 ### Kända problem
@@ -742,14 +763,14 @@ Free Play har sedan #60 en zombie-AI med roller (förföljare och genskjutare, `
 
 **Fas A: Verifiera grunden**
 1. Fälttesta THE FALL utan att samtidigt skriva om dess kärnmekanik. Logga hur ofta uppdrag 2 och 4 får två mål.
-2. Inventera nuvarande slutbilder, radiotriggers och kampanjprogression (gjort för THE FALL i v2.2).
+2. Inventera nuvarande slutbilder, radiotriggers och progression (gjort för THE FALL i v2.2).
 3. Testa tre fristående prototyper: Pursuit, Blockade, Race. Pröva Free Plays roll-AI som grund för Pursuit.
 
 **Fas B: Bygg berättelsesystemen**
 4. Välj ElevenLabs-röst för Elena och högst två anonyma röster.
 5. Implementera generell Safehouse Arrival med bild, ljud, radioreplik och återbesöksstatus.
 6. Implementera Evidence Log och Dynamic Events.
-7. Producera GROUND ZERO som första nya fullständiga kampanj.
+7. Producera GROUND ZERO som första nya fullständiga kapitel.
 
 **Fas C: Utvärdera och expandera**
 8. Fälttesta geografisk variation, särskilt i glest respektive tätt vägnät.
@@ -760,7 +781,7 @@ Free Play har sedan #60 en zombie-AI med roller (förföljare och genskjutare, `
 
 | Typ | Behov |
 |---|---|
-| Bilder | Kampanjomslag; fem uppdragsbilder (övergiven WAYSTATION med radion kvar; brytpunkt med triageanteckningar och REGENESIS-armband; hord på en väg i skymning; THE BUNKER med sviktande nödbelysning; NEXAGEN:s mottagningsbyggnad bakom ett stängsel i dimma, utan logotyp); Safehouse-bilder för THE WAYSTATION (övergiven variant) och THE BUNKER (trygg och hotad variant) |
+| Bilder | Kapitelomslag; fem uppdragsbilder (övergiven WAYSTATION med radion kvar; brytpunkt med triageanteckningar och REGENESIS-armband; hord på en väg i skymning; THE BUNKER med sviktande nödbelysning; NEXAGEN:s mottagningsbyggnad bakom ett stängsel i dimma, utan logotyp); Safehouse-bilder för THE WAYSTATION (övergiven variant) och THE BUNKER (trygg och hotad variant) |
 | Röster | WATCHTOWER ≈ 40–50 repliker (befintlig röst); SHEPHERD, 3–5 inspelningar från en anonym operatör (en delad anonym röst, avsnitt 6); Elena 1–2 inspelningar (2.4, eventuellt 2.5); RAVEN TWO inga |
 | Ljud | Miljö för övergiven vägstation; THE BUNKER med generatorbrum och strömavbrott; reläpåslag; hordljud som närmar sig bakifrån; inspelningsljud (bandbrus, avbrott); ljudsignal för nytt fynd |
 | Mekanik | Evidence Log, Dynamic Events, Pursuit, Blockade, målbyte mitt i uppdrag (se avsnitt 17) |
@@ -789,6 +810,13 @@ Free Play har sedan #60 en zombie-AI med roller (förföljare och genskjutare, `
 
 ## 23. Ändringslogg
 
+**v2.3 (2026-11-16)** jämfört med v2.2:
+
+- Huvudtiteln bytt från OUTBREAK: THE ACCELERATION till **OUTBREAK: REGENESIS**. Beslut: berättelsen döps efter NEXAGEN:s behandling, som också blir titeln på spelets första story. Temat AI-accelererad forskning och bristande säkerhetsarbete är oförändrat.
+- Hierarkin Spel → CAMPAIGN (spelläge) → STORY → CHAPTER → MISSION fastställd (avsnitt 0). "Kampanj 1–5" heter nu "kapitel 1–5" i hela dokumentet. Antalet kapitel och uppdrag är specifikt för REGENESIS.
+- Ingen ändring av berättelse, roller, tidslinje, radiorepliker, Evidence Log, uppdrag eller slut. Ändringsloggen för v2.2 nedan står kvar med sin ursprungliga ordalydelse ("kampanjer").
+- Filnamnet behålls (`OUTBREAK_STORY_BIBLE_V2_2.md`). v2.0 i arkivet behåller titeln THE ACCELERATION som historik.
+
 **v2.2 (2026-11-16)** jämfört med v2.0:
 
 - Rollbesättningen reducerad till tre återkommande talande huvudroller. Borttaget: WATCHTOWER:s civila namn "Morgan", Maya, Leo, Jonas, Sara. Regler för anonyma röster tillagda (avsnitt 6).
@@ -813,6 +841,6 @@ Free Play har sedan #60 en zombie-AI med roller (förföljare och genskjutare, `
 
 **Bygg inte ett nytt militärspel. Bygg ett bättre Outbreak.**
 
-Fem kampanjer och 25 uppdrag knyts samman av ett AI-accelererat medicinskt experiment, tre återkommande röster (WATCHTOWER, RAVEN TWO, Elena Voss), spelaren RUNNER SEVEN, en försvunnen evakueringsstyrka och sex fiktiva Safehouses. Zombier är det enda aktiva kartbaserade hotet. Uppdragen får variation genom jakt bakifrån, blockader, kapplöpningar, ljud, ledtrådar och dynamiska händelser. THE FALL bevaras. Berättelsen växer från egen överlevnad till ansvar för andra, och slutar med att kunskap förs vidare, inte med ett osannolikt omedelbart botemedel.
+REGENESIS fem kapitel och 25 uppdrag knyts samman av ett AI-accelererat medicinskt experiment, tre återkommande röster (WATCHTOWER, RAVEN TWO, Elena Voss), spelaren RUNNER SEVEN, en försvunnen evakueringsstyrka och sex fiktiva Safehouses. Zombier är det enda aktiva kartbaserade hotet. Uppdragen får variation genom jakt bakifrån, blockader, kapplöpningar, ljud, ledtrådar och dynamiska händelser. THE FALL bevaras. Berättelsen växer från egen överlevnad till ansvar för andra, och slutar med att kunskap förs vidare, inte med ett osannolikt omedelbart botemedel.
 
 **Överordnat designkriterium:** Varje större berättelsehändelse ska, när det är möjligt, märkas i spelarens faktiska GPS-upplevelse.
