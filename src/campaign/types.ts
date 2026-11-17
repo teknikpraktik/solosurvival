@@ -79,7 +79,10 @@ export type MissionLayout =
   | { kind: "survive"; durationS: number }
   /** Stay alive until the helicopter lands at `extractionAtS`, then reach it before `durationS`. */
   | { kind: "extraction"; durationS: number; extractionAtS: number; rushFactor: number }
-  /** `count` goals around the player; `courseLengthM` is the length the course generator aims for (a ring through the start). */
+  /**
+   * `count` goals around the player; `courseLengthM` is the length the course generator aims for (a ring through the start). A course
+   * with fewer than `minCount` goals is refused. Keep `minCount` equal to `count` when the intro, objective or radio name the number.
+   */
   | { kind: "checkpoints"; count: number; minCount: number; courseLengthM: number; anyOrder: boolean; transmit?: MissionTransmit }
   /** One destination about `routeLengthM` away along the network. */
   | { kind: "destination"; routeLengthM: number };

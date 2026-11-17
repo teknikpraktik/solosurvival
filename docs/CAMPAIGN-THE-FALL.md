@@ -154,19 +154,24 @@ introt (samt bakom resultatet i uppdrag 1, 2 och 4). Vilken del som syns i de sm
 
 ## 8. Begränsningar
 
-- Kartdata finns bara för Värmland. Utanför får spelaren samma besked som i Free Play. Berättelsen är platsoberoende, datan inte.
-- Uppdrag 1 och 5 kräver minst 3 km sammanhängande nät (samma krav som Survival). Uppdrag 2 och 4 nöjer sig med två mål om nätet
-  är litet. Uppdrag 3 söker destination i allt vidare avståndsband och avstår hellre än att lägga ett orimligt mål.
+- Kartdata: samma källor som Free Play, det vill säga repots OSM-tiles i Värmland och OpenFreeMap utanför ([`GLOBAL-MAP-DATA.md`](GLOBAL-MAP-DATA.md)).
+  Kampanjen är inte provad utanför Värmland.
+- Uppdrag 1 och 5 kräver minst 3 km sammanhängande nät (samma krav som Survival). Uppdrag 2 och 4 kräver **exakt tre mål**
+  (`minCount: 3`), eftersom intro, mål och radio nämner antalet; i ett nät med plats för färre vägras uppdraget med samma besked
+  som andra för små nät, och spelaren får starta det från en annan plats. Uppdrag 3 söker destination i allt vidare avståndsband
+  och avstår hellre än att lägga ett orimligt mål.
 - Zonen i uppdrag 4 läggs på en korsning utan större väg, men spelet vet inget om belysning, sikt eller trafik på platsen.
 - Rösterna är genererade och kontrollerade med taligenkänning mot manuset, men ingen människa har lyssnat igenom dem i spelet. Kampanjen är inte spelad i fält.
-- Uppdrag 2 och 4 kan få två mål i glesa nät, medan radion säger tre: [`BUGG-THE-FALL-TVA-CHECKPOINTS.md`](BUGG-THE-FALL-TVA-CHECKPOINTS.md).
+- Tidigare kunde uppdrag 2 och 4 få två mål i glesa nät medan radion sa tre. Åtgärdat: [`BUGG-THE-FALL-TVA-CHECKPOINTS.md`](BUGG-THE-FALL-TVA-CHECKPOINTS.md).
 
 ## 9. Fälttest
+
+Genomförbart protokoll för nästa prov: [`FALTTEST-THE-FALL-PROTOKOLL.md`](FALTTEST-THE-FALL-PROTOKOLL.md).
 
 1. **Uppdrag 4 på riktig GPS**: håller zonen (55 m) under träd och mellan hus? Fladdrar paus/återupptagen? Är 30 s nervöst eller bara långt?
 2. **Genskjutning**: märks den, går den att lura genom att byta väg, känns den orättvis i glesa nät med få korsningar?
 3. **Hard, uppdrag 4 och 5**: går de att klara för en löpare?
-4. **Uppdrag 2**: uppstår ett verkligt vägval, eller är ordningen alltid given? Hur ofta får uppdrag 2 och 4 bara två mål?
+4. **Uppdrag 2**: uppstår ett verkligt vägval, eller är ordningen alltid given? Hur ofta vägras uppdrag 2 och 4 där spelaren står (för få mål)?
 5. **Uppdrag 1**: lagom lugn inledning, eller händelselös på Easy?
 6. **Uppdrag 5**: ligger landningsplatsen rimligt, räcker 8 min, känns slutet som en final?
 7. **Radion**: hinner man läsa texten i rörelse, kommer replikerna för tätt, stör signalen?

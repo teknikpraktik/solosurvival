@@ -169,7 +169,7 @@ kartan. Kartan är redan beroende av den i dag, så risken ökar mindre än det 
 
 ## 7. Sidofynd
 
-**Värmlandstilesen saknar hindertyp.** Fältet `k` saknas i tilesen (0 av 5 165 hindervägar i ett stickprov om 200 tiles), så
-klienten använder reservregeln för äldre tiles i stället för v2.2-regeln, där passager över secondary och tertiary kopplas.
-`build_tiles.py` stödjer `k`, men datan verkar inte ha byggts om sedan dess. Det bör kontrolleras separat. OpenFreeMap-adaptern
-sätter typen.
+**Värmlandstilesen saknade hindertyp** (åtgärdat 2026-11-17). Fältet `k` saknades, så klienten använde reservregeln för äldre
+tiles i stället för v2.2-regeln, där bara passager över secondary och tertiary kopplas. `k` är nu tillagt i de befintliga tilesen
+med `experiments/data/add_hazard_kinds.py`, utan att något annat i dem ändrats. Mätning före och efter och konkreta passager:
+[`STATUS-2026-11-17.md`](STATUS-2026-11-17.md) §3. OpenFreeMap-adaptern satte redan typen, så nu gäller samma regel i och utanför Värmland.

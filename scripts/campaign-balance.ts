@@ -1,7 +1,9 @@
 /* THE FALL: simulated win rates per mission, difficulty and player pace (a simple bot on a street grid).
  *   npx tsx scripts/campaign-balance.ts [seeds=20]
  * The bot avoids the nearest zombie or walks the shortest way to its goal; it does not plan like a person. The numbers compare missions
- * and levels with each other. They are not a forecast of what a player experiences: that needs field tests. */
+ * and levels with each other. They are not a forecast of what a player experiences: that needs field tests.
+ * The grid is easier than real networks; scripts/campaign-balance-causes.ts runs the same missions on real Värmland data and
+ * separates the causes of a loss (speed, tactics, clock, number, the bot's route choice). */
 import { missionDurationS, missionObjectives, missionRules } from "../src/campaign/setup";
 import type { RouteProposal } from "../src/routes/types";
 import { trimCourse } from "../src/campaign/prepare";
@@ -23,7 +25,7 @@ for (const m of THE_FALL.missions) for (const d of ["easy", "normal", "hard"] as
   const cells = PACES.map(([, pace]) => {
     let won = 0, caught = 0, late = 0;
     for (let seed = 1; seed <= N; seed++) {
-      const course = m.layout.kind === "checkpoints" ? trimCourse(generateCourse(g, { start, activity: "walk", targetLengthM: m.layout.courseLengthM, seed, count: 3 }).proposals[0], start, m.layout.count, m.layout.minCount) : null;
+      const course = m.layout.kind === "checkpoints" ? trimCourse(generateCourse(g, { start, activity: "walk", targetLengthM: m.layout.courseLengthM, seed, count: 3, minCheckpoints: m.layout.minCount }).proposals[0], start, m.layout.count, m.layout.minCount) : null;
       const objectives = m.layout.kind === "checkpoints" ? missionObjectives(m, course, d) : m.layout.kind === "destination" ? createObjectives([{ id: "B", kind: "destination", ...edgeLatLon(g, { edgeId: "r2:11", distM: 0 }) }]) : undefined;
       // The time limit the game would set: from the course, or (A to B) from the network distance to the fixed destination, 1 140 m.
       const durationS = missionDurationS(m, { difficulty: d, durationS: 1800 }, course ?? (m.layout.kind === "destination" ? ({ lengthM: 1140, waypoints: [0] } as unknown as RouteProposal) : null));

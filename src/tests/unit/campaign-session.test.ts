@@ -123,6 +123,8 @@ describe("campaign missions through the play session (real Värmland data, fake 
     const o = t.session.getView().match!.objectives!;
     expect(o).toMatchObject({ total: 3, anyOrder: true, transmit: false, needS: 5 });
     expect(o.progress).toMatchObject({ primaryTotal: 3, hasHome: false });
+    // The field log says which mission it is and how many goals were laid out (the field test checks that 02 and 04 always have three).
+    expect(t.session.fieldLog!.data.entries.find((e) => e.k === "match_start")!.d).toMatchObject({ campaign: { id: "the-fall", mission: "02" }, goals: 3 });
     expect(t.session.getView().match!.limitS).toBeGreaterThan(20 * 60);
     t.calm();
     // Taken in the order 3, 1, 2.

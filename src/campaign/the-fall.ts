@@ -70,7 +70,8 @@ const supplyRun: MissionDef = {
   title: "THE SUPPLY RUN",
   tagline: "Supplies and survival",
   mode: "mission",
-  layout: { kind: "checkpoints", count: 3, minCount: 2, courseLengthM: 1500, anyOrder: true },
+  // Exactly three: the intro, the objective and the radio ("Two to go", "That is all three") name the number.
+  layout: { kind: "checkpoints", count: 3, minCount: 3, courseLengthM: 1500, anyOrder: true },
   tuning: {
     speed: 0.95,
     zombies: { easy: { initial: 3, max: 6 }, normal: { initial: 4, max: 9 }, hard: { initial: 6, max: 13 } },
@@ -162,7 +163,8 @@ const lastSignal: MissionDef = {
   tagline: "Establishing communication",
   mode: "mission",
   layout: {
-    kind: "checkpoints", count: 3, minCount: 2, courseLengthM: 2000, anyOrder: false,
+    // Exactly three relays: the intro and the radio name the number, and "tf-m04-middle" is the second of three.
+    kind: "checkpoints", count: 3, minCount: 3, courseLengthM: 2000, anyOrder: false,
     transmit: {
       holdS: { easy: 20, normal: 30, hard: 30 },
       lastHoldS: { easy: 30, normal: 45, hard: 45 },

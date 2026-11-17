@@ -8,6 +8,11 @@ Spelbar PWA med fullständigt matchflöde: tre spellägen (Checkpoints, A TO B, 
 radiorepliker, matchhistorik och återuppspelning. Fälttestad (se `docs/FALTTEST-1.md`). Återstår före release: balansering i fält och
 beslut om native-skal (bakgrunds-GPS, vibration på iPhone).
 
+## Läge och nästa fälttest
+
+Korrigerad status (versioner, NO-GO-punkter, kartdata, balans, plattformskrav): [`docs/STATUS-2026-11-17.md`](docs/STATUS-2026-11-17.md).
+Protokoll för nästa telefonprov: [`docs/FALTTEST-THE-FALL-PROTOKOLL.md`](docs/FALTTEST-THE-FALL-PROTOKOLL.md).
+
 ## Kampanjer
 
 Huvudmenyn leder till CAMPAIGNS (berättelsedrivna uppdrag) och FREE PLAY (de tre fristående lägena, oförändrade). Första kampanjen är
