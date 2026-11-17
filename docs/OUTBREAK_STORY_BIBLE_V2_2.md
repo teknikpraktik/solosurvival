@@ -736,12 +736,12 @@ Free Play har sedan #60 en zombie-AI med roller (förföljare och genskjutare, `
 
 ### Kända problem
 
-- **Två eller tre checkpoints i THE FALL 02 och 04.** I glesa vägnät kan uppdragen få två mål (`minCount: 2`), men replikerna förutsätter tre ("Two to go" följt av "That is all three"; "Three relay sites on your map"). Dokumenterad som separat bugg: [`docs/BUGG-THE-FALL-TVA-CHECKPOINTS.md`](BUGG-THE-FALL-TVA-CHECKPOINTS.md). Åtgärdas inte inom Story v1.1.
+- ~~**Två eller tre checkpoints i THE FALL 02 och 04.**~~ Åtgärdat 2026-11-17 utan ändrad text eller nya inspelningar: uppdragen kräver nu exakt tre mål (`minCount: 3`) och vägras annars. Se [`docs/BUGG-THE-FALL-TVA-CHECKPOINTS.md`](BUGG-THE-FALL-TVA-CHECKPOINTS.md).
 
 ### Utvecklingsordning
 
 **Fas A: Verifiera grunden**
-1. Fälttesta THE FALL utan att samtidigt skriva om dess kärnmekanik. Logga hur ofta uppdrag 2 och 4 får två mål.
+1. Fälttesta THE FALL utan att samtidigt skriva om dess kärnmekanik ([`docs/FALTTEST-THE-FALL-PROTOKOLL.md`](FALTTEST-THE-FALL-PROTOKOLL.md)). Logga hur ofta uppdrag 2 och 4 vägras för att nätet har plats för färre än tre mål.
 2. Inventera nuvarande slutbilder, radiotriggers och kampanjprogression (gjort för THE FALL i v2.2).
 3. Testa tre fristående prototyper: Pursuit, Blockade, Race. Pröva Free Plays roll-AI som grund för Pursuit.
 
