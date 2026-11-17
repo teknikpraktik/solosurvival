@@ -54,6 +54,8 @@ export interface PrepareOptions {
    * around the start has no fitting one. Without it, and without `pointB`, nothing changes from before.
    */
   autoDestination?: (routeGraph: TrailGraph, start: LatLon, hazardNodes: Set<string>) => LatLon | null;
+  /** Mission courses must have at least this many checkpoints (campaign missions). Missing: as before. */
+  minCheckpoints?: number;
 }
 
 export async function prepareMatch(store: WayStore, start: LatLon, p: MatchParams, opts: PrepareOptions = {}): Promise<Prepared> {
@@ -148,7 +150,7 @@ export async function prepareMatch(store: WayStore, start: LatLon, p: MatchParam
   // Mission: only the checkpoints are laid out (fetched in order, then home); there is no route. Distances are straight lines.
   // Bike: checkpoints on easy-to-ride ways (paved/gravel roads, bike lanes, good tracks) when that network can make a fitting course; zombies still use every way.
   const t4 = performance.now();
-  const req = { start, activity: p.activity, targetLengthM: p.targetLengthM, seed: p.seed, count: 3, hazardNodes: region.hazardNodes };
+  const req = { start, activity: p.activity, targetLengthM: p.targetLengthM, seed: p.seed, count: 3, hazardNodes: region.hazardNodes, minCheckpoints: opts.minCheckpoints };
   let res = generateCourse(routeGraph, req);
   if (p.activity === "mtb") {
     const easyEdges = region.graph.edges.filter((e) => e.easy);

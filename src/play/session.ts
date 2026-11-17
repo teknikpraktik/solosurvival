@@ -547,6 +547,8 @@ export class PlaySession {
       zombiesInitial: live.state.zombies.length, rulesZombies: { initial: live.rules.initialZombies, max: live.rules.maxZombies, headStartS: live.rules.headStartS, spawnMinM: live.rules.spawnMinDistanceM }, proximityM: proximityRadiusM(params),
       mode: params.mode, activity: params.activity, difficulty: params.difficulty, zombieAi: live.rules.zombieAi ?? "old", data: this.dataVersion,
       plannedLengthM: this.proposal ? Math.round(this.proposal.lengthM) : null, routeGenerationMs: Math.round(this.routeGenMs),
+      // Field test: which mission the log belongs to, and how many goals were laid out (THE FALL 02 and 04 must always have three).
+      campaign: params.campaign ?? null, goals: this.proposal ? this.proposal.waypoints.filter((w) => w.kind !== "home").length : null,
       tiles: this.prepared?.load ? { n: this.prepared.load.tiles, cache: this.prepared.load.fromCache, net: this.prepared.load.fromNetwork, gzBytes: this.prepared.load.networkGzipBytes } : undefined,
       restored: !fresh,
     });

@@ -22,6 +22,12 @@ export interface CourseRequest {
   count?: number;
   hazardNodes?: Set<string>;
   tolerance?: number;
+  /**
+   * A course must have at least this many checkpoints (campaign missions whose radio names the number). A placement with enough
+   * checkpoints is then preferred over one closer to the wanted length, and a variant that never reaches the number is dropped.
+   * Missing: as before (any placement with two or more, closest to the length).
+   */
+  minCheckpoints?: number;
 }
 
 const ZERO_METRICS: RouteMetrics = { reuseShare: 0, deadEndShare: 0, maxWaypointDeadEndDepthM: 0, decisionPoints: 3, hazardCrossings: 0, minWaypointExits: 2, alternativeRatio: null, directness: 1 };
@@ -61,6 +67,7 @@ export function generateCourse(g: TrailGraph, req: CourseRequest): RouteResult {
   if (cands.length < 2) return { proposals: [], notes: ["Too few usable points on the network."], stats: { candidates: cands.length, evaluated: 0, ms: performance.now() - t0 } };
   const rng: RngHolder = { rngState: (req.seed * 2246822519) >>> 0 };
   const count = req.count ?? 3;
+  const minCps = Math.max(2, req.minCheckpoints ?? 2);
   const homeNode = g.edges.get(snap.edgeId)!.from;
   const proposals: RouteProposal[] = [];
   let evaluated = 0;
@@ -95,15 +102,18 @@ export function generateCourse(g: TrailGraph, req: CourseRequest): RouteResult {
     const jit = Array.from({ length: n }, () => 0.9 + rand(rng) * 0.2);
     let R = L / (2 * Math.PI);
     let best: { ids: Cand[]; len: number } | null = null;
+    const enough = (x: { ids: Cand[] }) => x.ids.length >= minCps;
     for (let it = 0; it < 8; it++) {
       const r = place(theta0, dir, R, jit);
       evaluated++;
-      if (r.ids.length >= 2 && (!best || Math.abs(r.len - L) < Math.abs(best.len - L))) best = r;
-      if (best && Math.abs(best.len - L) / L <= 0.03) break;
+      // With a required number of checkpoints, a placement that has them beats one that is only closer to the length.
+      const better = !best || (enough(r) !== enough(best) ? enough(r) : Math.abs(r.len - L) < Math.abs(best.len - L));
+      if (r.ids.length >= 2 && better) best = r;
+      if (best && enough(best) && Math.abs(best.len - L) / L <= 0.03) break;
       if (r.len <= 0) break;
       R *= L / r.len;
     }
-    if (!best) continue;
+    if (!best || !enough(best)) continue;
     const pts = best.ids.map((c) => c.p);
     // The first/last checkpoint should not sit on top of the start: already excluded by MIN_FROM_START_M.
     const waypoints: Waypoint[] = [

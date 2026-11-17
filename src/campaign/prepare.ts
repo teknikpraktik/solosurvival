@@ -65,7 +65,7 @@ export function pickDestination(g: TrailGraph, start: LatLon, hazardNodes: Set<s
  * Loads the map around the player and lays out the mission's goals there. The result is what Free Play's preparation returns (same
  * statuses and messages: outside the mapped area, too far from a trail, too little network), so the caller handles both alike.
  * A mission is only offered when its goals can really be reached on the local network; with a small network the generator's closest
- * course is used, down to the mission's minimum number of goals, before the mission is refused.
+ * course is used, but never one with fewer goals than the mission's minimum (THE FALL: exactly the number its radio names).
  */
 export async function prepareMission(store: WayStore, start: LatLon, m: MissionDef, p: MatchParams, opts: PrepareOptions = {}): Promise<Prepared> {
   const l = m.layout;
@@ -74,8 +74,10 @@ export async function prepareMission(store: WayStore, start: LatLon, m: MissionD
     // One route is enough: any way to the destination counts, the line on the map is only a hint.
     return r.proposals.length > 1 ? { ...r, proposals: r.proposals.slice(0, 1) } : r;
   }
-  const r = await prepareMatch(store, start, p, opts);
-  if (l.kind !== "checkpoints") return r;
+  if (l.kind !== "checkpoints") return prepareMatch(store, start, p, opts);
+  // The generator only offers courses with the mission's minimum number of goals, so a course with more is never passed over for one
+  // that is merely closer to the wanted length.
+  const r = await prepareMatch(store, start, p, { ...opts, minCheckpoints: l.minCount });
   if ((r.status !== "ok" && r.status !== "alternative") || !r.proposals.length) return r;
   const course = trimCourse(r.proposals[0], start, l.count, l.minCount);
   if (!course) return { ...r, status: "no_route", proposals: [], message: "Too few reachable places around you for this mission. Move to an area with more connected paths and try again." };
