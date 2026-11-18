@@ -12,11 +12,27 @@ import { Soundscape, type Bus, type Levels, type LoopVoice, type MusicSource, ty
  * helicopter phases and event sounds, all through one Web Audio context. The files are built by scripts/build-audio.mjs from
  * assets/audio/source/; game rules for when they play are in src/play/sound-rules.ts.
  */
+/** The rest of the soundtrack, besides the theme's three versions in AUDIO (where each plays: MUSIC_PLAYLIST). */
+export const SOUNDTRACK = {
+  frostborne1: "/audio/music-frostborne-silence-1.mp3",
+  fragile: "/audio/music-fragile-motif.mp3",
+  fragile1: "/audio/music-fragile-motif-1.mp3",
+  threeNote: "/audio/music-three-note-motif.mp3",
+  stairwell: "/audio/music-stairwell-silence.mp3",
+  untitled1: "/audio/music-untitled-1.mp3",
+  footstep: "/audio/music-missing-footstep.mp3",
+  dirtyRiff: "/audio/music-dirty-riff.mp3",
+  groove: "/audio/music-relentless-groove.mp3",
+  finalSilence: "/audio/music-final-silence.mp3",
+} as const;
+
 export const AUDIO = {
   music: "/audio/theme-frostborne.mp3",
   musicFade: "/audio/theme-frostborne-fade.mp3",
   musicShort: "/audio/theme-frostborne-short.mp3",
-  threat: ["/audio/threat-pulse-1.mp3", "/audio/threat-pulse-2.mp3", "/audio/threat-pulse-3.mp3", "/audio/threat-pulse-4.mp3"],
+
+  /** 1–4: 15 s; 5–14: 30 s (a burst starts at a random place in them). */
+  threat: Array.from({ length: 14 }, (_, i) => `/audio/threat-pulse-${i + 1}.mp3`),
   captured: "/audio/captured.mp3",
   safeDoor: "/audio/safe-door-close.mp3",
   heliSuccess: "/audio/heli-extraction-success.mp3",
@@ -55,9 +71,21 @@ export type VoiceLine = keyof typeof VOICE;
 const COUNT_LINE: Record<(typeof VOICE_COUNTDOWN_M)[number], VoiceLine> = { 50: "count50", 40: "count40", 30: "count30", 20: "count20", 10: "count10" };
 const COUNT_LINES: readonly VoiceLine[] = Object.values(COUNT_LINE);
 
+/**
+ * The threat pulse's long variants (30 s): fetched for offline use before a match but decoded only when a burst plays them, and let go
+ * after it (decoded, one is ≈ 11 MB; all ten at once would be too much for a phone). The four short ones are decoded with the match.
+ */
+export const LONG_THREAT: readonly string[] = AUDIO.threat.slice(4);
+const isLongThreat = (url: string) => LONG_THREAT.includes(url);
+/** Fetches files into the offline cache without decoding them. */
+export function fetchForOffline(urls: readonly string[]): void {
+  if (typeof fetch !== "function") return;
+  for (const u of urls) void fetch(u).then((r) => r.arrayBuffer()).catch(() => null);
+}
+
 /** Every match: decoded while the player sets up the match. */
 export const MATCH_SOUNDS: readonly string[] = [
-  ...AUDIO.threat, ...AUDIO.jump, AUDIO.captured, AUDIO.safeDoor, AUDIO.zombieNear, AUDIO.revealed, AUDIO.checkpoint,
+  ...AUDIO.threat.slice(0, 4), ...AUDIO.jump, AUDIO.captured, AUDIO.safeDoor, AUDIO.zombieNear, AUDIO.revealed, AUDIO.checkpoint,
   VOICE.safehouseOnMap.url, VOICE.checkpointSecured.url, VOICE.getToSafehouse.url, VOICE.insideSafehouse.url, VOICE.keepMoving.url,
   VOICE.checkpointStart.url, VOICE.zombiesApproaching.url, ...COUNT_LINES.map((l) => VOICE[l].url),
 ];
@@ -354,6 +382,7 @@ export class MatchAudio {
         });
       // The loop follows the phase (see update), from the same tick as the landed card. "Rescue inbound" is no longer true once it has landed.
       case "heli_landed":
+        this.s.music.moment("extraction"); // the run to the helicopter has its own music
         if (e.campaign) return Promise.resolve(null);
         return this.radio.say("getToHelicopter", { supersedes: ["rescueInbound"] });
     }
@@ -407,6 +436,7 @@ export class MatchAudio {
     if (this.done && this.endedWith !== null) return Promise.resolve(null);
     this.done = true;
     this.endedWith = result;
+    this.s.music.matchOutcome(result === "infected" || result === "failed"); // a lost match ends on its own music
     this.setEndDone(false);
     this.stopLoops(SOUND_RULES.heli.loopStopS);
     // Lines about the match (start, checkpoints, helicopter) are over; a win gets its own line, part of the ending.
@@ -515,10 +545,10 @@ export class MatchAudio {
   private burst(variant: number, fadeInS: number): void {
     const T = SOUND_RULES.threat;
     this.threatVoice = this.s.loop(AUDIO.threat[variant], "threat", GAIN.threat, 0.12);
-    void this.threatVoice.start(fadeInS);
+    // From a random place in the file, leaving room for the longest burst and its fade-out before the file's end.
+    void this.threatVoice.start(fadeInS, { frac: this.random(), keepS: T.burstS[1] + T.burstFadeOutS });
     this.burstTimer = this.s.later(() => {
-      this.threatVoice?.stop(T.burstFadeOutS);
-      this.threatVoice = null;
+      this.endBurst(T.burstFadeOutS);
       this.burstTimer = this.s.later(() => {
         this.burstTimer = null;
         if (this.threat.active && this.running(this.input)) this.burst(pickVariant(variant, AUDIO.threat.length, this.random), T.burstFadeInS);
@@ -528,8 +558,16 @@ export class MatchAudio {
 
   private stopBursts(fadeS: number): void {
     if (this.burstTimer !== null) { this.s.cancel(this.burstTimer); this.burstTimer = null; }
-    this.threatVoice?.stop(fadeS);
+    this.endBurst(fadeS);
+  }
+
+  /** Fades the burst out; a long variant's decoded copy is let go once it is silent. */
+  private endBurst(fadeS: number): void {
+    const v = this.threatVoice;
     this.threatVoice = null;
+    if (!v) return;
+    v.stop(fadeS);
+    if (isLongThreat(v.url)) this.s.later(() => { if (this.threatVoice?.url !== v.url) this.s.unload(v.url); }, (fadeS + 0.6) * 1000);
   }
 
   /** For tests: what is sounding. */
@@ -583,15 +621,31 @@ export function soundscape(): Soundscape {
 }
 
 /**
- * The music: three versions of one theme ("Frostborne Silence"), all at about −16 LUFS. On the menu the full version opens the app and
- * the passes repeat, crossfaded, each a random version that is not the one just heard. A match has a plan (`match`): the short version
- * plays as the match begins, the middle one once more after a silence of 4–9 minutes, and the full one when the match is over. Between
- * them the threat pulse is the match's backdrop. Start and end are where the music really is (measured with silencedetect).
+ * The soundtrack: three versions of the theme ("Frostborne Silence") and ten more pieces, all brought to the theme's level (≈ −16.3 LUFS)
+ * by `gain` (a quiet piece is lifted at most +4 dB). Start and end are where the music really is (measured with silencedetect). The same
+ * plan serves Free Play and every campaign mission:
+ * - Menu: the full theme opens the app, then crossfaded passes drawn from the calm pieces (the theme's versions, Frostborne Silence 1 and
+ *   the two Fragile Three-Note Motifs), never the one just heard.
+ * - Match start: the short theme or the Three-Note Motif (which builds from near silence), crossfaded from the menu.
+ * - Mid-match: up to two passes, each after a silence of 4–9 minutes, drawn from the tense pieces (Stairwell Silence, Untitled 1, The
+ *   Missing Footstep, Dirty Riff). Between them the threat pulse is the match's backdrop.
+ * - The helicopter has landed (Survival, FINAL EXTRACTION): Relentless Groove at once, for the run to it.
+ * - Over: the full theme after a win, Final Silence after a lost match (caught, out of time), each after the ending's own sounds.
  */
 export const MUSIC_TRACKS: MusicTrack[] = [
-  { url: AUDIO.music, startS: 0.5, endS: 206.9, gain: 1 }, // 209.5 s, 0.5 s of silence first, own fade-out, 2.6 s of silence last
-  { url: AUDIO.musicFade, startS: 0.5, endS: 154.1, gain: 1 }, // 154.8 s, own fade-out
-  { url: AUDIO.musicShort, startS: 0, endS: 137.9, gain: 1 }, // 138.0 s, own fade-out
+  { url: AUDIO.music, startS: 0.5, endS: 206.9, gain: 1 }, // 0 · 209.5 s, 0.5 s of silence first, own fade-out, 2.6 s of silence last
+  { url: AUDIO.musicFade, startS: 0.5, endS: 154.1, gain: 1 }, // 1 · 154.8 s, own fade-out
+  { url: AUDIO.musicShort, startS: 0, endS: 137.9, gain: 1 }, // 2 · 138.0 s, own fade-out
+  { url: SOUNDTRACK.frostborne1, startS: 0, endS: 129.2, gain: 1.04 }, // 3 · 130.0 s, −16.6 LUFS, 0.8 s of silence last
+  { url: SOUNDTRACK.fragile, startS: 0.9, endS: 124.4, gain: 0.98 }, // 4 · 124.4 s, −16.1 LUFS
+  { url: SOUNDTRACK.fragile1, startS: 0, endS: 157.2, gain: 0.94 }, // 5 · 157.2 s, −15.8 LUFS
+  { url: SOUNDTRACK.threeNote, startS: 0.6, endS: 90.0, gain: 1.06 }, // 6 · 90.0 s, −16.8 LUFS, builds from near silence
+  { url: SOUNDTRACK.stairwell, startS: 0, endS: 45.6, gain: 1.3 }, // 7 · 45.6 s, −18.6 LUFS
+  { url: SOUNDTRACK.untitled1, startS: 0.6, endS: 70.0, gain: 1.19 }, // 8 · 70.0 s, −17.8 LUFS
+  { url: SOUNDTRACK.footstep, startS: 0, endS: 11.9, gain: 1.6 }, // 9 · 13.6 s, −21.5 LUFS, a short cue; 1.8 s of silence last
+  { url: SOUNDTRACK.dirtyRiff, startS: 0, endS: 150.8, gain: 0.88 }, // 10 · 150.8 s, −15.2 LUFS, steady and driving
+  { url: SOUNDTRACK.groove, startS: 0.4, endS: 94.3, gain: 1 }, // 11 · 94.8 s, −16.3 LUFS, driving
+  { url: SOUNDTRACK.finalSilence, startS: 0, endS: 58.7, gain: 1.51 }, // 12 · 59.6 s, −19.9 LUFS, 1 s of silence last
 ];
 export const MUSIC_PLAYLIST: MusicSource = {
   tracks: MUSIC_TRACKS,
@@ -599,12 +653,17 @@ export const MUSIC_PLAYLIST: MusicSource = {
   fadeInS: 3,
   fadeOutS: 2.5,
   endFadeS: 2.5,
-  // During a match: the silence between the opening pass and the one pass in mid-match.
+  // During a match: the silence before each pass in mid-match.
   gapS: [240, 540],
-  match: { start: 2, mid: 1, end: 0 },
+  menu: [0, 1, 2, 3, 4, 5],
+  match: { start: [2, 6], mid: [7, 8, 9, 10], midPasses: 2, end: 0, lost: 12, moments: { extraction: 11 } },
 };
+/** Every music file (fetched before a match, so the match's pieces play offline too). */
+export const MUSIC_URLS: readonly string[] = MUSIC_TRACKS.map((t) => t.url);
 /** Campaign: decode a mission's recorded lines before the match (only those that exist), with the sounds its ending may use. */
 export function preloadMissionVoices(campaignId: string, beatIds: readonly string[]): void {
+  void soundscape().music.prefetch("all");
+  fetchForOffline(LONG_THREAT);
   const have = RECORDED_BEATS[campaignId] ?? [];
   soundscape().preload([...MATCH_SOUNDS, ...HELI_SOUNDS, ...beatIds.filter((id) => have.includes(id)).map((id) => beatVoiceUrl(campaignId, id))]);
 }

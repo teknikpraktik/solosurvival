@@ -218,10 +218,10 @@ describe("ljudpaket", () => {
     expect(hits.map((p) => path.relative(app, p))).toEqual([]);
   });
   it("ljudbildens filer finns i public/audio, de gamla WAV-ljuden är borta och inga WAV-original ligger i appen", async () => {
-    const { AUDIO, VOICE } = await import("@/app/_client/audio");
+    const { AUDIO, SOUNDTRACK, VOICE } = await import("@/app/_client/audio");
     const { existsSync, readdirSync } = await import("node:fs");
     const pub = path.resolve(import.meta.dirname, "../../../public/audio");
-    const urls = [...Object.values(AUDIO).flat(), ...Object.values(VOICE).map((v) => v.url)];
+    const urls = [...Object.values(AUDIO).flat(), ...Object.values(SOUNDTRACK), ...Object.values(VOICE).map((v) => v.url)];
     for (const u of urls) expect(existsSync(path.join(pub, u.replace(/^\/audio\//, ""))), u).toBe(true);
     const files = readdirSync(pub);
     expect(files.filter((f) => !f.endsWith(".mp3"))).toEqual([]);

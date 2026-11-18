@@ -31,8 +31,9 @@ export const SOUND_RULES = {
      */
     burstS: [6, 14] as const,
     restS: [3, 8] as const,
-    burstFadeInS: 1.5,
-    burstFadeOutS: 2.5,
+    /** Each burst fades in and out (softened when the 30 s variants came: no burst starts or stops abruptly). */
+    burstFadeInS: 2.5,
+    burstFadeOutS: 3.5,
   },
   /**
    * After the field test, two steps for both activities: at 200 m the operator's "Zombies approaching!" (out again beyond 260 m), at 100 m

@@ -61,7 +61,7 @@ async function startMatch(o, mode) {
   const before = mu.playing && mu.els.some((e) => !e.paused);
   console.log(`  (music before any tap: ${before ? "started (this browser allows it)" : "refused by the browser, waits for a tap"})`);
   check("start page: the music is asked for at once (started, or waiting for the browser's first tap)", mu.els.length === 2, JSON.stringify(mu));
-  check("start page: no match sounds fetched yet (only the music)", !reqs.some((p) => !/^\/audio\/theme-frostborne(-fade|-short)?\.mp3$/.test(p)), reqs.join(","));
+  check("start page: no match sounds fetched yet (only the menu's music)", !reqs.some((p) => !/^\/audio\/(theme-frostborne(-fade|-short)?|music-frostborne-silence-1|music-fragile-motif(-1)?)\.mp3$/.test(p)), reqs.join(","));
   await page.getByRole("link", { name: "FREE PLAY" }).click();
   await page.waitForURL("**/new"); await wait(2400);
   mu = await music(page);
