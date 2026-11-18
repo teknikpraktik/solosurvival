@@ -3,7 +3,8 @@ import path from "node:path";
 import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
 import { describe, expect, it } from "vitest";
-import { loadProgress, missionStatus, progressKey } from "@/campaign/progress";
+import { loadProgress, missionStatus, setDifficulty, storyKey, saveProgress, highestAward } from "@/campaign/progress";
+import { REGENESIS } from "@/campaign/stories";
 import { missionParams } from "@/campaign/setup";
 import { THE_FALL } from "@/campaign/the-fall";
 import type { Difficulty } from "@/config/difficulty";
@@ -53,7 +54,7 @@ async function make(kv = new Map<string, string>(), idb = new IDBFactory()) {
     expect(session.resume()).toBe(true);
     return prep!;
   };
-  const progress = () => loadProgress(store, c);
+  const progress = () => loadProgress(store, REGENESIS);
   /** Keeps every zombie far away, so a test about goals or the clock is not ended by a capture. */
   const calm = () => { for (const z of session.live!.state.zombies) z.speedMps = 0; session.live!.rules.maxZombies = session.live!.state.zombies.length; };
   return { g, db, session, advance, play, begin, progress, calm, sounds, kv, idb, now: () => clock, set: (t: number) => (clock = t) };
@@ -68,7 +69,7 @@ describe("campaign missions through the play session (real Värmland data, fake 
     expect(m).toMatchObject({ mode: "survival", activity: "walk", difficulty: "easy", limitS: 900, winOnTimeout: true, extractionOpensAtS: Infinity, objectives: null });
     expect(m.campaign).toMatchObject({ campaignId: "the-fall", missionId: "01", number: 1, total: 5, title: "FIRST CONTACT", outcome: null });
     expect(m.zombieCount).toBe(1);
-    expect(t.progress().missions["01"]).toMatchObject({ attempts: 1, completed: false });
+    expect(t.progress().chapters["the-fall"].missions["01"]).toMatchObject({ attempts: 1, completed: false });
     // The opening line: on screen and sent to the soundscape; the mode's own opening line is not said.
     expect(t.session.getView().radio).toMatchObject({ id: "tf-m01-start", speaker: "WATCHTOWER" });
     expect(t.sounds.find((e) => e.type === "match_started")).toMatchObject({ campaign: true });
@@ -85,9 +86,10 @@ describe("campaign missions through the play session (real Värmland data, fake 
     for (const id of ["tf-m01-signal", "tf-m01-spread", "tf-m01-survivors", "tf-m01-minute", "tf-m01-win"]) expect(said).toContain(id);
     expect(new Set(said).size).toBe(said.length);
     const p = t.progress();
-    expect(p.missions["01"]).toMatchObject({ completed: true, bestTimeS: 900 });
-    expect(missionStatus(c, p, "02")).toBe("next");
-    expect(missionStatus(c, p, "03")).toBe("locked");
+    expect(p.chapters["the-fall"].missions["01"]).toMatchObject({ completed: true, bestTimeS: 900, bestDifficulty: "easy" });
+    expect(p.started).toBe(true);
+    expect(missionStatus(REGENESIS, p, "the-fall", "02")).toBe("next");
+    expect(missionStatus(REGENESIS, p, "the-fall", "03")).toBe("locked");
     // The match is in the history as the mission it was.
     await new Promise((r) => setTimeout(r, 30));
     const h = (await new MatchStorage(t.db).listHistory())[0];
@@ -137,7 +139,7 @@ describe("campaign missions through the play session (real Värmland data, fake 
     expect(story(t.sounds).filter((id) => /first|middle|win/.test(id))).toEqual(["tf-m02-first", "tf-m02-middle", "tf-m02-win"]);
     expect(t.sounds.filter((e) => e.type === "checkpoint").every((e) => e.type === "checkpoint" && e.campaign)).toBe(true);
     // Mission 02 was played although mission 01 is not done (a test shortcut): the win must not unlock anything.
-    expect(t.progress().missions["02"].completed).toBe(false);
+    expect(t.progress().chapters["the-fall"].missions["02"].completed).toBe(false);
   });
 
   it("mission 03: a destination is chosen on the network about 1.5 km away, with a route to it", async () => {
@@ -227,7 +229,7 @@ describe("campaign missions through the play session (real Värmland data, fake 
     const kv = new Map<string, string>();
     for (const id of ["01", "02", "03", "04", "05"]) {
       const t = await make(kv);
-      expect(missionStatus(c, t.progress(), id)).toBe("next");
+      expect(missionStatus(REGENESIS, t.progress(), "the-fall", id)).toBe("next");
       const prep = await t.begin(id, "easy");
       t.calm();
       if (id === "01") t.play(905);
@@ -237,11 +239,14 @@ describe("campaign missions through the play session (real Värmland data, fake 
       expect(t.session.getView().match!.result).toBe("survived");
       expect(out).toMatchObject({ firstCompletion: true, campaignCompleted: id === "05", saved: true });
     }
-    const p = loadProgress({ getItem: (k) => kv.get(k) ?? null, setItem: () => undefined }, c);
-    expect(c.missions.every((m) => p.missions[m.id].completed)).toBe(true);
+    const p = loadProgress({ getItem: (k) => kv.get(k) ?? null, setItem: () => undefined }, REGENESIS);
+    expect(c.missions.every((m) => p.chapters["the-fall"].missions[m.id].completed)).toBe(true);
     expect(p.completedAt).toBeGreaterThan(0);
-    expect(p.difficulty).toBe("normal"); // playing on Easy by parameter does not change the saved choice
-    expect([...kv.keys()]).toEqual([progressKey("the-fall")]);
+    expect(p.difficulty).toBeNull(); // playing on Easy by parameter does not set the saved choice
+    // Every win is recorded on the difficulty the match was played on, and the story award follows from them.
+    expect(c.missions.every((m) => p.chapters["the-fall"].missions[m.id].bestDifficulty === "easy")).toBe(true);
+    expect(highestAward(p)).toBe("easy");
+    expect([...kv.keys()]).toEqual([storyKey("regenesis")]);
   });
 
   it("failure and retry: out of time fails only this attempt; the retry is a new match of the same mission and can be won", async () => {
@@ -260,9 +265,9 @@ describe("campaign missions through the play session (real Värmland data, fake 
     expect(v.campaign!.outcome).toMatchObject({ firstCompletion: false, nextMissionId: "03", saved: true });
     expect(v.campaign!.endLines.map((l) => l.id)).toEqual(["tf-m02-late-fail"]);
     let p = t.progress();
-    expect(p.missions["01"].completed).toBe(true);
-    expect(p.missions["02"]).toMatchObject({ completed: false, failures: 1, attempts: 1 });
-    expect(missionStatus(c, p, "02")).toBe("next");
+    expect(p.chapters["the-fall"].missions["01"].completed).toBe(true);
+    expect(p.chapters["the-fall"].missions["02"]).toMatchObject({ completed: false, failures: 1, attempts: 1 });
+    expect(missionStatus(REGENESIS, p, "the-fall", "02")).toBe("next");
     // Retry Mission: the session is reset and the mission is laid out again (a new seed, a new match).
     const firstId = v.id;
     t.session.reset();
@@ -278,8 +283,8 @@ describe("campaign missions through the play session (real Värmland data, fake 
     for (const w of prep.proposals[0].waypoints) t.play(8, w);
     expect(t.session.getView().match!.result).toBe("survived");
     p = t.progress();
-    expect(p.missions["02"]).toMatchObject({ completed: true, failures: 1, attempts: 2 });
-    expect(missionStatus(c, p, "03")).toBe("next");
+    expect(p.chapters["the-fall"].missions["02"]).toMatchObject({ completed: true, failures: 1, attempts: 2 });
+    expect(missionStatus(REGENESIS, p, "the-fall", "03")).toBe("next");
   });
 
   it("being caught fails the mission with the capture ending, and nothing else changes", async () => {
@@ -296,7 +301,7 @@ describe("campaign missions through the play session (real Värmland data, fake 
     expect(v.campaign!.outcome).toMatchObject({ firstCompletion: false, saved: true });
     expect(v.campaign!.endLines.map((l) => l.id)).toEqual(["tf-m01-caught"]);
     expect(story(t.sounds)).toContain("tf-m01-contact");
-    expect(t.progress().missions["01"]).toMatchObject({ completed: false, failures: 1 });
+    expect(t.progress().chapters["the-fall"].missions["01"]).toMatchObject({ completed: false, failures: 1 });
   });
 
   it("quit: the mission ends as aborted, the session is back at the start, and the campaign is as it was", async () => {
@@ -308,7 +313,7 @@ describe("campaign missions through the play session (real Värmland data, fake 
     await t.session.quit();
     expect(t.session.getView().match).toBeNull();
     expect(JSON.stringify(t.progress())).toBe(before);
-    expect(t.progress().missions["01"]).toMatchObject({ completed: false, failures: 0, attempts: 1 });
+    expect(t.progress().chapters["the-fall"].missions["01"]).toMatchObject({ completed: false, failures: 0, attempts: 1 });
     expect((await new MatchStorage(t.db).listHistory())[0]).toMatchObject({ result: "aborted", campaign: { mission: "01" } });
   });
 
@@ -340,7 +345,7 @@ describe("campaign missions through the play session (real Värmland data, fake 
     t2.play(40, relays[0]);
     expect(t2.session.getView().match!.objectives!.reached).toEqual([relays[0].id]);
     // The attempt was counted once, when it began.
-    expect(t2.progress().missions["04"].attempts).toBe(1);
+    expect(t2.progress().chapters["the-fall"].missions["04"].attempts).toBe(1);
   });
 
   it("a short look away from the app during a transmission: no line is said late, and the mission goes on", async () => {
@@ -356,6 +361,33 @@ describe("campaign missions through the play session (real Värmland data, fake 
     expect(late).toEqual([]);
     expect(t.session.getView().match!.paused).toBe(false);
     expect(t.session.getView().match!.result).toBeUndefined();
+  });
+
+  it("the result is recorded on the difficulty the match started with, even if the setting changes during the match or the app reloads", async () => {
+    const kv = new Map<string, string>();
+    const idb = new IDBFactory();
+    const kvStore = { getItem: (k: string) => kv.get(k) ?? null, setItem: (k: string, v: string) => void kv.set(k, v) };
+    saveProgress(kvStore, setDifficulty(loadProgress(kvStore, REGENESIS), "hard"));
+    const t = await make(kv, idb);
+    await t.begin("01", "easy");
+    t.calm();
+    t.play(30);
+    // The saved default is changed while the match runs (another tab, edited storage): the match keeps its own difficulty.
+    saveProgress(kvStore, setDifficulty(loadProgress(kvStore, REGENESIS), "normal"));
+    t.session.onPageHide();
+    await new Promise((r) => setTimeout(r, 60));
+    const t2 = await make(kv, idb);
+    t2.set(t.now() + 1000);
+    expect(await t2.session.restoreActive()).toEqual({ ok: true });
+    expect(t2.session.getView().match!.difficulty).toBe("easy");
+    for (let i = 0; i < 3; i++) { t2.g.fix(START, 6, t2.now()); t2.advance(1000); }
+    expect(t2.session.resume()).toBe(true);
+    t2.calm();
+    t2.play(905);
+    expect(t2.session.getView().match!.result).toBe("survived");
+    const p = t2.progress();
+    expect(p.chapters["the-fall"].missions["01"]).toMatchObject({ completed: true, bestDifficulty: "easy", attempts: 1 });
+    expect(p.difficulty).toBe("normal");
   });
 
   it("Free Play is untouched: no campaign on the match, the mode's own sound events, and no campaign progress written", async () => {

@@ -63,3 +63,8 @@ export function chapterPlace(campaignId: string): ChapterPlace | null {
   }
   return null;
 }
+
+/** The story a playable chapter belongs to: its progress, difficulty and awards are kept per story. */
+export function storyOfChapter(campaignId: string): StoryDef | null {
+  return chapterPlace(campaignId)?.story ?? null;
+}

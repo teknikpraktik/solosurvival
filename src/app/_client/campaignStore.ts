@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { loadProgress, newProgress, saveProgress, type CampaignProgress } from "@/campaign/progress";
-import type { CampaignDef } from "@/campaign/types";
+import { loadProgress, newProgress, saveProgress, type StoryProgress } from "@/campaign/progress";
+import type { StoryDef } from "@/campaign/stories";
 
 type KV = Pick<Storage, "getItem" | "setItem">;
 
@@ -22,18 +22,18 @@ export function campaignKv(): KV {
 }
 
 /**
- * A campaign's progress for a page. It is read after mount (the server render and the first client render show a new campaign, so the
- * markup matches), and every change is saved at once.
+ * A story's progress for a page (every chapter, the difficulty, the awards). It is read after mount (the server render and the first client
+ * render show a new story, so the markup matches), and every change is saved at once.
  */
-export function useCampaignProgress(c: CampaignDef): { progress: CampaignProgress; ready: boolean; update: (fn: (p: CampaignProgress) => CampaignProgress) => void } {
-  const [progress, setProgress] = useState<CampaignProgress>(() => newProgress(c));
+export function useStoryProgress(s: StoryDef): { progress: StoryProgress; ready: boolean; update: (fn: (p: StoryProgress) => StoryProgress) => void } {
+  const [progress, setProgress] = useState<StoryProgress>(() => newProgress(s));
   const [ready, setReady] = useState(false);
-  useEffect(() => { setProgress(loadProgress(campaignKv(), c)); setReady(true); }, [c]);
-  const update = useCallback((fn: (p: CampaignProgress) => CampaignProgress) => {
+  useEffect(() => { setProgress(loadProgress(campaignKv(), s)); setReady(true); }, [s]);
+  const update = useCallback((fn: (p: StoryProgress) => StoryProgress) => {
     // From what is stored, not from this page's copy: a match may have saved a result since the page read it.
-    const next = fn(loadProgress(campaignKv(), c));
+    const next = fn(loadProgress(campaignKv(), s));
     saveProgress(campaignKv(), next);
     setProgress(next);
-  }, [c]);
+  }, [s]);
   return { progress, ready, update };
 }

@@ -2,14 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { chapterPlace, findCampaign } from "@/campaign";
-import { canPlay, completedCount, isCampaignComplete, markIntroSeen, missionStatus, nextMission, setDifficulty, type CampaignProgress } from "@/campaign/progress";
+import { chapterPlace, findCampaign, findMission, storyOfChapter } from "@/campaign";
+import {
+  canPlay, chapterCompletedCount, completedCount, DIFFICULTY_ORDER, highestAward, isChapterComplete, markIntroSeen, missionProgress, missionStatus,
+  nextMission, setDifficulty, storyMissions, type StoryProgress,
+} from "@/campaign/progress";
+import type { StoryDef } from "@/campaign/stories";
 import { missionParams } from "@/campaign/setup";
 import type { CampaignDef, MissionDef } from "@/campaign/types";
 import type { Difficulty } from "@/config/difficulty";
 import { errorText } from "@/gps/provider/provider";
 import { preloadMissionVoices } from "../../_client/audio";
-import { useCampaignProgress } from "../../_client/campaignStore";
+import { useStoryProgress } from "../../_client/campaignStore";
 import { unlockAudio } from "../../_client/cues";
 import { DIFFICULTY_LABEL, fmtTime } from "../../_client/format";
 import { preloadMatchPictures } from "../../_client/matchImages";
@@ -17,27 +21,34 @@ import { PageHeader } from "../../_client/Modal";
 import { useSessionCtx, useSessionView } from "../../_client/SessionProvider";
 import { t } from "../../_client/strings";
 
-const DIFFICULTIES: readonly Difficulty[] = ["easy", "normal", "hard"];
 const newSeed = () => Math.floor(Math.random() * 1e9);
 /** The cinematic intro moves on by itself after its lines have been shown (ms per line, plus a pause). */
 const INTRO_LINE_MS = 2300;
 
 const missionUrl = (campaignId: string, missionId: string | null) => (missionId ? `/campaigns/${campaignId}?mission=${missionId}` : `/campaigns/${campaignId}`);
+/**
+ * A briefing's history entry is marked, and the overview always sits right before it: the app's ‹ and the phone's back both step back to
+ * the overview, whether the briefing was opened from the overview or by a link (NEXT, RETRY, a bookmark, a reload).
+ */
+const BRIEFING = "outbreakBriefing";
+const onBriefingEntry = () => { try { return !!(window.history.state as Record<string, unknown> | null)?.[BRIEFING]; } catch { return false; } };
 
 /** A mission as a large picture card: number, name, theme and state. Locked missions cannot be opened. */
-function MissionCard({ c, m, progress, onOpen }: { c: CampaignDef; m: MissionDef; progress: CampaignProgress; onOpen: () => void }) {
+function MissionCard({ s, c, m, progress, onOpen }: { s: StoryDef; c: CampaignDef; m: MissionDef; progress: StoryProgress; onOpen: () => void }) {
   const S = t().campaign;
-  const status = missionStatus(c, progress, m.id);
-  const mp = progress.missions[m.id];
+  const status = missionStatus(s, progress, c.id, m.id);
+  const mp = missionProgress(progress, c.id, m.id);
   const locked = status === "locked";
+  // A won mission shows the highest difficulty it has been won on (none for a win from before difficulties were recorded).
+  const best = status === "completed" && mp?.bestDifficulty ? DIFFICULTY_LABEL[mp.bestDifficulty].toUpperCase() : null;
   return (
     <button type="button" className="missioncard" data-status={status} disabled={locked} onClick={onOpen}
-      aria-label={`${S.mission(m.id)}: ${m.title}. ${S.status[status]}${locked ? `. ${S.lockedHint}` : ""}`}>
+      aria-label={`${S.mission(m.id)}: ${m.title}. ${S.status[status]}${best ? ` ${S.onDifficulty(best)}` : ""}${locked ? `. ${S.lockedHint}` : ""}`}>
       <span className="missioncard-bg" aria-hidden="true" style={{ backgroundImage: `url(${m.image})`, backgroundPosition: m.imagePosition }} />
       <span className="missioncard-body" aria-hidden="true">
         <span className="missioncard-top">
           <span className="missioncard-n">{S.mission(m.id)}</span>
-          <span className="campchip" data-state={status}>{status === "locked" ? "🔒 " : status === "completed" ? "✓ " : ""}{S.status[status]}</span>
+          <span className="campchip" data-state={status} data-best={mp?.bestDifficulty}>{status === "locked" ? "🔒 " : status === "completed" ? "✓ " : ""}{best ?? S.status[status]}</span>
         </span>
         <b className="missioncard-title">{m.title}</b>
         <span className="missioncard-sub">
@@ -54,13 +65,13 @@ function MissionCard({ c, m, progress, onOpen }: { c: CampaignDef; m: MissionDef
  * Before a mission: a short cinematic intro the first time (the picture and three lines, skippable with a tap), then the briefing with the
  * goal, the time it takes and START MISSION. A mission whose intro has been seen opens on the briefing.
  */
-function Briefing({ c, m, progress, onClose, onSeen }: { c: CampaignDef; m: MissionDef; progress: CampaignProgress; onClose: () => void; onSeen: () => void }) {
+function Briefing({ c, m, progress, difficulty, onClose, onSeen }: { c: CampaignDef; m: MissionDef; progress: StoryProgress; difficulty: Difficulty; onClose: () => void; onSeen: () => void }) {
   const S = t().campaign;
   const ctx = useSessionCtx();
   const router = useRouter();
   const session = ctx?.session;
   const view = useSessionView(session);
-  const [cine, setCine] = useState(() => !progress.missions[m.id]?.introSeen);
+  const [cine, setCine] = useState(() => !missionProgress(progress, c.id, m.id)?.introSeen);
   const [busy, setBusy] = useState<"scouting" | "starting" | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const started = useRef(false);
@@ -87,7 +98,7 @@ function Briefing({ c, m, progress, onClose, onSeen }: { c: CampaignDef; m: Miss
     void session.enableCompass();
     setProblem(null);
     setBusy("scouting");
-    const prep = await session.prepare(missionParams(c, m, progress.difficulty, newSeed()));
+    const prep = await session.prepare(missionParams(c, m, difficulty, newSeed()));
     if (!prep) { setBusy(null); setProblem(session.getView().messages[0] ?? S.gpsWaiting); return; }
     if (prep.status !== "ok") { session.backToConfig(); setBusy(null); setProblem(prep.message ?? "This mission cannot be laid out where you are. Move to an area with more paths and try again."); return; }
     setBusy("starting");
@@ -132,7 +143,7 @@ function Briefing({ c, m, progress, onClose, onSeen }: { c: CampaignDef; m: Miss
         <ul className="brief-facts" aria-label="Mission facts">
           <li>{S.about(m.aboutMin)}</li>
           <li>{S.onFoot}</li>
-          <li>{DIFFICULTY_LABEL[progress.difficulty].toUpperCase()}</li>
+          <li>{DIFFICULTY_LABEL[difficulty].toUpperCase()}</li>
         </ul>
         <p className="brief-safety">{S.safety} {S.quitNote}</p>
         {problem && <div className="card bad" role="alert">{problem}</div>}
@@ -148,54 +159,95 @@ function Briefing({ c, m, progress, onClose, onSeen }: { c: CampaignDef; m: Miss
   );
 }
 
+/** The story's highest award, and the next one to aim for. */
+function AwardBadge({ award }: { award: Difficulty }) {
+  const S = t().campaign;
+  const up = DIFFICULTY_ORDER[DIFFICULTY_ORDER.indexOf(award) + 1];
+  return (
+    <section className="campaward" data-award={award} aria-label={`${S.awardLabel}: ${S.award[award]}`}>
+      <span className="campaward-mark" aria-hidden="true">★</span>
+      <span className="campaward-body">
+        <span className="campaward-k">{S.awardLabel}</span>
+        <b className="campaward-name">{S.award[award]}</b>
+        <span className="campaward-sub">{up ? S.awardNext(S.award[up], DIFFICULTY_LABEL[up].toUpperCase()) : S.awardTop}</span>
+      </span>
+    </section>
+  );
+}
+
 export default function CampaignView({ id }: { id: string }) {
   const c = findCampaign(id);
+  const story = c ? storyOfChapter(c.id) : null;
   const S = t().campaign;
-  // The hooks below need a campaign; the page only renders this component for one that exists.
-  const { progress, ready, update } = useCampaignProgress(c!);
+  const router = useRouter();
+  // The hooks below need a story; the page only renders this component for a chapter that exists, and every chapter is in a story.
+  const { progress, ready, update } = useStoryProgress(story!);
   const [open, setOpen] = useState<string | null>(null);
-  const pushed = useRef(false);
   // A mission was tapped before a difficulty was chosen: say what is needed, at the difficulty buttons.
   const [needDifficulty, setNeedDifficulty] = useState(false);
   const diffRef = useRef<HTMLElement>(null);
+  // The difficulty cannot be changed while a mission match is running (it was fixed when the match started).
+  const session = useSessionCtx()?.session;
+  const view = useSessionView(session);
+  const matchRunning = view?.stage === "playing";
 
-  // The open mission is in the URL (?mission=02), so the phone's back button closes the briefing and "retry" can link straight to it.
+  // The open mission is in the URL (?mission=02), so the phone's back button closes the briefing and NEXT/RETRY can link straight to it.
   useEffect(() => {
-    if (!ready || !c) return;
+    if (!ready || !c || !story) return;
     const read = () => {
       const mid = new URLSearchParams(window.location.search).get("mission");
-      // A mission opens only once the player has chosen a difficulty (the campaign is begun): none is chosen for them.
-      // A link to a mission that cannot open yet is dropped from the address too, so choosing the difficulty afterwards opens nothing by itself.
-      if (mid && !progress.started) window.history.replaceState(null, "", missionUrl(c.id, null));
-      setOpen(mid && progress.started && c.missions.some((m) => m.id === mid) && canPlay(c, progress, mid) ? mid : null);
+      // A mission opens only once a difficulty has been chosen (none is chosen for the player) and when it is not locked.
+      const ok = !!mid && progress.difficulty !== null && c.missions.some((m) => m.id === mid) && canPlay(story, progress, c.id, mid);
+      if (mid && !ok) {
+        // A link to a mission that cannot open is dropped from the address, so choosing the difficulty afterwards opens nothing by itself.
+        window.history.replaceState(null, "", missionUrl(c.id, null));
+      } else if (ok && !onBriefingEntry()) {
+        // Opened by a link: put the overview in front of the briefing.
+        window.history.replaceState(null, "", missionUrl(c.id, null));
+        window.history.pushState({ [BRIEFING]: true }, "", missionUrl(c.id, mid));
+      }
+      setOpen(ok ? mid : null);
     };
     read();
     window.addEventListener("popstate", read);
     return () => window.removeEventListener("popstate", read);
-  }, [ready, c, progress]);
+  }, [ready, c, story, progress]);
 
-  if (!c) return <main className="page camp"><PageHeader title={S.listTitle} href="/campaigns" /><div className="card bad">{S.notFound}</div></main>;
+  if (!c || !story) return <main className="page camp"><PageHeader title={S.listTitle} href="/campaigns" /><div className="card bad">{S.notFound}</div></main>;
 
+  const promptDifficulty = () => { setNeedDifficulty(true); diffRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); };
   const openMission = (mid: string) => {
-    if (!canPlay(c, progress, mid)) return;
-    if (!progress.started) { setNeedDifficulty(true); diffRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); return; }
-    pushed.current = true;
-    window.history.pushState(null, "", missionUrl(c.id, mid));
+    if (!canPlay(story, progress, c.id, mid)) return;
+    if (progress.difficulty === null) { promptDifficulty(); return; }
+    window.history.pushState({ [BRIEFING]: true }, "", missionUrl(c.id, mid));
     setOpen(mid);
     window.scrollTo(0, 0);
   };
   const close = () => {
-    if (pushed.current) { pushed.current = false; window.history.back(); return; }
+    if (onBriefingEntry()) { window.history.back(); return; }
     window.history.replaceState(null, "", missionUrl(c.id, null));
     setOpen(null);
   };
 
   const mission = open ? c.missions.find((m) => m.id === open) : undefined;
-  if (mission) return <Briefing key={mission.id} c={c} m={mission} progress={progress} onClose={close} onSeen={() => update((p) => markIntroSeen(p, mission.id))} />;
+  if (mission && progress.difficulty) {
+    return <Briefing key={mission.id} c={c} m={mission} progress={progress} difficulty={progress.difficulty} onClose={close} onSeen={() => update((p) => markIntroSeen(p, c.id, mission.id))} />;
+  }
 
-  const done = completedCount(c, progress);
-  const complete = isCampaignComplete(c, progress);
-  const next = nextMission(c, progress);
+  const done = chapterCompletedCount(c, progress);
+  const complete = isChapterComplete(c, progress);
+  const next = nextMission(story, progress);
+  const nextDef = next ? findMission({ id: next.chapterId, mission: next.missionId }) : null;
+  const storyDone = completedCount(story, progress);
+  const storyTotal = storyMissions(story).length;
+  const award = highestAward(progress);
+  const choosing = ready && progress.difficulty === null;
+  const goNext = () => {
+    if (!next) return;
+    if (progress.difficulty === null) { promptDifficulty(); return; }
+    if (next.chapterId === c.id) openMission(next.missionId);
+    else router.push(missionUrl(next.chapterId, next.missionId));
+  };
   // Where this chapter sits in its story. The chapters still to come are named once, below the missions, and cannot be opened.
   const place = chapterPlace(c.id);
   return (
@@ -211,16 +263,30 @@ export default function CampaignView({ id }: { id: string }) {
         </div>
       </div>
 
-      <section className="campdiff" ref={diffRef} aria-labelledby="campdiff-label" data-prompt={(ready && !progress.started) || undefined}>
-        <h2 className="nglabel" id="campdiff-label">{ready && !progress.started ? S.chooseDifficulty : S.difficulty}</h2>
+      {ready && award && <AwardBadge award={award} />}
+
+      <section className="campdiff" ref={diffRef} aria-labelledby="campdiff-label" data-prompt={choosing || undefined}>
+        <h2 className="nglabel" id="campdiff-label">{choosing ? S.chooseDifficulty : S.difficulty}</h2>
         <div className="seg" role="group" aria-labelledby="campdiff-label">
-          {DIFFICULTIES.map((d) => (
-            <button key={d} type="button" aria-pressed={ready && progress.started && progress.difficulty === d} onClick={() => { setNeedDifficulty(false); update((p) => setDifficulty(p, d)); }}>{DIFFICULTY_LABEL[d].toUpperCase()}</button>
+          {DIFFICULTY_ORDER.map((d) => (
+            <button key={d} type="button" disabled={!ready || matchRunning} aria-pressed={ready && progress.difficulty === d}
+              onClick={() => { setNeedDifficulty(false); update((p) => setDifficulty(p, d)); }}>{DIFFICULTY_LABEL[d].toUpperCase()}</button>
           ))}
         </div>
-        {needDifficulty && !progress.started && <p className="ngneed" role="alert">{S.needDifficultyFirst}</p>}
-        <p className="ngnote">{S.difficultyNote}</p>
+        {needDifficulty && progress.difficulty === null && <p className="ngneed" role="alert">{S.needDifficultyFirst}</p>}
+        <p className="ngnote">{matchRunning ? S.difficultyLocked : S.difficultyNote}</p>
       </section>
+
+      {ready && nextDef && (
+        <div className="campnext">
+          <span className="campnext-k">{S.storyProgress(story.title, storyDone, storyTotal)}</span>
+          <button type="button" className="btn cta camp-cta big campcontinue" onClick={goNext} aria-label={`${progress.started ? S.continue : S.begin}: ${S.mission(nextDef.mission.id)} ${nextDef.mission.title}`}>
+            <b>{progress.started ? S.continue : S.begin}</b>
+            <span>{S.mission(nextDef.mission.id)} · {nextDef.mission.title}</span>
+          </button>
+        </div>
+      )}
+      {ready && !next && <p className="campnext-k campnext-done">{S.storyProgress(story.title, storyDone, storyTotal)}{award !== "hard" ? ` · ${S.improveHint}` : ""}</p>}
 
       {complete && (
         <section className="epilogue" aria-label={c.epilogue.title}>
@@ -229,8 +295,8 @@ export default function CampaignView({ id }: { id: string }) {
         </section>
       )}
 
-      <div className="missionlist" data-next={next ?? undefined}>
-        {c.missions.map((m) => <MissionCard key={m.id} c={c} m={m} progress={progress} onOpen={() => openMission(m.id)} />)}
+      <div className="missionlist" data-next={next?.chapterId === c.id ? next.missionId : undefined}>
+        {c.missions.map((m) => <MissionCard key={m.id} s={story} c={c} m={m} progress={progress} onOpen={() => openMission(m.id)} />)}
       </div>
 
       {place && place.comingLater.length > 0 && (
