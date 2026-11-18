@@ -185,6 +185,9 @@ export class Soundscape {
 
   preload(urls: readonly string[]): void { for (const u of urls) void this.load(u); }
 
+  /** Lets a decoded file go (a voice that still plays keeps its own copy); the next use decodes it again. */
+  unload(url: string): void { this.buffers.delete(url); }
+
   private canPlay(): PlayResult | null {
     if (!this.enabled) return "muted";
     if (this.suppressed || !this.unlocked) return "suppressed";
@@ -307,8 +310,12 @@ export class LoopVoice implements Voice {
 
   get playing(): boolean { return this.active; }
 
-  /** Starts with a fade-in (no-op while already playing). Resolves once it sounds or could not start. */
-  start(fadeInS: number): Promise<void> {
+  /**
+   * Starts with a fade-in (no-op while already playing). Resolves once it sounds or could not start. `from`: the first pass begins at
+   * `frac` of the part of the file that leaves at least `keepS` before its end (a long file is then heard from different places, and a
+   * short burst never reaches the seam); the passes after it play the whole file.
+   */
+  start(fadeInS: number, from?: { frac: number; keepS: number }): Promise<void> {
     if (this.active) return this.starting ?? Promise.resolve();
     if (!this.s.enabled || this.s.isSuppressed || !this.s.unlocked) return Promise.resolve();
     this.active = true;
@@ -328,13 +335,15 @@ export class LoopVoice implements Voice {
       const t0 = c.currentTime + 0.03;
       ramp(out.gain, this.gain, t0, fadeInS);
       const region = trimmedRegion(buf);
-      this.pass(c, buf, region, t0, true, gen);
+      const off = from ? Math.max(0, Math.min(1, from.frac)) * Math.max(0, region.durS - from.keepS) : 0;
+      this.pass(c, buf, region, t0, true, gen, { startS: region.startS + off, durS: region.durS - off });
     })();
     return this.starting;
   }
 
-  private pass(c: AudioContext, buf: AudioBuffer, r: { startS: number; durS: number }, at: number, first: boolean, gen: number): void {
+  private pass(c: AudioContext, buf: AudioBuffer, region: { startS: number; durS: number }, at: number, first: boolean, gen: number, play = region): void {
     if (gen !== this.gen || !this.active || !this.out) return;
+    const r = play;
     const xf = Math.min(this.crossfadeS, r.durS / 4);
     const src = c.createBufferSource();
     src.buffer = buf;
@@ -350,7 +359,7 @@ export class LoopVoice implements Voice {
     this.parts.push(src);
     const next = at + r.durS - xf;
     // Schedule the following pass a second before it is due (the audio clock keeps the timing exact).
-    this.timer = this.env.setTimeout(() => this.pass(c, buf, r, next, false, gen), Math.max(0, (next - c.currentTime - 1) * 1000));
+    this.timer = this.env.setTimeout(() => this.pass(c, buf, region, next, false, gen), Math.max(0, (next - c.currentTime - 1) * 1000));
   }
 
   /** Fades out and stops (also while it is still starting). */
@@ -403,14 +412,28 @@ export interface MusicSource {
   /** Silence between passes during a match (s, random in the range). */
   gapS: readonly [number, number];
   random?: () => number;
+  /** The tracks the menu repeats (indexes into `tracks`). Missing = all. The first track opens the app either way. */
+  menu?: readonly number[];
   /**
-   * A match with its own plan instead of random passes: `start` plays as the match begins, `mid` once more after a silence (`gapS`), then
-   * nothing until the match is over, when `end` plays (and the menu's random repeat goes on from there). Indexes into `tracks`.
+   * A match with its own plan instead of random passes: one of `start` plays as the match begins, then `midPasses` passes (default 1)
+   * drawn from `mid`, each after a silence (`gapS`), then nothing until the match is over, when `end` plays (`lost` after a lost match;
+   * the menu's random repeat goes on from there). `moments` are tracks for a moment of the match, started at once (`moment`).
+   * Indexes into `tracks`; a list is a pool, drawn at random and never the track just heard.
    */
-  match?: { start: number; mid: number; end: number };
+  match?: MatchMusicPlan;
+}
+export interface MatchMusicPlan {
+  start: number | readonly number[];
+  mid: number | readonly number[];
+  midPasses?: number;
+  end: number;
+  lost?: number;
+  moments?: Readonly<Record<string, number>>;
 }
 /** The single-track form (older): one file that repeats. */
 export interface SingleMusic { url: string; startS: number; endS: number | null; crossfadeS: number; fadeInS: number; fadeOutS: number }
+
+const pool = (x: number | readonly number[]): readonly number[] => (typeof x === "number" ? [x] : x);
 
 const toSource = (m: MusicSource | SingleMusic): MusicSource => ("tracks" in m ? m : {
   tracks: [{ url: m.url, startS: m.startS, endS: m.endS }], crossfadeS: m.crossfadeS, fadeInS: m.fadeInS, fadeOutS: m.fadeOutS, endFadeS: 0, gapS: [20, 60],
@@ -442,8 +465,12 @@ export class MenuMusic {
   private elTrack = [0, 0];
   private lastTrack: number | null = null;
   private endFading = false;
-  /** A track chosen for the next pass instead of a random one (match start, the pass in mid-match, match end). */
-  private forced: number | null = null;
+  /** A track (or a pool to draw from) chosen for the next pass instead of a random one (match start, the pass in mid-match, match end). */
+  private forced: number | readonly number[] | null = null;
+  /** During a match: the pool the passes after the forced one are drawn from (null: the menu's). */
+  private matchPool: readonly number[] | null = null;
+  /** The match that ended was lost: its end track is the plan's `lost` one. */
+  private lost = false;
   /** Passes still to come while not repeating; null = no limit (no match plan). */
   private budget: number | null = null;
   private readonly m: MusicSource | null;
@@ -468,9 +495,17 @@ export class MenuMusic {
     if (this.repeat === on) return;
     this.repeat = on;
     const plan = this.m?.match;
-    // Into a match: after the pass that plays, one more (the plan's mid track). Out of it: the plan's end track comes first.
-    if (plan && !on && this.budget === null) { this.budget = 1; this.forced = plan.mid; }
-    if (plan && on) { this.budget = null; this.forced = this.sounding ? null : plan.end; }
+    // Into a match: after the pass that plays, the plan's mid passes. Out of it: the plan's end track comes first (the lost one at once).
+    if (plan && !on && this.budget === null) { this.budget = plan.midPasses ?? 1; this.forced = plan.mid; this.matchPool = pool(plan.mid); }
+    if (plan && on) {
+      const end = this.lost && plan.lost !== undefined ? plan.lost : plan.end;
+      const crossLost = this.lost && plan.lost !== undefined && this.sounding && this.els.length > 0 && !this.paused && this.lastTrack !== end;
+      this.lost = false;
+      this.budget = null;
+      this.matchPool = null;
+      this.forced = this.sounding ? null : end;
+      if (crossLost) { this.crossTo(end); this.startWatch(); }
+    }
     if (on) {
       this.clearGap();
       if (this.wanted && !this.sounding && !this.paused && !this.needsGesture && this.m) this.begin(this.m.fadeInS);
@@ -483,14 +518,40 @@ export class MenuMusic {
    */
   matchStart(): void {
     const plan = this.m?.match;
+    this.lost = false;
     if (!plan || !this.wanted || this.paused || this.needsGesture) return;
     this.repeat = false;
-    this.budget = 1;
+    this.budget = plan.midPasses ?? 1;
+    this.matchPool = pool(plan.mid);
     this.clearGap();
-    if (this.sounding && this.els.length) { this.crossTo(plan.start); this.forced = plan.mid; this.startWatch(); return; }
+    if (this.sounding && this.els.length) { this.crossTo(this.choose(pool(plan.start))); this.forced = plan.mid; this.startWatch(); return; }
     this.forced = plan.start;
     this.begin(this.m!.fadeInS);
     this.forced = plan.mid;
+  }
+
+  /** How the match ended, before the music comes back: a lost match gets the plan's `lost` track. */
+  matchOutcome(lost: boolean): void { this.lost = lost; }
+
+  /**
+   * A moment of the match with its own music (the plan's `moments`): that track now, crossfaded from whatever plays or faded in from a
+   * silence. Only during a match (not repeating); the passes still owed come after it as planned.
+   */
+  moment(name: string): boolean {
+    const i = this.m?.match?.moments?.[name];
+    if (i === undefined || this.repeat || !this.wanted || this.paused || this.needsGesture) return false;
+    this.clearGap();
+    if (this.sounding && this.els.length) {
+      if (this.lastTrack === i && !this.endFading) return true;
+      this.crossTo(i);
+      this.startWatch();
+      return true;
+    }
+    const keep = this.forced;
+    this.forced = i;
+    this.begin(this.m!.fadeInS);
+    this.forced = keep;
+    return true;
   }
 
   /** Crossfades from the pass that plays into `nextTrack` on the other element. */
@@ -517,16 +578,23 @@ export class MenuMusic {
     this.env.setTimeout(() => { if (this.cur !== prev) { this.confirmed[prev] = false; try { this.els[prev].el.pause(); } catch { /* ignore */ } } }, m.crossfadeS * 1000 + 200);
   }
 
-  /** Starts fetching the music for offline use (no sound): the opening track first, then the others. */
-  prefetch(): Promise<void> {
+  /**
+   * Starts fetching the music for offline use (no sound): the opening track first, then the menu's (`"menu"`, as the app opens), or every
+   * track (`"all"`, before a match). A track not fetched yet still plays, streamed from its address.
+   */
+  prefetch(which: "menu" | "all" = "menu"): Promise<void> {
     if (!this.m || !this.env.musicUrl) return this.resolving ?? Promise.resolve();
     const m = this.m;
-    this.resolving ??= (async () => {
-      for (const t of m.tracks) {
-        if (this.srcs.has(t.url)) continue;
+    const menu = this.m.menu ?? m.tracks.map((_, i) => i);
+    const want = which === "all" ? m.tracks.map((_, i) => i) : [0, ...menu.filter((i) => i !== 0)];
+    const before = this.resolving ?? Promise.resolve();
+    this.resolving = before.then(async () => {
+      for (const i of want) {
+        const t = m.tracks[i];
+        if (!t || this.srcs.has(t.url)) continue;
         try { this.srcs.set(t.url, (await this.env.musicUrl!(t.url)) ?? t.url); } catch { this.srcs.set(t.url, t.url); }
       }
-    })();
+    });
     return this.resolving;
   }
 
@@ -560,14 +628,21 @@ export class MenuMusic {
     if (el.getAttribute("src") !== want) el.src = want;
   }
 
-  /** The next pass: the first track to open the app, then a random one that is not the one just heard. */
+  /** The next pass: the first track to open the app, then a random one from the pool in use that is not the one just heard. */
   private pickNext(): number {
     const n = this.m!.tracks.length;
-    if (this.forced !== null) { const f = this.forced; this.forced = null; return Math.min(n - 1, f); }
+    if (this.forced !== null) { const f = this.forced; this.forced = null; return Math.min(n - 1, this.choose(pool(f))); }
     if (this.lastTrack === null || n <= 1) return 0;
+    return this.choose(!this.repeat && this.matchPool ? this.matchPool : (this.m!.menu ?? this.m!.tracks.map((_, i) => i)));
+  }
+
+  /** A random track of `from`, never the one just heard when there is another. */
+  private choose(from: readonly number[]): number {
+    const other = from.filter((i) => i !== this.lastTrack);
+    const c = other.length ? other : from;
+    if (c.length <= 1) return c[0] ?? 0;
     const r = this.m!.random ?? Math.random;
-    const i = Math.min(n - 2, Math.floor(r() * (n - 1)));
-    return i >= this.lastTrack ? i + 1 : i;
+    return c[Math.min(c.length - 1, Math.floor(r() * c.length))];
   }
 
   /** Inside a user gesture: lets both elements play later (iOS allows play() on an element only after one from a gesture). */

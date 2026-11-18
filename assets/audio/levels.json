@@ -625,6 +625,286 @@
       "TP": -3.3,
       "bytes": 4847594,
       "durationS": 209.544
+    },
+    "music-dirty-riff": {
+      "copied": true,
+      "I": -15.2,
+      "M": -11.8,
+      "TP": -4.5,
+      "bytes": 3499634,
+      "durationS": 150.792
+    },
+    "music-final-silence": {
+      "copied": true,
+      "I": -19.9,
+      "M": -11.7,
+      "TP": -2.4,
+      "bytes": 1335501,
+      "durationS": 59.64
+    },
+    "music-fragile-motif-1": {
+      "copied": true,
+      "I": -15.8,
+      "M": -10.7,
+      "TP": -3.4,
+      "bytes": 3507077,
+      "durationS": 157.224
+    },
+    "music-fragile-motif": {
+      "copied": true,
+      "I": -16.1,
+      "M": -10.3,
+      "TP": -3.1,
+      "bytes": 2794937,
+      "durationS": 124.44
+    },
+    "music-frostborne-silence-1": {
+      "copied": true,
+      "I": -16.6,
+      "M": -9.9,
+      "TP": -3.1,
+      "bytes": 2869300,
+      "durationS": 130.032
+    },
+    "music-missing-footstep": {
+      "copied": true,
+      "I": -21.5,
+      "M": -14.8,
+      "TP": -1.9,
+      "bytes": 317194,
+      "durationS": 13.632
+    },
+    "music-relentless-groove": {
+      "copied": true,
+      "I": -16.3,
+      "M": -12.7,
+      "TP": -4.9,
+      "bytes": 2187696,
+      "durationS": 94.824
+    },
+    "music-stairwell-silence": {
+      "copied": true,
+      "I": -18.6,
+      "M": -11.1,
+      "TP": -2.5,
+      "bytes": 835620,
+      "durationS": 45.624
+    },
+    "music-three-note-motif": {
+      "copied": true,
+      "I": -16.8,
+      "M": -11,
+      "TP": -3.3,
+      "bytes": 2006511,
+      "durationS": 90.024
+    },
+    "music-untitled-1": {
+      "copied": true,
+      "I": -17.8,
+      "M": -11.8,
+      "TP": -4,
+      "bytes": 1449037,
+      "durationS": 69.984
+    },
+    "threat-pulse-5": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": -2.4,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -21.6,
+        "M": -20.5,
+        "TP": -4.9,
+        "bytes": 721197
+      },
+      "after": {
+        "I": -24.5,
+        "M": -23.4,
+        "TP": -7.7,
+        "bytes": 480768
+      },
+      "durationS": 30.024
+    },
+    "threat-pulse-6": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": 1.2,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -25.2,
+        "M": -18.9,
+        "TP": -4.8,
+        "bytes": 721197
+      },
+      "after": {
+        "I": -24.5,
+        "M": -18.1,
+        "TP": -4,
+        "bytes": 480768
+      },
+      "durationS": 30.024
+    },
+    "threat-pulse-7": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": -1.9,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -22.1,
+        "M": -19,
+        "TP": -4.7,
+        "bytes": 721197
+      },
+      "after": {
+        "I": -24.4,
+        "M": -21.3,
+        "TP": -7,
+        "bytes": 480768
+      },
+      "durationS": 30.024
+    },
+    "threat-pulse-8": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": -0.1,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -25.4,
+        "M": -22.3,
+        "TP": -1.4,
+        "bytes": 721197
+      },
+      "after": {
+        "I": -25.9,
+        "M": -22.8,
+        "TP": -2,
+        "bytes": 480768
+      },
+      "durationS": 30.024
+    },
+    "threat-pulse-9": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": 5.5,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -30.1,
+        "M": -26.6,
+        "TP": -7,
+        "bytes": 721197
+      },
+      "after": {
+        "I": -25.1,
+        "M": -21.6,
+        "TP": -1.9,
+        "bytes": 480768
+      },
+      "durationS": 30.024
+    },
+    "threat-pulse-10": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": -0.3,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -26.7,
+        "M": -21.1,
+        "TP": -1.2,
+        "bytes": 721197
+      },
+      "after": {
+        "I": -27.4,
+        "M": -21.9,
+        "TP": -1.9,
+        "bytes": 480768
+      },
+      "durationS": 30.024
+    },
+    "threat-pulse-11": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": 6.9,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -31.4,
+        "M": -26.9,
+        "TP": -8.4,
+        "bytes": 721197
+      },
+      "after": {
+        "I": -24.9,
+        "M": -20.4,
+        "TP": -1.9,
+        "bytes": 480768
+      },
+      "durationS": 30.024
+    },
+    "threat-pulse-12": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": 0,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -24.8,
+        "M": -18.3,
+        "TP": -1.5,
+        "bytes": 721197
+      },
+      "after": {
+        "I": -25.3,
+        "M": -18.7,
+        "TP": -2,
+        "bytes": 480768
+      },
+      "durationS": 30.024
+    },
+    "threat-pulse-13": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": -1.5,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -22.5,
+        "M": -19.1,
+        "TP": -6,
+        "bytes": 721197
+      },
+      "after": {
+        "I": -24.4,
+        "M": -21,
+        "TP": -7.9,
+        "bytes": 480768
+      },
+      "durationS": 30.024
+    },
+    "threat-pulse-14": {
+      "measure": "I",
+      "target": -24,
+      "gainDb": 4.7,
+      "limiter": false,
+      "gate": false,
+      "before": {
+        "I": -28.8,
+        "M": -24.7,
+        "TP": -6.2,
+        "bytes": 721197
+      },
+      "after": {
+        "I": -24.6,
+        "M": -20.5,
+        "TP": -1.9,
+        "bytes": 480768
+      },
+      "durationS": 30.024
     }
   }
 }

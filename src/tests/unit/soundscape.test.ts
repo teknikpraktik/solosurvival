@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { Soundscape, type Levels } from "@/audio/soundscape";
-import { AUDIO, DUCK, MIX, MatchAudio, VOICE, musicMode, type MatchSoundInput } from "@/app/_client/audio";
+import { AUDIO, DUCK, LONG_THREAT, MIX, MatchAudio, SOUNDTRACK, VOICE, musicMode, type MatchSoundInput } from "@/app/_client/audio";
 import { SOUND_RULES } from "@/play/sound-rules";
 import { fakeEnv, flush, type FakeGain } from "./audio-fakes";
 
 // What the soundscape starts, stops and schedules, on a fake Web Audio clock. This is not a listening test.
 const DUR: Record<string, number> = {
-  ...Object.fromEntries(AUDIO.threat.map((u) => [u, 15])),
+  ...Object.fromEntries(AUDIO.threat.map((u, i) => [u, i < 4 ? 15 : 30])),
   [AUDIO.heliLoop]: 30, [AUDIO.heliApproach]: 25, [AUDIO.heliSuccess]: 7, [AUDIO.captured]: 4, [AUDIO.safeDoor]: 5,
   [AUDIO.zombieNear]: 3, [AUDIO.revealed]: 2, [AUDIO.checkpoint]: 2,
   ...Object.fromEntries(AUDIO.jump.map((u) => [u, 3])),
@@ -741,6 +741,46 @@ describe("threat pulse in bursts", () => {
     expect(t.ctx.sources.length).toBe(n);
   });
 
+  it("all fourteen variants take turns; a long one starts at a random place, and is let go from memory after its burst", async () => {
+    const t0 = setup();
+    let seed = 11;
+    const t = { ...t0, m: new MatchAudio(t0.s, { nowS: () => t0.nowMs() / 1000 }, () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648) };
+    t.s.unlock();
+    const seen = new Set<string>();
+    const decoded = () => (t.s as unknown as { buffers: Map<string, unknown> }).buffers;
+    let longEnded = 0;
+    let last: string | null = null;
+    for (let i = 0; i < 1500; i++) { // 25 minutes with a zombie close
+      t.m.update(base({ nearestM: 150 }));
+      await t.advance(1000);
+      const u = t.m.state.threat;
+      if (u) seen.add(u);
+      if (last && last !== u && LONG_THREAT.includes(last)) longEnded++;
+      last = u;
+      // Never more than one long variant decoded at a time.
+      expect([...decoded().keys()].filter((k) => LONG_THREAT.includes(k)).length).toBeLessThanOrEqual(1);
+    }
+    expect(seen.size).toBeGreaterThanOrEqual(12); // (random) nearly all of the fourteen
+    expect([...seen].some((u) => LONG_THREAT.includes(u))).toBe(true);
+    expect(longEnded).toBeGreaterThan(0);
+    // A long variant's bursts begin at different places in it, never so late that the burst would reach the seam.
+    const offsets = t.ctx.sources.filter((x) => LONG_THREAT.includes(x.buffer?.url as string)).map((x) => x.started!.offset!);
+    expect(new Set(offsets.map((o) => Math.round(o))).size).toBeGreaterThan(3);
+    for (const o of offsets) expect(o).toBeLessThanOrEqual(30 - 0.03 - (SOUND_RULES.threat.burstS[1] + SOUND_RULES.threat.burstFadeOutS) + 0.04);
+  });
+
+  it("a loop can start part-way into its file; the passes after it play the whole file", async () => {
+    const t = setup();
+    t.s.unlock();
+    const lp = t.s.loop(AUDIO.threat[5], "threat", 1, 0.12);
+    await lp.start(1, { frac: 0.5, keepS: 16.5 });
+    for (let i = 0; i < 300; i++) await t.advance(100);
+    const [first, second] = t.ctx.sources.map((x) => x.started!);
+    expect(first.offset).toBeCloseTo(0.03 + 0.5 * (29.94 - 16.5), 2); // the trimmed region is 29.94 s
+    expect(second.offset).toBeCloseTo(0.03, 2);
+    lp.stop(0.5);
+  });
+
   it("pause stops a burst and its timer; the next period starts again after the dwell", async () => {
     const t = setup();
     t.s.unlock();
@@ -751,7 +791,7 @@ describe("threat pulse in bursts", () => {
   });
 });
 
-describe("music playlist (three versions of the theme)", () => {
+describe("music playlist (the theme and the soundtrack)", () => {
   async function playlist(random: () => number = Math.random) {
     const f = fakeEnv(DUR);
     const l: Levels = { on: true, music: 1, fx: 1, voice: 1 };
@@ -768,26 +808,31 @@ describe("music playlist (three versions of the theme)", () => {
     playingEl(t)!.currentTime = (tr.endS ?? 60) - beforeS;
   };
 
-  it("the full theme opens the app; on the menu each next pass is a random other version (crossfaded), never the same twice in a row", async () => {
-    const t = await playlist();
+  const urls = (t: Awaited<ReturnType<typeof playlist>>, idx: readonly number[]) => idx.map((i) => t.P.tracks[i].url);
+  /** A repeatable random sequence (a small LCG), so a test sees many different draws. */
+  const lcg = (seed = 7) => () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+
+  it("the full theme opens the app; on the menu each next pass is a random calm piece (crossfaded), never the same twice in a row", async () => {
+    const t = await playlist(lcg());
     t.s.music.want(true);
     await t.advance(500);
     expect(t.s.music.history).toEqual([AUDIO.music]);
-    for (let k = 0; k < 12; k++) { nearEnd(t, t.P.crossfadeS + 0.5); await t.advance(5000); }
+    for (let k = 0; k < 30; k++) { nearEnd(t, t.P.crossfadeS + 0.5); await t.advance(5000); }
     const h = t.s.music.history;
-    expect(h.length).toBe(13);
+    expect(h.length).toBe(31);
     for (let k = 1; k < h.length; k++) expect(h[k]).not.toBe(h[k - 1]);
-    expect(new Set(h)).toEqual(new Set([AUDIO.music, AUDIO.musicFade, AUDIO.musicShort]));
+    // Only the menu's pieces, and all of them in time: the match's pieces (tense, the run to the helicopter, the loss) never play here.
+    expect(new Set(h)).toEqual(new Set(urls(t, t.P.menu!)));
     expect(t.media.filter((m) => !m.paused)).toHaveLength(1);
   });
 
-  it("a match: the short version as it begins, the middle one once after 4–9 min of silence, nothing more, the full one when it is over", async () => {
+  it("a match: one opening piece as it begins, two tense passes each after 4–9 min of silence, nothing more, the full theme after a win", async () => {
     const t = await playlist(() => 0.5); // the silence is then 390 s
     t.s.music.want(true);
     await t.advance(1000);
     t.s.music.matchStart(); // crossfaded from the menu's pass
     await t.advance(5000);
-    expect(t.s.music.track).toBe(AUDIO.musicShort);
+    expect(t.s.music.track).toBe(SOUNDTRACK.threeNote); // of the opening pool (short theme, Three-Note Motif)
     expect(t.media.filter((m) => !m.paused)).toHaveLength(1);
     t.s.music.setRepeat(false); // what the page does as the match runs: changes nothing
     nearEnd(t, 2.6);
@@ -796,15 +841,102 @@ describe("music playlist (three versions of the theme)", () => {
     await t.advance(239_000);
     expect(t.s.music.playing).toBe(false); // at least 4 min of silence
     await t.advance(160_000);
-    expect(t.s.music.track).toBe(AUDIO.musicFade); // within 9 min
+    const first = t.s.music.track!;
+    expect(urls(t, [7, 8, 9, 10])).toContain(first); // within 9 min, a tense piece
+    nearEnd(t, 1);
+    await t.advance(2000);
+    await t.advance(400_000);
+    const second = t.s.music.track!;
+    expect(urls(t, [7, 8, 9, 10])).toContain(second);
+    expect(second).not.toBe(first);
     nearEnd(t, 1);
     await t.advance(2000);
     await t.advance(1_200_000);
     expect(t.s.music.playing).toBe(false); // no third pass, however long the match
-    expect(t.s.music.history).toEqual([AUDIO.music, AUDIO.musicShort, AUDIO.musicFade]);
-    t.s.music.setRepeat(true); // the match is over
+    expect(t.s.music.history).toEqual([AUDIO.music, SOUNDTRACK.threeNote, first, second]);
+    t.s.music.matchOutcome(false);
+    t.s.music.setRepeat(true); // the match is over (won)
     await t.advance(500);
     expect(t.s.music.track).toBe(AUDIO.music);
+  });
+
+  it("a lost match ends on Final Silence: after the ending's sounds, or crossfaded from a pass that still plays", async () => {
+    for (const sounding of [false, true]) {
+      const t = await playlist(() => 0.5);
+      t.s.music.want(true);
+      await t.advance(1000);
+      t.s.music.matchStart();
+      await t.advance(5000);
+      if (!sounding) { nearEnd(t, 1); await t.advance(2000); expect(t.s.music.playing).toBe(false); }
+      t.s.music.matchOutcome(true);
+      t.s.music.setRepeat(true);
+      await t.advance(5000);
+      expect(t.s.music.track, `sounding: ${sounding}`).toBe(SOUNDTRACK.finalSilence);
+      expect(t.media.filter((m) => !m.paused)).toHaveLength(1);
+      // The next match starts clean: its own ending decides again.
+      t.s.music.matchStart();
+      await t.advance(5000);
+      t.s.music.setRepeat(true);
+      await t.advance(5000);
+      expect(t.s.music.track).not.toBe(SOUNDTRACK.finalSilence);
+    }
+  });
+
+  it("the helicopter has landed: Relentless Groove at once (from a silence or crossfaded), only during a match; the planned passes still come", async () => {
+    const t = await playlist(() => 0.5);
+    t.s.music.want(true);
+    await t.advance(1000);
+    expect(t.s.music.moment("extraction")).toBe(false); // the menu: nothing
+    expect(t.s.music.track).toBe(AUDIO.music);
+    t.s.music.matchStart();
+    await t.advance(5000);
+    nearEnd(t, 1);
+    await t.advance(2000);
+    expect(t.s.music.playing).toBe(false); // the silence before the first tense pass
+    expect(t.s.music.moment("extraction")).toBe(true);
+    await t.advance(4000);
+    expect(t.s.music.track).toBe(SOUNDTRACK.groove);
+    expect(t.s.music.moment("nope")).toBe(false);
+    nearEnd(t, 1);
+    await t.advance(2000);
+    await t.advance(392_000);
+    expect(urls(t, [7, 8, 9, 10])).toContain(t.s.music.track); // the planned pass, after a silence
+    expect(t.s.music.moment("extraction")).toBe(true); // crossfaded from it
+    await t.advance(5000);
+    expect(t.s.music.track).toBe(SOUNDTRACK.groove);
+    expect(t.media.filter((m) => !m.paused)).toHaveLength(1);
+  });
+
+  it("the app opens with the menu's music fetched; the match's pieces are fetched before a match", async () => {
+    const f = fakeEnv(DUR);
+    const asked: string[] = [];
+    f.env.musicUrl = async (u: string) => { asked.push(u); return `blob:${u}`; };
+    const { MUSIC_PLAYLIST } = await import("@/app/_client/audio");
+    const s = new Soundscape(f.env, { mix: MIX, duckTo: DUCK.to, duckAttackS: DUCK.attackS, duckReleaseS: DUCK.releaseS, levels: () => ({ on: true, music: 1, fx: 1, voice: 1 }) }, MUSIC_PLAYLIST);
+    await s.music.prefetch();
+    expect(asked).toEqual(MUSIC_PLAYLIST.menu!.map((i) => MUSIC_PLAYLIST.tracks[i].url));
+    await s.music.prefetch("all");
+    expect(new Set(asked)).toEqual(new Set(MUSIC_PLAYLIST.tracks.map((x) => x.url)));
+    expect(asked.length).toBe(MUSIC_PLAYLIST.tracks.length); // nothing twice
+  });
+
+  it("the match's events drive it: the landed helicopter starts Relentless Groove, a lost match ends on Final Silence (Free Play and campaign alike)", async () => {
+    for (const campaign of [false, true]) {
+      const t = await playlist(() => 0.5);
+      const m = new MatchAudio(t.s, { nowS: () => t.nowMs() / 1000 }, () => 0.4);
+      t.s.music.want(true);
+      await t.advance(1000);
+      await m.onEvent({ type: "match_started", id: "m1", mode: "survival", ...(campaign ? { campaign: true } : {}) });
+      await t.advance(5000);
+      void m.onEvent({ type: "heli_landed", stale: false, ...(campaign ? { campaign: true } : {}) });
+      await t.advance(5000);
+      expect(t.s.music.track, `campaign: ${campaign}`).toBe(SOUNDTRACK.groove);
+      void m.onEvent({ type: "finished", result: "infected", mode: "survival", stale: false, ...(campaign ? { campaign: true } : {}) });
+      await t.advance(1000);
+      t.s.music.setRepeat(true); // what the page does once the ending's sounds are over
+      await t.advance(5000);
+      expect(t.s.music.track, `campaign: ${campaign}`).toBe(SOUNDTRACK.finalSilence);
+    }
   });
 
   it("the app hidden during the silence before the mid-match pass: the pass still comes afterwards", async () => {
@@ -819,7 +951,7 @@ describe("music playlist (three versions of the theme)", () => {
     await t.advance(30_000);
     t.s.music.restore();
     await t.advance(395_000); // a new silence, then the pass
-    expect(t.s.music.track).toBe(AUDIO.musicFade);
+    expect(urls(t, [7, 8, 9, 10])).toContain(t.s.music.track);
   });
 
   it("the match ends during a silence: the music comes back at once; leaving or muting cancels a pending pass", async () => {

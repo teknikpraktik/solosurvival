@@ -1,5 +1,6 @@
 // Bygger OUTBREAKs produktionsljud (public/audio/*.mp3) från originalen i assets/audio/source/.
 // Kräver ffmpeg (med libmp3lame) i PATH. Kör: node scripts/build-audio.mjs   (skriver även assets/audio/levels.json)
+//   node scripts/build-audio.mjs --only threat-pulse-5,threat-pulse-6   bygger bara dessa (övriga filer och musiken lämnas orörda)
 //
 // Nivåer: varje fil får en fast förstärkning (inget komprimerat "loudness war"):
 //  - mattor som loopar (hotpulser, helikopter som väntar) efter integrerad ljudstyrka (I, LUFS),
@@ -8,7 +9,7 @@
 // Uppspelningsnivåerna per ljud sätts sedan i src/app/_client/audio.ts.
 // Menymusiken (redan MP3, ca 181 kbit/s VBR) kopieras oförändrad: att koda om den skulle bara ge en extra förlustgeneration.
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -16,6 +17,7 @@ const SRC = path.join(ROOT, "assets/audio/source");
 const OUT = path.join(ROOT, "public/audio");
 const CEILING_DBTP = -1;
 const BITRATE = "128k";
+const ONLY = process.argv.includes("--only") ? new Set(process.argv[process.argv.indexOf("--only") + 1].split(",")) : null;
 
 /** measure: "I" = integrerad, "M" = högsta momentana. target i LUFS. */
 const FILES = [
@@ -23,6 +25,8 @@ const FILES = [
   { name: "threat-pulse-2", measure: "I", target: -24 },
   { name: "threat-pulse-3", measure: "I", target: -24 },
   { name: "threat-pulse-4", measure: "I", target: -24 },
+  // Ten more 30 s variants (MP3 originals, made to loop): the same level as the first four.
+  ...Array.from({ length: 10 }, (_, i) => ({ name: `threat-pulse-${i + 5}`, src: "mp3", measure: "I", target: -24 })),
   { name: "heli-extraction", measure: "I", target: -20 },
   { name: "heli-approach", measure: "M", target: -16 },
   { name: "heli-extraction-success", measure: "M", target: -14 },
@@ -58,8 +62,13 @@ const FILES = [
   { name: "jump-scare-3", measure: "M", target: -12 },
 ];
 const MUSIC = "theme-frostborne.mp3";
-/** The theme's two shorter versions (copied unchanged too; where each is used: MUSIC_PLAYLIST in audio.ts). */
-const MORE_MUSIC = ["theme-frostborne-fade.mp3", "theme-frostborne-short.mp3"];
+/** The theme's two shorter versions and the rest of the soundtrack (copied unchanged too; where each is used: MUSIC_PLAYLIST in audio.ts). */
+const MORE_MUSIC = [
+  "theme-frostborne-fade.mp3", "theme-frostborne-short.mp3",
+  "music-frostborne-silence-1.mp3", "music-fragile-motif.mp3", "music-fragile-motif-1.mp3", "music-three-note-motif.mp3",
+  "music-stairwell-silence.mp3", "music-untitled-1.mp3", "music-missing-footstep.mp3", "music-dirty-riff.mp3",
+  "music-relentless-groove.mp3", "music-final-silence.mp3",
+];
 /** Downward expander for the radio static: below −27 dBFS (RMS) the level falls 2:1, at most 9 dB; fast enough to open on every word. */
 const VOICE_GATE = "agate=mode=downward:threshold=0.045:ratio=2:range=0.355:attack=8:release=180:detection=rms:knee=2";
 
@@ -77,8 +86,11 @@ function measure(file) {
 
 const r1 = (x) => Math.round(x * 10) / 10;
 mkdirSync(OUT, { recursive: true });
-const report = { ceilingDbtp: CEILING_DBTP, bitrate: BITRATE, files: {} };
+const LEVELS = path.join(ROOT, "assets/audio/levels.json");
+// --only: the report keeps every other file's entry as it was.
+const report = ONLY ? JSON.parse(readFileSync(LEVELS, "utf8")) : { ceilingDbtp: CEILING_DBTP, bitrate: BITRATE, files: {} };
 for (const f of FILES) {
+  if (ONLY && !ONLY.has(f.name)) continue;
   const src = path.join(SRC, `${f.name}.${f.src ?? "wav"}`);
   const out = path.join(OUT, `${f.name}.mp3`);
   const before = measure(src);
@@ -95,6 +107,7 @@ for (const f of FILES) {
   };
   console.log(`${f.name.padEnd(26)} gain ${gain >= 0 ? "+" : ""}${gain.toFixed(1)} dB  ${f.measure} ${r1(before[f.measure])} → ${r1(after[f.measure])}  TP ${r1(before.TP)} → ${r1(after.TP)}  ${statSync(src).size} → ${statSync(out).size} B`);
 }
+if (ONLY) { writeFileSync(LEVELS, JSON.stringify(report, null, 2) + "\n"); process.exit(0); }
 copyFileSync(path.join(SRC, MUSIC), path.join(OUT, MUSIC));
 for (const f of MORE_MUSIC) {
   copyFileSync(path.join(SRC, f), path.join(OUT, f));
@@ -105,4 +118,4 @@ for (const f of MORE_MUSIC) {
 const m = measure(path.join(OUT, MUSIC));
 report.files["theme-frostborne"] = { copied: true, I: r1(m.I), M: r1(m.M), TP: r1(m.TP), bytes: statSync(path.join(OUT, MUSIC)).size, durationS: Math.round(m.duration * 1000) / 1000 };
 console.log(`theme-frostborne (kopierad)   I ${r1(m.I)}  TP ${r1(m.TP)}  ${statSync(path.join(OUT, MUSIC)).size} B`);
-writeFileSync(path.join(ROOT, "assets/audio/levels.json"), JSON.stringify(report, null, 2) + "\n");
+writeFileSync(LEVELS, JSON.stringify(report, null, 2) + "\n");
