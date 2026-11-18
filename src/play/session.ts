@@ -821,12 +821,17 @@ export class PlaySession {
     this.log?.add(t, "jump_scare", { atS: Math.round(s.elapsedSeconds) });
   }
 
-  /** Text för ett nått mål. Sista checkpointet är inte en vinst när hemkomst återstår, och säger det. */
+  /**
+   * Text för ett nått mål. Sista checkpointet är inte en vinst när hemkomst återstår, och säger det. Ett kampanjuppdrag använder sitt
+   * eget ord ("Supplies collected 2/3") i stället för lägets ("Checkpoint 2/3").
+   */
   private objectiveMessage(live: LiveGame, index: number): string {
     const o = live.state.objectives;
     if (!o) return "Objective reached";
     const target = o.targets[index];
     const p = objectiveProgress(o);
+    const own = findMission(this.params?.campaign)?.mission.goalReached;
+    if (target?.kind === "checkpoint" && own && p.stage !== "home") return `${own} ${p.primaryReached}/${p.primaryTotal}`;
     if (target?.kind === "checkpoint") return p.stage === "home" ? "All checkpoints found – now head home!" : `Checkpoint ${p.primaryReached}/${p.primaryTotal}`;
     return p.stage === "done" ? "Final objective reached" : "Objective reached";
   }

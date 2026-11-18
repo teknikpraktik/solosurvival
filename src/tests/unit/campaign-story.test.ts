@@ -36,7 +36,7 @@ describe("mission story: which radio line is said when", () => {
 
   it("mission 02: first, middle and last goal; the last one is the ending", () => {
     const s = new MissionStory(c, mission("02"), 1800);
-    expect(s.onEvents([{ type: "objective_reached", targetId: "C2", index: 0 }], 300, 3)).toMatchObject([{ id: "tf-m02-first", final: false, fallbackVoice: "checkpointSecured" }]);
+    expect(s.onEvents([{ type: "objective_reached", targetId: "C2", index: 0 }], 300, 3)).toMatchObject([{ id: "tf-m02-first", final: false, fallbackVoice: undefined }]); // no "Checkpoint secured" stand-in: a supply is not a checkpoint
     expect(ids(s.onEvents([{ type: "objective_reached", targetId: "C1", index: 1 }], 600, 3))).toEqual(["tf-m02-middle"]);
     const end = s.onEvents([{ type: "objective_reached", targetId: "C3", index: 2 }, { type: "finished", result: "survived" }], 900, 3);
     expect(end).toMatchObject([{ id: "tf-m02-win", final: true }]);

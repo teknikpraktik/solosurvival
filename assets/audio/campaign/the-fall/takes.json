@@ -165,7 +165,7 @@
       "speed": 1
     },
     "seed": 2299027070,
-    "text": "First site cleared. Good. Two to go."
+    "text": "Medicine collected. Good. Two to go."
   },
   "tf-m02-late": {
     "speaker": "WATCHTOWER",
@@ -207,7 +207,7 @@
       "speed": 1
     },
     "seed": 2750334855,
-    "text": "Second site cleared. One left. They are gathering between you and it."
+    "text": "Second cache collected. One left. They are gathering between you and it."
   },
   "tf-m02-plan": {
     "speaker": "WATCHTOWER",
