@@ -32,17 +32,29 @@ import { holdNeedS } from "@/engine/objectives/objectives";
 
 export type Cue = "danger" | "alert" | "goal" | "info" | "end" | "zombie" | "captured" | "jump" | "tension" | "sprint";
 
+/** Ingen skrämma under matchens första sekunder eller precis före tidsgränsen. */
+export const SCARE_EARLIEST_S = 90;
+export const SCARE_END_MARGIN_S = 30;
+/** Två skrämmor kommer aldrig tätare än så här. */
+export const SCARE_MIN_GAP_S = 120;
+
 /**
- * Planerar slumpade skrämmor för en match: en första efter 90–420 s speltid och (50 %) en andra 240–480 s senare.
- * Själva skrämman utlöses först när en zombie närmar sig (≤ 200 m) efter den tidpunkten, så den känns motiverad.
+ * Planerar slumpade skrämmor för en match (speltid i sekunder från start): en, och med 50 % chans en andra, var som helst mellan
+ * 90 s och strax före tidsgränsen. Skrämman utlöses på sin tid oberoende av vad som händer i spelet (zombier, mål, radio),
+ * så den kommer när man minst anar det.
  */
-export function planScares(random: () => number): number[] {
-  const first = 90 + random() * 330;
-  const times = [first];
-  if (random() < 0.5) times.push(first + 240 + random() * 240);
-  return times;
+export function planScares(random: () => number, durationS: number): number[] {
+  const end = Math.max(SCARE_EARLIEST_S, (Number.isFinite(durationS) && durationS > 0 ? durationS : 1800) - SCARE_END_MARGIN_S);
+  const at = () => SCARE_EARLIEST_S + random() * (end - SCARE_EARLIEST_S);
+  const times = [at()];
+  if (random() < 0.5) {
+    for (let i = 0; i < 6; i++) {
+      const t = at();
+      if (Math.abs(t - times[0]) >= SCARE_MIN_GAP_S) { times.push(t); break; }
+    }
+  }
+  return times.sort((a, b) => a - b);
 }
-export const SCARE_TRIGGER_DISTANCE_M = 200;
 /** Skriket + rösten "Run!" vid zombiespurt ljuder högst så här ofta. Med många zombier spurtar någon nästan hela tiden; utan gräns blir det ett konstant skrik. */
 export const SPRINT_CUE_COOLDOWN_MS = 25_000;
 
@@ -546,9 +558,10 @@ export class PlaySession {
     if (cm && fresh) this.updateCampaign((p) => recordStart(p, cm.campaign.id, cm.mission.id));
     this.recorder = fresh || !this.resumeRecap ? RecapRecorder.fresh(live, params, this.startedAt) : this.resumeRecap;
     this.resumeRecap = null;
-    // Slumpade skrämmor (aldrig på cykel och bara om påslaget). Återställd match: planera om från nuvarande speltid.
+    // Slumpade skrämmor (aldrig på cykel och bara om påslaget). Återställd match: planera om för den tid som återstår.
     const random = this.d.random ?? Math.random;
-    this.scareTimes = this.d.jumpScares?.() && (this.d.profile?.jumpScares ?? true) && params.activity !== "mtb" ? planScares(random).map((x) => x + (fresh ? 0 : live.state.elapsedSeconds)) : [];
+    const offset = fresh ? 0 : live.state.elapsedSeconds;
+    this.scareTimes = this.d.jumpScares?.() && (this.d.profile?.jumpScares ?? true) && params.activity !== "mtb" ? planScares(random, live.state.config.durationSeconds - offset).map((x) => x + offset) : [];
     this.log.add(t, "match_start", {
       zombiesInitial: live.state.zombies.length, rulesZombies: { initial: live.rules.initialZombies, max: live.rules.maxZombies, headStartS: live.rules.headStartS, spawnMinM: live.rules.spawnMinDistanceM }, proximityM: proximityRadiusM(params),
       mode: params.mode, activity: params.activity, difficulty: params.difficulty, zombieAi: live.rules.zombieAi ?? "old", data: this.dataVersion,
@@ -684,7 +697,7 @@ export class PlaySession {
     if (events.length) this.endMatch(events);
     this.updateHeli(live, t);
     if (!live.finished) this.recorder?.tick(live);
-    if (this.stage === "playing" && !live.state.paused && t - this.lastCheckMs >= CHECK_MS) { this.lastCheckMs = t; this.checkZombies(live, t); this.storyTick(live); }
+    if (this.stage === "playing" && !live.state.paused && t - this.lastCheckMs >= CHECK_MS) { this.lastCheckMs = t; this.checkZombies(live, t); this.checkScare(live, t); this.storyTick(live); }
     this.advanceRadio(t);
     if (this.stage === "playing" && t - this.lastSaveMs > SAVE_EVERY_MS) void this.persist();
     // React-vyn uppdateras ungefär 2 gånger per sekund; kartan ritar själv från live-objektet.
@@ -791,17 +804,21 @@ export class PlaySession {
       this.cue("zombie", "Zombie approaching");
       this.log?.add(t, "zombie_near_sound", { fresh, inRange });
     }
-    if (this.scareTimes.length && s.elapsedSeconds >= this.scareTimes[0] && nearest <= SCARE_TRIGGER_DISTANCE_M && s.phase !== "finished") {
-      this.scareTimes.shift();
-      this.scareNonce++;
-      this.d.onCue?.("jump", "");
-      this.sound({ type: "jump", stale: this.replaying });
-      this.log?.add(t, "jump_scare", { atS: Math.round(s.elapsedSeconds), nearestM: Math.round(nearest) });
-    }
     if (t - this.lastSampleMs >= SAMPLE_MS) {
       this.lastSampleMs = t;
       this.log?.add(t, "zombie_sample", { n: s.zombies.length, nearest: Number.isFinite(nearest) ? Math.round(nearest) : null, inRange, radius, phase: s.phase, atS: Math.round(s.elapsedSeconds) });
     }
+  }
+
+  /** En planerad skrämma utlöses på sin tid, oberoende av zombier och andra händelser (bara under pågående, opausat spel). */
+  private checkScare(live: LiveGame, t: number): void {
+    const s = live.state;
+    if (!this.scareTimes.length || s.elapsedSeconds < this.scareTimes[0] || s.phase === "finished") return;
+    while (this.scareTimes.length && s.elapsedSeconds >= this.scareTimes[0]) this.scareTimes.shift(); // en åt gången, aldrig två i rad
+    this.scareNonce++;
+    this.d.onCue?.("jump", "");
+    this.sound({ type: "jump", stale: this.replaying });
+    this.log?.add(t, "jump_scare", { atS: Math.round(s.elapsedSeconds) });
   }
 
   /** Text för ett nått mål. Sista checkpointet är inte en vinst när hemkomst återstår, och säger det. */
