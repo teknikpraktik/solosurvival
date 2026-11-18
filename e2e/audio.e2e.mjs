@@ -68,7 +68,8 @@ async function startMatch(o, mode) {
   const el0 = mu.els.findIndex((e) => !e.paused);
   check("menu music plays after the first tap at the latest, one element, fading in", mu.playing && mu.els.filter((e) => !e.paused).length === 1 && (mu.els[el0]?.gain ?? 0) > 0.25, JSON.stringify(mu));
   check("audio context running", (await audio(page)).ctx === "running");
-  check("music: plays from the cached file (blob URL) past the leading silence", mu.els[el0]?.src === "blob:" && mu.els[el0].t >= 4, JSON.stringify(mu.els[el0]));
+  // The full theme opens the app from its startS (0.5 s, past the file's leading silence: MUSIC_TRACKS) and has played for a few seconds by now.
+  check("music: plays from the cached file (blob URL) past the leading silence", mu.els[el0]?.src === "blob:" && mu.els[el0].t >= 0.5 + 1, JSON.stringify(mu.els[el0]));
   const t1 = mu.els[el0]?.t ?? 0;
   await page.getByRole("button", { name: "ON FOOT", exact: true }).click(); await wait(800);
   await page.getByRole("button", { name: "CHECKPOINTS", exact: true }).click(); await wait(1600);
@@ -80,16 +81,22 @@ async function startMatch(o, mode) {
   check("setup: helicopter sounds not fetched for a Checkpoints match", !reqs.some((p) => p.includes("heli")));
   await page.locator(".pvstats").waitFor({ timeout: 90000 });
   { if (!(await page.locator('.ngsettings .opt[aria-pressed="true"]').count())) await page.getByRole("button", { name: "Normal", exact: true }).click(); /* a difficulty must be chosen before START */ await page.getByRole("button", { name: "START GAME" }).click(); }
+  // Match plan (MUSIC_PLAYLIST.match, docs/LJUD.md): at match start the short version starts from its beginning on the other element,
+  // crossfaded from the menu music. Caught while the crossfade runs: the menu pass still sounds on its element as the opening pass begins.
+  const short = "/audio/theme-frostborne-short.mp3";
+  const musicTrack = () => page.evaluate(() => ({ track: window.__outbreakAudio.soundscape.music.track, history: [...window.__outbreakAudio.soundscape.music.history] }));
+  let xfade = null;
+  for (let i = 0; i < 150 && !xfade; i++) { if ((await musicTrack()).track === short) xfade = await music(page); else await page.waitForTimeout(200); }
+  check("match start: the menu music crossfades into the opening track on the other element", !!xfade && !xfade.els[el0].paused && !xfade.els[1 - el0].paused, JSON.stringify(xfade));
   await page.waitForURL("**/play", { timeout: 90000 });
   for (let i = 0; i < 40 && !(await page.evaluate(() => { const m = window.__outbreak?.getView().match; return !!m && !m.paused; })); i++) await wait(400);
-  const gStart = (await music(page)).els[el0]?.gain ?? 0;
-  const tStart = (await music(page)).els[el0]?.t ?? 0;
-  await wait(4000);
+  await wait(4500); // past the crossfade (3.5 s)
   mu = await music(page);
-  check("match start: the music is not faded out, it goes on (same element, no restart)", mu.playing && mu.els.findIndex((e) => !e.paused) === el0 && mu.els[el0].t > tStart + 3 && (mu.els[el0].gain ?? 0) >= gStart - 0.05, JSON.stringify({ gStart, tStart, now: mu.els[el0] }));
+  const mt = await musicTrack();
+  check("match start: afterwards only the opening track plays, from its beginning, at full level", mu.playing && mt.track === short && mt.history.at(-1) === short && mu.els[el0].paused && !mu.els[1 - el0].paused && mu.els[1 - el0].t > 3 && mu.els[1 - el0].t < 30 && (mu.els[1 - el0].gain ?? 0) > 0.9, JSON.stringify({ ...mt, els: mu.els }));
   check("match: the music does not repeat during the match", await page.evaluate(() => window.__outbreakAudio.soundscape.music.repeats) === false);
   // The pass ends by itself during the match.
-  await page.evaluate(() => { const m = window.__outbreakAudio.soundscape.music; const e = m.els.find((x) => !x.el.paused); e.el.currentTime = 209.6; });
+  await page.evaluate(() => { const m = window.__outbreakAudio.soundscape.music; const e = m.els.find((x) => !x.el.paused); e.el.currentTime = e.el.duration - 0.2; });
   await wait(2400);
   mu = await music(page);
   check("match: at the end of the track the music stops (no new pass)", !mu.playing && mu.els.every((e) => e.paused), JSON.stringify(mu));
@@ -163,7 +170,10 @@ let v;
   await page.goto(BASE + "/new"); await wait(1200);
   await page.getByRole("button", { name: "ON FOOT", exact: true }).click();
   await page.getByRole("button", { name: "A TO B", exact: true }).click(); await wait(800);
-  await page.waitForSelector('[data-loaded="true"]', { timeout: 20000, state: "attached" }); await wait(1200);
+  // The difficulty first: START GAME stays disabled without one, and the loop below stops at the first B that enables it (a later tap
+  // may land under 300 m from A and be refused).
+  await page.getByRole("button", { name: "Normal", exact: true }).click();
+  await page.waitForSelector('[data-testid="map"][data-loaded="true"]', { timeout: 30000, state: "attached" }); await wait(1200);
   for (const [x, y] of [[280, 220], [110, 200], [300, 320], [90, 330], [200, 150], [330, 260]]) {
     await page.mouse.click(x, y); await wait(600);
     if ((await page.locator('[aria-label="Objective B"]').count()) === 0) continue;
@@ -219,10 +229,10 @@ let v;
   await wait(800);
   v = await voices(page);
   check("home reached: \"You're inside. Lock the door.\" with the safe-house ending", v.now === "insideSafehouse" && (await page.locator('.resultbg[data-pic="safehouse"]').count()) === 1, JSON.stringify(v));
-  // Leaving the ending stops the voice.
-  await page.getByRole("button", { name: /PLAY AGAIN/i }).first().click();
+  // Leaving the ending stops the voice (a won or lost match offers SHOW MATCH and Main menu).
+  await page.getByRole("link", { name: "MAIN MENU", exact: true }).click();
   await wait(1200);
-  check("leaving the ending (PLAY AGAIN) stops the line", (await voices(page)).now === null);
+  check("leaving the ending (Main menu) stops the line", (await voices(page)).now === null);
   await o.ctx.close();
 }
 {
@@ -268,9 +278,12 @@ let v;
   await wait(1500);
   check("captured: nothing spoken by a synthetic voice (no \"Captured\")", (await page.evaluate(() => window.__synthSpoken ?? 0)) === 0);
   await wait(4000);
-  await page.getByRole("button", { name: /PLAY AGAIN/i }).first().click();
+  // Out through Main menu and in again through FREE PLAY, inside the app (no reload): the audio state carries over unless reset.
+  await page.getByRole("link", { name: "MAIN MENU", exact: true }).click();
+  await page.waitForURL(BASE + "/"); await wait(1200);
+  await page.getByRole("link", { name: "FREE PLAY" }).click();
   await page.waitForURL("**/new**"); await wait(1500);
-  await page.getByRole("button", { name: "START GAME" }).click().catch(() => undefined);
+  await startMatch(o, "SURVIVAL");
   for (let i = 0; i < 60 && !(await page.evaluate(() => { const m = window.__outbreak?.getView().match; return !!m && !m.paused && m.elapsedS < 30; })); i++) await wait(400);
   await wait(1000);
   check("a new match after the ended one opens with its line again", (await voices(page)).log.join() === "keepMoving,keepMoving", JSON.stringify(await voices(page)));
