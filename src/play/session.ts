@@ -23,9 +23,9 @@ import { LiveGame } from "./live-game";
 import { createLiveMatch, matchDurationS } from "./match";
 import { prepareMatch, type Prepared } from "./prepare";
 import { MatchStorage, type HistoryRecord } from "./storage";
-import { findMission } from "@/campaign";
+import { findMission, storyOfChapter } from "@/campaign";
 import { prepareMission } from "@/campaign/prepare";
-import { loadProgress, recordResult, recordStart, saveProgress, type MissionResult } from "@/campaign/progress";
+import { loadProgress, recordResult, recordStart, saveProgress, type MissionResult, type StoryProgress } from "@/campaign/progress";
 import { MissionStory, type RadioMessage } from "@/campaign/story";
 import type { MissionDef } from "@/campaign/types";
 import { holdNeedS } from "@/engine/objectives/objectives";
@@ -110,8 +110,14 @@ export interface CampaignMatchView {
   ending: MissionDef["ending"];
   /** The radio lines of the ending (for the result). */
   endLines: RadioView[];
-  /** Set when the match is over: what the result did to the campaign. */
-  outcome: { firstCompletion: boolean; campaignCompleted: boolean; nextMissionId: string | null; nextTitle: string | null; saved: boolean } | null;
+  /**
+   * Set when the match is over: what the result did to the story. `campaignCompleted`: the chapter was completed for the first time.
+   * The next mission may be in the next chapter (`nextChapterId`). `award`: the story award this result earned (EASY/NORMAL/HARD).
+   */
+  outcome: {
+    firstCompletion: boolean; campaignCompleted: boolean; nextChapterId: string | null; nextMissionId: string | null; nextTitle: string | null;
+    improved: boolean; award: MatchParams["difficulty"] | null; saved: boolean;
+  } | null;
 }
 
 export interface SessionDeps {
@@ -537,7 +543,7 @@ export class PlaySession {
     this.radioNow = null;
     this.endLines = [];
     this.campaignOutcome = null;
-    if (cm && fresh) this.updateCampaign((p) => recordStart(p, cm.mission.id));
+    if (cm && fresh) this.updateCampaign((p) => recordStart(p, cm.campaign.id, cm.mission.id));
     this.recorder = fresh || !this.resumeRecap ? RecapRecorder.fresh(live, params, this.startedAt) : this.resumeRecap;
     this.resumeRecap = null;
     // Slumpade skrämmor (aldrig på cykel och bara om påslaget). Återställd match: planera om från nuvarande speltid.
@@ -880,29 +886,34 @@ export class PlaySession {
     if (next || had) this.cached = null;
   }
 
-  private updateCampaign(fn: (p: ReturnType<typeof loadProgress>) => ReturnType<typeof loadProgress>): boolean {
+  private updateCampaign(fn: (p: StoryProgress) => StoryProgress): boolean {
     const cm = findMission(this.params?.campaign);
-    if (!cm) return false;
+    const story = cm && storyOfChapter(cm.campaign.id);
+    if (!cm || !story) return false;
     const store = this.d.campaignStore ?? null;
-    try { return saveProgress(store, fn(loadProgress(store, cm.campaign))); } catch { return false; }
+    try { return saveProgress(store, fn(loadProgress(store, story))); } catch { return false; }
   }
 
+  /** The result is recorded on the difficulty the match was started with (kept with the match), never on the current setting. */
   private campaignResult(live: LiveGame, result: string): void {
     const cm = findMission(this.params?.campaign);
+    const story = cm && storyOfChapter(cm.campaign.id);
     if (!cm || this.campaignOutcome) return;
     const store = this.d.campaignStore ?? null;
     let saved = false;
     try {
-      const out = recordResult(cm.campaign, loadProgress(store, cm.campaign), cm.mission.id, result as MissionResult, live.state.elapsedSeconds, this.now());
+      if (!story) throw new Error("chapter without a story");
+      const out = recordResult(story, loadProgress(store, story), cm.campaign.id, cm.mission.id, result as MissionResult, live.rules.difficulty, live.state.elapsedSeconds, this.now());
       saved = saveProgress(store, out.progress);
+      const nextDef = out.next && findMission({ id: out.next.chapterId, mission: out.next.missionId });
       this.campaignOutcome = {
-        firstCompletion: out.firstCompletion, campaignCompleted: out.campaignCompleted, nextMissionId: out.nextMissionId,
-        nextTitle: cm.campaign.missions.find((m) => m.id === out.nextMissionId)?.title ?? null, saved,
+        firstCompletion: out.firstCompletion, campaignCompleted: out.chapterCompleted, nextChapterId: out.next?.chapterId ?? null, nextMissionId: out.next?.missionId ?? null,
+        nextTitle: nextDef?.mission.title ?? null, improved: out.improved, award: out.newAward, saved,
       };
     } catch {
-      this.campaignOutcome = { firstCompletion: false, campaignCompleted: false, nextMissionId: null, nextTitle: null, saved: false };
+      this.campaignOutcome = { firstCompletion: false, campaignCompleted: false, nextChapterId: null, nextMissionId: null, nextTitle: null, improved: false, award: null, saved: false };
     }
-    this.log?.add(this.now(), "campaign_result", { mission: cm.mission.id, result, saved });
+    this.log?.add(this.now(), "campaign_result", { mission: cm.mission.id, result, difficulty: live.rules.difficulty, saved });
   }
 
   private sound(e: SoundEvent) {

@@ -2,27 +2,28 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { CAMPAIGNS } from "@/campaign";
-import { isCampaignComplete, nextMission } from "@/campaign/progress";
-import { useCampaignProgress } from "./campaignStore";
+import { STORIES } from "@/campaign";
+import { nextMission } from "@/campaign/progress";
+import { playableChapters } from "@/campaign/stories";
+import { useStoryProgress } from "./campaignStore";
 import { t } from "./strings";
 import { BOOK_SVG, GEAR_SVG, HISTORY_SVG, MENU_SVG } from "./symbols";
 
 /**
  * The start page's two ways to play, as two equal buttons (a name and a line under it; no picture, nothing marked as chosen: they are
- * ways in, not a setting). CAMPAIGN leads into the story where the player is: the campaign page for a new or a finished campaign, the
- * next mission's briefing once the campaign has been begun (the same link a result's NEXT uses, so nothing of the briefing is skipped).
- * FREE PLAY leads to its setup. The address is worked out after the page has loaded; until then CAMPAIGN leads to the campaign page.
+ * ways in, not a setting). CAMPAIGN always opens the campaign overview, where the difficulty, the progress and CONTINUE are: the chapter
+ * the player is in (the one with the next mission; the first chapter for a new or a finished story). FREE PLAY leads to its setup.
  */
 export function HomePlay() {
-  const c = CAMPAIGNS[0];
-  const { progress, ready } = useCampaignProgress(c);
+  const story = STORIES[0];
+  const { progress, ready } = useStoryProgress(story);
   const S = t().home;
-  const next = nextMission(c, progress);
-  const resumable = ready && progress.started && !isCampaignComplete(c, progress) && !!next;
+  const next = ready ? nextMission(story, progress) : null;
+  const chapterId = next?.chapterId ?? playableChapters(story)[0].id;
+  const resumable = ready && progress.started && !!next;
   return (
     <div className="homeplay">
-      <Link className="playbtn" data-play="campaign" data-state={resumable ? "resume" : "new"} href={resumable ? `/campaigns/${c.id}?mission=${next}` : `/campaigns/${c.id}`}>
+      <Link className="playbtn" data-play="campaign" data-state={resumable ? "resume" : "new"} href={`/campaigns/${chapterId}`}>
         <b>{S.campaign}</b>
         <span>{S.campaignSub}</span>
       </Link>

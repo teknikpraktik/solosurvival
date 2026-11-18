@@ -22,6 +22,6 @@ export function findMission(ref: CampaignRef | null | undefined): { campaign: Ca
 /** Where a beat's recording is served from (if it has been recorded, see voice-manifest.json). */
 export const beatVoiceUrl = (campaignId: string, beatId: string): string => `/campaign/${campaignId}/voice/${beatId}.mp3`;
 
-export { STORIES, chapterPlace } from "./stories";
+export { STORIES, chapterPlace, storyOfChapter } from "./stories";
 export type { ChapterPlace, ChapterSlot, StoryDef } from "./stories";
 export type { CampaignDef, CampaignRef, MissionDef, StoryBeat } from "./types";

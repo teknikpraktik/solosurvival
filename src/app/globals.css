@@ -1017,3 +1017,26 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 .campsoon li { display: flex; align-items: baseline; gap: 12px; padding: 10px 14px; border-radius: var(--r); border: 1px dashed #ffffff26; background: #04090b99; color: #9fb3b0; }
 .campsoon-n { font: 600 .75rem var(--font-display); letter-spacing: .24em; color: #6f8784; white-space: nowrap; }
 .campsoon li b { font: 700 1rem var(--font-display); letter-spacing: .14em; }
+
+/* Campaign overview: the story award, CONTINUE, a mission's best difficulty. */
+.campaward { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: var(--r); border: 1px solid #fbbf2466; background: linear-gradient(90deg, #2a1c05e6, #0a1114e6 70%); box-shadow: inset 0 0 24px #fbbf2414; }
+.campaward-mark { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 1px solid #fbbf2499; color: #fbbf24; font-size: 1.4rem; text-shadow: 0 0 12px #fbbf2499; background: #04090bcc; }
+.campaward-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.campaward-k { font: 600 .72rem var(--font-display); letter-spacing: .3em; color: #d6b56a; }
+.campaward-name { font: 700 1.35rem var(--font-display); letter-spacing: .2em; color: #fde68a; }
+.campaward-sub { font-size: .8rem; line-height: 1.3; color: #b6a888; }
+.campaward[data-award="easy"] { border-color: #a8a29e66; background: linear-gradient(90deg, #1c1917e6, #0a1114e6 70%); }
+.campaward[data-award="easy"] .campaward-mark { color: #d6d3d1; border-color: #a8a29e99; text-shadow: none; }
+.campaward[data-award="easy"] .campaward-name { color: #e7e5e4; }
+.campaward[data-award="easy"] .campaward-k, .campaward[data-award="normal"] .campaward-k { color: #9fb0c0; }
+.campaward[data-award="normal"] { border-color: #2dd4bf66; background: linear-gradient(90deg, #042f2ee6, #0a1114e6 70%); }
+.campaward[data-award="normal"] .campaward-mark { color: #5eead4; border-color: #2dd4bf99; text-shadow: 0 0 12px #2dd4bf80; }
+.campaward[data-award="normal"] .campaward-name { color: #99f6e4; }
+.campnext { display: flex; flex-direction: column; gap: 6px; }
+.campnext-k { font: 600 .78rem var(--font-display); letter-spacing: .22em; color: #9fb0c0; text-transform: uppercase; }
+.campnext-done { margin: 0; line-height: 1.4; }
+.btn.campcontinue { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; }
+.btn.campcontinue b { font: 800 1.35rem var(--font-display); letter-spacing: .2em; }
+.btn.campcontinue span { font: 600 .8rem var(--font-display); letter-spacing: .14em; opacity: .8; }
+.campchip[data-best="hard"] { border-color: #fbbf24; color: #fde68a; }
+.recordline.award { color: #fde68a; }

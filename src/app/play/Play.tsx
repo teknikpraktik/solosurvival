@@ -463,15 +463,16 @@ export default function Play() {
           const campaignDone = won && last;
           const epilogue = campaignDone ? findMission({ id: camp.campaignId, mission: camp.missionId })?.campaign.epilogue : undefined;
           const leave = () => session.reset();
-          const missionHref = (id: string) => `/campaigns/${camp.campaignId}?mission=${id}`;
+          // Replace the finished game's entry: back from the briefing or the overview never returns to a match that is over.
+          const missionHref = (chapter: string, id: string) => `/campaigns/${chapter}?mission=${id}`;
           return (
             <Modal
               title={epilogue ? epilogue.title : won ? R2.complete : lost ? R2.failed : R2.aborted}
               actions={
                 <>
-                  {won && out?.nextMissionId && <Link className="btn primary cta camp-cta" href={missionHref(out.nextMissionId)} onClick={leave}>{R2.next(out.nextTitle ?? "")}</Link>}
-                  {lost && <Link className="btn primary cta" href={missionHref(camp.missionId)} onClick={leave}>{R2.retry}</Link>}
-                  <Link className={(won && out?.nextMissionId) || lost ? "btn" : "btn primary cta camp-cta"} href={campaignUrl} onClick={leave}>{C.backToCampaign}</Link>
+                  {won && out?.nextMissionId && <Link replace className="btn primary cta camp-cta" href={missionHref(out.nextChapterId ?? camp.campaignId, out.nextMissionId)} onClick={leave}>{R2.next(out.nextTitle ?? "")}</Link>}
+                  {lost && <Link replace className="btn primary cta" href={missionHref(camp.campaignId, camp.missionId)} onClick={leave}>{R2.retry}</Link>}
+                  <Link replace className={(won && out?.nextMissionId) || lost ? "btn" : "btn primary cta camp-cta"} href={campaignUrl} onClick={leave}>{C.backToCampaign}</Link>
                   {canShow && <Link className="btn quiet" href={`/recap?id=${encodeURIComponent(m.id)}&from=play`}>{R.showMatch}</Link>}
                 </>
               }
@@ -488,6 +489,8 @@ export default function Play() {
               )}
               {epilogue && <div className="epilogue inres">{epilogue.lines.map((l, i) => <p key={i}>{l}</p>)}</div>}
               {won && out?.firstCompletion && out.nextTitle && !campaignDone && <div className="recordline">★ {R2.unlocked(out.nextTitle)}</div>}
+              {won && out?.award && <div className="recordline award">★ {R2.awardEarned(C.award[out.award])}</div>}
+              {won && out?.improved && !out.firstCompletion && !out.award && <div className="recordline">★ {R2.improved(DIFFICULTY_LABEL[m.difficulty].toUpperCase())}</div>}
               {lost && <p className="muted">{R2.safe}</p>}
               {res !== "aborted" && (
                 <dl className="pvstats statcells">
