@@ -35,11 +35,13 @@ async function make(kv = new Map<string, string>(), idb = new IDBFactory()) {
   let clock = 20_000_000;
   const timers: (() => void)[] = [];
   const sounds: SoundEvent[] = [];
+  /** The texts of the cues the game shows (goal reached, zombie near, …). */
+  const cueTexts: string[] = [];
   const store = { getItem: (k: string) => kv.get(k) ?? null, setItem: (k: string, v: string) => void kv.set(k, v) };
   const session = new PlaySession({
     geo: g.geo, db, store: new TileStore("/data/v1/varmland", fsFetch), now: () => clock,
     setInterval: (fn) => { timers.push(fn); return timers.length; }, clearInterval: () => { timers.length = 0; },
-    onSound: (e) => sounds.push(e), campaignStore: store,
+    onSound: (e) => sounds.push(e), onCue: (_c, text) => cueTexts.push(text), campaignStore: store,
   });
   const advance = (ms: number, step = 200) => { for (let i = 0; i < ms; i += step) { clock += step; timers.forEach((t) => t()); } };
   /** Game seconds with a fresh fix every second at `pos`. */
@@ -57,7 +59,7 @@ async function make(kv = new Map<string, string>(), idb = new IDBFactory()) {
   const progress = () => loadProgress(store, REGENESIS);
   /** Keeps every zombie far away, so a test about goals or the clock is not ended by a capture. */
   const calm = () => { for (const z of session.live!.state.zombies) z.speedMps = 0; session.live!.rules.maxZombies = session.live!.state.zombies.length; };
-  return { g, db, session, advance, play, begin, progress, calm, sounds, kv, idb, now: () => clock, set: (t: number) => (clock = t) };
+  return { g, db, session, advance, play, begin, progress, calm, sounds, cueTexts, kv, idb, now: () => clock, set: (t: number) => (clock = t) };
 }
 const story = (sounds: SoundEvent[]) => sounds.filter((e): e is Extract<SoundEvent, { type: "story" }> => e.type === "story").map((e) => e.id);
 
@@ -138,6 +140,9 @@ describe("campaign missions through the play session (real Värmland data, fake 
     expect(v.match!.objectives!.reached).toEqual(order.map((w) => w.id));
     expect(story(t.sounds).filter((id) => /first|middle|win/.test(id))).toEqual(["tf-m02-first", "tf-m02-middle", "tf-m02-win"]);
     expect(t.sounds.filter((e) => e.type === "checkpoint").every((e) => e.type === "checkpoint" && e.campaign)).toBe(true);
+    // The screen speaks of supplies, not of checkpoints; so does the radio.
+    expect(t.cueTexts.filter((x) => /collected|checkpoint/i.test(x))).toEqual(["Supplies collected 1/3", "Supplies collected 2/3", "Supplies collected 3/3"]);
+    expect(mission("02").beats.filter((b) => b.trigger.on === "objective").every((b) => !/checkpoint|cleared/i.test(b.text))).toBe(true);
     // Mission 02 was played although mission 01 is not done (a test shortcut): the win must not unlock anything.
     expect(t.progress().chapters["the-fall"].missions["02"].completed).toBe(false);
   });
@@ -188,6 +193,8 @@ describe("campaign missions through the play session (real Värmland data, fake 
     t.play(25, relays[0]);
     expect(t.session.getView().match!.objectives!.reached).toEqual([relays[0].id]);
     expect(story(t.sounds).filter((id) => id.includes("tx") || id.includes("first"))).toEqual(["tf-m04-tx-start", "tf-m04-tx-paused", "tf-m04-tx-resumed", "tf-m04-first"]);
+    expect(t.cueTexts).toContain("Relay live 1/3");
+    expect(t.cueTexts.some((x) => /checkpoint/i.test(x))).toBe(false);
     // The last relay needs longer.
     t.play(34, relays[1]);
     expect(t.session.getView().match!.objectives!).toMatchObject({ needS: 45, index: 2 });

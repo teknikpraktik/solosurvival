@@ -478,15 +478,16 @@ export default function Play() {
               }
             >
               <div className="missionres-k">{camp.campaignTitle} · {C.mission(camp.missionId)} · {camp.title}</div>
-              <div className={`outcome ${tone}`} role="status">
-                <span className="outcomeicon" aria-hidden="true">{tone === "won" ? "✓" : tone === "lost" ? "✕" : tone === "late" ? "⏱" : "■"}</span>
-                <p>{won ? camp.success : res === "infected" ? R2.caught : res === "failed" ? R2.outOfTime : ""}</p>
-              </div>
+              {/* In story order: what was said on the radio as the mission ended, then what happens after it (the success line may move time on). */}
               {camp.endLines.length > 0 && (
                 <div className="radiolog" aria-label="Radio">
                   {camp.endLines.map((l) => <p key={l.id}><b>{l.speaker}</b> {l.text}</p>)}
                 </div>
               )}
+              <div className={`outcome ${tone}`} role="status">
+                <span className="outcomeicon" aria-hidden="true">{tone === "won" ? "✓" : tone === "lost" ? "✕" : tone === "late" ? "⏱" : "■"}</span>
+                <p>{won ? camp.success : res === "infected" ? R2.caught : res === "failed" ? R2.outOfTime : ""}</p>
+              </div>
               {epilogue && <div className="epilogue inres">{epilogue.lines.map((l, i) => <p key={i}>{l}</p>)}</div>}
               {won && out?.firstCompletion && out.nextTitle && !campaignDone && <div className="recordline">★ {R2.unlocked(out.nextTitle)}</div>}
               {won && out?.award && <div className="recordline award">★ {R2.awardEarned(C.award[out.award])}</div>}

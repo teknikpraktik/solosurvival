@@ -117,6 +117,8 @@ export interface MissionDef {
   objective: string;
   /** Short goal label for the game HUD. */
   hud: string;
+  /** What the screen says when one of the mission's goals is reached ("Supplies collected 1/3"). Missing = the mode's own text. */
+  goalReached?: string;
   /** How a win is staged: helicopter (picture and sound), safe house (door), or nothing but the radio. */
   ending: "heli" | "safehouse" | "plain";
   /** Result dialog: one line for a win, and what comes next in the story. */

@@ -152,6 +152,8 @@ try {
   await shot("c08-mission-complete");
   const p1 = await progress();
   check("winning mission 01 is saved on EASY and unlocks mission 02", mp(p1, "01").completed === true && mp(p1, "01").bestDifficulty === "easy" && mp(p1, "02").completed === false);
+  check("result in story order: the radio's last line, then what happens after it", (await page.locator(".radiolog + .outcome").count()) === 1
+    && (await page.locator(".outcome").innerText()).includes("make it through the night") && (await page.locator(".radiolog").innerText()).includes("At first light"));
   check("result offers the next mission and the campaign", (await page.getByRole("link", { name: "NEXT: THE SUPPLY RUN" }).count()) === 1 && (await page.getByRole("link", { name: "BACK TO CAMPAIGN" }).count()) === 1);
 
   // --- Mission 02: checkpoints in any order, fail, retry ---
