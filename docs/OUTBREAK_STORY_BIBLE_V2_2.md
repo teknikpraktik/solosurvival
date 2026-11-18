@@ -1,5 +1,5 @@
 # OUTBREAK: REGENESIS
-## Story Bible v2.3
+## Story Bible v2.4
 
 **Spel:** OUTBREAK: SOLO SURVIVAL. Detta dokument beskriver spelets första story, **REGENESIS**.
 **Format:** GPS-baserad överlevnadsthriller, en story i fem kapitel med fem uppdrag vardera (25 uppdrag)
@@ -13,7 +13,7 @@
 
 | | |
 |---|---|
-| Version | 2.3 (2026-11-16). Filnamnet `OUTBREAK_STORY_BIBLE_V2_2.md` behålls så att länkar från kod och dokument fortsätter att fungera. |
+| Version | 2.4 (2026-11-18). Filnamnet `OUTBREAK_STORY_BIBLE_V2_2.md` behålls så att länkar från kod och dokument fortsätter att fungera. |
 | Titel | OUTBREAK: REGENESIS. Hette OUTBREAK: THE ACCELERATION till och med v2.2 (avsnitt 23). |
 | Ersätter | v2.2 (samma fil, se git-historiken och avsnitt 23). Story Bible v2.0 (filnamn `OUTBREAK_STORY_BIBLE_V2_1.md`) är arkiverad i [`docs/story/archive/`](story/archive/OUTBREAK_STORY_BIBLE_V2_1.md) |
 | Kanon | Detta dokument. Vid konflikt mellan detta dokument och koden gäller **koden för vad som finns**, och detta dokument för **vad som ska gälla**. En konflikt är en bugg i ett av dem och rättas. |
@@ -40,6 +40,8 @@
 | MISSION | Fem per kapitel i REGENESIS, 25 totalt | Ett spelbart uppdrag. |
 
 REGENESIS har fem kapitel med fem uppdrag vardera. Det är ett beslut för den här storyn, inte en regel: framtida stories kan ha andra antal kapitel och uppdrag. Endast kapitel 1, THE FALL, är implementerat. I koden heter ett kapitel fortfarande `CampaignDef` och lagras under sitt kapitel-id (`the-fall`); se avsnitt 21.
+
+**Viktigaste ändringarna i v2.4:** Övergången mellan THE FALL 01 och 02 är tydligare. Gruppen i källaren nämns redan i 01, WATCHTOWER ber spelaren vila till gryningen, och natten passerar i success-texten. Resultatskärmen visar slutrepliken före success-texten. I THE SUPPLY RUN säger WATCHTOWER att förnödenheter samlats in, inte att platser röjts. Mål, mekanik och replik-id:n är oförändrade (avsnitt 23).
 
 **Viktigaste ändringarna i v2.3:** Titeln OUTBREAK: THE ACCELERATION är bytt till OUTBREAK: REGENESIS, och hierarkin Story → Chapter → Mission är fastställd. Det som tidigare kallades "kampanj 1–5" heter nu "kapitel 1–5"; CAMPAIGN avser bara spelläget. Ingen berättelse, replik, tidslinje eller uppdrag är ändrad (avsnitt 23).
 
@@ -119,7 +121,7 @@ När utbrottet kom fanns ingen anledning att misstänka byggnaden. **Ingen utanf
 | Dag 8–10 | Räddning av vårdstationen där Elena och SHEPHERD:s överlevande finns | NO MAN'S LAND [PLANERAT] |
 | Dag 11–12 | Forskningsdata förs ut till omvärlden; gryning | THE LAST HOPE [PLANERAT] |
 
-**Tidsregel för THE FALL:** Spelet anger aldrig klockslag. De tidsangivelser som finns i texten ("It started this afternoon", "You made it through the first night", "No one has heard from the evacuation force in six hours", "Twenty-two minutes out") ska fortsätta att stämma med tabellen ovan.
+**Tidsregel för THE FALL:** Spelet anger aldrig klockslag. De tidsangivelser som finns i texten ("It started this afternoon", "You find shelter and make it through the night", "No one has heard from the evacuation force in six hours", "Twenty-two minutes out") ska fortsätta att stämma med tabellen ovan.
 
 ---
 
@@ -358,13 +360,15 @@ Varje kapitel i REGENESIS har fem uppdrag, en ny information eller relation, en 
 
 ### 01 FIRST CONTACT
 - **Intro:** "It started this afternoon. Sirens, then nothing." / "People are attacking each other in the streets. Nobody knows why." / "Then a voice breaks through the static."
-- **Nyckelrepliker:** *"Any station, this is Watchtower. If you can hear me: stay outside, keep moving, and do not approach anyone."* · *"Stand by. I am picking up a second group on this channel. Survivors, not far from you."*
-- **Slut (WATCHTOWER):** *"You are still on your feet. I am logging you as Runner Seven. That group needs medicine and supplies. Rest while you can."*
-- **Success:** "You made it through the first night. A group of survivors needs your help." (Natten mellan dag 0 och dag 1 passerar här.)
+- **Nyckelrepliker:** *"Any station, this is Watchtower. If you can hear me: stay outside, keep moving, and do not approach anyone."* · *"Stand by. Someone else is on this channel. A group of survivors, hiding in a cellar not far from you."*
+- **Slut (WATCHTOWER):** *"You are still on your feet. I am logging you as Runner Seven. Find shelter and rest. At first light, that group in the cellar will need you."*
+- **Success:** "You find shelter and make it through the night. By morning, the group in the cellar is running out of medicine." (Natten mellan dag 0 och dag 1 passerar här, efter WATCHTOWER:s slutreplik. Resultatskärmen visar radioreplikerna före success-texten, så att tidshoppet kommer sist.)
+- **Övergång till 02:** Spelaren träffar inte gruppen. Gruppen gömmer sig i en källare i närheten och hörs bara via WATCHTOWER; spelaren hjälper dem genom att hämta förnödenheter.
 - **Bedömning:** Fungerar. Mysteriet är exakt lagom.
 
 ### 02 THE SUPPLY RUN
-- **Intro:** "Eleven people in a cellar. Two of them will not last without medicine." / "Watchtower has found three places where supplies were left behind." / "You are the only one who can still move."
+- **Intro:** "Morning. The group in the cellar is eleven people. Two of them will not last without medicine." / "Watchtower has found three places near you where supplies were left behind." / "You are the only one who can still move."
+- **Mål nådda (WATCHTOWER):** *"Medicine collected. Good. Two to go."* · *"Second cache collected. One left. They are gathering between you and it."* Skärmen visar "Supplies collected 1/3" osv.
 - **Slut (WATCHTOWER):** *"That is all three. They will make it through the night. … Stand by, Runner. The evacuation routes are closing."*
 - **Success:** "The supplies are in. The group can hold out, but the evacuation routes are closing."
 - **Bedömning:** Fungerar. Etablerar att överlevare söker skydd. Känd bugg: replikerna förutsätter tre platser (avsnitt 21).
@@ -809,6 +813,15 @@ Free Play har sedan #60 en zombie-AI med roller (förföljare och genskjutare, `
 ---
 
 ## 23. Ändringslogg
+
+**v2.4 (2026-11-18)** jämfört med v2.3. Beslut: berättelsen mellan THE FALL 01 och 02 ska flyta bättre; små textlager i THE FALL, inga ändrade mål eller id:n.
+
+- 01 `tf-m01-survivors`: gruppen beskrivs som överlevare som gömmer sig i en källare i närheten (var: "a second group … not far from you"). Ny inspelning.
+- 01 `tf-m01-win`: "Find shelter and rest. At first light, that group in the cellar will need you." (var: "That group needs medicine and supplies. Rest while you can."). Ny inspelning.
+- 01 success-text: "You find shelter and make it through the night. By morning, the group in the cellar is running out of medicine." (var: "You made it through the first night. A group of survivors needs your help."). Tidsregeln i avsnitt 4 uppdaterad med den nya formuleringen.
+- 02 intro: börjar på morgonen och knyter an till gruppen i källaren.
+- 02 `tf-m02-first` och `tf-m02-middle`: "Medicine collected" och "Second cache collected" (var: "site cleared"); skärmtexten "Supplies collected n/3", i 04 "Relay live n/3". Nya inspelningar.
+- Resultatskärmen: radiorepliken visas före success-texten i alla uppdrag (berättelseordning: det som sägs när uppdraget slutar, sedan det som händer efteråt).
 
 **v2.3 (2026-11-16)** jämfört med v2.2:
 
