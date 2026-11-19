@@ -147,7 +147,7 @@ for (const act of ["ON FOOT", "BY BIKE"]) {
       const after = await view(page);
       const audio = await page.evaluate(() => { const a = window.__outbreakAudio; return a ? { voices: a.soundscape.voiceCount, ...a.match.state } : null; });
       check(`${tag}: QUIT goes straight to the start page with no result, scare or second question`, !sawResult && (await page.getByRole("dialog").count()) === 0 && (await page.getByRole("heading", { name: "OUTBREAK" }).isVisible()));
-      check(`${tag}: after QUIT the session holds no match and no sound is left`, after.match === null && after.stage !== "finished" && (!audio || (audio.voices === 0 && audio.threat === null && !audio.heliLoop)), JSON.stringify({ after, audio }));
+      check(`${tag}: after QUIT the session holds no match and no sound is left`, after.match === null && after.stage !== "finished" && (!audio || (audio.voices === 0 && !audio.heliLoop)), JSON.stringify({ after, audio }));
       o.home();
       await toSetup(o, act, "SURVIVAL");
       await startFromSetup(o, "SURVIVAL");

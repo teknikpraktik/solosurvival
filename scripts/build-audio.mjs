@@ -1,6 +1,6 @@
 // Bygger OUTBREAKs produktionsljud (public/audio/*.mp3) från originalen i assets/audio/source/.
 // Kräver ffmpeg (med libmp3lame) i PATH. Kör: node scripts/build-audio.mjs   (skriver även assets/audio/levels.json)
-//   node scripts/build-audio.mjs --only threat-pulse-5,threat-pulse-6   bygger bara dessa (övriga filer och musiken lämnas orörda)
+//   node scripts/build-audio.mjs --only zombie-near,captured   bygger bara dessa (övriga filer och musiken lämnas orörda)
 //
 // Nivåer: varje fil får en fast förstärkning (inget komprimerat "loudness war"):
 //  - mattor som loopar (hotpulser, helikopter som väntar) efter integrerad ljudstyrka (I, LUFS),
@@ -21,12 +21,7 @@ const ONLY = process.argv.includes("--only") ? new Set(process.argv[process.argv
 
 /** measure: "I" = integrerad, "M" = högsta momentana. target i LUFS. */
 const FILES = [
-  { name: "threat-pulse-1", measure: "I", target: -24 },
-  { name: "threat-pulse-2", measure: "I", target: -24 },
-  { name: "threat-pulse-3", measure: "I", target: -24 },
-  { name: "threat-pulse-4", measure: "I", target: -24 },
-  // Ten more 30 s variants (MP3 originals, made to loop): the same level as the first four.
-  ...Array.from({ length: 10 }, (_, i) => ({ name: `threat-pulse-${i + 5}`, src: "mp3", measure: "I", target: -24 })),
+  // The threat pulse (threat-pulse-1…14) was removed after the field test; its sources stay in assets/audio/source.
   { name: "heli-extraction", measure: "I", target: -20 },
   { name: "heli-approach", measure: "M", target: -16 },
   { name: "heli-extraction-success", measure: "M", target: -14 },
@@ -66,8 +61,8 @@ const MUSIC = "theme-frostborne.mp3";
 const MORE_MUSIC = [
   "theme-frostborne-fade.mp3", "theme-frostborne-short.mp3",
   "music-frostborne-silence-1.mp3", "music-fragile-motif.mp3", "music-fragile-motif-1.mp3", "music-three-note-motif.mp3",
-  "music-stairwell-silence.mp3", "music-untitled-1.mp3", "music-missing-footstep.mp3", "music-dirty-riff.mp3",
-  "music-relentless-groove.mp3", "music-final-silence.mp3",
+  "music-stairwell-silence.mp3", "music-untitled-1.mp3", "music-missing-footstep.mp3",
+  "music-relentless-groove.mp3", "music-final-silence.mp3", // Dirty Riff removed after the field test (too bright and upbeat)
 ];
 /** Downward expander for the radio static: below −27 dBFS (RMS) the level falls 2:1, at most 9 dB; fast enough to open on every word. */
 const VOICE_GATE = "agate=mode=downward:threshold=0.045:ratio=2:range=0.355:attack=8:release=180:detection=rms:knee=2";

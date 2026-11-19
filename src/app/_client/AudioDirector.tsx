@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSessionCtx, useSessionView } from "./SessionProvider";
-import { LONG_THREAT, MATCH_SOUNDS, fetchForOffline, matchAudio, musicMode, readLevels, soundscape } from "./audio";
+import { MATCH_SOUNDS, matchAudio, musicMode, readLevels, soundscape } from "./audio";
 
 /**
  * Music across page changes (it lives at app level, so a page change or a re-render never restarts it), and the audio unlock on the
@@ -40,7 +40,7 @@ export function AudioDirector() {
   }, [mode]);
 
   // Setting up a match: decode the match sounds now, without holding up the screen (Survival's helicopter follows at match start).
-  useEffect(() => { if (path.startsWith("/new")) { soundscape().preload(MATCH_SOUNDS); void soundscape().music.prefetch("all"); fetchForOffline(LONG_THREAT); } }, [path]);
+  useEffect(() => { if (path.startsWith("/new")) { soundscape().preload(MATCH_SOUNDS); void soundscape().music.prefetch("all"); } }, [path]);
 
   return null;
 }

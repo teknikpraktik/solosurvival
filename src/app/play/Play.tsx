@@ -13,7 +13,6 @@ import { matchAudio } from "../_client/audio";
 import { Modal } from "../_client/Modal";
 import { AUTO_SVG, BIKE_SVG, HELI_SVG, MENU_SVG, SKULL_SVG, SOUND_OFF_SVG, SOUND_ON_SVG, WALK_SVG } from "../_client/symbols";
 import { Loader } from "../_client/Loader";
-import { threatRange } from "@/play/sound-rules";
 import { zombieTarget } from "@/play/zombie-anim";
 import { t } from "../_client/strings";
 import { personalRecord } from "@/play/recap";
@@ -118,7 +117,7 @@ export default function Play() {
   const nearestM = m && !m.paused && m.phase !== "finished" ? m.nearestZombieM : null;
   const wantClose = nextClose(viewClose, nearestM, vp);
   useEffect(() => { if (wantClose !== viewClose) setViewClose(wantClose); }, [wantClose, viewClose]);
-  // The match's soundscape (threat pulses, close zombie, helicopter) follows what the HUD shows. Leaving the game screen ends it.
+  // The match's soundscape (close-zombie warnings, helicopter) follows what the HUD shows. Leaving the game screen ends it.
   const finishedNow = !m || view?.stage === "finished" || m.phase === "finished";
   useEffect(() => {
     matchAudio().update(m ? { id: m.id, mode: m.mode, activity: m.activity, phase: m.phase, paused: m.paused, finished: finishedNow, nearestM: m.nearestZombieM } : null);
@@ -131,7 +130,7 @@ export default function Play() {
   const wantGoalClose = nextGoalClose(goalClose, goalM, vp);
   useEffect(() => { if (wantGoalClose !== goalClose) setGoalClose(wantGoalClose); }, [wantGoalClose, goalClose]);
   // Zombies approaching: a vibration once when the nearest zombie comes within 200 m, armed again after it has been beyond 260 m (and not
-  // more often than the cooldown). Nothing is spoken: the app has no synthetic voice; the threat pulse and the close-zombie sound are heard.
+  // more often than the cooldown). Nothing is spoken: the app has no synthetic voice; the close-zombie sounds are heard.
   const [approaching, setApproaching] = useState(false);
   const lastApproach = useRef(-Infinity);
   const wantApproaching = nextApproaching(approaching, nearestM);
@@ -227,8 +226,8 @@ export default function Play() {
   const opensInS = Math.max(0, m.extractionOpensAtS - m.elapsedS);
   const C = t().campaign;
   const campaignUrl = camp ? `/campaigns/${camp.campaignId}` : "/";
-  // How much the screen itself shows the threat (0–1): nothing beyond the distance where the threat pulse starts, full at 40 m.
-  const threatOn = threatRange(m.activity).onM;
+  // How much the screen itself shows the threat (0–1): nothing beyond 300 m on foot / 600 m by bike (≈ 100 s of closing), full at 40 m.
+  const threatOn = m.activity === "mtb" ? 600 : 300;
   const threat = nearestM === null ? 0 : Math.max(0, Math.min(1, (threatOn - nearestM) / (threatOn - 40)));
   const infecting = !finished && m.infection > 0;
   const toggleSound = () => { const on = !sound; setSound(on); setCuesEnabled(on); if (on) unlockAudio(); };

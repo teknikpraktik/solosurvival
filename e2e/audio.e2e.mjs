@@ -1,5 +1,5 @@
-// Soundscape in the real app (built, in Chromium): menu music across pages and out at match start, threat pulse from a real zombie
-// distance, Survival helicopter phases, quit and a new match leaving nothing playing, and which audio files are fetched.
+// Soundscape in the real app (built, in Chromium): menu music across pages and on into the match, the close-zombie warnings from a real
+// zombie distance (no threat pulse since the field test), Survival helicopter phases, quit and a new match leaving nothing playing, and which audio files are fetched.
 // GPS is MOCKED and match time/zombies are moved through the debug handles (window.__outbreak, window.__outbreakAudio).
 // What is checked is what plays (element and voice state), NOT how it sounds: nobody listens here.
 // BASE_URL=http://localhost:3100 node e2e/audio.e2e.mjs
@@ -75,7 +75,7 @@ async function startMatch(o, mode) {
   mu = await music(page);
   check("the music opens with the full theme; the two shorter versions are fetched for later passes", (await page.evaluate(() => window.__outbreakAudio.soundscape.music.history))[0] === "/audio/theme-frostborne.mp3" && ["/audio/theme-frostborne-fade.mp3", "/audio/theme-frostborne-short.mp3"].every((p) => reqs.includes(p)), [...new Set(reqs)].filter((p) => p.includes("theme")).join(","));
   check("music continues through the setup steps without restarting", mu.els.findIndex((e) => !e.paused) === el0 && mu.els[el0].t > t1 + 1.5, `${t1.toFixed(1)} → ${mu.els[el0]?.t.toFixed(1)}`);
-  const want = ["/audio/threat-pulse-1.mp3", "/audio/captured.mp3", "/audio/checkpoint-reached.mp3", "/audio/checkpoint-secured.mp3", "/audio/zombie-near.mp3"];
+  const want = ["/audio/captured.mp3", "/audio/checkpoint-reached.mp3", "/audio/checkpoint-secured.mp3", "/audio/zombie-near.mp3"];
   check("setup: the match sounds are fetched in the background", want.every((p) => reqs.includes(p)), [...new Set(reqs)].join(","));
   check("setup: helicopter sounds not fetched for a Checkpoints match", !reqs.some((p) => p.includes("heli")));
   await page.locator(".pvstats").waitFor({ timeout: 90000 });
@@ -93,19 +93,12 @@ async function startMatch(o, mode) {
   await wait(2400);
   mu = await music(page);
   check("match: at the end of the track the music stops (no new pass)", !mu.playing && mu.els.every((e) => e.paused), JSON.stringify(mu));
-  // Threat pulse from a real zombie distance.
+  // No threat pulse (removed after the field test): a zombie well within the old 300 m range plays nothing on its own.
   check("zombie placed ≈ 400 m away", (await zombieAt(page, 400)) < 30);
-  await zombieAt(page, 500);
-  await wait(4000);
-  check("calm with the nearest zombie ≈ 500 m (on foot)", (await audio(page)).threat === null, JSON.stringify(await audio(page)));
   await zombieAt(page, 260);
-  await wait(5000);
+  await wait(6000);
   const a1 = await audio(page);
-  check("threat pulse after the zombie stayed within 300 m (wider than before)", typeof a1.threat === "string" && a1.threat.includes("threat-pulse-"), JSON.stringify(a1));
-  // Bursts with silences: over 25 s the pulse comes and goes, never two at once.
-  const seen = new Set(); let quiet = 0;
-  for (let i = 0; i < 25; i++) { await wait(1000); const x = await page.evaluate(() => window.__outbreakAudio.match.state.threat); if (x) seen.add(x); else quiet++; }
-  check("pulse in bursts: silences in between and more than one variant over time", quiet >= 2 && seen.size >= 1, JSON.stringify({ quiet, variants: [...seen] }));
+  check("zombie at 260 m: no threat pulse (none fetched, nothing sounding)", !("threat" in a1) && a1.voices === 0 && !reqs.some((p) => p.includes("threat-pulse")), JSON.stringify(a1));
   // 200 m: the operator's "Zombies approaching!" (a recorded line).
   await zombieAt(page, 180);
   await wait(1500);
@@ -124,7 +117,7 @@ async function startMatch(o, mode) {
   await page.getByRole("dialog").getByRole("button", { name: "QUIT" }).click();
   await wait(2000);
   const a2 = await audio(page);
-  check("quit: nothing of the match keeps sounding", a2.threat === null && a2.voices === 0, JSON.stringify(a2));
+  check("quit: nothing of the match keeps sounding", a2.voices === 0, JSON.stringify(a2));
   await page.waitForURL(BASE + "/"); await wait(2000); // QUIT goes straight to the start page
   mu = await music(page);
   check("back to the menu: the music comes back", mu.playing && mu.els.some((e) => !e.paused), JSON.stringify(mu));
@@ -149,7 +142,7 @@ async function startMatch(o, mode) {
   await page.evaluate(() => { const s = window.__outbreak; s.live.state.phase = "finished"; s.live.state.result = "survived"; s.endMatch([{ type: "finished", result: "survived" }]); });
   await wait(1500);
   a = await audio(page);
-  check("win: the loop ends; the success sound and the operator's line play", a.heliLoop === false && a.threat === null && a.voices === 2 && a.voice === "liftingOff", JSON.stringify(a));
+  check("win: the loop ends; the success sound and the operator's line play", a.heliLoop === false && a.voices === 2 && a.voice === "liftingOff", JSON.stringify(a));
   await wait(8000);
   check("after the success sound: silence", (await audio(page)).voices === 0);
   await o.ctx.close();

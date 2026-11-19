@@ -103,7 +103,7 @@ export default function HowToPlay() {
             an arrow at the edge points to it.</li>
           <li>The <b>menu</b> button (three bars) pauses: the clock and the zombies stop. There you turn sound off and on, and <b>QUIT</b>
             asks once, then ends the match and goes back to the start page. The round <b>arrow</b> button (green when on) lets the map follow you with your direction up; touch the map to move it yourself.</li>
-          <li><b>Sound:</b> the theme plays as a match begins, once more during it and when it is over; between them a low pulse sounds while zombies are near. At 200 m the operator warns &quot;Zombies approaching!&quot;, at 100 m you hear the
+          <li><b>Sound:</b> the theme plays as a match begins and when it is over, and music comes back every minute or two during it. At 200 m the operator warns &quot;Zombies approaching!&quot;, at 100 m you hear the
             zombies, and from 50 m the distance is spoken: 50, 40, 30, 20, 10 m. Phones that can vibrate do so when a zombie comes within 200 m. The operator calls the important
             moments over the radio: the start, checkpoints, the helicopter and the rescue.
             Set music, effects and voice under <b>SETTINGS</b>, behind the menu button (three bars) on the start page.</li>

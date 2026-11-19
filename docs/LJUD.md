@@ -8,7 +8,7 @@ Källfiler, nivåer och storlekar: [`assets/audio/README.md`](../assets/audio/RE
 | Del | Fil | Ansvar |
 | --- | --- | --- |
 | Ljudmotor | `src/audio/soundscape.ts` | En AudioContext, bussar (musik, hot, helikopter, effekter), säkerhetslimiter, one-shots, loopar med övertoning, menymusik, duckning. Inga spelregler. |
-| Regler | `src/play/sound-rules.ts` | Alla avstånd och tider (`SOUND_RULES`), hotpulsens tillstånd, närhets-cooldown. Ren TypeScript, testad. |
+| Regler | `src/play/sound-rules.ts` | Alla avstånd och tider (`SOUND_RULES`), närhetsstegen (200 m, 100 m) och deras cooldown. Ren TypeScript, testad. |
 | Kontroller | `src/app/_client/audio.ts` | Filer, mix, nivåer per ljud, sparade inställningar, `MatchAudio` (matchens ljud). |
 | Vibration | `src/app/_client/cues.ts` | Bara vibration. Appen har ingen syntetisk röst (talsyntes): allt som sägs är inspelade repliker. |
 | Spelhändelser | `src/play/session.ts` (`SoundEvent`, `onSound`) | Sessionen säger till i samma ögonblick som spelet bestämmer en händelse. |
@@ -21,8 +21,8 @@ Källfiler, nivåer och storlekar: [`assets/audio/README.md`](../assets/audio/RE
 
 | Ljud | Spelhändelse (kod) | Regel |
 | --- | --- | --- |
-| theme-frostborne (hela, 209 s), -fade (155 s), -short (138 s) och soundtracket `music-*.mp3` (tio stycken) | Hela appen utom `/field` och `/dev` | Alla nivåanpassas mot temat (≈ −16,3 LUFS) med `gain` i `MUSIC_TRACKS`, högst +4 dB. Samma plan gäller Free Play och alla kampanjuppdrag (`MUSIC_PLAYLIST`, `src/app/_client/audio.ts`). **Meny:** hela temat öppnar appen; därefter korstonade pass ur de lugna styckena (temats tre versioner, Frostborne Silence 1, The Fragile Three-Note Motif och dess version 1), aldrig samma två gånger i rad. **Matchstart:** korta temat eller Three-Note Motif. **Mitt i matchen:** upp till två pass, vart och ett efter 4–9 minuters tystnad, ur de spända styckena Stairwell Silence, Untitled 1, The Missing Footstep och Dirty Riff. Däremellan är hotpulsen matchens ljudbakgrund. **Helikoptern har landat** (Survival, FINAL EXTRACTION): Relentless Groove direkt, korstonad. **Efter matchen**, när slutets egna ljud är klara: hela temat efter vinst, Final Silence efter förlust (fångad eller tiden slut; korstonas in om musik redan spelar). **Nedladdning:** menyns stycken hämtas när appen öppnas; resten hämtas på NEW GAME och i ett uppdrags briefing, så att de finns offline under matchen. |
-| threat-pulse-1…14 | Närmaste zombie (samma tal som HUD:en visar) | Se *Hotpuls*. 1–4 är 15 s, 5–14 är 30 s (loopbara), alla nivåanpassade till ≈ −24 LUFS (`node scripts/build-audio.mjs --only …` bygger enskilda filer). Varje burst är en slumpad variant, aldrig samma två gånger i rad, och tonas in på 2,5 s och ut på 3,5 s. En lång variant börjar på ett slumpat ställe i filen, så att hela filen hörs över tid och en burst aldrig når skarven. De fyra korta avkodas när matchen förbereds; de tio långa hämtas till offlinecachen men avkodas först när de spelas och släpps ur minnet efter sin burst (avkodad är en ≈ 11 MB). |
+| theme-frostborne (hela, 209 s), -fade (155 s), -short (138 s) och soundtracket `music-*.mp3` (nio stycken) | Hela appen utom `/field` och `/dev` | Alla nivåanpassas mot temat (≈ −16,3 LUFS) med `gain` i `MUSIC_TRACKS`, högst +4 dB. Samma plan gäller Free Play och alla kampanjuppdrag (`MUSIC_PLAYLIST`, `src/app/_client/audio.ts`). **Meny:** hela temat öppnar appen; därefter korstonade pass ur de lugna styckena (temats tre versioner, Frostborne Silence 1, The Fragile Three-Note Motif och dess version 1), aldrig samma två gånger i rad. **Matchstart:** korta temat eller Three-Note Motif. **Mitt i matchen** (ändrat efter fälttestet): ett pass efter varje tystnad på 1–2,5 minuter, så länge matchen pågår, ur de mörkare styckena Frostborne Silence 1, Three-Note Motif, Stairwell Silence, Untitled 1 och The Missing Footstep. Musiken har ersatt hotpulsen som matchens ljudbakgrund (förut: högst två pass med 4–9 minuters tystnad). Dirty Riff är borttagen, eftersom den upplevdes som för glad och uptempo; källfilen ligger kvar i `assets/audio/source/`. **Helikoptern har landat** (Survival, FINAL EXTRACTION): Relentless Groove direkt, korstonad. **Efter matchen**, när slutets egna ljud är klara: hela temat efter vinst, Final Silence efter förlust (fångad eller tiden slut; korstonas in om musik redan spelar). **Nedladdning:** menyns stycken hämtas när appen öppnas; resten hämtas på NEW GAME och i ett uppdrags briefing, så att de finns offline under matchen. |
+| (threat-pulse-1…14) | – | Borttagen efter fälttestet: musiken spelas oftare i stället. Källfilerna finns kvar i `assets/audio/source/`. Bussen `threat` finns kvar, tyst, för närhetsljuden som kommer (fotsteg, löpsteg, andning, morrande). |
 | zombie-near ("ROAR", gläfsande zombies) | Närmaste zombie inom **100 m**, för både gång och cykel (ut igen bortom 130 m) | En gång per närmande, 45 s cooldown, högst 8 per match. Följer bara närmaste avståndet, så många zombier ger ett ljud. Flyttat efter fälttestet; förut 100 m till fots och 200 m på cykel. |
 | zombies-approaching ("Zombies approaching!", inspelad röst) | Närmaste zombie inom **200 m**, för både gång och cykel (ut igen bortom 260 m) | En gång per närmande, 45 s cooldown, högst 8 per match. Spelas på röstkanalen som brådskande, precis som nedräkningen. Om zombien dyker upp direkt inom 100 m hörs bara gläfsandet. |
 | position-revealed | Första `zombie_detected` i matchen (jakten börjar, zombierna har positionen) och `off_network: exposed` ("Zombies have found you") | 60 s cooldown. Väntar tills operatörens röst ("Game on") har talat klart, högst 4 s. Det periodiska `reveal`-eventet används inte: med magnetjakt vet zombierna redan var spelaren är, så det vore ett ljud utan innebörd (V2.2-ANALYS 5). |
@@ -83,8 +83,8 @@ Fem inspelade ord: "fifty", "forty", "thirty", "twenty" och "ten" (`count50` …
 - **En replik åt gången.** En replik som kommer medan en annan spelar väntar på en enda köplats, där den nyaste vinner. Väntar den mer än 12 s kasseras den.
 - **Inaktuella repliker kasseras på händelser:** matchslut, fångst, Quit, när spelskärmen lämnas, när appen hamnar i bakgrunden, och när landningen ersätter "rescue inbound".
 - **Vinstrepliken är en del av slutsekvensen.** Den avbryter allt annat. Den stoppas när slutet lämnas (SHOW MATCH, PLAY AGAIN, Main menu) och vid fångst.
-- **Ingen syntetisk röst.** Talsyntesen används inte alls i vuxenappen (borttagen 2026-11-14): inte "Game on", "Zombies approaching", nedräkningen 100–10 m, "Run!", "Checkpoint" eller "Captured". Varningarna i den finns kvar som vibration, hotpuls och zombie-near.
-- **Ljudnivåer:** egen röstbuss. Rösten följer reglagen Voice och "Sound on". Musik, hotpuls och helikopter sänks med ≈ 10 dB medan repliken spelar och återställs när den slutar eller stoppas; det finns en säkerhetsgräns på 12 s. Effekter och varningsljud sänks inte.
+- **Ingen syntetisk röst.** Talsyntesen används inte alls i vuxenappen (borttagen 2026-11-14): inte "Game on", "Zombies approaching", nedräkningen 100–10 m, "Run!", "Checkpoint" eller "Captured". Varningarna i den finns kvar som vibration, inspelade repliker och zombie-near.
+- **Ljudnivåer:** egen röstbuss. Rösten följer reglagen Voice och "Sound on". Musik och helikopter sänks med ≈ 10 dB medan repliken spelar och återställs när den slutar eller stoppas; det finns en säkerhetsgräns på 12 s. Effekter och varningsljud sänks inte.
 - **Händelser från bakgrunden** (räknade vid återkomst) ger ingen replik.
 - **Saknad eller trasig fil:** vid en checkpoint spelas den gamla klangen i stället; för övriga repliker blir det tyst. Spelets regler påverkas aldrig. Avstängt ljud ger ingen ersättning.
 - **Undertexter:** spelvyn har inget system för undertexter. Sessionens korta meddelanden visas aldrig där, så inga undertexter har lagts till. Repliktexten finns i `VOICE` och i fältloggen (`sound` → `voice`).
@@ -95,27 +95,20 @@ Radiobruset upplevdes för högt. Två ändringar:
 - **Brusdämpning i filerna:** varsam nedåtexpansion vid bygget (`VOICE_GATE` i `scripts/build-audio.mjs`). Brus långt under talet sänks 2:1, högst 9 dB. Uppmätt: talet är oförändrat (±0,0 dB), och bruset mellan orden har sänkts 4–9 dB i sex filer. I keep-moving och get-to-helicopter ligger bruset nära talets nivå, så där blev sänkningen bara 0,6–1,2 dB.
 - **Lägre nivå i mixen:** alla repliker ligger 2,5 dB lägre (röstnivå 0,75).
 
-## Hotpuls
+## Hotpuls (borttagen)
 
-- Till fots startar en hotperiod när närmaste zombie har varit inom **300 m** i 2 s. Den slutar när zombien har varit bortom 380 m i 8 s och perioden har pågått minst 12 s. Gränserna vidgades efter fälttestet, så att pulsen hörs oftare: 300 m motsvarar ungefär 100 s rakt mot varandra i gångfart mot en Normal-zombie.
-- På cykel gäller **600 m / 750 m**: spelaren rör sig i cirka 16 km/h och zombien i 7,8–13,4 km/h, så 600 m motsvarar ungefär 85–100 s rakt mot varandra.
-- Efter en period följer minst **8 s** lugn, utom när en zombie redan är inom inzoomningsavståndet (100 / 200 m).
-- **Skurar med tystnad emellan** (efter fälttestet): under en hotperiod spelas pulsen i skurar på slumpmässigt 6–14 s, med tystnad på slumpmässigt 3–8 s emellan (plus 3,5 s uttoning). Varje skur får en ny slumpad variant av fjorton, aldrig samma två gånger i rad, och bara en hörs åt gången. Varje skur tonas in på 2,5 s och ut på 3,5 s; en 30 s variant börjar på ett slumpat ställe i filen. När hotet är över tonas pulsen ut på 4 s.
-- Paus, matchslut, inga zombier eller appen i bakgrunden stoppar pulsen med en snabb uttoning (1,2 s). Därefter krävs de 3 s igen.
-- Reglerna körs varje sekund av `MatchAudio`, även när ingenting på skärmen ändras (en stillastående zombie).
-- Pulsen bygger på samma avstånd som HUD-pillret alltid visar. Ljudet avslöjar alltså ingenting som skärmen inte redan visar.
-- Tonhöjd och uppspelningshastighet ändras aldrig.
+Hotpulsen (skurar inom 300 m till fots och 600 m på cykel) togs bort efter fälttestet. Kvar är "Zombies approaching!" vid 200 m, gläfsandet vid 100 m, nedräkningen 50–10 m och skärmens röda kant, som fortfarande börjar vid 300 m till fots och 600 m på cykel (`Play.tsx`).
 
 ## Mix
 
 | Buss | Nivå | Duckas under tal |
 | --- | --- | --- |
 | music | 0,32 | ja |
-| threat | 1,0 (förut 0,70) | ja |
+| threat | 1,0 (tyst sedan hotpulsen togs bort) | ja |
 | heli | 0,80 | ja |
 | fx (händelser, radio) | 1,0 | nej |
 
-Nivå per ljud på sin buss: hotpuls 1,25 (sammanlagt ≈ +5 dB mot förut), helikopterloop 0,7, helikopterns ankomst 0,9, success/captured/dörr 1,0, zombie-near 0,8, revealed 0,75, checkpoint 0,7, radio 0,55.
+Nivå per ljud på sin buss: helikopterloop 0,7, helikopterns ankomst 0,9, success/captured/dörr 1,0, zombie-near 0,8, revealed 0,75, checkpoint 0,7, radio 0,55.
 
 Duckning: under operatörens repliker sänks musik, hot och helikopter till 0,32 (≈ −10 dB) på 0,15 s och återställs på 0,9 s. Duckningen släpps automatiskt efter 8 s om talsyntesen aldrig meddelar att den är klar (det händer på Android). Efter mixen sitter en säkerhetslimiter (DynamicsCompressor, −6 dB, 12:1).
 
@@ -139,15 +132,15 @@ Lyssnarens nivåer (0–100 %) multipliceras på mixen. "Effects" styr bussarna 
 
 Allt nedan har körts här. Ingenting har provlyssnats.
 
-- `src/tests/unit/sound-rules.test.ts`: hotregler (dwell, hysteres, minsta längd, lugn period, variant aldrig två gånger i rad), närhets-cooldown och tak.
+- `src/tests/unit/sound-rules.test.ts`: att hotpulsens regler är borta, variant aldrig två gånger i rad, närhets-cooldown och tak.
 - `src/tests/unit/soundscape.test.ts`, på en fejkad Web Audio-klocka:
   - inget ljud före tryck, utan ljud påslaget eller i bakgrunden;
   - loop med överlapp bara vid skarven och ingenting kvar efter stopp;
   - duckning med säkerhetsgräns, och att nivåerna följer inställningarna;
   - musiken: startar en gång, ingen omstart vid sidbyten, upprepning med övertoning, uttoning och intoning, blockerad uppspelning, bakgrund;
-  - matchljud: en hotpuls åt gången, närhetsljud en gång, helikopterns faser, rätt vinstljud per läge, inaktuella händelser tysta, QUIT och ny match rena, paus och bakgrund, ljud av.
+  - matchljud: ingen hotpuls, närhetsljud en gång, helikopterns faser, rätt vinstljud per läge, inaktuella händelser tysta, QUIT och ny match rena, paus och bakgrund, ljud av.
 - `src/tests/unit/sound-events.test.ts`, sessionen på riktig kartdata: helikopterns ankomst och landning en gång, jakten och "exposed", checkpoint men inte hem, slutet i samma ögonblick, `stale` vid återkomst från bakgrunden.
-- `e2e/audio.e2e.mjs`, byggd app i Chromium med mockad GPS: musikens livscykel över sidor, hämtade filer, hotpuls från en placerad zombie, QUIT, Survival-faserna, sparat "ljud av". Skriptet kontrollerar vad som spelar, inte hur det låter.
+- `e2e/audio.e2e.mjs`, byggd app i Chromium med mockad GPS: musikens livscykel över sidor, hämtade filer, ingen hotpuls men varningarna från en placerad zombie, QUIT, Survival-faserna, sparat "ljud av". Skriptet kontrollerar vad som spelar, inte hur det låter.
 
 Radiorepliker: `soundscape.test.ts` (en replik åt gången, kö och kassering, vinstrepliken avbryter, Quit och fångst tystar, saknad fil
 ger ersättning, avstängt ljud, bakgrund, duckning släpps), `sound-events.test.ts` (start en gång, inte efter paus, sista checkpointen) och
@@ -155,14 +148,14 @@ ger ersättning, avstängt ljud, bakgrund, duckning släpps), `sound-events.test
 
 ## Provlyssning i riktig telefon (återstår)
 
-1. Nivåbalansen mellan musik, puls, helikopter, händelser och röst, i högtalare och i hörlurar.
+1. Nivåbalansen mellan musik, helikopter, händelser och röst, i högtalare och i hörlurar.
 2. Hörs talet tydligt över helikopterloopen? Är −10 dB duckning lagom?
-3. Skarvarna i hotpulsernas och helikopterns loopar (övertoning 0,12 / 0,35 s). Det gäller särskilt den rytmiska puls 2, där överlappet förskjuter takten en aning vid varje varv.
+3. Skarven i helikopterns loop (övertoning 0,35 s).
 4. Musikens upprepning vid ≈ 3:27. Låter övergången diskret?
 5. iPhone: ring/tyst-omkopplaren tystar Web Audio, även musiken. Kontrollera också musiken efter samtal/Siri, och efter att skärmen släckts och tänts.
 6. Att ingen kvarhängande duckning ligger kvar efter en avbruten replik.
 7. Positionsljudet vid matchstart: känns det motiverat, eller är det ett ljud för mycket direkt efter startrepliken?
 8. Dörrsmällen är limiterad och ändå ≈ 5 dB svagare än de andra händelseljuden. Är den tillräckligt tydlig?
-9. Cykel: räcker 400 m för hotpulsen, eller kommer den för tidigt eller sent i verklig fart?
-10. Radiorepliker: nivån mot musik, hotpuls och helikopter; att transkriptionen stämmer. Talet börjar 1,6–3,9 s in i filerna efter brus och knaster, så "You're inside" kommer cirka 4 s efter dörrsmällen. Är det rätt tempo?
+9. Musiken mitt i matchen: är 1–2,5 minuters tystnad mellan passen lagom, eller blir det för mycket musik?
+10. Radiorepliker: nivån mot musik och helikopter; att transkriptionen stämmer. Talet börjar 1,6–3,9 s in i filerna efter brus och knaster, så "You're inside" kommer cirka 4 s efter dörrsmällen. Är det rätt tempo?
 11. Survival-vinsten: "Lifting off" spelas samtidigt med helikopterns lyftljud. Hörs rösten tydligt?

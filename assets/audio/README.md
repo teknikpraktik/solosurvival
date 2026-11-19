@@ -14,7 +14,7 @@ Mini Outbreak använder inga av dessa filer.
 | Källfil | Användning | Format (verkligt) | Längd | sha256 (original) |
 | --- | --- | --- | --- | --- |
 | `theme-outbreak.mp3` | Menymusik | MP3, 48 kHz stereo, ≈181 kbit/s VBR | 211,3 s (4,2 s tystnad i början, uttoning 207,5–210,6 s) | `a746174154e488cf7c54d7ab4874e2f678e3c2ee4cdfc0df92fd4653bb7defbf` |
-| `threat-pulse-1.wav` … `-4.wav` | Hotpuls, fyra likvärdiga varianter | WAV PCM 16 bit, 48 kHz stereo | 15 s vardera | se nedan |
+| `threat-pulse-1.wav` … `-4.wav` | Hotpuls (används inte längre: borttagen efter fälttestet, byggs inte) | WAV PCM 16 bit, 48 kHz stereo | 15 s vardera | se nedan |
 | `captured.wav` | Fångad | WAV PCM 16/48/stereo | 4 s | `d5433b2b…` |
 | `safe-door-close.wav` | Vinst hemma / vid B | WAV | 5 s | `c95f3059…` |
 | `heli-extraction-success.wav` | Lyckad helikopterräddning | WAV | 7 s | `5fa5440d…` |

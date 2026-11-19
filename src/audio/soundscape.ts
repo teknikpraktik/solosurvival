@@ -415,7 +415,7 @@ export interface MusicSource {
   /** The tracks the menu repeats (indexes into `tracks`). Missing = all. The first track opens the app either way. */
   menu?: readonly number[];
   /**
-   * A match with its own plan instead of random passes: one of `start` plays as the match begins, then `midPasses` passes (default 1)
+   * A match with its own plan instead of random passes: one of `start` plays as the match begins, then `midPasses` passes (default 1; Infinity = for as long as the match lasts)
    * drawn from `mid`, each after a silence (`gapS`), then nothing until the match is over, when `end` plays (`lost` after a lost match;
    * the menu's random repeat goes on from there). `moments` are tracks for a moment of the match, started at once (`moment`).
    * Indexes into `tracks`; a list is a pool, drawn at random and never the track just heard.
