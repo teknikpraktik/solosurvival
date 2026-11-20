@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Soundscape, type Levels } from "@/audio/soundscape";
-import { AUDIO, DUCK, MATCH_SOUNDS, MIX, MatchAudio, SOUNDTRACK, VOICE, musicMode, type MatchSoundInput } from "@/app/_client/audio";
+import { AUDIO, DUCK, GAIN, MATCH_SOUNDS, MIX, MatchAudio, SOUNDTRACK, VOICE, musicMode, type MatchSoundInput } from "@/app/_client/audio";
 import { SOUND_RULES } from "@/play/sound-rules";
 import { fakeEnv, flush, type FakeGain } from "./audio-fakes";
 
@@ -227,6 +227,29 @@ describe("match sounds", () => {
     const n = t.timers.size;
     await t.advance(5000);
     expect(t.timers.size).toBeLessThanOrEqual(n);
+  });
+
+  it("a new infected (someone bitten): one of the scare's screams, softer than the scare, with a cooldown and never right after the scare", async () => {
+    const t = setup();
+    t.s.unlock();
+    await run(t, 1);
+    const screams = () => t.ctx.sources.filter((x) => AUDIO.jump.includes(x.buffer?.url as never));
+    expect(await t.m.onEvent({ type: "infected", stale: false })).toBe("played");
+    expect(screams()).toHaveLength(1);
+    expect(GAIN.infected).toBeLessThan(GAIN.jump);
+    expect(await t.m.onEvent({ type: "infected", stale: false })).toBe("suppressed"); // within the cooldown
+    await run(t, SOUND_RULES.infected.cooldownS + 1);
+    const first = screams()[0].buffer?.url;
+    expect(await t.m.onEvent({ type: "infected", stale: false })).toBe("played");
+    expect(screams()[1].buffer?.url).not.toBe(first); // another variant
+    expect(await t.m.onEvent({ type: "infected", stale: true })).toBe("suppressed"); // worked out after the app was away
+    // The jump scare screams: a new infected right after it is not heard (the scare keeps its own).
+    await run(t, SOUND_RULES.infected.cooldownS + 1);
+    expect(await t.m.onEvent({ type: "jump", stale: false })).toBe("played");
+    await run(t, 2);
+    expect(await t.m.onEvent({ type: "infected", stale: false })).toBe("suppressed");
+    await run(t, SOUND_RULES.infected.afterScareS);
+    expect(await t.m.onEvent({ type: "infected", stale: false })).toBe("played");
   });
 
   it("close zombie sound plays once per approach (cooldown), not once per zombie or per update", async () => {

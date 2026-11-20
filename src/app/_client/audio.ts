@@ -89,6 +89,8 @@ export const GAIN = {
   // The jump scare is meant to startle (its files are also levelled a little above the other one-shots); a sprinting zombie is the roar
   // again, a little lower; contact is the warning sting at full level.
   jump: 1, sprint: 0.7, contact: 1,
+  // A new infected: the scare's scream, but further off (≈ −4.4 dB), so the scare with its picture stays the loudest.
+  infected: 0.6,
   // Campaign: the soft chime that says "a radio message came in" while a line has no recording yet.
   radioCue: 0.45,
   // The operator's lines −2.5 dB after the field test (the radio static was felt too loud; the files also have it lowered between the words).
@@ -257,6 +259,9 @@ export class MatchAudio {
   private readonly approaching = new NearGate(SOUND_RULES.approach);
   private readonly revealed = new Cooldown(SOUND_RULES.revealed.cooldownS);
   private readonly contact = new Cooldown(SOUND_RULES.contact.cooldownS);
+  private readonly infected = new Cooldown(SOUND_RULES.infected.cooldownS);
+  /** When the jump scare's scream was last heard (a new infected's scream does not follow it at once). */
+  private lastScareS = -Infinity;
   /** When the roar was last heard (entering 100 m or a sprint), so the two never come on top of each other. */
   private lastRoarS = -Infinity;
   private jumpVariant: number | null = null;
@@ -335,8 +340,16 @@ export class MatchAudio {
       case "revealed": return this.revealed.take(this.clock.nowS()) ? this.afterVoice(() => res(this.s.play(AUDIO.revealed, "fx", GAIN.revealed))) : Promise.resolve("suppressed");
       // The scare's own scream, with its picture: at once, over anything (a random variant, never the one just heard).
       case "jump":
+        this.lastScareS = this.clock.nowS();
         this.jumpVariant = pickVariant(this.jumpVariant, AUDIO.jump.length, this.random);
         return res(this.s.play(AUDIO.jump[this.jumpVariant], "fx", GAIN.jump));
+      // A new infected has come into the game: someone has just been bitten. A scream (another variant than the last), with a cooldown.
+      case "infected": {
+        const t = this.clock.nowS();
+        if (t - this.lastScareS < SOUND_RULES.infected.afterScareS || !this.infected.take(t)) return Promise.resolve("suppressed");
+        this.jumpVariant = pickVariant(this.jumpVariant, AUDIO.jump.length, this.random);
+        return res(this.s.play(AUDIO.jump[this.jumpVariant], "fx", GAIN.infected));
+      }
       // A zombie starts to sprint: the roar, unless it was just heard (entering 100 m and the first sprint often come together).
       case "sprint": {
         const t = this.clock.nowS();
@@ -485,6 +498,8 @@ export class MatchAudio {
     this.countdown = null;
     this.revealed.reset();
     this.contact.reset();
+    this.infected.reset();
+    this.lastScareS = -Infinity;
     this.lastRoarS = -Infinity;
     this.matchId = i.id;
     this.done = false;

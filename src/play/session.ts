@@ -85,6 +85,8 @@ export type SoundEvent =
   | { type: "jump"; stale: boolean }
   | { type: "sprint"; stale: boolean }
   | { type: "contact"; stale: boolean }
+  /** A new infected has come into the game (not the ones that start it): someone out there has just been bitten. */
+  | { type: "infected"; stale: boolean }
   | { type: "heli_approach"; stale: boolean; campaign?: boolean }
   | { type: "heli_landed"; stale: boolean; campaign?: boolean }
   /**
@@ -725,7 +727,10 @@ export class PlaySession {
           if (t - this.lastDetectCueMs > 15_000) { this.lastDetectCueMs = t; this.cue("alert", "Zombies are hunting you"); }
           break;
         case "infection_contact": this.cue("danger", "Zombie close – move away!"); this.sound({ type: "contact", stale: this.replaying }); this.log?.add(t, "infection_contact"); break;
-        case "zombie_spawned": this.log?.add(t, "zombie_spawned", { id: e.zombieId, n: live.state.zombies.length }); break;
+        case "zombie_spawned":
+          this.log?.add(t, "zombie_spawned", { id: e.zombieId, n: live.state.zombies.length });
+          this.sound({ type: "infected", stale: this.replaying });
+          break;
         case "zombie_culled": this.log?.add(t, "zombie_culled", { id: e.zombieId, n: live.state.zombies.length }); break;
         case "zombie_intercept": {
           // Field test of the zombie AI with roles: when an interceptor heads for a meeting point, and how far ahead it expects the player.

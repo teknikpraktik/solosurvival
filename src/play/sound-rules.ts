@@ -18,6 +18,11 @@ export const SOUND_RULES = {
   /** A sprinting zombie's roar is skipped when the roar was heard within this time; the contact sting comes at most this often. */
   sprint: { afterRoarS: 8 },
   contact: { cooldownS: 10 },
+  /**
+   * A new infected joins the game (someone has been bitten): one of the scare's screams, at most this often, and not within `afterScareS`
+   * of the jump scare itself (the same screams; the scare keeps its own).
+   */
+  infected: { cooldownS: 20, afterScareS: 10 },
   heli: { loopFadeInS: 3, approachFadeOutS: 3, loopStopS: 0.8 },
 } as const;
 
