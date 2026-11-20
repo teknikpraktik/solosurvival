@@ -229,26 +229,25 @@ describe("match sounds", () => {
     expect(t.timers.size).toBeLessThanOrEqual(n);
   });
 
-  it("a new infected (someone bitten): one of the scare's screams, softer than the scare, with a cooldown and never right after the scare", async () => {
+  it("a new infected (someone bitten): a scream, softer than the other one-shots, a new variant each time, with a cooldown; the jump scare is silent", async () => {
     const t = setup();
     t.s.unlock();
     await run(t, 1);
     const screams = () => t.ctx.sources.filter((x) => AUDIO.jump.includes(x.buffer?.url as never));
     expect(await t.m.onEvent({ type: "infected", stale: false })).toBe("played");
     expect(screams()).toHaveLength(1);
-    expect(GAIN.infected).toBeLessThan(GAIN.jump);
+    expect(GAIN.infected).toBeLessThan(1);
     expect(await t.m.onEvent({ type: "infected", stale: false })).toBe("suppressed"); // within the cooldown
     await run(t, SOUND_RULES.infected.cooldownS + 1);
     const first = screams()[0].buffer?.url;
     expect(await t.m.onEvent({ type: "infected", stale: false })).toBe("played");
     expect(screams()[1].buffer?.url).not.toBe(first); // another variant
     expect(await t.m.onEvent({ type: "infected", stale: true })).toBe("suppressed"); // worked out after the app was away
-    // The jump scare screams: a new infected right after it is not heard (the scare keeps its own).
+    // The jump scare plays no sound (picture and vibration only), and does not hold back a new infected's scream.
     await run(t, SOUND_RULES.infected.cooldownS + 1);
-    expect(await t.m.onEvent({ type: "jump", stale: false })).toBe("played");
-    await run(t, 2);
-    expect(await t.m.onEvent({ type: "infected", stale: false })).toBe("suppressed");
-    await run(t, SOUND_RULES.infected.afterScareS);
+    const n = t.ctx.sources.length;
+    expect(await t.m.onEvent({ type: "jump", stale: false })).toBeNull();
+    expect(t.ctx.sources.length).toBe(n);
     expect(await t.m.onEvent({ type: "infected", stale: false })).toBe("played");
   });
 
@@ -978,16 +977,14 @@ describe("zombies approaching (200 m) and the roar (100 m)", () => {
     expect(warns(t)).toBe(2);
   });
 
-  it("jump scare, sprint and contact have sounds: a scream variant, the roar (not twice in a row), the warning sting with a cooldown", async () => {
+  it("the jump scare is silent; sprint and contact have sounds: the roar (not twice in a row), the warning sting with a cooldown", async () => {
     const t = setup();
     t.s.unlock();
     t.m.update(base());
     const n = (url: string) => t.ctx.sources.filter((x) => x.buffer?.url === url).length;
     const jumps = () => AUDIO.jump.reduce((a, u) => a + n(u), 0);
-    expect(await t.m.onEvent({ type: "jump", stale: false })).toBe("played");
-    expect(jumps()).toBe(1);
-    expect(await t.m.onEvent({ type: "jump", stale: true })).toBe("suppressed"); // worked out after the app was away
-    expect(jumps()).toBe(1);
+    expect(await t.m.onEvent({ type: "jump", stale: false })).toBeNull();
+    expect(jumps()).toBe(0);
     // Sprint: the roar; a second sprint right after it is not another roar.
     expect(await t.m.onEvent({ type: "sprint", stale: false })).toBe("played");
     expect(await t.m.onEvent({ type: "sprint", stale: false })).toBe("suppressed");
