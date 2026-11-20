@@ -73,6 +73,19 @@ describe("sound moments from the session", () => {
     expect(t.of("revealed").map((e) => e.type === "revealed" && e.reason)).toEqual(["hunt", "exposed"]);
   }, 60_000);
 
+  it("a new infected is a moment (someone has been bitten); the zombies the match starts with are not", async () => {
+    const t = await make();
+    await t.begin("mission");
+    expect(t.session.live!.state.zombies.length).toBeGreaterThan(0); // the match's first zombies…
+    expect(t.of("infected")).toEqual([]); // …make no sound
+    t.play(5);
+    expect(t.of("infected")).toEqual([]);
+    // More zombies come as the match goes on (growthPerMin): each one that enters is a moment (the soundscape's cooldown thins them).
+    t.handle([{ type: "zombie_spawned", zombieId: "x" }]);
+    t.handle([{ type: "zombie_spawned", zombieId: "y" }]);
+    expect(t.of("infected")).toEqual([{ type: "infected", stale: false }, { type: "infected", stale: false }]);
+  }, 60_000);
+
   it("checkpoint: for a checkpoint only (home and B are the win, with their own sound)", async () => {
     const t = await make();
     await t.begin("mission");
