@@ -6,11 +6,14 @@
  *   docs/campaign/<id>-voice-script.csv   one row per radio line: file name, speaker, voice direction, trigger, text (import into ElevenLabs
  *                                         or hand to a voice actor; the file name is what the game looks for)
  *   src/campaign/voice-manifest.ts        which lines have a file in public/campaign/<id>/voice/ (the game only asks for those)
+ *   docs/campaign/<id>-narration-script.csv  the narrator's reads between missions (briefing, debrief), built from the mission texts
+ *   RECORDED_NARRATION in the manifest    which narrations have a file in public/campaign/<id>/narration/
  * Workflow: generate <beat id>.mp3 per row, put the files in public/campaign/<id>/voice/, run this script, commit.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { CAMPAIGNS } from "../src/campaign";
+import { chapterNarrations } from "../src/campaign/narration";
 import type { Trigger } from "../src/campaign/types";
 
 const root = path.join(import.meta.dirname, "..");
@@ -45,6 +48,7 @@ function put(file: string, content: string) {
 }
 
 const recorded: Record<string, string[]> = {};
+const narrated: Record<string, string[]> = {};
 for (const c of CAMPAIGNS) {
   const rows = [csv(["file", "mission", "speaker", "voice direction", "trigger", "stand-in until recorded", "text"])];
   const ids = new Set<string>();
@@ -60,6 +64,20 @@ for (const c of CAMPAIGNS) {
   recorded[c.id] = files.filter((f) => ids.has(f));
   const missing = [...ids].filter((id) => !recorded[c.id].includes(id));
   console.log(`${c.id}: ${recorded[c.id].length} of ${ids.size} lines recorded${missing.length ? `, ${missing.length} to record` : ""}`);
+
+  // The narrator. A take whose text no longer matches the screens it reads is reported (regenerate it with --only <id>).
+  const narrations = chapterNarrations(c);
+  put(path.join(root, "docs", "campaign", `${c.id}-narration-script.csv`), [csv(["file", "mission", "kind", "voice direction", "text"]),
+    ...narrations.map((n) => csv([`${n.id}.mp3`, n.id.replace(/^.*-m(\d+)-.*$/, "$1"), n.kind, c.narrator?.voice ?? "", n.text]))].join("\n") + "\n");
+  const nDir = path.join(root, "public", "campaign", c.id, "narration");
+  const nFiles = existsSync(nDir) ? readdirSync(nDir).filter((f) => f.endsWith(".mp3")).map((f) => f.slice(0, -4)).sort() : [];
+  const nIds = new Set(narrations.map((n) => n.id));
+  for (const f of nFiles) if (!nIds.has(f)) { problems++; console.error(`${c.id}: narration ${f}.mp3 has no narration with that id`); }
+  narrated[c.id] = nFiles.filter((f) => nIds.has(f));
+  const takesFile = path.join(root, "assets", "audio", "campaign", c.id, "narration", "takes.json");
+  const takes = existsSync(takesFile) ? (JSON.parse(readFileSync(takesFile, "utf8")) as Record<string, { text?: string }>) : {};
+  for (const n of narrations) if (narrated[c.id].includes(n.id) && takes[n.id] && takes[n.id].text !== n.text) console.warn(`${c.id}: ${n.id} was recorded from another text than the screen shows now (regenerate it)`);
+  console.log(`${c.id}: ${narrated[c.id].length} of ${narrations.length} narrations recorded`);
 }
 
 put(path.join(root, "src", "campaign", "voice-manifest.ts"), `/**
@@ -68,6 +86,9 @@ put(path.join(root, "src", "campaign", "voice-manifest.ts"), `/**
  * chime, so the game never asks for a file that is not there.
  */
 export const RECORDED_BEATS: Record<string, readonly string[]> = ${JSON.stringify(recorded, null, 2).replace(/\[\s+\]/g, "[]")};
+
+/** Which narrations (src/campaign/narration.ts: briefing, debrief) have a recording, per campaign. A missing one is only text. */
+export const RECORDED_NARRATION: Record<string, readonly string[]> = ${JSON.stringify(narrated, null, 2).replace(/\[\s+\]/g, "[]")};
 `);
 if (check && (stale || problems)) process.exit(1);
 if (problems) process.exit(1);

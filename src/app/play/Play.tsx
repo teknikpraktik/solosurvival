@@ -17,6 +17,9 @@ import { zombieTarget } from "@/play/zombie-anim";
 import { t } from "../_client/strings";
 import { personalRecord } from "@/play/recap";
 import { findMission } from "@/campaign";
+import { debriefNarration } from "@/campaign/narration";
+import { NarrationControl } from "../_client/NarrationControl";
+import { narrator } from "../_client/narration";
 import { MatchStorage } from "@/play/storage";
 import { Scare } from "../_client/Scare";
 import { JumpScare } from "../_client/JumpScare";
@@ -25,6 +28,13 @@ import { preloadMatchPictures, resultPicture, type ResultPicture } from "../_cli
 import type { MapMarker } from "../_client/GameMap";
 
 const fmtDist = (m: number): string => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`);
+
+/** A won mission's debrief, read by the narrator once the ending's own sounds (door, helicopter, the operator's last line) are over. */
+function DebriefNarration({ campaignId, id }: { campaignId: string; id: string }) {
+  const [endDone, setEndDone] = useState(() => matchAudio().endSequenceDone);
+  useEffect(() => matchAudio().onEndSequence(setEndDone), []);
+  return <NarrationControl campaignId={campaignId} id={id} autoplay={endDone} />;
+}
 
 const GameMap = dynamic(() => import("../_client/GameMap"), { ssr: false });
 
@@ -461,7 +471,11 @@ export default function Play() {
           const last = camp.number === camp.total;
           const campaignDone = won && last;
           const epilogue = campaignDone ? findMission({ id: camp.campaignId, mission: camp.missionId })?.campaign.epilogue : undefined;
-          const leave = () => session.reset();
+          const leave = () => { narrator().stop(); session.reset(); };
+          // NEXT goes straight to the next briefing, whose narrator starts on this tap.
+          const leaveToNext = () => { unlockAudio(); leave(); };
+          const found = findMission({ id: camp.campaignId, mission: camp.missionId });
+          const debrief = won && found ? debriefNarration(found.campaign, found.mission) : null;
           // Replace the finished game's entry: back from the briefing or the overview never returns to a match that is over.
           const missionHref = (chapter: string, id: string) => `/campaigns/${chapter}?mission=${id}`;
           return (
@@ -469,7 +483,7 @@ export default function Play() {
               title={epilogue ? epilogue.title : won ? R2.complete : lost ? R2.failed : R2.aborted}
               actions={
                 <>
-                  {won && out?.nextMissionId && <Link replace className="btn primary cta camp-cta" href={missionHref(out.nextChapterId ?? camp.campaignId, out.nextMissionId)} onClick={leave}>{R2.next(out.nextTitle ?? "")}</Link>}
+                  {won && out?.nextMissionId && <Link replace className="btn primary cta camp-cta" href={missionHref(out.nextChapterId ?? camp.campaignId, out.nextMissionId)} onClick={leaveToNext}>{R2.next(out.nextTitle ?? "")}</Link>}
                   {lost && <Link replace className="btn primary cta" href={missionHref(camp.campaignId, camp.missionId)} onClick={leave}>{R2.retry}</Link>}
                   <Link replace className={(won && out?.nextMissionId) || lost ? "btn" : "btn primary cta camp-cta"} href={campaignUrl} onClick={leave}>{C.backToCampaign}</Link>
                   {canShow && <Link className="btn quiet" href={`/recap?id=${encodeURIComponent(m.id)}&from=play`}>{R.showMatch}</Link>}
@@ -477,6 +491,7 @@ export default function Play() {
               }
             >
               <div className="missionres-k">{camp.campaignTitle} · {C.mission(camp.missionId)} · {camp.title}</div>
+              {debrief && <DebriefNarration campaignId={camp.campaignId} id={debrief.id} />}
               {/* In story order: what was said on the radio as the mission ended, then what happens after it (the success line may move time on). */}
               {camp.endLines.length > 0 && (
                 <div className="radiolog" aria-label="Radio">

@@ -94,6 +94,8 @@ export const GAIN = {
   radioCue: 0.45,
   // The operator's lines −2.5 dB after the field test (the radio static was felt too loud; the files also have it lowered between the words).
   voice: 0.75,
+  // The narrator between missions (files at −18 LUFS, no radio static): about as loud as the operator, a touch fuller.
+  narration: 0.9,
 } as const;
 /** Under the operator's recorded lines, music/threat/helicopter go down to this (≈ −10 dB). */
 export const DUCK = { to: 0.32, attackS: 0.15, releaseS: 0.9 };

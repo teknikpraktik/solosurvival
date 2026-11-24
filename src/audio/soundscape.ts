@@ -224,14 +224,17 @@ export class Soundscape {
     return new LoopVoice(this, this.env, url, bus, gain, crossfadeS, (v) => this.voices.add(v), (v) => this.voices.delete(v));
   }
 
-  /** Lowers music, threat and helicopter while `key` holds it (speech, radio). Released keys restore the level smoothly. */
-  setDuck(key: string, on: boolean): void {
+  /**
+   * Lowers music, threat and helicopter while `key` holds it (speech, radio). Released keys restore the level smoothly. `safetyMs`: the
+   * duck lets go by itself after this long even if nobody releases it (a long narration passes its own length).
+   */
+  setDuck(key: string, on: boolean, safetyMs = 12_000): void {
     const had = this.ducking.size > 0;
     if (on) this.ducking.add(key); else this.ducking.delete(key);
     const has = this.ducking.size > 0;
     if (this.duckSafety !== null) { this.env.clearTimeout(this.duckSafety); this.duckSafety = null; }
     // A voice that never reports its end (Android's speech engine sometimes does not) must not keep everything low.
-    if (has) this.duckSafety = this.env.setTimeout(() => { this.ducking.clear(); this.duckSafety = null; this.rampDuck(false); }, 12_000); // longest recorded line: 8 s
+    if (has) this.duckSafety = this.env.setTimeout(() => { this.ducking.clear(); this.duckSafety = null; this.rampDuck(false); }, safetyMs); // longest radio line: 8 s
     if (had !== has) this.rampDuck(has);
   }
 

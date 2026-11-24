@@ -57,3 +57,19 @@ export const RECORDED_BEATS: Record<string, readonly string[]> = {
     "tf-m05-win"
   ]
 };
+
+/** Which narrations (src/campaign/narration.ts: briefing, debrief) have a recording, per campaign. A missing one is only text. */
+export const RECORDED_NARRATION: Record<string, readonly string[]> = {
+  "the-fall": [
+    "tf-m01-briefing",
+    "tf-m01-debrief",
+    "tf-m02-briefing",
+    "tf-m02-debrief",
+    "tf-m03-briefing",
+    "tf-m03-debrief",
+    "tf-m04-briefing",
+    "tf-m04-debrief",
+    "tf-m05-briefing",
+    "tf-m05-debrief"
+  ]
+};

@@ -136,6 +136,25 @@ Två röster: **WATCHTOWER** (44 repliker; civilförsvarets radiooperatör, lugn
 kort flygradio). Befintliga repliker har radioeffekten inbakad i filen; gör likadant, eller kör dem genom samma kedja som
 `scripts/build-audio.mjs`. Replik-id:n är permanenta: byt aldrig namn på ett id som spelats in. CI kör `campaign:voice -- --check`.
 
+### Berättarröst mellan uppdragen
+
+En manlig berättare (ElevenLabs-rösten Brian, `narrator` i `src/campaign/the-fall.ts`) läser skärmarna mellan uppdragen högt. Ren röst,
+ingen radioeffekt, aldrig under en match. Två läsningar per uppdrag, byggda ordagrant ur uppdragets text i `src/campaign/narration.ts`:
+
+- **Briefing** (`tf-mNN-briefing`): uppdragets namn, introraderna och målet. Den separata intro-skärmen (bild, text, SKIP) är borttagen:
+  före ett uppdrag finns en enda skärm, briefingen, och berättaren börjar läsa när den öppnas.
+- **Debrief** (`tf-mNN-debrief`): vad vinsten ledde till (`success`), på resultatskärmen efter vinst. Den börjar när slutets egna ljud
+  (dörr, helikopter, WATCHTOWERs sista replik) är klara. Efter kapitlets sista uppdrag läses även epilogen.
+
+Flödet blir: vinst → resultatskärm (debrief läses) → NEXT → nästa uppdrags briefing (läses). Knappen LISTEN/STOP på båda skärmarna
+läser igen eller tystar; att lämna skärmen eller trycka START MISSION stoppar läsningen. Musiken sänks under rösten. Med ljudet av läses
+inget. Öppnas en briefing utan tryck (omladdning, bokmärke) tillåter webbläsaren inget ljud förrän spelaren trycker LISTEN.
+
+Filer: tagningar i `assets/audio/campaign/the-fall/narration/`, spelfiler i `public/campaign/the-fall/narration/` (−18 LUFS, mjuk
+kompressor), manus i `docs/campaign/the-fall-narration-script.csv`, lista i `RECORDED_NARRATION` (`npm run campaign:voice`). Samma
+generator som radiorepliken: `npm run campaign:voice:generate -- --only tf-m01-briefing`. Ändras en text i `the-fall.ts` varnar
+`campaign:voice` för att inspelningen inte längre stämmer med skärmen; generera då om den läsningen.
+
 ## 7. Bilder
 
 Alla sex bilder i `public/campaign/the-fall/` är kampanjens egna originalbilder (inga platshållare):
@@ -150,7 +169,7 @@ Alla sex bilder i `public/campaign/the-fall/` är kampanjens egna originalbilder
 | `mission-05.jpg` (1024×1536) | Helikopter, facklor och zombier på ett fält | FINAL EXTRACTION |
 
 Uppdragsbilderna är stående och visas i tre beskärningar: liggande remsa i uppdragskortet, övre delen i briefingen och hela bilden i
-introt (samt bakom resultatet i uppdrag 1, 2 och 4). Vilken del som syns i de smala beskärningarna styrs av `imagePosition` i
+briefingen (samt bakom resultatet i uppdrag 1, 2 och 4). Vilken del som syns i de smala beskärningarna styrs av `imagePosition` i
 `src/campaign/the-fall.ts`. Filerna är JPEG i full upplösning, kvalitet 86, progressiva.
 
 ## 8. Begränsningar

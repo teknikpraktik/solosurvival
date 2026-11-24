@@ -27,7 +27,7 @@ const page = await ctx.newPage();
 const errors = [];
 // Campaign voice files the page fetched, with their HTTP status.
 const voices = new Map();
-page.on("response", (r) => { const m = /\/campaign\/the-fall\/voice\/([^/?]+)\.mp3/.exec(r.url()); if (m) voices.set(m[1], r.status()); });
+page.on("response", (r) => { const m = /\/campaign\/the-fall\/(?:voice|narration)\/([^/?]+)\.mp3/.exec(r.url()); if (m) voices.set(m[1], r.status()); });
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 
@@ -37,13 +37,11 @@ const progress = () => page.evaluate(() => JSON.parse(localStorage.getItem("outb
 /** One mission's saved progress. */
 const mp = (p, id) => p?.chapters?.["the-fall"]?.missions?.[id];
 const statuses = () => page.locator(".missioncard").evaluateAll((bs) => bs.map((b) => b.dataset.status));
-const onOverview = async () => { await page.locator(".missioncard").first().waitFor({ timeout: 15000 }); return (await page.locator(".brief, .cine").count()) === 0 && !new URL(page.url()).searchParams.has("mission"); };
+const onOverview = async () => { await page.locator(".missioncard").first().waitFor({ timeout: 15000 }); return (await page.locator(".brief").count()) === 0 && !new URL(page.url()).searchParams.has("mission"); };
 /** No horizontal overflow: nothing is wider than the phone. */
 const fits = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
-/** Starts the mission whose briefing (or intro) is open, and waits for the game to run. */
+/** Starts the mission whose briefing is open, and waits for the game to run. */
 async function startMission() {
-  const skip = page.getByRole("button", { name: /SKIP/ });
-  if (await skip.count()) await skip.click();
   await gps(3);
   const start = page.getByRole("button", { name: "START MISSION" });
   await start.waitFor({ timeout: 15000 });
@@ -120,16 +118,16 @@ try {
   await page.locator(".missioncard").first().waitFor();
   check("difficulty survives a reload", (await page.getByRole("button", { name: "EASY" }).getAttribute("aria-pressed")) === "true");
 
-  // --- Mission 01: intro, briefing, play, win ---
+  // --- Mission 01: briefing (read by the narrator), play, win ---
   await page.locator(".missioncard").first().click();
-  await page.locator(".cine").waitFor();
-  check("mission intro: cinematic with the mission name", (await page.locator(".cine-title").innerText()) === "FIRST CONTACT");
-  await page.waitForTimeout(2600);
-  await shot("c04-intro");
-  await page.getByRole("button", { name: /SKIP/ }).click();
   await page.getByRole("button", { name: "START MISSION" }).waitFor();
+  check("one screen before the mission: no separate intro to skip", (await page.getByRole("button", { name: /SKIP/ }).count()) === 0);
   const brief = await page.locator(".brief").innerText();
   check("briefing: name, story, objective, time and start", ["FIRST CONTACT", "OBJECTIVE", "ABOUT 15 MIN", "ON FOOT", "EASY", "START MISSION"].every((x) => brief.includes(x)));
+  await page.locator('.narrate[data-state="playing"]').waitFor({ timeout: 8000 }).catch(() => undefined);
+  check("the narrator reads the briefing as it opens", (await page.locator('.narrate[data-state="playing"]').count()) === 1 && [200, 206].includes(voices.get("tf-m01-briefing")), `status ${voices.get("tf-m01-briefing")}`);
+  await page.getByRole("button", { name: "STOP" }).click();
+  check("the narration can be stopped and listened to again", (await page.getByRole("button", { name: "LISTEN" }).count()) === 1);
   check("briefing fits the phone", await fits());
   await gps(3);
   await shot("c05-briefing");
@@ -154,19 +152,23 @@ try {
   check("winning mission 01 is saved on EASY and unlocks mission 02", mp(p1, "01").completed === true && mp(p1, "01").bestDifficulty === "easy" && mp(p1, "02").completed === false);
   check("result in story order: the radio's last line, then what happens after it", (await page.locator(".radiolog + .outcome").count()) === 1
     && (await page.locator(".outcome").innerText()).includes("make it through the night") && (await page.locator(".radiolog").innerText()).includes("At first light"));
+  await page.locator('.modal .narrate[data-state="playing"]').waitFor({ timeout: 15000 }).catch(() => undefined);
+  check("the narrator reads what the win achieved", (await page.locator('.narrate[data-state="playing"]').count()) === 1 && [200, 206].includes(voices.get("tf-m01-debrief")), `status ${voices.get("tf-m01-debrief")}`);
   check("result offers the next mission and the campaign", (await page.getByRole("link", { name: "NEXT: THE SUPPLY RUN" }).count()) === 1 && (await page.getByRole("link", { name: "BACK TO CAMPAIGN" }).count()) === 1);
 
   // --- Mission 02: checkpoints in any order, fail, retry ---
   await page.getByRole("link", { name: "NEXT: THE SUPPLY RUN" }).click();
   await page.waitForURL("**/campaigns/the-fall?mission=02");
-  await page.locator(".cine").waitFor();
-  check("next mission opens on its own intro", (await page.locator(".cine-title").innerText()) === "THE SUPPLY RUN");
+  await page.getByRole("button", { name: "START MISSION" }).waitFor({ timeout: 15000 });
+  check("NEXT opens the next mission's briefing", (await page.locator(".brief-title").innerText()) === "THE SUPPLY RUN");
+  await page.locator('.narrate[data-state="playing"]').waitFor({ timeout: 8000 }).catch(() => undefined);
+  check("the next briefing is read too", (await page.locator('.narrate[data-state="playing"]').count()) === 1 && [200, 206].includes(voices.get("tf-m02-briefing")));
   // NEXT is a link: the phone's back button from its briefing leads to the overview, not back to the finished game.
   await page.goBack();
   check("phone back from a briefing opened by NEXT shows the overview", await onOverview());
   check("the overview shows mission 01 won on EASY", (await page.locator('.missioncard[data-status="completed"] .campchip').first().innerText()).includes("EASY"));
   await page.locator(".campcontinue").click();
-  await page.locator(".cine, .brief").first().waitFor();
+  await page.locator(".brief").first().waitFor();
   await startMission();
   await page.waitForTimeout(800);
   const v2 = await page.evaluate(() => { const m = window.__outbreak.getView().match; return { mode: m.mode, total: m.objectives?.total, any: m.objectives?.anyOrder, home: m.objectives?.progress.hasHome }; });
@@ -182,7 +184,7 @@ try {
   await page.getByRole("link", { name: "RETRY MISSION" }).click();
   await page.waitForURL("**/campaigns/the-fall?mission=02");
   await page.getByRole("button", { name: "START MISSION" }).waitFor({ timeout: 15000 });
-  check("retry opens the briefing without the intro", (await page.locator(".cine").count()) === 0);
+  check("retry opens the briefing", (await page.locator(".brief-title").innerText()) === "THE SUPPLY RUN");
 
   // --- A reloaded briefing: both ways back still lead to the overview ---
   await page.reload();
