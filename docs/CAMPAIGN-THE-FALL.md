@@ -168,8 +168,8 @@ Alla sex bilder i `public/campaign/the-fall/` är kampanjens egna originalbilder
 | `mission-04.jpg` (1086×1448) | Radiomast med röda ljus i regn | THE LAST SIGNAL |
 | `mission-05.jpg` (1024×1536) | Helikopter, facklor och zombier på ett fält | FINAL EXTRACTION |
 
-Uppdragsbilderna är stående och visas i tre beskärningar: liggande remsa i uppdragskortet, övre delen i briefingen och hela bilden i
-briefingen (samt bakom resultatet i uppdrag 1, 2 och 4). Vilken del som syns i de smala beskärningarna styrs av `imagePosition` i
+Uppdragsbilderna är stående och visas som liggande remsa i uppdragskortet, som övre delen i briefingen och bakom resultatet i
+uppdrag 1, 2 och 4. Vilken del som syns i de smala beskärningarna styrs av `imagePosition` i
 `src/campaign/the-fall.ts`. Filerna är JPEG i full upplösning, kvalitet 86, progressiva.
 
 ## 8. Begränsningar
