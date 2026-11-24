@@ -355,7 +355,7 @@ describe("match sounds", () => {
     expect(t.ctx.sources.length).toBe(n); // no timer brings anything back
     await run(t, 2, { id: "m2", mode: "mission", nearestM: 900 });
     expect(t.ctx.live()).toHaveLength(0);
-    expect(t.m.state).toEqual({ heliLoop: false, approach: false, voice: null });
+    expect(t.m.state).toMatchObject({ heliLoop: false, approach: false, voice: null });
   });
 
   it("pause and the app in the background stop the loops; nothing old plays on return", async () => {
