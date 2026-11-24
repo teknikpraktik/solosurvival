@@ -777,6 +777,10 @@ describe("music playlist (the theme and the soundtrack)", () => {
     expect(t.P.tracks.some((x) => x.url.includes("dirty-riff"))).toBe(false); // removed after the field test (too bright and upbeat)
     t.s.music.want(true);
     await t.advance(1000);
+    nearEnd(t, t.P.crossfadeS + 0.5); // the full theme has given way to another menu piece
+    await t.advance(5000);
+    const menuPass = t.s.music.track!;
+    expect(menuPass).not.toBe(AUDIO.music);
     t.s.music.matchStart(); // crossfaded from the menu's pass
     await t.advance(5000);
     const opening = t.s.music.track!;
@@ -796,13 +800,40 @@ describe("music playlist (the theme and the soundtrack)", () => {
     }
     for (const u of passes) expect(mid).toContain(u);
     for (let k = 1; k < passes.length; k++) expect(passes[k]).not.toBe(passes[k - 1]);
-    expect(t.s.music.history).toEqual([AUDIO.music, opening, ...passes]);
+    expect(t.s.music.history).toEqual([AUDIO.music, menuPass, opening, ...passes]);
+    // The theme's two shorter versions are among the passes drawn in mid-match.
+    expect(mid).toEqual(expect.arrayContaining([AUDIO.musicFade, AUDIO.musicShort]));
     nearEnd(t, 1);
     await t.advance(2000);
     t.s.music.matchOutcome(false);
     t.s.music.setRepeat(true); // the match is over (won), in a silence
     await t.advance(500);
     expect(t.s.music.track).toBe(AUDIO.music);
+  });
+
+  it("the full theme still playing as a match begins plays on to its end; then the match's passes, and the full theme again after a win", async () => {
+    const t = await playlist(lcg(5));
+    const mid = urls(t, t.P.match!.mid as readonly number[]);
+    t.s.music.want(true);
+    await t.advance(1000);
+    expect(t.s.music.track).toBe(AUDIO.music);
+    t.s.music.matchStart();
+    t.s.music.setRepeat(false);
+    await t.advance(5000);
+    expect(t.s.music.track).toBe(AUDIO.music); // not crossfaded away
+    expect(t.s.music.history).toEqual([AUDIO.music]);
+    expect(t.media.filter((m) => !m.paused)).toHaveLength(1);
+    nearEnd(t, 1);
+    await t.advance(2000);
+    expect(t.s.music.playing).toBe(false); // ended by itself, then the silence before a mid pass
+    await t.advance(155_000);
+    expect(mid).toContain(t.s.music.track);
+    nearEnd(t, 1);
+    await t.advance(2000);
+    t.s.music.matchOutcome(false);
+    t.s.music.setRepeat(true);
+    await t.advance(500);
+    expect(t.s.music.track).toBe(AUDIO.music); // the debrief's music
   });
 
   it("a lost match ends on Final Silence: after the ending's sounds, or crossfaded from a pass that still plays", async () => {

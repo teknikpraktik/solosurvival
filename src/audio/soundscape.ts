@@ -421,6 +421,7 @@ export interface MusicSource {
    * A match with its own plan instead of random passes: one of `start` plays as the match begins, then `midPasses` passes (default 1; Infinity = for as long as the match lasts)
    * drawn from `mid`, each after a silence (`gapS`), then nothing until the match is over, when `end` plays (`lost` after a lost match;
    * the menu's random repeat goes on from there). `moments` are tracks for a moment of the match, started at once (`moment`).
+   * `keep`: tracks that, if one of them is playing as the match begins, play on to their end instead of giving way to `start`.
    * Indexes into `tracks`; a list is a pool, drawn at random and never the track just heard.
    */
   match?: MatchMusicPlan;
@@ -432,6 +433,7 @@ export interface MatchMusicPlan {
   end: number;
   lost?: number;
   moments?: Readonly<Record<string, number>>;
+  keep?: readonly number[];
 }
 /** The single-track form (older): one file that repeats. */
 export interface SingleMusic { url: string; startS: number; endS: number | null; crossfadeS: number; fadeInS: number; fadeOutS: number }
@@ -516,7 +518,8 @@ export class MenuMusic {
   }
 
   /**
-   * A match begins (with a match plan): the plan's start track from its beginning, now, crossfaded from whatever plays; not repeating, with
+   * A match begins (with a match plan): the plan's start track from its beginning, now, crossfaded from whatever plays (unless what plays
+   * is one the plan keeps); not repeating, with
    * one more pass (the mid track) to come after it. Without a plan nothing changes.
    */
   matchStart(): void {
@@ -527,6 +530,8 @@ export class MenuMusic {
     this.budget = plan.midPasses ?? 1;
     this.matchPool = pool(plan.mid);
     this.clearGap();
+    // A track the plan keeps (the full theme) plays on to its end; the mid passes follow it.
+    if (this.sounding && this.els.length && !this.endFading && plan.keep?.includes(this.elTrack[this.cur])) { this.forced = plan.mid; this.startWatch(); return; }
     if (this.sounding && this.els.length) { this.crossTo(this.choose(pool(plan.start))); this.forced = plan.mid; this.startWatch(); return; }
     this.forced = plan.start;
     this.begin(this.m!.fadeInS);

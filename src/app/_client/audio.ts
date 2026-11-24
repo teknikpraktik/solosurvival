@@ -576,9 +576,10 @@ export function soundscape(): Soundscape {
  * plan serves Free Play and every campaign mission:
  * - Menu: the full theme opens the app, then crossfaded passes drawn from the calm pieces (the theme's versions, Frostborne Silence 1 and
  *   the two Fragile Three-Note Motifs), never the one just heard.
- * - Match start: the short theme or the Three-Note Motif (which builds from near silence), crossfaded from the menu.
- * - Mid-match: a pass after each silence of 1–2.5 minutes for as long as the match lasts, drawn from the darker pieces (Frostborne Silence
- *   1, the Three-Note Motif, Stairwell Silence, Untitled 1, The Missing Footstep). After the field test the threat pulse is gone and the
+ * - Match start: if the full theme is still playing (it opens the app), it plays on to its end. Otherwise the short theme or the
+ *   Three-Note Motif (which builds from near silence), crossfaded from the menu.
+ * - Mid-match: a pass after each silence of 1–2.5 minutes for as long as the match lasts, drawn at random from the theme's two shorter
+ *   versions and the darker pieces (Frostborne Silence 1, the Three-Note Motif, Stairwell Silence, Untitled 1, The Missing Footstep). After the field test the threat pulse is gone and the
  *   music is the match's backdrop instead (before: at most two passes, 4–9 minutes apart). Dirty Riff was removed (too bright and upbeat).
  * - The helicopter has landed (Survival, FINAL EXTRACTION): Relentless Groove at once, for the run to it.
  * - Over: the full theme after a win, Final Silence after a lost match (caught, out of time), each after the ending's own sounds.
@@ -606,7 +607,7 @@ export const MUSIC_PLAYLIST: MusicSource = {
   // During a match: the silence before each pass in mid-match.
   gapS: [60, 150],
   menu: [0, 1, 2, 3, 4, 5],
-  match: { start: [2, 6], mid: [3, 6, 7, 8, 9], midPasses: Infinity, end: 0, lost: 11, moments: { extraction: 10 } },
+  match: { start: [2, 6], keep: [0], mid: [1, 2, 3, 6, 7, 8, 9], midPasses: Infinity, end: 0, lost: 11, moments: { extraction: 10 } },
 };
 /** Every music file (fetched before a match, so the match's pieces play offline too). */
 export const MUSIC_URLS: readonly string[] = MUSIC_TRACKS.map((t) => t.url);
