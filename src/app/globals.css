@@ -786,7 +786,7 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 .campcta-pips i, .campbar-track i { display: block; width: 18px; height: 5px; border-radius: 1px; background: #ffffff38; }
 .campcta-pips i[data-on], .campbar-track i[data-on] { background: var(--lime); box-shadow: 0 0 8px #a3e63599; }
 .campcta:active .campcta-bg { transform: scale(1.04); }
-.campcta:focus-visible, .campcard:focus-visible, .missioncard:focus-visible, .cine-skip:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
+.campcta:focus-visible, .campcard:focus-visible, .missioncard:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
 .hero.home .homesec { margin-top: 8px; }
 .hero.home .homesec .btn.freeplay { font-size: 1.15rem; padding: 14px; color: #fff; background: #0b1215d9; border-color: #ffffff40; }
 @media (max-height: 640px) { .campcta { min-height: 112px; } .campcta b { font-size: 1.8rem; } }
@@ -795,7 +795,7 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 .page.camp::before { background: linear-gradient(#04090be6, #061215d9 40%, #04090bf2), url("/img/backdrop.jpg") 60% 20% / cover no-repeat; }
 .camplist, .missionlist { display: flex; flex-direction: column; gap: 12px; }
 .campcard { position: relative; isolation: isolate; display: flex; align-items: flex-end; min-height: clamp(240px, 46dvh, 380px); overflow: hidden; border-radius: var(--r); border: 1px solid #2dd4bf66; text-decoration: none; box-shadow: 0 10px 30px #000a; }
-.campcard-bg, .missioncard-bg, .camphero-bg, .cine-bg, .brief-bg { position: absolute; inset: 0; z-index: -2; background-color: var(--teal-deep); background-size: cover; background-repeat: no-repeat; }
+.campcard-bg, .missioncard-bg, .camphero-bg, .brief-bg { position: absolute; inset: 0; z-index: -2; background-color: var(--teal-deep); background-size: cover; background-repeat: no-repeat; }
 .campcard::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, #04090bf7 0%, #04090bc7 34%, #04090b40 66%, #04090b00 100%); }
 .campcard-body { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 18px 16px; width: 100%; text-shadow: 0 2px 8px #000; }
 .campcard-title { font: 700 clamp(2.6rem, 14vw, 3.6rem)/1 var(--font-display); letter-spacing: .14em; color: #f3fbf9; }
@@ -839,18 +839,24 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 .epilogue.inres { border-color: #a3e63566; background: #0c1a0899; }
 
 /* Mission intro: the picture full screen, the lines one after another. A tap anywhere moves on. */
-.cine { position: fixed; inset: 0; z-index: 30; isolation: isolate; display: flex; flex-direction: column; justify-content: flex-end; background: #04090b; cursor: pointer; animation: screen-in .6s ease-out both; }
-.cine-bg { animation: cine-drift 14s ease-out both; }
-.cine::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, #04090bfa 0%, #04090bd1 34%, #04090b4d 62%, #04090b1a 100%); }
-.cine-text { display: flex; flex-direction: column; gap: 10px; padding: 24px 20px calc(max(24px, env(safe-area-inset-bottom)) + 64px); max-width: 560px; width: 100%; margin: 0 auto; text-shadow: 0 2px 10px #000; }
 .cine-k { font: 600 .85rem var(--font-display); letter-spacing: .32em; color: var(--lime); text-transform: uppercase; }
-.cine-title, .brief-title { margin: 0; font: 700 clamp(2.4rem, 13vw, 3.6rem)/1 var(--font-display); letter-spacing: .1em; color: #f3fbf9; }
-.cine-title { animation: rise-in .7s .2s cubic-bezier(.2, .7, .2, 1) both; }
-.cine-lines { display: flex; flex-direction: column; gap: 8px; min-height: 8.5em; }
-.cine-lines p { margin: 0; font: 500 1.1rem/1.4 var(--font-body); color: #e6edf3; animation: rise-in .9s ease-out both; }
-.cine-skip { position: absolute; right: 14px; bottom: max(16px, env(safe-area-inset-bottom)); min-height: 44px; padding: 0 16px; border-radius: var(--r); border: 1px solid #ffffff40; background: #04090bb3; color: #e6edf3; font: 700 .95rem var(--font-display); letter-spacing: .22em; cursor: pointer; }
+.brief-title { margin: 0; font: 700 clamp(2.4rem, 13vw, 3.6rem)/1 var(--font-display); letter-spacing: .1em; color: #f3fbf9; animation: rise-in .7s .2s cubic-bezier(.2, .7, .2, 1) both; }
+/* The briefing's picture settles slowly while the narrator reads (it used to be the separate cinematic intro). */
+.brief-bg { animation: cine-drift 14s ease-out both; }
 @keyframes cine-drift { from { transform: scale(1.12); } to { transform: scale(1); } }
-@media (prefers-reduced-motion: reduce) { .cine, .cine-bg, .cine-title, .cine-lines p { animation: none; } }
+/* The narrator's listen / stop button (briefing and result). */
+.narrate { align-self: flex-start; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 16px; border-radius: var(--r); border: 1px solid #ffffff38; background: #0a1114cc; color: #e6edf3; font: 700 .9rem var(--font-display); letter-spacing: .22em; cursor: pointer; }
+.narrate:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
+.narrate:disabled { opacity: .55; cursor: default; }
+.narrate[data-state="playing"] { border-color: #a3e63599; color: var(--lime); }
+.narrate-icon { font-size: .8rem; }
+.narrate-bars { display: inline-flex; align-items: flex-end; gap: 3px; height: 14px; }
+.narrate-bars i { width: 3px; height: 100%; background: currentColor; border-radius: 1px; animation: narrate-bar 1s ease-in-out infinite; transform-origin: bottom; }
+.narrate-bars i:nth-child(2) { animation-delay: -.35s; }
+.narrate-bars i:nth-child(3) { animation-delay: -.7s; }
+@keyframes narrate-bar { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+.missionres-k + .narrate { margin: 2px 0 8px; }
+@media (prefers-reduced-motion: reduce) { .brief-bg, .brief-title, .narrate-bars i { animation: none; } }
 
 /* Briefing: picture and name on top, what to do, START MISSION always in reach at the bottom. */
 .brief { min-height: 100dvh; max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; background: #04090b; animation: screen-in .35s ease-out both; }

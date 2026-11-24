@@ -1,0 +1,142 @@
+{
+  "tf-m01-briefing": {
+    "speaker": "NARRATOR",
+    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "model": "eleven_multilingual_v2",
+    "settings": {
+      "stability": 0.5,
+      "similarityBoost": 0.8,
+      "style": 0.22,
+      "useSpeakerBoost": true,
+      "speed": 0.94
+    },
+    "seed": 3708841339,
+    "text": "Mission one. First Contact. It started this afternoon. Sirens, then nothing. People are attacking each other in the streets. Nobody knows why. Then a voice breaks through the static. Your objective. Stay on the move and stay away from the infected for 15 minutes."
+  },
+  "tf-m01-debrief": {
+    "speaker": "NARRATOR",
+    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "model": "eleven_multilingual_v2",
+    "settings": {
+      "stability": 0.5,
+      "similarityBoost": 0.8,
+      "style": 0.22,
+      "useSpeakerBoost": true,
+      "speed": 0.94
+    },
+    "seed": 1654941158,
+    "text": "Mission complete. You find shelter and make it through the night. By morning, the group in the cellar is running out of medicine."
+  },
+  "tf-m02-briefing": {
+    "speaker": "NARRATOR",
+    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "model": "eleven_multilingual_v2",
+    "settings": {
+      "stability": 0.5,
+      "similarityBoost": 0.8,
+      "style": 0.22,
+      "useSpeakerBoost": true,
+      "speed": 0.94
+    },
+    "seed": 3512327834,
+    "text": "Mission two. The Supply Run. Morning. The group in the cellar is eleven people. Two of them will not last without medicine. Watchtower has found three places near you where supplies were left behind. You are the only one who can still move. Your objective. Reach the three supply sites, in any order. Plan your way around the infected."
+  },
+  "tf-m02-debrief": {
+    "speaker": "NARRATOR",
+    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "model": "eleven_multilingual_v2",
+    "settings": {
+      "stability": 0.5,
+      "similarityBoost": 0.8,
+      "style": 0.22,
+      "useSpeakerBoost": true,
+      "speed": 0.94
+    },
+    "seed": 142453991,
+    "text": "Mission complete. The supplies are in. The group can hold out, but the evacuation routes are closing."
+  },
+  "tf-m03-briefing": {
+    "speaker": "NARRATOR",
+    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "model": "eleven_multilingual_v2",
+    "settings": {
+      "stability": 0.5,
+      "similarityBoost": 0.8,
+      "style": 0.22,
+      "useSpeakerBoost": true,
+      "speed": 0.94
+    },
+    "seed": 3315814329,
+    "text": "Mission three. No Way Back. The evacuation road is blocked. Cars, barriers, and what is left of the people who tried. One shelter is still taking people: the Waystation. Not for long. And the infected have started to hunt differently. Your objective. Reach the safe zone before it is sealed. Some infected will try to cut you off: change your route to fool them."
+  },
+  "tf-m03-debrief": {
+    "speaker": "NARRATOR",
+    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "model": "eleven_multilingual_v2",
+    "settings": {
+      "stability": 0.5,
+      "similarityBoost": 0.8,
+      "style": 0.22,
+      "useSpeakerBoost": true,
+      "speed": 0.94
+    },
+    "seed": 2334999528,
+    "text": "Mission complete. You are inside the Waystation. But the evacuation force has gone silent."
+  },
+  "tf-m04-briefing": {
+    "speaker": "NARRATOR",
+    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "model": "eleven_multilingual_v2",
+    "settings": {
+      "stability": 0.5,
+      "similarityBoost": 0.8,
+      "style": 0.22,
+      "useSpeakerBoost": true,
+      "speed": 0.94
+    },
+    "seed": 3119300824,
+    "text": "Mission four. The Last Signal. No one has heard from the evacuation force in six hours. An old relay network still has power. Three sites. Each has to be brought on the air by hand. A signal that strong will be heard by everything out there. Your objective. Reach each relay site and stay inside its zone while the signal is established. Leaving the zone only pauses it."
+  },
+  "tf-m04-debrief": {
+    "speaker": "NARRATOR",
+    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "model": "eleven_multilingual_v2",
+    "settings": {
+      "stability": 0.5,
+      "similarityBoost": 0.8,
+      "style": 0.22,
+      "useSpeakerBoost": true,
+      "speed": 0.94
+    },
+    "seed": 527545065,
+    "text": "Mission complete. The signal is out. A helicopter is coming, if you can stay alive until it lands."
+  },
+  "tf-m05-briefing": {
+    "speaker": "NARRATOR",
+    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "model": "eleven_multilingual_v2",
+    "settings": {
+      "stability": 0.5,
+      "similarityBoost": 0.8,
+      "style": 0.22,
+      "useSpeakerBoost": true,
+      "speed": 0.94
+    },
+    "seed": 2922787319,
+    "text": "Mission five. Final Extraction. Raven Two is in the air. Twenty-two minutes out. The district is being overrun. Every street has them now. One aircraft. One pickup. They will not wait. Your objective. Stay alive until the helicopter lands, then reach the landing zone before it has to leave."
+  },
+  "tf-m05-debrief": {
+    "speaker": "NARRATOR",
+    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "model": "eleven_multilingual_v2",
+    "settings": {
+      "stability": 0.5,
+      "similarityBoost": 0.8,
+      "style": 0.22,
+      "useSpeakerBoost": true,
+      "speed": 0.94
+    },
+    "seed": 3015057898,
+    "text": "Mission complete. You are aboard. Raven Two is lifting off. From the air the fires reach the horizon. Watchtower's channel is still open. Other towns are calling in. One call does not belong. The evacuation force, hours after she lost them: “…NEXAGEN perimeter… do not…” Then static. You got out. Most did not. This is not over."
+  }
+}

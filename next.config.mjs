@@ -26,6 +26,7 @@ const nextConfig = {
       // A campaign's own pictures and voice files (public/campaign/<id>/).
       { source: "/campaign/:campaign/:file", headers: cache("public, max-age=604800") },
       { source: "/campaign/:campaign/voice/:file", headers: cache("public, max-age=604800") },
+      { source: "/campaign/:campaign/narration/:file", headers: cache("public, max-age=604800") },
       { source: "/fonts/:file", headers: cache("public, max-age=31536000, immutable") },
       { source: "/audio/:file", headers: cache("public, max-age=604800") },
       { source: "/icons/:file", headers: cache("public, max-age=604800") },

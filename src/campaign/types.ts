@@ -111,7 +111,7 @@ export interface MissionDef {
   image: string;
   /** Where the picture's subject sits (CSS object-position). */
   imagePosition?: string;
-  /** The cinematic intro: a few short lines shown one after another. */
+  /** The story before the mission: a few short lines, shown on the briefing and read by the narrator. */
   intro: string[];
   /** The mission's goal in one sentence (briefing and the card over the map as the match begins). */
   objective: string;
@@ -121,7 +121,7 @@ export interface MissionDef {
   goalReached?: string;
   /** How a win is staged: helicopter (picture and sound), safe house (door), or nothing but the radio. */
   ending: "heli" | "safehouse" | "plain";
-  /** Result dialog: one line for a win, and what comes next in the story. */
+  /** Result screen: what the win achieved and what comes next in the story (also read by the narrator). */
   success: string;
   beats: StoryBeat[];
 }
@@ -134,6 +134,8 @@ export interface CampaignDef {
   coverPosition?: string;
   description: string;
   speakers: Speaker[];
+  /** The narrator who reads the screens between missions aloud (narration.ts). Not a radio voice: no call sign, no radio effect. */
+  narrator?: { voice: string; elevenLabsVoiceId: string };
   missions: MissionDef[];
   /** Shown when the last mission is won. */
   epilogue: { title: string; lines: string[] };

@@ -283,6 +283,10 @@ export const THE_FALL: CampaignDef = {
     { id: "watchtower", name: "WATCHTOWER", elevenLabsVoiceId: "Qbw4VpyUrHEG7NigKzty", radio: "ground", voice: "Civil-defence radio operator, woman in her forties. Calm, exact, tired but in control. Procedural radio speech, no drama; urgent only in the contact lines." },
     { id: "raven", name: "RAVEN TWO", elevenLabsVoiceId: "SAxJUlDKRc79XAyeWyMu", radio: "aircraft", voice: "Military helicopter pilot, man. Clipped aviation radio, rotor noise behind the voice. Matter-of-fact, never hurried until the landing." },
   ],
+  narrator: {
+    elevenLabsVoiceId: "nPczCjzI2devNBz1zQrb",
+    voice: "Narrator, man, deep and low. Reads the story between missions like a film's opening: unhurried, grave, never theatrical. Clean studio voice, no radio.",
+  },
   missions: [firstContact, supplyRun, noWayBack, lastSignal, finalExtraction],
   epilogue: {
     title: "THE FALL – CHAPTER COMPLETED",

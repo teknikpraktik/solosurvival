@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { chapterPlace, findCampaign, findMission, storyOfChapter } from "@/campaign";
 import {
   canPlay, chapterCompletedCount, completedCount, DIFFICULTY_ORDER, highestAward, isChapterComplete, markIntroSeen, missionProgress, missionStatus,
@@ -15,6 +15,9 @@ import { errorText } from "@/gps/provider/provider";
 import { preloadMissionVoices } from "../../_client/audio";
 import { useStoryProgress } from "../../_client/campaignStore";
 import { unlockAudio } from "../../_client/cues";
+import { NarrationControl } from "../../_client/NarrationControl";
+import { narrator } from "../../_client/narration";
+import { briefingNarration } from "@/campaign/narration";
 import { DIFFICULTY_LABEL, fmtTime } from "../../_client/format";
 import { preloadMatchPictures } from "../../_client/matchImages";
 import { PageHeader } from "../../_client/Modal";
@@ -22,8 +25,6 @@ import { useSessionCtx, useSessionView } from "../../_client/SessionProvider";
 import { t } from "../../_client/strings";
 
 const newSeed = () => Math.floor(Math.random() * 1e9);
-/** The cinematic intro moves on by itself after its lines have been shown (ms per line, plus a pause). */
-const INTRO_LINE_MS = 2300;
 
 const missionUrl = (campaignId: string, missionId: string | null) => (missionId ? `/campaigns/${campaignId}?mission=${missionId}` : `/campaigns/${campaignId}`);
 /**
@@ -62,27 +63,22 @@ function MissionCard({ s, c, m, progress, onOpen }: { s: StoryDef; c: CampaignDe
 }
 
 /**
- * Before a mission: a short cinematic intro the first time (the picture and three lines, skippable with a tap), then the briefing with the
- * goal, the time it takes and START MISSION. A mission whose intro has been seen opens on the briefing.
+ * Before a mission: one screen between the overview and the match. The picture, the story so far, the goal, the time it takes and START
+ * MISSION; the narrator reads the story and the goal aloud as it opens (LISTEN again, or STOP). Pressing START ends the read.
  */
-function Briefing({ c, m, progress, difficulty, onClose, onSeen }: { c: CampaignDef; m: MissionDef; progress: StoryProgress; difficulty: Difficulty; onClose: () => void; onSeen: () => void }) {
+function Briefing({ c, m, difficulty, onClose, onSeen }: { c: CampaignDef; m: MissionDef; difficulty: Difficulty; onClose: () => void; onSeen: () => void }) {
   const S = t().campaign;
   const ctx = useSessionCtx();
   const router = useRouter();
   const session = ctx?.session;
   const view = useSessionView(session);
-  const [cine, setCine] = useState(() => !missionProgress(progress, c.id, m.id)?.introSeen);
   const [busy, setBusy] = useState<"scouting" | "starting" | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const started = useRef(false);
+  const narration = briefingNarration(c, m);
 
-  const endCine = useCallback(() => { setCine(false); onSeen(); }, [onSeen]);
-  useEffect(() => {
-    if (!cine) return;
-    const h = setTimeout(endCine, m.intro.length * INTRO_LINE_MS + 1800);
-    return () => clearTimeout(h);
-  }, [cine, endCine, m.intro.length]);
-
+  // The story has been presented (kept in the progress as before; it no longer changes what is shown).
+  useEffect(() => { onSeen(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { session?.startLocating(); }, [session]);
   // The mission's pictures and recorded lines load in the background while the player reads.
   useEffect(() => { preloadMatchPictures(m.mode); preloadMissionVoices(c.id, m.beats.map((b) => b.id)); }, [c.id, m]);
@@ -95,6 +91,7 @@ function Briefing({ c, m, progress, difficulty, onClose, onSeen }: { c: Campaign
   const start = async () => {
     if (!session || busy) return;
     unlockAudio();
+    narrator().stop();
     void session.enableCompass();
     setProblem(null);
     setBusy("scouting");
@@ -108,22 +105,6 @@ function Briefing({ c, m, progress, difficulty, onClose, onSeen }: { c: Campaign
     setBusy(null);
   };
 
-  if (cine) {
-    return (
-      <div className="cine" role="dialog" aria-label={`${S.mission(m.id)}: ${m.title}`} onClick={endCine}>
-        <div className="cine-bg" aria-hidden="true" style={{ backgroundImage: `url(${m.image})`, backgroundPosition: m.imagePosition }} />
-        <div className="cine-text">
-          <span className="cine-k">{c.title} · {S.mission(m.id)}</span>
-          <h1 className="cine-title">{m.title}</h1>
-          <div className="cine-lines">
-            {m.intro.map((line, i) => <p key={i} style={{ animationDelay: `${0.9 + (i * INTRO_LINE_MS) / 1000}s` }}>{line}</p>)}
-          </div>
-        </div>
-        <button type="button" className="cine-skip" onClick={(e) => { e.stopPropagation(); endCine(); }}>{S.skipIntro} ›</button>
-      </div>
-    );
-  }
-
   return (
     <main className="brief">
       <div className="brief-hero">
@@ -135,6 +116,7 @@ function Briefing({ c, m, progress, difficulty, onClose, onSeen }: { c: Campaign
         </div>
       </div>
       <div className="brief-body">
+        <NarrationControl campaignId={c.id} id={narration.id} autoplay />
         <p className="brief-story">{m.intro.join(" ")}</p>
         <section className="brief-obj" aria-labelledby="brief-obj">
           <h2 id="brief-obj">{S.objective}</h2>
@@ -219,6 +201,7 @@ export default function CampaignView({ id }: { id: string }) {
   const openMission = (mid: string) => {
     if (!canPlay(story, progress, c.id, mid)) return;
     if (progress.difficulty === null) { promptDifficulty(); return; }
+    unlockAudio(); // the tap that opens the briefing lets the narrator start
     window.history.pushState({ [BRIEFING]: true }, "", missionUrl(c.id, mid));
     setOpen(mid);
     window.scrollTo(0, 0);
@@ -231,7 +214,7 @@ export default function CampaignView({ id }: { id: string }) {
 
   const mission = open ? c.missions.find((m) => m.id === open) : undefined;
   if (mission && progress.difficulty) {
-    return <Briefing key={mission.id} c={c} m={mission} progress={progress} difficulty={progress.difficulty} onClose={close} onSeen={() => update((p) => markIntroSeen(p, c.id, mission.id))} />;
+    return <Briefing key={mission.id} c={c} m={mission} difficulty={progress.difficulty} onClose={close} onSeen={() => update((p) => markIntroSeen(p, c.id, mission.id))} />;
   }
 
   const done = chapterCompletedCount(c, progress);
@@ -246,7 +229,7 @@ export default function CampaignView({ id }: { id: string }) {
     if (!next) return;
     if (progress.difficulty === null) { promptDifficulty(); return; }
     if (next.chapterId === c.id) openMission(next.missionId);
-    else router.push(missionUrl(next.chapterId, next.missionId));
+    else { unlockAudio(); router.push(missionUrl(next.chapterId, next.missionId)); }
   };
   // Where this chapter sits in its story. The chapters still to come are named once, below the missions, and cannot be opened.
   const place = chapterPlace(c.id);

@@ -1,0 +1,74 @@
+{
+  "prowl-breath-1": {
+    "text": "Ragged wet rasping breathing of a very sick person, slow inhale and exhale, close. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-breath-2": {
+    "text": "Low guttural growling breath, raspy and hungry, a single creature. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-breath-3": {
+    "text": "Hoarse wheezing breath with a rattling throat, slow and menacing. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-breath-4": {
+    "text": "Heavy panting with a low gurgle in the throat, animal-like. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 2.5,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-breath-5": {
+    "text": "A choked gasping inhale followed by a long rattling exhale. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-breath-6": {
+    "text": "Snarling breath through clenched teeth, sniffing the air, close and clearly audible. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-steps-1": {
+    "text": "Slow uneven dragging footsteps on gravel, one foot scraping, a single person shambling closer. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-steps-2": {
+    "text": "Heavy stumbling footsteps on wet asphalt, irregular rhythm, a shoe dragging. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-steps-3": {
+    "text": "Footsteps shuffling slowly through dry leaves and twigs in a forest, limping gait. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-steps-4": {
+    "text": "Bare feet slapping slowly on a wet road, uneven limping gait. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-steps-5": {
+    "text": "Clear shambling footsteps on a dirt path, shuffling and dragging, five or six steps. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3.5,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-steps-6": {
+    "text": "Slow footsteps on grass and earth, limping, a twig snaps under a foot. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  }
+}

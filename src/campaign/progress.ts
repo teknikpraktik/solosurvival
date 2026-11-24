@@ -37,7 +37,7 @@ export interface MissionProgress {
   failures: number;
   /** Fastest win (s of game time), on any difficulty. */
   bestTimeS?: number;
-  /** The cinematic intro has been shown (it is skipped from then on; the briefing is always shown). */
+  /** The briefing has been shown at least once (kept for the record; the briefing and its narration are shown every time). */
   introSeen: boolean;
   /**
    * The highest difficulty the mission has been won on, as recorded with the match. Missing for a mission won before v2 (the difficulty
