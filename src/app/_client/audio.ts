@@ -1,7 +1,7 @@
 import type { Activity } from "@/config/activities";
 import type { GameMode } from "@/engine/objectives/objectives";
 import type { SoundEvent } from "@/play/session";
-import { Cooldown, NearGate, SOUND_RULES, pickVariant } from "@/play/sound-rules";
+import { Cooldown, NearGate, Prowl, SOUND_RULES, pickVariant, type ProwlKind } from "@/play/sound-rules";
 import { VOICE_COUNTDOWN_M, nextCountdown, type CountdownStep } from "@/play/countdown";
 import { beatVoiceUrl } from "@/campaign";
 import { RECORDED_BEATS } from "@/campaign/voice-manifest";
@@ -40,7 +40,11 @@ export const AUDIO = {
   revealed: "/audio/position-revealed.mp3",
   checkpoint: "/audio/checkpoint-reached.mp3",
   jump: ["/audio/jump-scare-1.mp3", "/audio/jump-scare-2.mp3", "/audio/jump-scare-3.mp3"],
+  /** The close-zombie layer (SOUND_RULES.prowl): six takes of each, so the same sound is never heard twice in a row. */
+  prowlSteps: [1, 2, 3, 4, 5, 6].map((n) => `/audio/prowl-steps-${n}.mp3`),
+  prowlBreath: [1, 2, 3, 4, 5, 6].map((n) => `/audio/prowl-breath-${n}.mp3`),
 } as const;
+const PROWL: Record<ProwlKind, readonly string[]> = { steps: AUDIO.prowlSteps, breath: AUDIO.prowlBreath };
 
 /**
  * The operator's recorded radio lines. The radio effect, static and squelch are in the files (checked: 80–94 % of the energy in
@@ -71,7 +75,7 @@ const COUNT_LINES: readonly VoiceLine[] = Object.values(COUNT_LINE);
 
 /** Every match: decoded while the player sets up the match. */
 export const MATCH_SOUNDS: readonly string[] = [
-  ...AUDIO.jump, AUDIO.captured, AUDIO.safeDoor, AUDIO.zombieNear, AUDIO.revealed, AUDIO.checkpoint,
+  ...AUDIO.jump, ...AUDIO.prowlSteps, ...AUDIO.prowlBreath, AUDIO.captured, AUDIO.safeDoor, AUDIO.zombieNear, AUDIO.revealed, AUDIO.checkpoint,
   VOICE.safehouseOnMap.url, VOICE.checkpointSecured.url, VOICE.getToSafehouse.url, VOICE.insideSafehouse.url, VOICE.keepMoving.url,
   VOICE.checkpointStart.url, VOICE.zombiesApproaching.url, ...COUNT_LINES.map((l) => VOICE[l].url),
 ];
@@ -81,7 +85,7 @@ export const HELI_SOUNDS: readonly string[] = [AUDIO.heliApproach, AUDIO.heliLoo
 /**
  * The mix. The files are levelled (scripts/build-audio.mjs: one-shots ≈ −14 LUFS momentary peak, the waiting helicopter −20 LUFS integrated, true peak ≤ −1 dBTP); these gains place them against each other and under the voice.
  */
-/** `threat` has no sound since the threat pulse went (field test); it is kept for the close-zombie layer to come (steps, breathing). */
+/** `threat`: the close-zombie layer (steps, breathing), lowered under the radio like the music. */
 export const MIX: Record<Bus, number> = { music: 0.32, threat: 1, heli: 0.8, fx: 1, voice: 1 };
 /** Per sound, on its bus (linear). */
 export const GAIN = {
@@ -90,6 +94,9 @@ export const GAIN = {
   sprint: 0.7, contact: 1,
   // A new infected: a scream (the files are levelled a little above the other one-shots), placed further off (≈ −4.4 dB): someone out there.
   infected: 0.6,
+  // The close-zombie layer at its closest; SOUND_RULES.prowl scales it down with distance (files ≈ −16 LUFS momentary, 2 dB under the
+  // other one-shots, and quieter still by design: it is a presence, not an alarm).
+  prowl: 0.8,
   // Campaign: the soft chime that says "a radio message came in" while a line has no recording yet.
   radioCue: 0.45,
   // The operator's lines −2.5 dB after the field test (the radio static was felt too loud; the files also have it lowered between the words).
@@ -264,6 +271,8 @@ export class MatchAudio {
   /** When the roar was last heard (entering 100 m or a sprint), so the two never come on top of each other. */
   private lastRoarS = -Infinity;
   private jumpVariant: number | null = null;
+  private readonly prowl = new Prowl();
+  private prowlVariant: Record<ProwlKind, number | null> = { steps: null, breath: null };
   /** The last distance step said (spoken countdown 50…10 m). */
   private countdown: CountdownStep | null = null;
   private heliLoop: LoopVoice | null = null;
@@ -302,6 +311,13 @@ export class MatchAudio {
     const warn = this.approaching.update(t, i.nearestM, i.activity, run);
     if (roar) { this.lastRoarS = t; void this.s.play(AUDIO.zombieNear, "fx", GAIN.zombieNear); }
     else if (warn) void this.radio.say("zombiesApproaching", { urgent: true });
+    // Within 300 m: steps (and from 150 m breathing) now and then, closer and louder as it closes in. Never right on top of the roar.
+    const p = this.prowl.update(t, i.nearestM, run, this.random);
+    if (p && t - this.lastRoarS >= SOUND_RULES.prowl.afterRoarS) {
+      const list = PROWL[p.kind];
+      const v = (this.prowlVariant[p.kind] = pickVariant(this.prowlVariant[p.kind], list.length, this.random));
+      void this.s.play(list[v], "threat", GAIN.prowl * p.gain).then((r) => { this.prowlLog.push({ url: list[v], result: r.result }); });
+    }
     // Spoken distance as the nearest zombie closes in: 50, 40, 30, 20, 10 m, each once per approach (re-armed after it has dropped back).
     const c = nextCountdown(this.countdown, run ? i.nearestM : null, VOICE_COUNTDOWN_M);
     this.countdown = c.last;
@@ -497,6 +513,9 @@ export class MatchAudio {
     this.contact.reset();
     this.infected.reset();
     this.lastRoarS = -Infinity;
+    this.prowl.reset();
+    this.prowlLog.length = 0;
+    this.prowlVariant = { steps: null, breath: null };
     this.matchId = i.id;
     this.done = false;
     this.endedWith = null;
@@ -521,7 +540,9 @@ export class MatchAudio {
   }
 
   /** For tests: what is sounding. */
-  get state() { return { heliLoop: !!this.heliLoop?.playing, approach: !!this.approach?.playing, voice: this.radio.speaking }; }
+  get state() { return { heliLoop: !!this.heliLoop?.playing, approach: !!this.approach?.playing, voice: this.radio.speaking, prowl: this.prowlLog.length }; }
+  /** The close-zombie layer's sounds started this match, with how they came out (for the field log and tests). */
+  readonly prowlLog: { url: string; result: PlayResult }[] = [];
 }
 
 /** The music waits at most this long for the ending's sounds (longest: 7 s effect, 7 s line). */

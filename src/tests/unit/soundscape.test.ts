@@ -207,13 +207,13 @@ describe("menu music", () => {
 });
 
 describe("match sounds", () => {
-  it("no threat pulse: minutes with a zombie at 150 m give the 200 m warning once and nothing on the threat bus", async () => {
+  it("no threat pulse: minutes with a zombie at 150 m give the 200 m warning once, and otherwise only the close-zombie layer's single sounds", async () => {
     const t = setup();
     t.s.unlock();
     await run(t, 10, { nearestM: 800 });
     await run(t, 240, { nearestM: 150 });
     expect(t.m.radio.log).toEqual(["zombiesApproaching"]);
-    expect(t.ctx.sources.map((x) => x.buffer?.url).filter((u) => u !== VOICE.zombiesApproaching.url)).toEqual([]);
+    expect(t.ctx.sources.map((x) => x.buffer?.url).filter((u) => u !== VOICE.zombiesApproaching.url && !/\/audio\/prowl-/.test(u ?? ""))).toEqual([]);
     expect(Object.keys(AUDIO)).not.toContain("threat");
     expect(MATCH_SOUNDS.some((u) => u.includes("threat-pulse"))).toBe(false);
   });
@@ -965,6 +965,31 @@ describe("music playlist (the theme and the soundtrack)", () => {
     expect(t.s.music.playing).toBe(false); // not at once: a new silence
     await t.advance(110_000);
     expect(t.s.music.playing).toBe(true);
+  });
+});
+
+describe("close-zombie layer in the match (steps and breathing)", () => {
+  const prowls = (t: ReturnType<typeof setup>) => t.ctx.sources.filter((x) => /\/audio\/prowl-/.test(x.buffer?.url ?? ""));
+  it("within 300 m: steps on the threat bus, never the same take twice in a row; breathing from 150 m; nothing when paused", async () => {
+    const t = setup();
+    t.s.unlock();
+    await run(t, 30, { nearestM: 400 });
+    expect(prowls(t)).toHaveLength(0);
+    await run(t, 60, { nearestM: 280 });
+    const far = prowls(t).map((x) => x.buffer!.url);
+    expect(far.length).toBeGreaterThanOrEqual(2);
+    expect(far.every((u) => u.includes("prowl-steps-"))).toBe(true);
+    for (let k = 1; k < far.length; k++) expect(far[k]).not.toBe(far[k - 1]);
+    const before = prowls(t).length;
+    await run(t, 60, { nearestM: 120 });
+    const near = prowls(t).slice(before).map((x) => x.buffer!.url);
+    expect(near.length).toBeGreaterThan(far.length);
+    expect(near.some((u) => u.includes("prowl-breath-"))).toBe(true);
+    const paused = prowls(t).length;
+    await run(t, 60, { nearestM: 120, paused: true });
+    expect(prowls(t)).toHaveLength(paused);
+    expect(AUDIO.prowlSteps).toHaveLength(6);
+    expect(MATCH_SOUNDS).toEqual(expect.arrayContaining([...AUDIO.prowlSteps, ...AUDIO.prowlBreath]));
   });
 });
 

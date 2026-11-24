@@ -22,7 +22,8 @@ Källfiler, nivåer och storlekar: [`assets/audio/README.md`](../assets/audio/RE
 | Ljud | Spelhändelse (kod) | Regel |
 | --- | --- | --- |
 | theme-frostborne (hela, 209 s), -fade (155 s), -short (138 s) och soundtracket `music-*.mp3` (nio stycken) | Hela appen utom `/field` och `/dev` | Alla nivåanpassas mot temat (≈ −16,3 LUFS) med `gain` i `MUSIC_TRACKS`, högst +4 dB. Samma plan gäller Free Play och alla kampanjuppdrag (`MUSIC_PLAYLIST`, `src/app/_client/audio.ts`). **Meny:** hela temat öppnar appen; därefter korstonade pass ur de lugna styckena (temats tre versioner, Frostborne Silence 1, The Fragile Three-Note Motif och dess version 1), aldrig samma två gånger i rad. **Matchstart:** spelar hela temat fortfarande får det spela klart (`keep` i planen); annars korta temat eller Three-Note Motif. **Mitt i matchen** (ändrat efter fälttestet): ett pass efter varje tystnad på 1–2,5 minuter, så länge matchen pågår, slumpat ur temats två kortare versioner (-fade och -short) och de mörkare styckena Frostborne Silence 1, Three-Note Motif, Stairwell Silence, Untitled 1 och The Missing Footstep. Musiken har ersatt hotpulsen som matchens ljudbakgrund (förut: högst två pass med 4–9 minuters tystnad). Dirty Riff är borttagen, eftersom den upplevdes som för glad och uptempo; källfilen ligger kvar i `assets/audio/source/`. **Helikoptern har landat** (Survival, FINAL EXTRACTION): Relentless Groove direkt, korstonad. **Efter matchen**, när slutets egna ljud är klara: hela temat efter vinst (under debriefen), Final Silence efter förlust (fångad eller tiden slut; korstonas in om musik redan spelar). **Nedladdning:** menyns stycken hämtas när appen öppnas; resten hämtas på NEW GAME och i ett uppdrags briefing, så att de finns offline under matchen. |
-| (threat-pulse-1…14) | – | Borttagen efter fälttestet: musiken spelas oftare i stället. Källfilerna finns kvar i `assets/audio/source/`. Bussen `threat` finns kvar, tyst, för närhetsljuden som kommer (fotsteg, löpsteg, andning, morrande). |
+| (threat-pulse-1…14) | – | Borttagen efter fälttestet: musiken spelas oftare i stället. Källfilerna finns kvar i `assets/audio/source/`. |
+| prowl-steps-1…6, prowl-breath-1…6 (2,5–3,5 s) | Under match, närmaste zombie inom 300 m | Närlagret på bussen `threat`: enstaka steg, från 150 m även andning, med tystnad emellan. Se avsnittet Närlager. |
 | zombie-near ("ROAR", gläfsande zombies) | Närmaste zombie inom **100 m**, för både gång och cykel (ut igen bortom 130 m) | En gång per närmande, 45 s cooldown, högst 8 per match. Följer bara närmaste avståndet, så många zombier ger ett ljud. Flyttat efter fälttestet; förut 100 m till fots och 200 m på cykel. |
 | jump-scare-1…3 ("ny smittad") | `zombie_spawned` under matchen (inte zombierna matchen börjar med): någon har just blivit biten | Ett av de tre skriken, aldrig samma variant två gånger i rad, på nivå 0,6 (≈ −4,4 dB). Högst var 20:e sekund. Händelser från bakgrunden ger inget ljud. |
 | zombies-approaching ("Zombies approaching!", inspelad röst) | Närmaste zombie inom **200 m**, för både gång och cykel (ut igen bortom 260 m) | En gång per närmande, 45 s cooldown, högst 8 per match. Spelas på röstkanalen som brådskande, precis som nedräkningen. Om zombien dyker upp direkt inom 100 m hörs bara gläfsandet. |
@@ -96,6 +97,22 @@ Radiobruset upplevdes för högt. Två ändringar:
 - **Brusdämpning i filerna:** varsam nedåtexpansion vid bygget (`VOICE_GATE` i `scripts/build-audio.mjs`). Brus långt under talet sänks 2:1, högst 9 dB. Uppmätt: talet är oförändrat (±0,0 dB), och bruset mellan orden har sänkts 4–9 dB i sex filer. I keep-moving och get-to-helicopter ligger bruset nära talets nivå, så där blev sänkningen bara 0,6–1,2 dB.
 - **Lägre nivå i mixen:** alla repliker ligger 2,5 dB lägre (röstnivå 0,75).
 
+## Närlager: steg och andning (inom 300 m)
+
+Ersätter hotpulsen med enstaka ljud i stället för en matta. Regeln är `SOUND_RULES.prowl` och `Prowl` i `src/play/sound-rules.ts`;
+`MatchAudio` spelar dem på bussen `threat` (sänks under radiorösterna som musiken, följer reglaget Effects).
+
+- Inom 300 m (ut igen bortom 330 m): första ljudet 2–5 s efter att zombien kommit inom räckhåll, därefter med en paus som krymper med
+  avståndet, ≈ 20 s (±30 %) vid 300 m till ≈ 4 s vid 50 m. Nivån går från 0,3 till 0,85 av `GAIN.prowl` (0,8).
+- Bortom 150 m bara steg; närmare är hälften andning. Aldrig samma tagning två gånger i rad, och inget ljud inom 4 s efter gläfsandet.
+- Kommer zombien närmare väntar lagret aldrig ut en lång paus som valdes längre bort.
+- Samma avstånd till fots och på cykel, som övriga närljud sedan fälttestet.
+
+Ljuden är genererade med ElevenLabs ljudeffekter (`scripts/prowl-generate.ts`, prompter och inställningar i
+`assets/audio/source/prowl-takes.json`) och nivåanpassade av `scripts/build-audio.mjs`: stegen genom en snabb kompressor, alla till
+≈ −16 LUFS momentant med limiter och korta in- och uttoningar. Stegen är så transienta att fyra av sex hamnar 1–4,6 dB under målet
+(steps-4 −20,6, steps-6 −19,2). Ingen har lyssnat på dem: nivå och längd är mätta, inte hur de låter.
+
 ## Hotpuls (borttagen)
 
 Hotpulsen (skurar inom 300 m till fots och 600 m på cykel) togs bort efter fälttestet. Kvar är "Zombies approaching!" vid 200 m, gläfsandet vid 100 m, nedräkningen 50–10 m och skärmens röda kant, som fortfarande börjar vid 300 m till fots och 600 m på cykel (`Play.tsx`).
@@ -105,7 +122,7 @@ Hotpulsen (skurar inom 300 m till fots och 600 m på cykel) togs bort efter fäl
 | Buss | Nivå | Duckas under tal |
 | --- | --- | --- |
 | music | 0,32 | ja |
-| threat | 1,0 (tyst sedan hotpulsen togs bort) | ja |
+| threat | 1,0 (närlagret: steg och andning) | ja |
 | heli | 0,80 | ja |
 | fx (händelser, radio) | 1,0 | nej |
 
@@ -133,7 +150,7 @@ Lyssnarens nivåer (0–100 %) multipliceras på mixen. "Effects" styr bussarna 
 
 Allt nedan har körts här. Ingenting har provlyssnats.
 
-- `src/tests/unit/sound-rules.test.ts`: att hotpulsens regler är borta, variant aldrig två gånger i rad, närhets-cooldown och tak.
+- `src/tests/unit/sound-rules.test.ts`: att hotpulsens regler är borta, variant aldrig två gånger i rad, närhets-cooldown och tak, närlagrets täthet, nivå och andning efter avstånd.
 - `src/tests/unit/soundscape.test.ts`, på en fejkad Web Audio-klocka:
   - inget ljud före tryck, utan ljud påslaget eller i bakgrunden;
   - loop med överlapp bara vid skarven och ingenting kvar efter stopp;

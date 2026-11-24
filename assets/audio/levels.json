@@ -905,6 +905,246 @@
         "bytes": 480768
       },
       "durationS": 30.024
+    },
+    "prowl-steps-1": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": 3.8,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -22.9,
+        "M": -19.8,
+        "TP": -8.4,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -19.5,
+        "M": -16.4,
+        "TP": -5.2,
+        "bytes": 48768
+      },
+      "durationS": 3
+    },
+    "prowl-steps-2": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": 7.4,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -25.3,
+        "M": -23.4,
+        "TP": -8.4,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -19.4,
+        "M": -17.9,
+        "TP": -4,
+        "bytes": 48768
+      },
+      "durationS": 3
+    },
+    "prowl-steps-3": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": -1.7,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -17.5,
+        "M": -14.3,
+        "TP": -4.3,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -19.2,
+        "M": -16,
+        "TP": -7.5,
+        "bytes": 48768
+      },
+      "durationS": 3
+    },
+    "prowl-steps-4": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": 12.2,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -29.9,
+        "M": -28.2,
+        "TP": -5.6,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -22.8,
+        "M": -20.6,
+        "TP": -4,
+        "bytes": 48768
+      },
+      "durationS": 3
+    },
+    "prowl-steps-5": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": 7.1,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -26.3,
+        "M": -23.1,
+        "TP": -8.6,
+        "bytes": 56885
+      },
+      "after": {
+        "I": -20,
+        "M": -16.9,
+        "TP": -2.9,
+        "bytes": 56448
+      },
+      "durationS": 3.48
+    },
+    "prowl-steps-6": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": 9.3,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -27.9,
+        "M": -25.3,
+        "TP": -6.8,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -21.7,
+        "M": -19.2,
+        "TP": -3,
+        "bytes": 48768
+      },
+      "durationS": 3
+    },
+    "prowl-breath-1": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": 6.9,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -25.1,
+        "M": -22.9,
+        "TP": -11.5,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -18.6,
+        "M": -16.4,
+        "TP": -4.9,
+        "bytes": 48768
+      },
+      "durationS": 3.03
+    },
+    "prowl-breath-2": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": -1.6,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -17,
+        "M": -14.4,
+        "TP": -6.3,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -19,
+        "M": -16.4,
+        "TP": -8.4,
+        "bytes": 48768
+      },
+      "durationS": 3.03
+    },
+    "prowl-breath-3": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": -1.9,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -19.1,
+        "M": -14.1,
+        "TP": -4.3,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -21.4,
+        "M": -16.4,
+        "TP": -6,
+        "bytes": 48768
+      },
+      "durationS": 3.03
+    },
+    "prowl-breath-4": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": -2.2,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -20.3,
+        "M": -13.8,
+        "TP": -2.1,
+        "bytes": 40585
+      },
+      "after": {
+        "I": -22.9,
+        "M": -16.4,
+        "TP": -4.7,
+        "bytes": 40704
+      },
+      "durationS": 2.508
+    },
+    "prowl-breath-5": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": -7.1,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -11.6,
+        "M": -8.9,
+        "TP": -0.2,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -19.1,
+        "M": -16.4,
+        "TP": -7.3,
+        "bytes": 48768
+      },
+      "durationS": 3.03
+    },
+    "prowl-breath-6": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": -2.3,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -15.6,
+        "M": -13.7,
+        "TP": -2.9,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -18.3,
+        "M": -16.3,
+        "TP": -6.4,
+        "bytes": 48768
+      },
+      "durationS": 3.03
     }
   }
 }
