@@ -34,16 +34,30 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      # Hoppar över resten när inget som barnappen bygger på eller importerar (transitivt) har ändrats. Jobbet blir ändå grönt.
+      - name: Affects Mini Outbreak?
+        id: affected
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if node apps/mini/scripts/ignore-build.mjs --ci --base "$BASE" --head "$GITHUB_SHA"; then echo "run=false" >> "$GITHUB_OUTPUT"; else echo "run=true" >> "$GITHUB_OUTPUT"; fi
       # Beroenden installeras bara i repo-roten: barnappen och delad kod ska använda samma React.
-      - run: npm ci
-      - run: npm run typecheck
+      - if: steps.affected.outputs.run == 'true'
+        run: npm ci
+      - if: steps.affected.outputs.run == 'true'
+        run: npm run typecheck
         working-directory: apps/mini
-      - run: npx tsc -p apps/mini --noEmit --noUnusedLocals --noUnusedParameters
-      - run: npm test
+      - if: steps.affected.outputs.run == 'true'
+        run: npx tsc -p apps/mini --noEmit --noUnusedLocals --noUnusedParameters
+      - if: steps.affected.outputs.run == 'true'
+        run: npm test
         working-directory: apps/mini
-      - run: npm run build
+      - if: steps.affected.outputs.run == 'true'
+        run: npm run build
         working-directory: apps/mini

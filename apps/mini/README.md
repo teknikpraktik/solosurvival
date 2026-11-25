@@ -31,7 +31,7 @@ CHROMIUM_PATH=/path/to/chrome npm run e2e   # webbläsartest, mockad GPS
 
 ## Driftsättning (ej gjord)
 
-Tänkt som ett eget Vercel-projekt från samma repo: Root Directory `apps/mini`, inställningar i `vercel.json` (installation i roten). Inget `ignoreCommand`: repo-rotens `.vercelignore` tar bort `.git` före bygget, så ett git-baserat ignore-steg kan inte köras i Vercel (projektet byggs därför vid varje push till `master`). Vuxenprojektet ändras inte. Barnappen ska ha en egen domän eller subdomän, aldrig en sökväg under vuxenappens domän: där skulle vuxenappens service worker (scope `/`) och lagring delas.
+Tänkt som ett eget Vercel-projekt från samma repo: Root Directory `apps/mini`, inställningar i `vercel.json` (installation i roten). `ignoreCommand` (`scripts/ignore-build.mjs`) hoppar över bygget när inget som barnappen bygger på har ändrats sedan senaste lyckade driftsättningen: filer i `apps/mini/` (utom tester, e2e och README), `package.json`, `package-lock.json`, `build-id.mjs`, `.vercelignore`, `public/data/` och varje fil i `src/` som barnappen importerar, transitivt. Repo-rotens `.vercelignore` tar bort `.git`, så skriptet hämtar listan över ändrade filer från GitHubs compare-API när git saknas; vid osäkerhet (ingen tidigare driftsättning, nätverksfel, mer än 300 ändrade filer) byggs appen. CI-jobbet för barnappen använder samma skript med `--ci` (då räknas även testerna). `node scripts/ignore-build.mjs --list` visar vilka rotfiler som räknas. Vuxenprojektet ändras inte. Barnappen ska ha en egen domän eller subdomän, aldrig en sökväg under vuxenappens domän: där skulle vuxenappens service worker (scope `/`) och lagring delas.
 
 ## Tillfällig grafik och ljud
 
