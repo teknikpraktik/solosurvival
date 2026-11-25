@@ -14,6 +14,7 @@ const DUR: Record<string, number> = {
   [AUDIO.heliLoop]: 30, [AUDIO.heliApproach]: 25, [AUDIO.heliSuccess]: 7, [AUDIO.captured]: 4, [AUDIO.safeDoor]: 5,
   [AUDIO.zombieNear]: 3, [AUDIO.revealed]: 2, [AUDIO.checkpoint]: 2,
   ...Object.fromEntries(AUDIO.jump.map((u) => [u, 3])),
+  ...Object.fromEntries(AUDIO.prowlSteps.map((u) => [u, 25])), ...Object.fromEntries(AUDIO.prowlBreath.map((u) => [u, 4])),
   [VOICE.keepMoving.url]: 8, [VOICE.safehouseOnMap.url]: 8, [VOICE.checkpointSecured.url]: 5, [VOICE.getToSafehouse.url]: 7,
   [VOICE.rescueInbound.url]: 6, [VOICE.getToHelicopter.url]: 7, [VOICE.liftingOff.url]: 5, [VOICE.insideSafehouse.url]: 7,
   [VOICE.checkpointStart.url]: 8, [VOICE.count50.url]: 0.8, [VOICE.count40.url]: 0.8, [VOICE.count30.url]: 1, [VOICE.count20.url]: 0.8, [VOICE.count10.url]: 0.8,
@@ -970,26 +971,43 @@ describe("music playlist (the theme and the soundtrack)", () => {
 
 describe("close-zombie layer in the match (steps and breathing)", () => {
   const prowls = (t: ReturnType<typeof setup>) => t.ctx.sources.filter((x) => /\/audio\/prowl-/.test(x.buffer?.url ?? ""));
-  it("within 300 m: steps on the threat bus, never the same take twice in a row; breathing from 150 m; nothing when paused", async () => {
+  const urlsOf = (t: ReturnType<typeof setup>, from = 0) => prowls(t).slice(from).map((x) => x.buffer!.url);
+  it("within 300 m: mostly breathing, one steps passage at a time on the threat bus; never the same take twice in a row", async () => {
     const t = setup();
     t.s.unlock();
     await run(t, 30, { nearestM: 400 });
     expect(prowls(t)).toHaveLength(0);
-    await run(t, 60, { nearestM: 280 });
-    const far = prowls(t).map((x) => x.buffer!.url);
-    expect(far.length).toBeGreaterThanOrEqual(2);
-    expect(far.every((u) => u.includes("prowl-steps-"))).toBe(true);
-    for (let k = 1; k < far.length; k++) expect(far[k]).not.toBe(far[k - 1]);
+    await run(t, 240, { nearestM: 280 });
+    const far = urlsOf(t);
+    const breath = far.filter((u) => u.includes("prowl-breath-")), steps = far.filter((u) => u.includes("prowl-steps-"));
+    expect(breath.length).toBeGreaterThanOrEqual(15);
+    expect(steps.length).toBeGreaterThanOrEqual(2);
+    expect(steps.length).toBeLessThanOrEqual(4);
+    for (let k = 1; k < breath.length; k++) expect(breath[k]).not.toBe(breath[k - 1]);
+    for (let k = 1; k < steps.length; k++) expect(steps[k]).not.toBe(steps[k - 1]);
     const before = prowls(t).length;
-    await run(t, 60, { nearestM: 120 });
-    const near = prowls(t).slice(before).map((x) => x.buffer!.url);
-    expect(near.length).toBeGreaterThan(far.length);
-    expect(near.some((u) => u.includes("prowl-breath-"))).toBe(true);
-    const paused = prowls(t).length;
-    await run(t, 60, { nearestM: 120, paused: true });
-    expect(prowls(t)).toHaveLength(paused);
-    expect(AUDIO.prowlSteps).toHaveLength(6);
+    await run(t, 60, { nearestM: 80 });
+    expect(urlsOf(t, before).filter((u) => u.includes("prowl-breath-")).length).toBeGreaterThan(breath.length / 4); // more often close
+    expect(AUDIO.prowlSteps).toHaveLength(4);
+    expect(AUDIO.prowlBreath).toHaveLength(12);
     expect(MATCH_SOUNDS).toEqual(expect.arrayContaining([...AUDIO.prowlSteps, ...AUDIO.prowlBreath]));
+  });
+
+  it("a steps passage still playing fades out when the zombie leaves the range or the game pauses; nothing new while paused", async () => {
+    for (const leave of [{ nearestM: 500 }, { nearestM: 120, paused: true }]) {
+      const t = setup();
+      t.s.unlock();
+      await run(t, 10, { nearestM: 200 }); // the first passage starts 3–8 s in
+      const step = prowls(t).find((x) => x.buffer!.url.includes("prowl-steps-"));
+      expect(step, JSON.stringify(leave)).toBeDefined();
+      expect(t.ctx.live()).toContain(step);
+      await run(t, 1, leave);
+      await t.advance(3000);
+      expect(t.ctx.live(), JSON.stringify(leave)).not.toContain(step);
+      const n = prowls(t).length;
+      await run(t, 60, leave);
+      expect(prowls(t)).toHaveLength(n);
+    }
   });
 });
 

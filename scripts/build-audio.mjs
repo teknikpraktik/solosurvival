@@ -55,9 +55,13 @@ const FILES = [
   { name: "jump-scare-1", measure: "M", target: -12 },
   { name: "jump-scare-2", measure: "M", target: -12 },
   { name: "jump-scare-3", measure: "M", target: -12 },
-  // The close-zombie layer (steps, breathing; generated with ElevenLabs sound effects by scripts/prowl-generate.ts). Levelled a little
-  // below the other one-shots; the game sets their level by distance on top. Short fades at both ends: they start and stop mid-sound.
-  ...["steps", "breath"].flatMap((k) => [1, 2, 3, 4, 5, 6].map((n) => ({ name: `prowl-${k}-${n}`, src: "mp3", measure: "M", target: -16, limiter: true, edges: true, compress: k === "steps", limitDb: k === "steps" ? -4 : -3 }))),
+  // The close-zombie layer (steps, breathing; generated with ElevenLabs sound effects by scripts/prowl-generate.ts). The game sets their
+  // level by distance on top. After the field test the steps are ≈ 20 s passages: slowed 20 % (tempo only, not pitch), the bright
+  // splash and crackle cut (low-pass 3.2 kHz), a gentle compressor instead of a hard one, levelled by their integrated loudness, and long
+  // fades so the walker comes and goes. Breathing: short fades, levelled by its loudest moment, a little below the other one-shots.
+  ...[1, 2, 3, 4].map((n) => ({ name: `prowl-steps-${n}`, src: "mp3", measure: "I", target: -22, limiter: true, limitDb: -4, edges: [1.5, 3],
+    pre: "atempo=0.8,highpass=f=70,lowpass=f=3200:poles=2,acompressor=threshold=0.1:ratio=2:attack=10:release=200:makeup=1" })),
+  ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => ({ name: `prowl-breath-${n}`, src: "mp3", measure: "M", target: -16, limiter: true, limitDb: -3, edges: [0.04, 0.35] })),
 ];
 const MUSIC = "theme-frostborne.mp3";
 /** The theme's two shorter versions and the rest of the soundtrack (copied unchanged too; where each is used: MUSIC_PLAYLIST in audio.ts). */
@@ -91,16 +95,15 @@ for (const f of FILES) {
   if (ONLY && !ONLY.has(f.name)) continue;
   const src = path.join(SRC, `${f.name}.${f.src ?? "wav"}`);
   const out = path.join(OUT, `${f.name}.mp3`);
-  // Steps are sharp transients: a fast compressor first, so levelling them is not all eaten by the limiter (measured on the result).
-  const COMPRESS = "acompressor=threshold=0.04:ratio=6:attack=1:release=90:makeup=4";
+  // `pre`: a treatment before levelling (tempo, filters, compression), measured on its result.
   let srcFile = src;
-  if (f.compress) { srcFile = `${out}.pre.wav`; execFileSync("ffmpeg", ["-hide_banner", "-v", "error", "-y", "-i", src, "-af", COMPRESS, srcFile]); }
+  if (f.pre) { srcFile = `${out}.pre.wav`; execFileSync("ffmpeg", ["-hide_banner", "-v", "error", "-y", "-i", src, "-af", f.pre, srcFile]); }
   const before = measure(srcFile);
   const want = f.target - before[f.measure];
   const gain = f.limiter ? want : Math.min(want, CEILING_DBTP - 0.5 - before.TP); // 0,5 dB marginal för MP3-kodningens överslängar
-  const af = (f.gate ? `${VOICE_GATE},` : "") + (f.edges ? "afade=t=in:d=0.04,areverse,afade=t=in:d=0.35,areverse," : "") + (f.limiter ? `volume=${gain.toFixed(2)}dB,alimiter=limit=${Math.pow(10, (f.limitDb ?? CEILING_DBTP - 1) / 20).toFixed(4)}:attack=2:release=60:level=false` : `volume=${gain.toFixed(2)}dB`);
+  const af = (f.gate ? `${VOICE_GATE},` : "") + (f.edges ? `afade=t=in:d=${f.edges[0]},areverse,afade=t=in:d=${f.edges[1]},areverse,` : "") + (f.limiter ? `volume=${gain.toFixed(2)}dB,alimiter=limit=${Math.pow(10, (f.limitDb ?? CEILING_DBTP - 1) / 20).toFixed(4)}:attack=2:release=60:level=false` : `volume=${gain.toFixed(2)}dB`);
   execFileSync("ffmpeg", ["-hide_banner", "-v", "error", "-y", "-i", srcFile, "-af", af, "-c:a", "libmp3lame", "-b:a", BITRATE, "-ar", "48000", "-ac", "2", "-map_metadata", "-1", "-id3v2_version", "0", "-write_xing", "1", out]);
-  if (f.compress) execFileSync("rm", ["-f", srcFile]);
+  if (f.pre) execFileSync("rm", ["-f", srcFile]);
   const after = measure(out);
   report.files[f.name] = {
     measure: f.measure, target: f.target, gainDb: r1(gain), limiter: !!f.limiter, gate: !!f.gate,
