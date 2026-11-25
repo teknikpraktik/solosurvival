@@ -4,8 +4,8 @@ import type { Activity } from "@/config/activities";
  * When the adult app's soundscape plays what (src/app/_client/audio.ts plays it). Pure rules on the game's own, visible information: the
  * nearest zombie distance is the number the HUD always shows, so no sound tells the player more than the screen does.
  * All distances and times are gathered here. The threat pulse (bursts within 300 m on foot / 600 m by bike) was removed after the field
- * test: the music plays more often in its place. The close-zombie layer that came after it (`prowl`) is single sounds, steps and
- * breathing, with silence between them, not a bed.
+ * test: the music plays more often in its place. The close-zombie layer that came after it (`prowl`) is long takes of breathing (within
+ * 300 m) and dragging steps (within 100 m), one of each at a time, with pauses between them.
  */
 export const SOUND_RULES = {
   /**
@@ -23,77 +23,79 @@ export const SOUND_RULES = {
   infected: { cooldownS: 20 },
   heli: { loopFadeInS: 3, approachFadeOutS: 3, loopStopS: 0.8 },
   /**
-   * The close-zombie layer: while the nearest zombie is within 300 m (out again beyond 330 m). After the field test (short steps came too
-   * often, were too loud and sounded like a child in a puddle; there was too little breathing):
-   * - steps: one long, slow, dragging passage at a time (≈ 25 s), low; start to start ≈ 100 s at the edge of the range, ≈ 45 s at 50 m;
-   * - breathing: the main sound, over the whole range; every ≈ 10 s at the edge (quiet), every ≈ 3 s at 50 m.
-   * Pairs are [at the edge, at `nearM` and closer], with linear steps in between; gaps vary ±30 %. None within 4 s after the roar.
-   * Both activities use the same distances, like the other close-zombie sounds since the field test.
+   * The close-zombie layer. After field test 3 (2026-11-25: the breathing was good but too short; steps should mean "close"):
+   * - breathing: one long take at a time (20–30 s), while the nearest zombie is within 300 m (out beyond 330 m); start to start ≈ 45 s
+   *   at the edge (a pause of 15–25 s after a take) and ≈ 28 s at 50 m (almost back to back); a little quieter than before;
+   * - steps: one long, slow, dragging passage at a time (≈ 25 s), only within 100 m (out beyond 130 m); start to start ≈ 40 s at
+   *   100 m, ≈ 30 s at 30 m and closer.
+   * Pairs are [at the edge of the kind's range, at its `nearM` and closer], linear in between; gaps vary ±`jitter`. A sound that is due
+   * while its previous take still plays, or within 4 s after the roar, waits and starts as soon as it may. Leaving a kind's range fades
+   * its take out. Both activities use the same distances, like the other close-zombie sounds since the field test.
    */
   prowl: {
-    enterM: 300, exitM: 330, nearM: 50,
-    steps: { gapS: [100, 45], gain: [0.15, 0.4], firstS: [3, 8] },
-    breath: { gapS: [10, 3], gain: [0.3, 0.85], firstS: [4, 9] },
-    jitter: 0.3, afterRoarS: 4, stepsFadeOutS: 2,
+    breath: { enterM: 300, exitM: 330, nearM: 50, gapS: [45, 28], gain: [0.25, 0.6], firstS: [3, 8] },
+    steps: { enterM: 100, exitM: 130, nearM: 30, gapS: [40, 30], gain: [0.25, 0.45], firstS: [5, 9] },
+    jitter: 0.2, afterRoarS: 4, fadeOutS: 2,
   },
 } as const;
 
 export type ProwlKind = "steps" | "breath";
 type Pair = readonly [number, number];
 const lerp = (p: Pair, k: number) => p[0] + (p[1] - p[0]) * k;
+type PulseRule = { enterM: number; exitM: number; nearM: number; gapS: Pair; gain: Pair; firstS: Pair };
 
-/** One kind's own timing inside the range: due when its time has come; closing in never waits out a long gap chosen further away. */
+/**
+ * One kind's own range and timing. Due when its time has come; closing in never waits out a long gap chosen further away; a due sound
+ * that is held (its previous take still playing, the roar just heard) stays due and starts as soon as it is let go.
+ */
 class Pulse {
   private nextS: number | null = null;
-  constructor(private readonly c: { gapS: Pair; gain: Pair; firstS: Pair }, private readonly jitter: number) {}
-  update(tS: number, k: number, entered: boolean, random: () => number): number | null {
+  on = false;
+  constructor(private readonly c: PulseRule, private readonly jitter: number) {}
+
+  /** 0 at the edge of the range, 1 at `nearM` and closer. */
+  closeness(d: number): number { return Math.max(0, Math.min(1, (this.c.enterM - d) / (this.c.enterM - this.c.nearM))); }
+
+  update(tS: number, d: number, held: boolean, random: () => number): number | null {
+    const was = this.on;
+    this.on = was ? d <= this.c.exitM : d <= this.c.enterM;
+    if (!this.on) { this.nextS = null; return null; }
+    const k = this.closeness(d);
     const gap = lerp(this.c.gapS, k);
-    if (entered || this.nextS === null) { this.nextS = tS + lerp(this.c.firstS, random()); return null; }
+    if (!was || this.nextS === null) { this.nextS = tS + lerp(this.c.firstS, random()); return null; }
     this.nextS = Math.min(this.nextS, tS + gap * (1 + this.jitter));
-    if (tS < this.nextS) return null;
+    if (tS < this.nextS || held) return null;
     this.nextS = tS + gap * (1 - this.jitter + 2 * this.jitter * random());
     return lerp(this.c.gain, k);
   }
-  reset(): void { this.nextS = null; }
+  reset(): void { this.on = false; this.nextS = null; }
 }
 
 /**
  * When the close-zombie layer makes its sounds, and at what level (0–1, on top of the mix). Feed it the nearest distance every second or
- * so; it returns the sounds that are due (steps and breathing keep their own time). `inside` says whether the range holds: a steps
- * passage still playing is faded out when it does not.
+ * so, with the kinds that are held right now (a take still playing, the roar just heard); it returns the sounds that are due. `inside`
+ * says whether a kind's range holds: a take still playing is faded out when it does not.
  */
 export class Prowl {
-  private on = false;
-  private readonly steps: Pulse;
-  private readonly breath: Pulse;
+  private readonly pulses: Record<ProwlKind, Pulse>;
 
-  constructor(private readonly r = SOUND_RULES.prowl) {
-    this.steps = new Pulse(r.steps, r.jitter);
-    this.breath = new Pulse(r.breath, r.jitter);
+  constructor(r = SOUND_RULES.prowl) {
+    this.pulses = { breath: new Pulse(r.breath, r.jitter), steps: new Pulse(r.steps, r.jitter) };
   }
 
-  get inside(): boolean { return this.on; }
+  inside(kind: ProwlKind): boolean { return this.pulses[kind].on; }
 
-  /** 0 at the edge of the range, 1 at `nearM` and closer. */
-  closeness(nearestM: number): number {
-    return Math.max(0, Math.min(1, (this.r.enterM - nearestM) / (this.r.enterM - this.r.nearM)));
-  }
-
-  update(tS: number, nearestM: number | null, running: boolean, random: () => number): { kind: ProwlKind; gain: number }[] {
+  update(tS: number, nearestM: number | null, running: boolean, random: () => number, held: (kind: ProwlKind) => boolean = () => false): { kind: ProwlKind; gain: number }[] {
     if (!running || nearestM === null) { this.reset(); return []; }
-    const was = this.on;
-    this.on = was ? nearestM <= this.r.exitM : nearestM <= this.r.enterM;
-    if (!this.on) { this.reset(); return []; }
-    const k = this.closeness(nearestM);
     const out: { kind: ProwlKind; gain: number }[] = [];
-    const s = this.steps.update(tS, k, !was, random);
-    if (s !== null) out.push({ kind: "steps", gain: s });
-    const b = this.breath.update(tS, k, !was, random);
-    if (b !== null) out.push({ kind: "breath", gain: b });
+    for (const kind of ["steps", "breath"] as const) {
+      const g = this.pulses[kind].update(tS, nearestM, held(kind), random);
+      if (g !== null) out.push({ kind, gain: g });
+    }
     return out;
   }
 
-  reset(): void { this.on = false; this.steps.reset(); this.breath.reset(); }
+  reset(): void { this.pulses.breath.reset(); this.pulses.steps.reset(); }
 }
 
 /** A random variant index in [0, n) that is never `prev` (when there is more than one). */

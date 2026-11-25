@@ -39,11 +39,12 @@ export const AUDIO = {
   zombieNear: "/audio/zombie-near.mp3",
   revealed: "/audio/position-revealed.mp3",
   checkpoint: "/audio/checkpoint-reached.mp3",
-  jump: ["/audio/jump-scare-1.mp3", "/audio/jump-scare-2.mp3", "/audio/jump-scare-3.mp3"],
+  /** A new infected: someone attacked, bitten and turning (10–12 s each; the jump scare's old screams are no longer used). */
+  infected: [1, 2, 3, 4].map((n) => `/audio/infected-${n}.mp3`),
   /** The close-zombie layer (SOUND_RULES.prowl); never the same take twice in a row. */
   /** ≈ 25 s slow dragging passages (four), and breathing (twelve: six short, six of 6–7 s). */
   prowlSteps: [1, 2, 3, 4].map((n) => `/audio/prowl-steps-${n}.mp3`),
-  prowlBreath: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => `/audio/prowl-breath-${n}.mp3`),
+  prowlBreath: [1, 2, 3, 4, 5, 6].map((n) => `/audio/prowl-breath-${n}.mp3`),
 } as const;
 const PROWL: Record<ProwlKind, readonly string[]> = { steps: AUDIO.prowlSteps, breath: AUDIO.prowlBreath };
 
@@ -76,7 +77,7 @@ const COUNT_LINES: readonly VoiceLine[] = Object.values(COUNT_LINE);
 
 /** Every match: decoded while the player sets up the match. */
 export const MATCH_SOUNDS: readonly string[] = [
-  ...AUDIO.jump, ...AUDIO.prowlSteps, ...AUDIO.prowlBreath, AUDIO.captured, AUDIO.safeDoor, AUDIO.zombieNear, AUDIO.revealed, AUDIO.checkpoint,
+  ...AUDIO.infected, ...AUDIO.prowlSteps, ...AUDIO.prowlBreath, AUDIO.captured, AUDIO.safeDoor, AUDIO.zombieNear, AUDIO.revealed, AUDIO.checkpoint,
   VOICE.safehouseOnMap.url, VOICE.checkpointSecured.url, VOICE.getToSafehouse.url, VOICE.insideSafehouse.url, VOICE.keepMoving.url,
   VOICE.checkpointStart.url, VOICE.zombiesApproaching.url, ...COUNT_LINES.map((l) => VOICE[l].url),
 ];
@@ -93,10 +94,11 @@ export const GAIN = {
   heliLoop: 0.7, heliApproach: 0.9, heliSuccess: 1, captured: 1, safeDoor: 1, zombieNear: 0.8, revealed: 0.75, checkpoint: 0.7,
   // A sprinting zombie is the roar again, a little lower; contact is the warning sting at full level.
   sprint: 0.7, contact: 1,
-  // A new infected: a scream (the files are levelled a little above the other one-shots), placed further off (≈ −4.4 dB): someone out there.
+  // A new infected: someone attacked, bitten and screaming (10–12 s, levelled a little above the other one-shots), placed further off
+  // (≈ −4.4 dB): someone out there.
   infected: 0.6,
-  // The close-zombie layer; SOUND_RULES.prowl sets each sound's own level by distance on top (breathing files ≈ −16 LUFS momentary,
-  // steps ≈ −22 LUFS integrated; it is a presence, not an alarm).
+  // The close-zombie layer; SOUND_RULES.prowl sets each sound's own level by distance on top (breathing and steps files ≈ −22 LUFS
+  // integrated; it is a presence, not an alarm).
   prowl: 0.8,
   // Campaign: the soft chime that says "a radio message came in" while a line has no recording yet.
   radioCue: 0.45,
@@ -271,10 +273,13 @@ export class MatchAudio {
   private readonly infected = new Cooldown(SOUND_RULES.infected.cooldownS);
   /** When the roar was last heard (entering 100 m or a sprint), so the two never come on top of each other. */
   private lastRoarS = -Infinity;
-  private jumpVariant: number | null = null;
+  private infectedVariant: number | null = null;
   private readonly prowl = new Prowl();
   private prowlVariant: Record<ProwlKind, number | null> = { steps: null, breath: null };
-  private stepsVoice: Voice | null = null;
+  /** The take of each kind that may still be playing (one of each at a time). */
+  private prowlVoice: Record<ProwlKind, Voice | null> = { steps: null, breath: null };
+  /** A take asked for and still loading (so a second one is not asked for meanwhile). */
+  private prowlPending: Record<ProwlKind, boolean> = { steps: false, breath: false };
   /** The layer's sounds that may still play (stopped with the match's loops: quit, the end, the app hidden). */
   private readonly prowlVoices = new Set<Voice>();
   /** The last distance step said (spoken countdown 50…10 m). */
@@ -315,25 +320,30 @@ export class MatchAudio {
     const warn = this.approaching.update(t, i.nearestM, i.activity, run);
     if (roar) { this.lastRoarS = t; void this.s.play(AUDIO.zombieNear, "fx", GAIN.zombieNear); }
     else if (warn) void this.radio.say("zombiesApproaching", { urgent: true });
-    // Within 300 m: breathing now and then, and now and then a long passage of dragging steps (SOUND_RULES.prowl). Never on top of the roar.
-    for (const p of this.prowl.update(t, i.nearestM, run, this.random)) {
-      if (t - this.lastRoarS < SOUND_RULES.prowl.afterRoarS) continue;
-      if (p.kind === "steps" && this.stepsVoice?.playing) continue; // one walker at a time
+    // Within 300 m long takes of breathing, within 100 m long passages of dragging steps (SOUND_RULES.prowl): one of each at a time, never
+    // starting on top of the roar.
+    const held = (k: ProwlKind) => !!this.prowlVoice[k]?.playing || this.prowlPending[k] || t - this.lastRoarS < SOUND_RULES.prowl.afterRoarS;
+    for (const p of this.prowl.update(t, i.nearestM, run, this.random, held)) {
       const list = PROWL[p.kind];
       const v = (this.prowlVariant[p.kind] = pickVariant(this.prowlVariant[p.kind], list.length, this.random));
+      this.prowlPending[p.kind] = true;
       void this.s.play(list[v], "threat", GAIN.prowl * p.gain).then((r) => {
+        this.prowlPending[p.kind] = false;
         this.prowlLog.push({ url: list[v], result: r.result });
         if (!r.voice) return;
-        // Ended or paused meanwhile (the file was still loading): it must not start late.
-        if (!this.running(this.input)) { r.voice.stop(0.1); return; }
+        // Ended, paused or out of range meanwhile (the file was still loading): it must not start late.
+        if (!this.running(this.input) || !this.prowl.inside(p.kind)) { r.voice.stop(0.1); return; }
         for (const x of this.prowlVoices) if (!x.playing) this.prowlVoices.delete(x);
         this.prowlVoices.add(r.voice);
-        if (p.kind === "steps") this.stepsVoice = r.voice;
+        this.prowlVoice[p.kind] = r.voice;
       });
     }
-    // The walker goes away with the zombie: out of range, a passage still playing fades out. Paused or over: the whole layer does.
-    if (!run && this.prowlVoices.size) { for (const v of this.prowlVoices) v.stop(SOUND_RULES.prowl.stepsFadeOutS); this.prowlVoices.clear(); this.stepsVoice = null; }
-    else if (this.stepsVoice && !this.prowl.inside) { this.stepsVoice.stop(SOUND_RULES.prowl.stepsFadeOutS); this.prowlVoices.delete(this.stepsVoice); this.stepsVoice = null; }
+    // The sound goes away with the zombie: out of a kind's range, its take still playing fades out. Paused or over: the whole layer does.
+    if (!run && this.prowlVoices.size) { for (const v of this.prowlVoices) v.stop(SOUND_RULES.prowl.fadeOutS); this.prowlVoices.clear(); this.prowlVoice = { steps: null, breath: null }; }
+    else for (const k of ["steps", "breath"] as const) {
+      const v = this.prowlVoice[k];
+      if (v && !this.prowl.inside(k)) { v.stop(SOUND_RULES.prowl.fadeOutS); this.prowlVoices.delete(v); this.prowlVoice[k] = null; }
+    }
     // Spoken distance as the nearest zombie closes in: 50, 40, 30, 20, 10 m, each once per approach (re-armed after it has dropped back).
     const c = nextCountdown(this.countdown, run ? i.nearestM : null, VOICE_COUNTDOWN_M);
     this.countdown = c.last;
@@ -376,8 +386,8 @@ export class MatchAudio {
       case "infected": {
         const t = this.clock.nowS();
         if (!this.infected.take(t)) return Promise.resolve("suppressed");
-        this.jumpVariant = pickVariant(this.jumpVariant, AUDIO.jump.length, this.random);
-        return res(this.s.play(AUDIO.jump[this.jumpVariant], "fx", GAIN.infected));
+        this.infectedVariant = pickVariant(this.infectedVariant, AUDIO.infected.length, this.random);
+        return res(this.s.play(AUDIO.infected[this.infectedVariant], "fx", GAIN.infected));
       }
       // A zombie starts to sprint: the roar, unless it was just heard (entering 100 m and the first sprint often come together).
       case "sprint": {
@@ -505,7 +515,7 @@ export class MatchAudio {
     this.approach = null;
     for (const v of this.prowlVoices) v.stop(fadeS);
     this.prowlVoices.clear();
-    this.stepsVoice = null;
+    this.prowlVoice = { steps: null, breath: null };
   }
 
   /** A match begins (after START, not on the setup step): the opening line for its mode. */
@@ -535,6 +545,7 @@ export class MatchAudio {
     this.prowl.reset();
     this.prowlLog.length = 0;
     this.prowlVariant = { steps: null, breath: null };
+    this.prowlPending = { steps: false, breath: false };
     this.matchId = i.id;
     this.done = false;
     this.endedWith = null;
