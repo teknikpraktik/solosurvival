@@ -804,6 +804,13 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 .campchip[data-state="NEW"], .campchip[data-state="next"], .campchip[data-state="IN PROGRESS"] { border-color: var(--lime); color: var(--lime); }
 .campchip[data-state="COMPLETED"], .campchip[data-state="completed"] { border-color: var(--teal); color: var(--teal); }
 .campchip[data-state="locked"] { color: #8b98a5; border-color: #ffffff26; }
+/* A story's chapters: the playable ones as picture cards, the ones still to come as dark, locked cards in their place. */
+.chaptercard { min-height: clamp(200px, 34dvh, 300px); }
+.chaptercard-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+.chaptercard[data-locked] { min-height: 104px; border-style: dashed; border-color: #ffffff26; background: #04090bcc; box-shadow: none; }
+.chaptercard[data-locked]::before { display: none; }
+.chaptercard[data-locked] .campcard-title { font-size: clamp(1.5rem, 7vw, 1.9rem); color: #9fb3b0; }
+.chaptercard[data-locked] .cine-k { color: #6f8784; }
 .campbar { display: flex; align-items: center; gap: 10px; width: 100%; }
 .campbar-track { display: flex; gap: 4px; flex: 1; }
 .campbar-track i { flex: 1; width: auto; height: 6px; }
@@ -872,7 +879,6 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 .brief-obj p { font-size: 1.05rem; font-weight: 500; color: #f3fbf9; }
 .brief-facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .brief-facts li { padding: 5px 10px; border-radius: 3px; border: 1px solid var(--line); background: #0a1114; font: 700 .82rem var(--font-display); letter-spacing: .18em; color: #d5dde6; }
-.brief-safety { font-size: .82rem; color: #8b98a5; }
 .brief-foot { position: sticky; bottom: 0; padding: 10px 16px calc(max(14px, env(safe-area-inset-bottom)) + 4px); background: linear-gradient(#04090b00, #04090b 28%); }
 .btn.cta.camp-cta { background: linear-gradient(#b5f04a, #84cc16); border-color: #d9f99d; color: #0b1403; text-shadow: none; box-shadow: 0 6px 20px #000a, 0 0 22px #a3e63540; }
 .btn.cta.camp-cta:disabled { background: #1c2a10; border-color: #33471c; color: #8fa37a; box-shadow: none; }
@@ -1018,11 +1024,6 @@ main.page, main.center, .map-shell { animation: screen-in .32s ease-out both; }
 
 /* Chapter page: where the chapter sits in its story, and the story's chapters still to come (names only, nothing to open). */
 .camphero-k { text-shadow: 0 1px 6px #000; }
-.campsoon { display: flex; flex-direction: column; gap: 8px; }
-.campsoon ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.campsoon li { display: flex; align-items: baseline; gap: 12px; padding: 10px 14px; border-radius: var(--r); border: 1px dashed #ffffff26; background: #04090b99; color: #9fb3b0; }
-.campsoon-n { font: 600 .75rem var(--font-display); letter-spacing: .24em; color: #6f8784; white-space: nowrap; }
-.campsoon li b { font: 700 1rem var(--font-display); letter-spacing: .14em; }
 
 /* Campaign overview: the story award, CONTINUE, a mission's best difficulty. */
 .campaward { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: var(--r); border: 1px solid #fbbf2466; background: linear-gradient(90deg, #2a1c05e6, #0a1114e6 70%); box-shadow: inset 0 0 24px #fbbf2414; }

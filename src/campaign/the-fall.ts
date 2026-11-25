@@ -2,8 +2,8 @@
  * THE FALL: chapter 1 of the story REGENESIS (stories.ts), and the first playable chapter of CAMPAIGN. Five missions, on foot, each its own session started from wherever the player is.
  *
  * Story in one breath: an outbreak nobody can explain spreads and society comes apart. The player, alone outside, is picked up on the
- * radio by WATCHTOWER, a civil-defence radio operator who is still at her post. She gets the player through the first night (01), has
- * them fetch supplies for a group of survivors (02), sends them to the Waystation, a fallback shelter, when the evacuation route is cut
+ * radio by WATCHTOWER, a civil-defence radio operator who is still at her post. She keeps the player alive in the street until a group of
+ * survivors hiding in a cellar can open their door to them (01), has them fetch medicine for that group the next morning (02), sends them to the Waystation, a fallback shelter, when the evacuation route is cut
  * (03), needs them to bring an old relay network on the air when the evacuation force goes silent (04), and talks them onto the
  * helicopter (05). The epilogue holds the hook to GROUND ZERO: a broken call from the lost evacuation force.
  *
@@ -37,12 +37,13 @@ const firstContact: MissionDef = {
   intro: [
     "It started this afternoon. Sirens, then nothing.",
     "People are attacking each other in the streets. Nobody knows why.",
-    "Then a voice breaks through the static.",
+    "Then a voice breaks through the static. Others are hiding somewhere near you.",
+    "Stay alive out there long enough, and they will open their door for you.",
   ],
-  objective: "Stay on the move and stay away from the infected for 15 minutes.",
+  objective: "Stay on the move and away from the infected for 15 minutes, until the survivors can let you in.",
   hud: "Survive",
   ending: "plain",
-  success: "You find shelter and make it through the night. By morning, the group in the cellar is running out of medicine.",
+  success: "The cellar door opens and you are pulled inside. Eleven strangers, hiding in the dark. Two of them are sick, and the medicine is gone. At first light, Watchtower has a job for you.",
   beats: [
     { id: "tf-m01-start", speaker: "watchtower", trigger: { on: "start" }, fallbackVoice: "keepMoving",
       text: "Any station, this is Watchtower. If you can hear me: stay outside, keep moving, and do not approach anyone." },
@@ -50,16 +51,16 @@ const firstContact: MissionDef = {
       text: "I have your signal. There are infected on the streets around you. Red on your map. Keep your distance." },
     { id: "tf-m01-hunt", speaker: "watchtower", trigger: { on: "hunt" },
       text: "They have seen you. They will not stop. Keep your distance, and pick a way out before you need it." },
-    { id: "tf-m01-spread", speaker: "watchtower", trigger: { on: "time", atFrac: 0.4 },
-      text: "More reports coming in. It is spreading faster than we can track. Expect more of them." },
+    { id: "tf-m01-survivors", speaker: "watchtower", trigger: { on: "time", atFrac: 0.25 },
+      text: "I have survivors on this channel, hiding in a cellar near you. They will open the door for you when the street is clear." },
+    { id: "tf-m01-spread", speaker: "watchtower", trigger: { on: "time", atFrac: 0.5 },
+      text: "More reports coming in. It is spreading faster than we can track. Keep them away from that cellar." },
     { id: "tf-m01-contact", speaker: "watchtower", trigger: { on: "contact" },
       text: "Too close! Break away, now!" },
-    { id: "tf-m01-survivors", speaker: "watchtower", trigger: { on: "time", atFrac: 0.75 },
-      text: "Stand by. Someone else is on this channel. A group of survivors, hiding in a cellar not far from you." },
     { id: "tf-m01-minute", speaker: "watchtower", trigger: { on: "time", beforeEndS: 60 },
-      text: "One more minute. Keep moving." },
+      text: "One more minute. The street is almost clear. Keep moving." },
     { id: "tf-m01-win", speaker: "watchtower", trigger: { on: "end", result: "survived" },
-      text: "You are still on your feet. I am logging you as Runner Seven. Find shelter and rest. At first light, that group in the cellar will need you." },
+      text: "That is it. The street is clear and they are opening the cellar door. Get inside. I am logging you as Runner Seven." },
     { id: "tf-m01-caught", speaker: "watchtower", trigger: { on: "end", result: "infected" },
       text: "Station, respond. … Signal lost." },
   ],
@@ -82,8 +83,8 @@ const supplyRun: MissionDef = {
   image: `${IMG}/mission-02.jpg`,
   imagePosition: "45% 66%",
   intro: [
-    "Morning. The group in the cellar is eleven people. Two of them will not last without medicine.",
-    "Watchtower has found three places near you where supplies were left behind.",
+    "Morning. You spent the night in the cellar with eleven strangers.",
+    "Two of them will not last the day without medicine. Watchtower has found three places near you where supplies were left behind.",
     "You are the only one who can still move.",
   ],
   objective: "Reach the three supply sites, in any order. Plan your way around the infected.",
@@ -93,7 +94,7 @@ const supplyRun: MissionDef = {
   success: "The supplies are in. The group can hold out, but the evacuation routes are closing.",
   beats: [
     { id: "tf-m02-start", speaker: "watchtower", trigger: { on: "start" }, fallbackVoice: "checkpointStart",
-      text: "Runner Seven, Watchtower. Three supply sites on your map. Any order. Look where the infected are before you choose." },
+      text: "Morning, Runner Seven. The cellar needs medicine. Three supply sites on your map, any order. Look where the infected are before you choose." },
     { id: "tf-m02-plan", speaker: "watchtower", trigger: { on: "time", atS: 75 },
       text: "The short way is not always the safe way. Go around them if you have to." },
     { id: "tf-m02-first", speaker: "watchtower", trigger: { on: "objective", which: "first" },
@@ -284,7 +285,7 @@ export const THE_FALL: CampaignDef = {
     { id: "raven", name: "RAVEN TWO", elevenLabsVoiceId: "SAxJUlDKRc79XAyeWyMu", radio: "aircraft", voice: "Military helicopter pilot, man. Clipped aviation radio, rotor noise behind the voice. Matter-of-fact, never hurried until the landing." },
   ],
   narrator: {
-    elevenLabsVoiceId: "nPczCjzI2devNBz1zQrb",
+    elevenLabsVoiceId: "Vep3bcB7LhKa3wfjMiI6",
     voice: "Narrator, man, deep and low. Reads the story between missions like a film's opening: unhurried, grave, never theatrical. Clean studio voice, no radio.",
   },
   missions: [firstContact, supplyRun, noWayBack, lastSignal, finalExtraction],

@@ -22,7 +22,7 @@ En motor, två ingångar. Kampanjen är **data och ett tunt lager ovanpå** samm
 | Story/Event | `src/campaign/story.ts` | `MissionStory`: spelhändelser → radiorepliker. Läser bara, ändrar aldrig spelet |
 | Koppling | `src/play/rules.ts`, `match.ts`, `session.ts` | `MatchParams.campaign` markerar matchen; regler, mål och story läggs på |
 | Ljud | `src/app/_client/audio.ts` | `story`-händelser: inspelad fil, ersättningsreplik eller signal + text |
-| UI | `src/app/campaigns/`, `src/app/play/Play.tsx` | Kampanjlista, kampanjvy, intro/briefing, HUD, resultat |
+| UI | `src/app/campaigns/`, `src/app/play/Play.tsx` | CAMPAIGN (`/campaigns`, storylistan) → story (`/campaigns/regenesis`, alla kapitel, kommande låsta) → kapitel (`/campaigns/the-fall`, uppdragen) → briefing, HUD, resultat |
 
 Motorn fick fem **valfria** regler (`src/config/game-rules.ts`). Saknas de beter sig allt som förut, och
 `scripts/regression-fingerprint.expected.txt` är oförändrad:
@@ -37,9 +37,14 @@ Målmodellen (`src/engine/objectives/objectives.ts`) fick `anyOrder` (valfri ord
 
 ## 2. De fem uppdragen
 
+**Övergången 01 → 02 (2026-11-25):** uppdrag 1 har nu ett uttalat mål. Tidigt (25 %) berättar Watchtower att en grupp överlevare
+gömmer sig i en källare i närheten och öppnar dörren när gatan är fri; vid 50 % "håll dem borta från källaren"; sista minuten "gatan
+är nästan fri". När tiden gått öppnas källardörren och spelaren kommer in. Debriefen: elva främlingar, två sjuka, medicinen slut, och
+Watchtower har ett uppdrag i gryningen. Uppdrag 2 börjar i källaren nästa morgon.
+
 | # | Uppdrag | Basläge | Mål | Tid | Nytt för spelaren |
 |---|---|---|---|---|---|
-| 01 | FIRST CONTACT | Survival | Överlev 15 min (vinst när tiden gått) | 15:00 fast | Karta, zombier, radio. 1–3 infekterade i början |
+| 01 | FIRST CONTACT | Survival | Överlev 15 min tills överlevarna i källaren kan öppna dörren (vinst när tiden gått) | 15:00 fast | Karta, zombier, radio. 1–3 infekterade i början |
 | 02 | THE SUPPLY RUN | Checkpoints | 3 platser i **valfri ordning**, ingen hemväg | från banan (≈ 30 min gräns, ≈ 20 min spel) | Vägval. Infekterade står vid platserna från start |
 | 03 | NO WAY BACK | A to B | Automatiskt vald destination ≈ 1,5 km bort | från rutten | **Genskjutande** zombier |
 | 04 | THE LAST SIGNAL | Checkpoints | 3 reläer i ordning, **signalöverföring** vid varje | från banan + överföringarna | Stanna i en zon medan hotet växer |
@@ -138,7 +143,7 @@ kort flygradio). Befintliga repliker har radioeffekten inbakad i filen; gör lik
 
 ### Berättarröst mellan uppdragen
 
-En manlig berättare (ElevenLabs-rösten Brian, `narrator` i `src/campaign/the-fall.ts`) läser skärmarna mellan uppdragen högt. Ren röst,
+En manlig berättare (ElevenLabs-rösten Damian, `Vep3bcB7LhKa3wfjMiI6`, sedan 2026-11-25; förut Brian, `narrator` i `src/campaign/the-fall.ts`) läser skärmarna mellan uppdragen högt. Ren röst,
 ingen radioeffekt, aldrig under en match. Två läsningar per uppdrag, byggda ordagrant ur uppdragets text i `src/campaign/narration.ts`:
 
 - **Briefing** (`tf-mNN-briefing`): uppdragets namn, introraderna och målet. Den separata intro-skärmen (bild, text, SKIP) är borttagen:

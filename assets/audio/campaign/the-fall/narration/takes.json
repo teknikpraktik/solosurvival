@@ -1,7 +1,7 @@
 {
   "tf-m01-briefing": {
     "speaker": "NARRATOR",
-    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "voiceId": "Vep3bcB7LhKa3wfjMiI6",
     "model": "eleven_multilingual_v2",
     "settings": {
       "stability": 0.5,
@@ -11,11 +11,11 @@
       "speed": 0.94
     },
     "seed": 3708841339,
-    "text": "Mission one. First Contact. It started this afternoon. Sirens, then nothing. People are attacking each other in the streets. Nobody knows why. Then a voice breaks through the static. Your objective. Stay on the move and stay away from the infected for 15 minutes."
+    "text": "Mission one. First Contact. It started this afternoon. Sirens, then nothing. People are attacking each other in the streets. Nobody knows why. Then a voice breaks through the static. Others are hiding somewhere near you. Stay alive out there long enough, and they will open their door for you. Your objective. Stay on the move and away from the infected for 15 minutes, until the survivors can let you in."
   },
   "tf-m01-debrief": {
     "speaker": "NARRATOR",
-    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "voiceId": "Vep3bcB7LhKa3wfjMiI6",
     "model": "eleven_multilingual_v2",
     "settings": {
       "stability": 0.5,
@@ -25,11 +25,11 @@
       "speed": 0.94
     },
     "seed": 1654941158,
-    "text": "Mission complete. You find shelter and make it through the night. By morning, the group in the cellar is running out of medicine."
+    "text": "Mission complete. The cellar door opens and you are pulled inside. Eleven strangers, hiding in the dark. Two of them are sick, and the medicine is gone. At first light, Watchtower has a job for you."
   },
   "tf-m02-briefing": {
     "speaker": "NARRATOR",
-    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "voiceId": "Vep3bcB7LhKa3wfjMiI6",
     "model": "eleven_multilingual_v2",
     "settings": {
       "stability": 0.5,
@@ -39,11 +39,11 @@
       "speed": 0.94
     },
     "seed": 3512327834,
-    "text": "Mission two. The Supply Run. Morning. The group in the cellar is eleven people. Two of them will not last without medicine. Watchtower has found three places near you where supplies were left behind. You are the only one who can still move. Your objective. Reach the three supply sites, in any order. Plan your way around the infected."
+    "text": "Mission two. The Supply Run. Morning. You spent the night in the cellar with eleven strangers. Two of them will not last the day without medicine. Watchtower has found three places near you where supplies were left behind. You are the only one who can still move. Your objective. Reach the three supply sites, in any order. Plan your way around the infected."
   },
   "tf-m02-debrief": {
     "speaker": "NARRATOR",
-    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "voiceId": "Vep3bcB7LhKa3wfjMiI6",
     "model": "eleven_multilingual_v2",
     "settings": {
       "stability": 0.5,
@@ -57,7 +57,7 @@
   },
   "tf-m03-briefing": {
     "speaker": "NARRATOR",
-    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "voiceId": "Vep3bcB7LhKa3wfjMiI6",
     "model": "eleven_multilingual_v2",
     "settings": {
       "stability": 0.5,
@@ -71,7 +71,7 @@
   },
   "tf-m03-debrief": {
     "speaker": "NARRATOR",
-    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "voiceId": "Vep3bcB7LhKa3wfjMiI6",
     "model": "eleven_multilingual_v2",
     "settings": {
       "stability": 0.5,
@@ -85,7 +85,7 @@
   },
   "tf-m04-briefing": {
     "speaker": "NARRATOR",
-    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "voiceId": "Vep3bcB7LhKa3wfjMiI6",
     "model": "eleven_multilingual_v2",
     "settings": {
       "stability": 0.5,
@@ -99,7 +99,7 @@
   },
   "tf-m04-debrief": {
     "speaker": "NARRATOR",
-    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "voiceId": "Vep3bcB7LhKa3wfjMiI6",
     "model": "eleven_multilingual_v2",
     "settings": {
       "stability": 0.5,
@@ -113,7 +113,7 @@
   },
   "tf-m05-briefing": {
     "speaker": "NARRATOR",
-    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "voiceId": "Vep3bcB7LhKa3wfjMiI6",
     "model": "eleven_multilingual_v2",
     "settings": {
       "stability": 0.5,
@@ -127,7 +127,7 @@
   },
   "tf-m05-debrief": {
     "speaker": "NARRATOR",
-    "voiceId": "nPczCjzI2devNBz1zQrb",
+    "voiceId": "Vep3bcB7LhKa3wfjMiI6",
     "model": "eleven_multilingual_v2",
     "settings": {
       "stability": 0.5,

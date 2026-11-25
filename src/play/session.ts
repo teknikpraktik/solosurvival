@@ -615,6 +615,7 @@ export class PlaySession {
    * frånvaron var lång) och GPS-bevakningen startas om, eftersom iOS ibland tappar den.
    */
   onVisibility(hidden: boolean): void {
+    this.hidden = hidden;
     const t = this.now();
     const live = this.live;
     if (hidden) {
@@ -639,8 +640,9 @@ export class PlaySession {
         this.replaying = true;
         try { this.endMatch(r.events); } finally { this.replaying = false; }
       }
-      if (!live.finished && !live.state.paused) void this.acquireWakeLock();
     }
+    // Back in the foreground: the screen stays on again (the lock was let go when the app was hidden), however long it was away.
+    if (!live.finished && !live.state.paused) void this.acquireWakeLock();
     this.emit();
   }
 
@@ -697,6 +699,8 @@ export class PlaySession {
       this.messages = ["The app was inactive for a while and the game paused. Tap Continue."];
     }
     if (events.length) this.endMatch(events);
+    // A match running in the foreground keeps the screen on; a request that failed or was never made is tried again.
+    if (!live.finished && !live.state.paused && !this.lock && !this.hidden) void this.acquireWakeLock();
     this.updateHeli(live, t);
     if (!live.finished) this.recorder?.tick(live);
     if (this.stage === "playing" && !live.state.paused && t - this.lastCheckMs >= CHECK_MS) { this.lastCheckMs = t; this.checkZombies(live, t); this.checkScare(live, t); this.storyTick(live); }
@@ -1064,9 +1068,13 @@ export class PlaySession {
   }
 
   // --- wake lock ---
+  private acquiring = false;
+  /** The app is in the background (no wake lock is asked for there). */
+  private hidden = false;
   private async acquireWakeLock() {
-    if (this.lock || !this.d.wakeLock) return;
-    try { this.lock = await this.d.wakeLock.request(); } catch { this.lock = null; }
+    if (this.lock || this.acquiring || !this.d.wakeLock) return;
+    this.acquiring = true;
+    try { this.lock = await this.d.wakeLock.request(); } catch { this.lock = null; } finally { this.acquiring = false; }
   }
   private async releaseWakeLock() {
     try { await this.lock?.release(); } catch { /* ignoreras */ }

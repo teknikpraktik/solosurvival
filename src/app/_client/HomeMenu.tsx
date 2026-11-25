@@ -4,26 +4,23 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { STORIES } from "@/campaign";
 import { nextMission } from "@/campaign/progress";
-import { playableChapters } from "@/campaign/stories";
 import { useStoryProgress } from "./campaignStore";
 import { t } from "./strings";
 import { BOOK_SVG, GEAR_SVG, HISTORY_SVG, MENU_SVG } from "./symbols";
 
 /**
  * The start page's two ways to play, as two equal buttons (a name and a line under it; no picture, nothing marked as chosen: they are
- * ways in, not a setting). CAMPAIGN always opens the campaign overview, where the difficulty, the progress and CONTINUE are: the chapter
- * the player is in (the one with the next mission; the first chapter for a new or a finished story). FREE PLAY leads to its setup.
+ * ways in, not a setting). CAMPAIGN opens the list of stories (REGENESIS), whose page shows every chapter and CONTINUE. FREE PLAY leads
+ * to its setup.
  */
 export function HomePlay() {
   const story = STORIES[0];
   const { progress, ready } = useStoryProgress(story);
   const S = t().home;
-  const next = ready ? nextMission(story, progress) : null;
-  const chapterId = next?.chapterId ?? playableChapters(story)[0].id;
-  const resumable = ready && progress.started && !!next;
+  const resumable = ready && progress.started && !!nextMission(story, progress);
   return (
     <div className="homeplay">
-      <Link className="playbtn" data-play="campaign" data-state={resumable ? "resume" : "new"} href={`/campaigns/${chapterId}`}>
+      <Link className="playbtn" data-play="campaign" data-state={resumable ? "resume" : "new"} href="/campaigns">
         <b>{S.campaign}</b>
         <span>{S.campaignSub}</span>
       </Link>

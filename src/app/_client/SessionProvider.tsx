@@ -9,6 +9,7 @@ import { IdbTileCache } from "@/play/tile-cache";
 import type { Db } from "@/play/idb";
 import { playCue } from "./cues";
 import { matchAudio, soundscape } from "./audio";
+import { keepAwake } from "./keepAwake";
 import { openFreeMap } from "@/geo/blockers";
 import { createBrowserCompass } from "./compass";
 import { campaignKv } from "./campaignStore";
@@ -57,7 +58,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         onSound: (e) => {
           void matchAudio().onEvent(e).then((r) => { if (r !== null) session?.fieldLog?.add(Date.now(), "sound", { event: e.type, result: r, stale: "stale" in e ? e.stale : false, voice: matchAudio().radio.log.at(-1) ?? null, ctx: soundscape().context()?.state }); }, () => undefined);
         },
-        wakeLock: "wakeLock" in navigator ? { request: () => (navigator as Navigator & { wakeLock: { request(t: "screen"): Promise<{ release(): Promise<void> }> } }).wakeLock.request("screen") } : undefined,
+        // The screen stays on while a match runs: the Screen Wake Lock, asked for again when dropped, and a silent video on iOS (keepAwake.ts).
+        wakeLock: keepAwake,
       });
       // Ny datauppsättning på servern rensar gamla tiles i cachen.
       try { const m = await tiles.loadManifest(); await cache?.purgeOthers(m.dataVersion); } catch { /* offline: använd cache */ }

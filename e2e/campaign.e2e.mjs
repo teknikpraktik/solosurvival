@@ -74,7 +74,7 @@ try {
   const sizes = await page.locator(".playbtn").evaluateAll((bs) => bs.map((b) => { const r = b.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), marked: b.hasAttribute("aria-current") || b.hasAttribute("aria-pressed") }; }));
   check("main menu: the two buttons are the same size and neither is marked as chosen", sizes[0].w === sizes[1].w && sizes[0].h === sizes[1].h && sizes[0].h >= 60 && sizes.every((x) => !x.marked), JSON.stringify(sizes));
   check("main menu fits the phone", await fits());
-  check("new campaign: CAMPAIGN leads to the campaign page", (await page.locator('.playbtn[data-play="campaign"]').getAttribute("href")) === "/campaigns/the-fall");
+  check("new campaign: CAMPAIGN leads to the list of stories", (await page.locator('.playbtn[data-play="campaign"]').getAttribute("href")) === "/campaigns");
   await page.waitForTimeout(700);
   await shot("c01-menu");
   for (const [name, url] of [["PREVIOUS GAMES", "**/history"], ["HOW TO PLAY", "**/how-to-play"], ["SETTINGS", "**/settings"]]) {
@@ -92,14 +92,19 @@ try {
 
   // --- Campaign list and campaign ---
   await page.getByRole("link", { name: /CAMPAIGN/ }).click();
-  await page.waitForURL("**/campaigns/the-fall");
-  check("a new campaign's card opens the campaign itself (one tap, no list in between)", (await page.locator(".missioncard").first().waitFor().then(() => true)));
-  await page.goto(BASE + "/campaigns");
+  await page.waitForURL("**/campaigns");
   await page.locator(".campcard").waitFor();
-  check("campaign list: exactly one campaign, THE FALL", (await page.locator(".campcard").count()) === 1 && (await page.locator(".campcard-title").innerText()) === "THE FALL");
+  check("campaign list: exactly one story, REGENESIS", (await page.locator(".campcard").count()) === 1 && (await page.locator(".campcard-title").innerText()) === "REGENESIS");
   await page.waitForTimeout(500);
   await shot("c02-campaigns");
   await page.locator(".campcard").click();
+  await page.waitForURL("**/campaigns/regenesis");
+  await page.locator(".chaptercard").first().waitFor();
+  const chapters = await page.locator(".chaptercard").evaluateAll((cs) => cs.map((c) => ({ title: c.querySelector(".campcard-title").textContent, locked: c.dataset.locked === "true", link: c.tagName === "A" })));
+  check("REGENESIS: five chapters in order, THE FALL playable, the other four shown locked", chapters.map((c) => c.title).join("|") === "THE FALL|GROUND ZERO|THE HUNT|NO MAN'S LAND|THE LAST HOPE" && chapters[0].link && !chapters[0].locked && chapters.slice(1).every((c) => c.locked && !c.link), JSON.stringify(chapters));
+  check("REGENESIS fits the phone", await fits());
+  await shot("c02b-regenesis");
+  await page.locator(".chaptercard").first().click();
   await page.waitForURL("**/campaigns/the-fall");
   await page.locator(".missioncard").first().waitFor();
   const cards = await page.locator(".missioncard").evaluateAll((bs) => bs.map((b) => ({ status: b.dataset.status, disabled: b.disabled, title: b.querySelector(".missioncard-title").textContent })));
@@ -151,7 +156,7 @@ try {
   const p1 = await progress();
   check("winning mission 01 is saved on EASY and unlocks mission 02", mp(p1, "01").completed === true && mp(p1, "01").bestDifficulty === "easy" && mp(p1, "02").completed === false);
   check("result in story order: the radio's last line, then what happens after it", (await page.locator(".radiolog + .outcome").count()) === 1
-    && (await page.locator(".outcome").innerText()).includes("make it through the night") && (await page.locator(".radiolog").innerText()).includes("At first light"));
+    && (await page.locator(".outcome").innerText()).includes("The cellar door opens") && (await page.locator(".radiolog").innerText()).includes("opening the cellar door"));
   await page.locator('.modal .narrate[data-state="playing"]').waitFor({ timeout: 15000 }).catch(() => undefined);
   check("the narrator reads what the win achieved", (await page.locator('.narrate[data-state="playing"]').count()) === 1 && [200, 206].includes(voices.get("tf-m01-debrief")), `status ${voices.get("tf-m01-debrief")}`);
   check("result offers the next mission and the campaign", (await page.getByRole("link", { name: "NEXT: THE SUPPLY RUN" }).count()) === 1 && (await page.getByRole("link", { name: "BACK TO CAMPAIGN" }).count()) === 1);
@@ -222,10 +227,16 @@ try {
   await page.goto(BASE + "/");
   await page.locator('.playbtn[data-play="campaign"][data-state="resume"]').waitFor({ timeout: 15000 });
   const card = await page.locator('.playbtn[data-play="campaign"]').evaluate((a) => ({ href: a.getAttribute("href"), text: a.innerText.replace(/\s+/g, " ") }));
-  check("returning player: CAMPAIGN leads to the campaign overview", /^CAMPAIGN/.test(card.text) && card.href === "/campaigns/the-fall", `${card.text} → ${card.href}`);
+  check("returning player: CAMPAIGN leads to the stories", /^CAMPAIGN/.test(card.text) && card.href === "/campaigns", `${card.text} → ${card.href}`);
   await page.waitForTimeout(500);
   await shot("c13-menu-continue");
   await page.locator('.playbtn[data-play="campaign"]').click();
+  await page.waitForURL("**/campaigns");
+  await page.locator(".campcard").click();
+  await page.waitForURL("**/campaigns/regenesis");
+  await page.locator(".campcontinue").waitFor({ timeout: 15000 });
+  check("REGENESIS for a returning player: CONTINUE names the next mission", (await page.locator(".campcontinue").innerText()).includes("THE SUPPLY RUN"));
+  await page.locator(".chaptercard").first().click();
   await page.waitForURL("**/campaigns/the-fall");
   check("the overview shows story, chapter, progress, difficulty and CONTINUE", await onOverview()
     && (await page.locator(".camphero-k").innerText()).includes("REGENESIS") && (await page.locator(".campnext-k").innerText()).includes("1 / 5")
