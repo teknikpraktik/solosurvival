@@ -17,8 +17,8 @@ describe("mission story: which radio line is said when", () => {
     expect(s.onTick(tick(10, 900))).toEqual([]);
     expect(ids(s.onTick(tick(50, 900)))).toEqual(["tf-m01-signal"]);
     expect(s.onTick(tick(51, 900))).toEqual([]);
-    expect(ids(s.onTick(tick(360, 900)))).toEqual(["tf-m01-spread"]);
-    expect(ids(s.onTick(tick(675, 900)))).toEqual(["tf-m01-survivors"]);
+    expect(ids(s.onTick(tick(225, 900)))).toEqual(["tf-m01-survivors"]);
+    expect(ids(s.onTick(tick(450, 900)))).toEqual(["tf-m01-spread"]);
     expect(ids(s.onTick(tick(840, 900)))).toEqual(["tf-m01-minute"]);
     const end = s.onEvents([{ type: "finished", result: "survived" }], 900, 0);
     expect(end).toMatchObject([{ id: "tf-m01-win", final: true, speaker: "WATCHTOWER", campaignId: "the-fall", fallbackVoice: undefined }]);
@@ -93,7 +93,7 @@ describe("mission story: which radio line is said when", () => {
     expect(s.start()).toEqual([]);
     expect(s.onEvents([{ type: "zombie_detected", zombieId: "z0" }], 401, 0)).toEqual([]);
     expect(s.onTick(tick(402, 900))).toEqual([]);
-    expect(ids(s.onTick(tick(675, 900)))).toEqual(["tf-m01-survivors"]);
+    expect(ids(s.onTick(tick(450, 900)))).toEqual(["tf-m01-spread"]); // the survivors line (225 s) has passed
     // The contact warning is about now, so it is still said.
     expect(ids(s.onEvents([{ type: "infection_contact" }], 700, 0))).toEqual(["tf-m01-contact"]);
   });

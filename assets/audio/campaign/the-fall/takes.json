@@ -53,7 +53,7 @@
       "speed": 1
     },
     "seed": 1007839015,
-    "text": "One more minute. Keep moving."
+    "text": "One more minute. The street is almost clear. Keep moving."
   },
   "tf-m01-signal": {
     "speaker": "WATCHTOWER",
@@ -81,7 +81,7 @@
       "speed": 1
     },
     "seed": 1186181766,
-    "text": "More reports coming in. It is spreading faster than we can track. Expect more of them."
+    "text": "More reports coming in. It is spreading faster than we can track. Keep them away from that cellar."
   },
   "tf-m01-start": {
     "speaker": "WATCHTOWER",
@@ -109,7 +109,7 @@
       "speed": 1
     },
     "seed": 3463894090,
-    "text": "Stand by. Someone else is on this channel. A group of survivors, hiding in a cellar not far from you."
+    "text": "I have survivors on this channel, hiding in a cellar near you. They will open the door for you when the street is clear."
   },
   "tf-m01-win": {
     "speaker": "WATCHTOWER",
@@ -123,7 +123,7 @@
       "speed": 1
     },
     "seed": 95335337,
-    "text": "You are still on your feet. I am logging you as Runner Seven. Find shelter and rest. At first light, that group in the cellar will need you."
+    "text": "That is it. The street is clear and they are opening the cellar door. Get inside. I am logging you as Runner Seven."
   },
   "tf-m02-caught": {
     "speaker": "WATCHTOWER",
@@ -235,7 +235,7 @@
       "speed": 1
     },
     "seed": 2311344176,
-    "text": "Runner Seven, Watchtower. Three supply sites on your map. Any order. Look where the infected are before you choose."
+    "text": "Morning, Runner Seven. The cellar needs medicine. Three supply sites on your map, any order. Look where the infected are before you choose."
   },
   "tf-m02-win": {
     "speaker": "WATCHTOWER",

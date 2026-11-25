@@ -31,7 +31,7 @@ const winAll = (p: StoryProgress, d: Difficulty, story: StoryDef = S) => {
 /** A second chapter, as a story that has grown: the same missions under another id. */
 const CH2: CampaignDef = { ...c, id: "ch2", title: "CHAPTER TWO", missions: c.missions.slice(0, 2) };
 const GROWN: StoryDef = { ...S, chapters: [{ kind: "playable", campaign: c }, { kind: "playable", campaign: CH2 }] };
-const OTHER: StoryDef = { id: "other-story", title: "OTHER", chapters: [{ kind: "playable", campaign: { ...c, id: "other-ch" } }] };
+const OTHER: StoryDef = { id: "other-story", title: "OTHER", cover: "", description: "", chapters: [{ kind: "playable", campaign: { ...c, id: "other-ch" } }] };
 
 describe("THE FALL: the campaign as data", () => {
   it("is the one campaign offered, with five missions in the story's order", () => {

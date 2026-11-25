@@ -18,14 +18,22 @@ export type ChapterSlot =
   | { kind: "planned"; id: string; title: string };
 
 export interface StoryDef {
+  /** Also the story page's address: /campaigns/<id>. Never the same as a chapter's id. */
   id: string;
   title: string;
+  /** Picture for the story's card and page. */
+  cover: string;
+  coverPosition?: string;
+  description: string;
   chapters: readonly ChapterSlot[];
 }
 
 export const REGENESIS: StoryDef = {
   id: "regenesis",
   title: "REGENESIS",
+  cover: "/img/hero-v2.jpg",
+  coverPosition: "50% 72%",
+  description: "The outbreak, and the long road after it. Five chapters, played on foot wherever you are.",
   chapters: [
     { kind: "playable", campaign: THE_FALL },
     { kind: "planned", id: "ground-zero", title: "GROUND ZERO" },
@@ -67,4 +75,8 @@ export function chapterPlace(campaignId: string): ChapterPlace | null {
 /** The story a playable chapter belongs to: its progress, difficulty and awards are kept per story. */
 export function storyOfChapter(campaignId: string): StoryDef | null {
   return chapterPlace(campaignId)?.story ?? null;
+}
+
+export function findStory(id: string | null | undefined): StoryDef | null {
+  return STORIES.find((s) => s.id === id) ?? null;
 }

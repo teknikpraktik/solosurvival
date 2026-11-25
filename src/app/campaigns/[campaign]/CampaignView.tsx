@@ -44,7 +44,7 @@ function MissionCard({ s, c, m, progress, onOpen }: { s: StoryDef; c: CampaignDe
   const best = status === "completed" && mp?.bestDifficulty ? DIFFICULTY_LABEL[mp.bestDifficulty].toUpperCase() : null;
   return (
     <button type="button" className="missioncard" data-status={status} disabled={locked} onClick={onOpen}
-      aria-label={`${S.mission(m.id)}: ${m.title}. ${S.status[status]}${best ? ` ${S.onDifficulty(best)}` : ""}${locked ? `. ${S.lockedHint}` : ""}`}>
+      aria-label={`${S.mission(m.id)}: ${m.title}. ${S.status[status]}${best ? ` ${S.onDifficulty(best)}` : ""}`}>
       <span className="missioncard-bg" aria-hidden="true" style={{ backgroundImage: `url(${m.image})`, backgroundPosition: m.imagePosition }} />
       <span className="missioncard-body" aria-hidden="true">
         <span className="missioncard-top">
@@ -53,7 +53,7 @@ function MissionCard({ s, c, m, progress, onOpen }: { s: StoryDef; c: CampaignDe
         </span>
         <b className="missioncard-title">{m.title}</b>
         <span className="missioncard-sub">
-          {locked ? S.lockedHint : `${m.tagline} · ${S.about(m.aboutMin)}`}
+          {`${m.tagline} · ${S.about(m.aboutMin)}`}
           {status === "completed" && mp?.bestTimeS !== undefined ? ` · ${S.best(fmtTime(mp.bestTimeS))}` : ""}
         </span>
       </span>
@@ -127,7 +127,6 @@ function Briefing({ c, m, difficulty, onClose, onSeen }: { c: CampaignDef; m: Mi
           <li>{S.onFoot}</li>
           <li>{DIFFICULTY_LABEL[difficulty].toUpperCase()}</li>
         </ul>
-        <p className="brief-safety">{S.safety} {S.quitNote}</p>
         {problem && <div className="card bad" role="alert">{problem}</div>}
         {!problem && gpsError && <div className="card bad" role="alert">{gpsError}</div>}
         {!problem && !gpsError && !located && <div className="card warn" role="status">{S.gpsWaiting}</div>}
@@ -231,11 +230,11 @@ export default function CampaignView({ id }: { id: string }) {
     if (next.chapterId === c.id) openMission(next.missionId);
     else { unlockAudio(); router.push(missionUrl(next.chapterId, next.missionId)); }
   };
-  // Where this chapter sits in its story. The chapters still to come are named once, below the missions, and cannot be opened.
+  // Where this chapter sits in its story (the story page lists every chapter, the ones still to come locked).
   const place = chapterPlace(c.id);
   return (
     <main className="page camp">
-      <PageHeader title={c.title} href="/campaigns" />
+      <PageHeader title={c.title} href={`/campaigns/${story.id}`} />
       <div className="camphero">
         <div className="camphero-bg" aria-hidden="true" style={{ backgroundImage: `url(${c.cover})`, backgroundPosition: c.coverPosition }} />
         {place && <span className="cine-k camphero-k">{S.chapterOf(place.story.title, place.number)}</span>}
@@ -282,16 +281,6 @@ export default function CampaignView({ id }: { id: string }) {
         {c.missions.map((m) => <MissionCard key={m.id} s={story} c={c} m={m} progress={progress} onOpen={() => openMission(m.id)} />)}
       </div>
 
-      {place && place.comingLater.length > 0 && (
-        <section className="campsoon" aria-labelledby="campsoon-label">
-          <h2 className="nglabel" id="campsoon-label">{S.comingLater(place.story.title)}</h2>
-          <ol start={place.number + 1}>
-            {place.comingLater.map((title, i) => (
-              <li key={title}><span className="campsoon-n">{S.chapter(place.number + 1 + i)}</span><b>{title}</b></li>
-            ))}
-          </ol>
-        </section>
-      )}
     </main>
   );
 }
