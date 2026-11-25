@@ -40,9 +40,10 @@ export const AUDIO = {
   revealed: "/audio/position-revealed.mp3",
   checkpoint: "/audio/checkpoint-reached.mp3",
   jump: ["/audio/jump-scare-1.mp3", "/audio/jump-scare-2.mp3", "/audio/jump-scare-3.mp3"],
-  /** The close-zombie layer (SOUND_RULES.prowl): six takes of each, so the same sound is never heard twice in a row. */
-  prowlSteps: [1, 2, 3, 4, 5, 6].map((n) => `/audio/prowl-steps-${n}.mp3`),
-  prowlBreath: [1, 2, 3, 4, 5, 6].map((n) => `/audio/prowl-breath-${n}.mp3`),
+  /** The close-zombie layer (SOUND_RULES.prowl); never the same take twice in a row. */
+  /** ≈ 25 s slow dragging passages (four), and breathing (twelve: six short, six of 6–7 s). */
+  prowlSteps: [1, 2, 3, 4].map((n) => `/audio/prowl-steps-${n}.mp3`),
+  prowlBreath: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => `/audio/prowl-breath-${n}.mp3`),
 } as const;
 const PROWL: Record<ProwlKind, readonly string[]> = { steps: AUDIO.prowlSteps, breath: AUDIO.prowlBreath };
 
@@ -94,8 +95,8 @@ export const GAIN = {
   sprint: 0.7, contact: 1,
   // A new infected: a scream (the files are levelled a little above the other one-shots), placed further off (≈ −4.4 dB): someone out there.
   infected: 0.6,
-  // The close-zombie layer at its closest; SOUND_RULES.prowl scales it down with distance (files ≈ −16 LUFS momentary, 2 dB under the
-  // other one-shots, and quieter still by design: it is a presence, not an alarm).
+  // The close-zombie layer; SOUND_RULES.prowl sets each sound's own level by distance on top (breathing files ≈ −16 LUFS momentary,
+  // steps ≈ −22 LUFS integrated; it is a presence, not an alarm).
   prowl: 0.8,
   // Campaign: the soft chime that says "a radio message came in" while a line has no recording yet.
   radioCue: 0.45,
@@ -273,6 +274,9 @@ export class MatchAudio {
   private jumpVariant: number | null = null;
   private readonly prowl = new Prowl();
   private prowlVariant: Record<ProwlKind, number | null> = { steps: null, breath: null };
+  private stepsVoice: Voice | null = null;
+  /** The layer's sounds that may still play (stopped with the match's loops: quit, the end, the app hidden). */
+  private readonly prowlVoices = new Set<Voice>();
   /** The last distance step said (spoken countdown 50…10 m). */
   private countdown: CountdownStep | null = null;
   private heliLoop: LoopVoice | null = null;
@@ -311,13 +315,25 @@ export class MatchAudio {
     const warn = this.approaching.update(t, i.nearestM, i.activity, run);
     if (roar) { this.lastRoarS = t; void this.s.play(AUDIO.zombieNear, "fx", GAIN.zombieNear); }
     else if (warn) void this.radio.say("zombiesApproaching", { urgent: true });
-    // Within 300 m: steps (and from 150 m breathing) now and then, closer and louder as it closes in. Never right on top of the roar.
-    const p = this.prowl.update(t, i.nearestM, run, this.random);
-    if (p && t - this.lastRoarS >= SOUND_RULES.prowl.afterRoarS) {
+    // Within 300 m: breathing now and then, and now and then a long passage of dragging steps (SOUND_RULES.prowl). Never on top of the roar.
+    for (const p of this.prowl.update(t, i.nearestM, run, this.random)) {
+      if (t - this.lastRoarS < SOUND_RULES.prowl.afterRoarS) continue;
+      if (p.kind === "steps" && this.stepsVoice?.playing) continue; // one walker at a time
       const list = PROWL[p.kind];
       const v = (this.prowlVariant[p.kind] = pickVariant(this.prowlVariant[p.kind], list.length, this.random));
-      void this.s.play(list[v], "threat", GAIN.prowl * p.gain).then((r) => { this.prowlLog.push({ url: list[v], result: r.result }); });
+      void this.s.play(list[v], "threat", GAIN.prowl * p.gain).then((r) => {
+        this.prowlLog.push({ url: list[v], result: r.result });
+        if (!r.voice) return;
+        // Ended or paused meanwhile (the file was still loading): it must not start late.
+        if (!this.running(this.input)) { r.voice.stop(0.1); return; }
+        for (const x of this.prowlVoices) if (!x.playing) this.prowlVoices.delete(x);
+        this.prowlVoices.add(r.voice);
+        if (p.kind === "steps") this.stepsVoice = r.voice;
+      });
     }
+    // The walker goes away with the zombie: out of range, a passage still playing fades out. Paused or over: the whole layer does.
+    if (!run && this.prowlVoices.size) { for (const v of this.prowlVoices) v.stop(SOUND_RULES.prowl.stepsFadeOutS); this.prowlVoices.clear(); this.stepsVoice = null; }
+    else if (this.stepsVoice && !this.prowl.inside) { this.stepsVoice.stop(SOUND_RULES.prowl.stepsFadeOutS); this.prowlVoices.delete(this.stepsVoice); this.stepsVoice = null; }
     // Spoken distance as the nearest zombie closes in: 50, 40, 30, 20, 10 m, each once per approach (re-armed after it has dropped back).
     const c = nextCountdown(this.countdown, run ? i.nearestM : null, VOICE_COUNTDOWN_M);
     this.countdown = c.last;
@@ -487,6 +503,9 @@ export class MatchAudio {
     this.heliLoop = null;
     this.approach?.stop(fadeS);
     this.approach = null;
+    for (const v of this.prowlVoices) v.stop(fadeS);
+    this.prowlVoices.clear();
+    this.stepsVoice = null;
   }
 
   /** A match begins (after START, not on the setup step): the opening line for its mode. */
