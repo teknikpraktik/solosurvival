@@ -5,6 +5,7 @@
     "promptInfluence": 0.6,
     "generated": "2026-11-24"
   },
+<<<<<<< HEAD
   "prowl-breath-10": {
     "text": "Wheezing breaths with a gurgle, someone sniffing the air between them. Outdoors at night, natural, no music, no words, no voice.",
     "durationSeconds": 6,
@@ -23,6 +24,8 @@
     "promptInfluence": 0.6,
     "generated": "2026-11-25"
   },
+=======
+>>>>>>> origin/claude/amazing-bell-3cf4xs
   "prowl-breath-2": {
     "text": "Low guttural growling breath, raspy and hungry, a single creature. Outdoors at night, natural, no music, no words, no voice.",
     "durationSeconds": 3,
@@ -53,6 +56,7 @@
     "promptInfluence": 0.6,
     "generated": "2026-11-24"
   },
+<<<<<<< HEAD
   "prowl-breath-7": {
     "text": "Three slow deep rattling breaths of a sick man, a wet throat, long pauses between them. Outdoors at night, natural, no music, no words, no voice.",
     "durationSeconds": 7,
@@ -94,5 +98,42 @@
     "durationSeconds": 20,
     "promptInfluence": 0.6,
     "generated": "2026-11-25"
+=======
+  "prowl-steps-1": {
+    "text": "Slow uneven dragging footsteps on gravel, one foot scraping, a single person shambling closer. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-steps-2": {
+    "text": "Heavy stumbling footsteps on wet asphalt, irregular rhythm, a shoe dragging. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-steps-3": {
+    "text": "Footsteps shuffling slowly through dry leaves and twigs in a forest, limping gait. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-steps-4": {
+    "text": "Bare feet slapping slowly on a wet road, uneven limping gait. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-steps-5": {
+    "text": "Clear shambling footsteps on a dirt path, shuffling and dragging, five or six steps. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3.5,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+  },
+  "prowl-steps-6": {
+    "text": "Slow footsteps on grass and earth, limping, a twig snaps under a foot. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 3,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-24"
+>>>>>>> origin/claude/amazing-bell-3cf4xs
   }
 }

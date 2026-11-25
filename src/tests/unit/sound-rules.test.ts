@@ -70,6 +70,7 @@ describe("close-range steps after the field test", () => {
 });
 
 describe("close-zombie layer (steps, breathing within 300 m)", () => {
+<<<<<<< HEAD
   type Hit = { t: number; kind: string; gain: number };
   /** Feeds one distance per second for `secs` s; returns the sounds with their time. */
   const feed = (p: Prowl, from: number, secs: number, d: number | null, random = () => 0.5, running = true): Hit[] => {
@@ -103,10 +104,42 @@ describe("close-zombie layer (steps, breathing within 300 m)", () => {
     expect(of(near, "breath")[1].gain).toBeCloseTo(SOUND_RULES.prowl.breath.gain[1]);
     expect(of(near, "steps")[0].gain).toBeCloseTo(SOUND_RULES.prowl.steps.gain[1]);
     expect(SOUND_RULES.prowl.steps.gain[1]).toBeLessThan(SOUND_RULES.prowl.breath.gain[1]);
+=======
+  /** Feeds one distance per second for `secs` s; returns the sounds with their time. */
+  const feed = (p: Prowl, from: number, secs: number, d: number | null, random = () => 0.5, running = true) => {
+    const out: { t: number; kind: string; gain: number }[] = [];
+    for (let t = from; t < from + secs; t++) { const r = p.update(t, d, running, random); if (r) out.push({ t, ...r }); }
+    return out;
+  };
+
+  it("nothing beyond 300 m; inside, the first sound 2–5 s after entering, then about every 20 s far out (steps only, low)", () => {
+    const p = new Prowl();
+    expect(feed(p, 0, 60, 320)).toEqual([]);
+    const far = feed(p, 60, 120, 290);
+    expect(far[0].t - 60).toBeGreaterThanOrEqual(2);
+    expect(far[0].t - 60).toBeLessThanOrEqual(5);
+    expect(far.every((x) => x.kind === "steps")).toBe(true);
+    for (let k = 1; k < far.length; k++) { expect(far[k].t - far[k - 1].t).toBeGreaterThanOrEqual(13); expect(far[k].t - far[k - 1].t).toBeLessThanOrEqual(26); }
+    expect(far[0].gain).toBeLessThan(0.35);
+  });
+
+  it("closer is more often and louder, and breathing joins from 150 m", () => {
+    const count = (d: number) => feed(new Prowl(), 0, 300, d);
+    const at250 = count(250), at120 = count(120), at50 = count(50);
+    expect(at120.length).toBeGreaterThan(at250.length);
+    expect(at50.length).toBeGreaterThan(at120.length);
+    expect(at50.length).toBeGreaterThanOrEqual(60); // about every 4–5 s
+    expect(at50[1].gain).toBeCloseTo(SOUND_RULES.prowl.near.gain);
+    expect(at250[1].gain).toBeLessThan(at120[1].gain);
+    expect(new Set(at250.map((x) => x.kind))).toEqual(new Set(["steps"]));
+    expect(new Set(feed(new Prowl(), 0, 300, 120, () => 0.3).map((x) => x.kind))).toEqual(new Set(["breath"]));
+    expect(new Set(feed(new Prowl(), 0, 300, 120, () => 0.7).map((x) => x.kind))).toEqual(new Set(["steps"]));
+>>>>>>> origin/claude/amazing-bell-3cf4xs
   });
 
   it("closing in never waits out a long gap chosen far away; leaving (beyond 330 m), pausing or no distance silences it", () => {
     const p = new Prowl();
+<<<<<<< HEAD
     expect(of(feed(p, 0, 12, 295), "breath")).toHaveLength(1);
     const next = of(feed(p, 12, 10, 60), "breath"); // the gap chosen at 295 m was ~10 s; at 60 m it is ~3 s
     expect(next[0].t).toBeLessThanOrEqual(17);
@@ -116,5 +149,16 @@ describe("close-zombie layer (steps, breathing within 300 m)", () => {
     expect(p.inside).toBe(false);
     expect(feed(p, 112, 60, 100, () => 0.5, false)).toEqual([]);
     expect(feed(p, 172, 60, null)).toEqual([]);
+=======
+    const first = feed(p, 0, 6, 295);
+    expect(first).toHaveLength(1);
+    const next = feed(p, 6, 10, 60); // the gap chosen at 295 m was ~20 s
+    expect(next.length).toBeGreaterThanOrEqual(1);
+    expect(next[0].t).toBeLessThanOrEqual(13); // within about one near gap, not the ~20 s chosen far out
+    expect(feed(p, 16, 30, 320).length).toBeGreaterThan(0); // 300–330 m: still inside (hysteresis)
+    expect(feed(p, 46, 60, 340)).toEqual([]);
+    expect(feed(p, 106, 60, 100, () => 0.5, false)).toEqual([]);
+    expect(feed(p, 166, 60, null)).toEqual([]);
+>>>>>>> origin/claude/amazing-bell-3cf4xs
   });
 });

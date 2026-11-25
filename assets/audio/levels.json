@@ -907,6 +907,7 @@
       "durationS": 30.024
     },
     "prowl-steps-1": {
+<<<<<<< HEAD
       "measure": "I",
       "target": -22,
       "gainDb": 16.8,
@@ -985,6 +986,126 @@
         "bytes": 400512
       },
       "durationS": 24.982
+=======
+      "measure": "M",
+      "target": -16,
+      "gainDb": 3.8,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -22.9,
+        "M": -19.8,
+        "TP": -8.4,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -19.5,
+        "M": -16.4,
+        "TP": -5.2,
+        "bytes": 48768
+      },
+      "durationS": 3
+    },
+    "prowl-steps-2": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": 7.4,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -25.3,
+        "M": -23.4,
+        "TP": -8.4,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -19.4,
+        "M": -17.9,
+        "TP": -4,
+        "bytes": 48768
+      },
+      "durationS": 3
+    },
+    "prowl-steps-3": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": -1.7,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -17.5,
+        "M": -14.3,
+        "TP": -4.3,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -19.2,
+        "M": -16,
+        "TP": -7.5,
+        "bytes": 48768
+      },
+      "durationS": 3
+    },
+    "prowl-steps-4": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": 12.2,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -29.9,
+        "M": -28.2,
+        "TP": -5.6,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -22.8,
+        "M": -20.6,
+        "TP": -4,
+        "bytes": 48768
+      },
+      "durationS": 3
+    },
+    "prowl-steps-5": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": 7.1,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -26.3,
+        "M": -23.1,
+        "TP": -8.6,
+        "bytes": 56885
+      },
+      "after": {
+        "I": -20,
+        "M": -16.9,
+        "TP": -2.9,
+        "bytes": 56448
+      },
+      "durationS": 3.48
+    },
+    "prowl-steps-6": {
+      "measure": "M",
+      "target": -16,
+      "gainDb": 9.3,
+      "limiter": true,
+      "gate": false,
+      "before": {
+        "I": -27.9,
+        "M": -25.3,
+        "TP": -6.8,
+        "bytes": 48944
+      },
+      "after": {
+        "I": -21.7,
+        "M": -19.2,
+        "TP": -3,
+        "bytes": 48768
+      },
+      "durationS": 3
+>>>>>>> origin/claude/amazing-bell-3cf4xs
     },
     "prowl-breath-1": {
       "measure": "M",
@@ -1105,6 +1226,7 @@
         "bytes": 48768
       },
       "durationS": 3.03
+<<<<<<< HEAD
     },
     "prowl-breath-7": {
       "measure": "M",
@@ -1225,6 +1347,8 @@
         "bytes": 96768
       },
       "durationS": 6.034
+=======
+>>>>>>> origin/claude/amazing-bell-3cf4xs
     }
   }
 }
