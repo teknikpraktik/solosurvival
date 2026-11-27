@@ -69,7 +69,7 @@ describe("close-range steps after the field test", () => {
   });
 });
 
-describe("close-zombie layer (breathing within 300 m, steps within 100 m)", () => {
+describe("close-zombie layer (breathing and steps within 300 m)", () => {
   type Hit = { t: number; kind: string; gain: number };
   /** Feeds one distance per second for `secs` s; returns the sounds with their time. `busyS`: how long each take holds its kind. */
   const feed = (p: Prowl, from: number, secs: number, d: number | null, random = () => 0.5, running = true, busyS = 0): Hit[] => {
@@ -84,49 +84,42 @@ describe("close-zombie layer (breathing within 300 m, steps within 100 m)", () =
   const gaps = (h: Hit[]) => h.slice(1).map((x, i) => x.t - h[i].t);
   const R = SOUND_RULES.prowl;
 
-  it("nothing beyond 300 m; at the edge breathing about every 45 s, quiet, and no steps", () => {
+  it("nothing beyond 300 m; at the edge a steps passage about every 45 s and breathing about every 50 s, both quiet", () => {
+    expect([R.steps.enterM, R.steps.exitM, R.breath.enterM, R.breath.exitM]).toEqual([300, 330, 300, 330]);
     const p = new Prowl();
     expect(feed(p, 0, 60, 320)).toEqual([]);
     const far = feed(p, 60, 600, 295);
-    const breath = of(far, "breath");
-    expect(of(far, "steps")).toEqual([]);
+    const steps = of(far, "steps"), breath = of(far, "breath");
     expect(breath[0].t - 60).toBeGreaterThanOrEqual(3);
     expect(breath[0].t - 60).toBeLessThanOrEqual(8);
-    for (const g of gaps(breath)) { expect(g).toBeGreaterThanOrEqual(35); expect(g).toBeLessThanOrEqual(55); }
-    expect(breath[0].gain).toBeLessThan(0.3);
+    expect(steps[0].t - 60).toBeGreaterThanOrEqual(8);
+    expect(steps[0].t - 60).toBeLessThanOrEqual(14);
+    for (const g of gaps(steps)) { expect(g).toBeGreaterThanOrEqual(35); expect(g).toBeLessThanOrEqual(55); }
+    for (const g of gaps(breath)) { expect(g).toBeGreaterThanOrEqual(39); expect(g).toBeLessThanOrEqual(61); }
+    expect(steps[0].gain).toBeLessThan(0.25);
+    expect(breath[0].gain).toBeLessThan(0.25);
   });
 
-  it("steps only within 100 m (out again beyond 130 m), every 30–40 s, louder closer and always below the breathing at its closest", () => {
-    expect([R.steps.enterM, R.steps.exitM, R.breath.enterM, R.breath.exitM]).toEqual([100, 130, 300, 330]);
-    expect(of(feed(new Prowl(), 0, 300, 110), "steps")).toEqual([]);
-    const p = new Prowl();
-    const close = of(feed(p, 0, 600, 90), "steps");
-    expect(close[0].t).toBeGreaterThanOrEqual(5);
-    for (const g of gaps(close)) { expect(g).toBeGreaterThanOrEqual(28); expect(g).toBeLessThanOrEqual(48); }
-    expect(of(feed(p, 600, 60, 120), "steps").length).toBeGreaterThan(0); // 100–130 m: still inside (hysteresis)
-    expect(of(feed(p, 660, 60, 140), "steps")).toEqual([]);
-    expect(p.inside("steps")).toBe(false);
-    expect(p.inside("breath")).toBe(true);
-    const nearest = of(feed(new Prowl(), 0, 300, 20), "steps");
-    expect(nearest[0].gain).toBeCloseTo(R.steps.gain[1]);
-    expect(close[0].gain).toBeLessThan(R.steps.gain[1]);
-    expect(R.steps.gain[1]).toBeLessThan(R.breath.gain[1]);
-  });
-
-  it("closer: breathing more often and louder; a take still playing holds the next one, which then starts at once", () => {
+  it("closer: both more often and louder, and still quiet (breathing stays in the background)", () => {
     const at = (d: number) => feed(new Prowl(), 0, 600, d);
-    expect(of(at(50), "breath").length).toBeGreaterThan(of(at(290), "breath").length * 1.4);
-    expect(of(at(50), "breath")[1].gain).toBeCloseTo(R.breath.gain[1]);
-    // 30 s takes at 50 m: each next one starts the second the last one ends, never on top of it.
-    const held = of(feed(new Prowl(), 0, 600, 50, () => 0.5, true, 30), "breath");
-    for (const g of gaps(held)) expect(g).toBe(30);
+    for (const k of ["steps", "breath"]) {
+      expect(of(at(50), k).length).toBeGreaterThan(of(at(290), k).length * 1.3);
+      expect(of(at(50), k)[1].gain).toBeCloseTo(R[k as "steps" | "breath"].gain[1]);
+    }
+    expect(R.breath.gain[1]).toBeLessThanOrEqual(0.5);
+  });
+
+  it("a take still playing holds the next one, which then starts at once", () => {
+    // 35 s takes at 50 m: each next one starts the second the last one ends, never on top of it.
+    const held = of(feed(new Prowl(), 0, 600, 50, () => 0.5, true, 35), "breath");
+    for (const g of gaps(held)) expect(g).toBe(35);
   });
 
   it("closing in never waits out a long gap chosen far away; leaving (beyond 330 m), pausing or no distance silences it", () => {
     const p = new Prowl();
     expect(of(feed(p, 0, 12, 295), "breath")).toHaveLength(1);
-    const next = of(feed(p, 12, 40, 50), "breath"); // the gap chosen at 295 m was ~45 s (next at ≈ 51); at 50 m it is ~28 s
-    expect(next[0].t).toBeLessThanOrEqual(12 + 28 * 1.2 + 1);
+    const next = of(feed(p, 12, 50, 50), "breath"); // the gap chosen at 295 m was ~50 s (next at ≈ 56); at 50 m it is ~34 s
+    expect(next[0].t).toBeLessThanOrEqual(12 + 34 * 1.2 + 1);
     expect(p.inside("breath")).toBe(true);
     expect(feed(p, 52, 60, 320).length).toBeGreaterThan(0); // 300–330 m: still inside (hysteresis)
     expect(feed(p, 112, 60, 340)).toEqual([]);

@@ -24,63 +24,69 @@
     "generated": "2026-11-25"
   },
   "prowl-breath-1": {
-    "text": "Ragged wet rasping breathing of a very sick person, slow inhale and exhale. One creature breathing steadily the whole time, close, each breath clearly heard, short natural pauses between breaths. Outdoors at night, natural, no music, no words, no voice.",
-    "durationSeconds": 25,
-    "promptInfluence": 0.6,
-    "generated": "2026-11-25"
-  },
-  "prowl-breath-2": {
-    "text": "Low guttural growling breaths, raspy and hungry, now and then a low growl. One creature breathing steadily the whole time, close, each breath clearly heard, short natural pauses between breaths. Outdoors at night, natural, no music, no words, no voice.",
-    "durationSeconds": 28,
-    "promptInfluence": 0.6,
-    "generated": "2026-11-25"
-  },
-  "prowl-breath-3": {
-    "text": "Hoarse wheezing breathing with a rattling throat, slow and menacing. One creature breathing steadily the whole time, close, each breath clearly heard, short natural pauses between breaths. Outdoors at night, natural, no music, no words, no voice.",
-    "durationSeconds": 22,
-    "promptInfluence": 0.6,
-    "generated": "2026-11-25"
-  },
-  "prowl-breath-4": {
-    "text": "Slow labored breathing through the mouth with a faint groan on some exhales, a wet throat. One creature breathing steadily the whole time, close, each breath clearly heard, short natural pauses between breaths. Outdoors at night, natural, no music, no words, no voice.",
-    "durationSeconds": 30,
-    "promptInfluence": 0.6,
-    "generated": "2026-11-25"
-  },
-  "prowl-breath-5": {
-    "text": "Raspy hungry breathing that speeds up, then a low growl, then slows again, sniffing the air between breaths. One creature breathing steadily the whole time, close, each breath clearly heard, short natural pauses between breaths. Outdoors at night, natural, no music, no words, no voice.",
-    "durationSeconds": 24,
-    "promptInfluence": 0.6,
-    "generated": "2026-11-25"
-  },
-  "prowl-breath-6": {
-    "text": "Deep hollow breathing, slow and heavy, a rattle deep in the chest, an occasional choked gasp. One creature breathing steadily the whole time, close, each breath clearly heard, short natural pauses between breaths. Outdoors at night, natural, no music, no words, no voice.",
+    "text": "Very slow, soft, dry breathing through the nose and mouth of one person, long calm inhales and long exhales, steady the whole time, recorded close to the microphone so every breath is clearly audible. No gurgling, no retching, no coughing, no growling, no wet sounds, no splashing. A slight hoarseness on the exhale. Outdoors at night, natural, no music, no words, no voice.",
     "durationSeconds": 26,
     "promptInfluence": 0.6,
-    "generated": "2026-11-25"
+    "generated": "2026-11-27"
+  },
+  "prowl-breath-2": {
+    "text": "Very slow, soft, dry breathing through the nose and mouth of one person, long calm inhales and long exhales, steady the whole time, recorded close to the microphone so every breath is clearly audible. No gurgling, no retching, no coughing, no growling, no wet sounds, no splashing. A faint dry rasp in the throat. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 24,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-27"
+  },
+  "prowl-breath-3": {
+    "text": "Very slow, soft, dry breathing through the nose and mouth of one person, long calm inhales and long exhales, steady the whole time, recorded close to the microphone so every breath is clearly audible. No gurgling, no retching, no coughing, no growling, no wet sounds, no splashing. Tired and heavy, very even. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 30,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-27"
+  },
+  "prowl-breath-4": {
+    "text": "Very slow, soft, dry breathing through the nose and mouth of one person, long calm inhales and long exhales, steady the whole time, recorded close to the microphone so every breath is clearly audible. No gurgling, no retching, no coughing, no growling, no wet sounds, no splashing. Now and then a slow sniff of the air between breaths. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 25,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-27"
+  },
+  "prowl-breath-5": {
+    "text": "Very slow, soft, dry breathing through the nose and mouth of one person, long calm inhales and long exhales, steady the whole time, recorded close to the microphone so every breath is clearly audible. No gurgling, no retching, no coughing, no growling, no wet sounds, no splashing. A low faint sigh on some of the exhales. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 27,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-27"
   },
   "prowl-steps-1": {
-    "text": "Slow shuffling dragging footsteps of one person limping, feet scraping the ground, heavy and tired, a slow steady pace of about one step every second, no splashing, no running. On a dry gravel road. Outdoors at night, natural, no music, no words, no voice.",
-    "durationSeconds": 20,
+    "text": "Slow shuffling dragging footsteps of one person walking steadily, feet scraping the ground, heavy and tired, a slow steady pace of about one step every second the whole time, no splashing, no running, no breathing. On a dry gravel road. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 24,
     "promptInfluence": 0.6,
-    "generated": "2026-11-25"
+    "generated": "2026-11-27"
   },
   "prowl-steps-2": {
-    "text": "Slow shuffling dragging footsteps of one person limping, feet scraping the ground, heavy and tired, a slow steady pace of about one step every second, no splashing, no running. On a dry forest path with pine needles and small twigs. Outdoors at night, natural, no music, no words, no voice.",
-    "durationSeconds": 20,
+    "text": "Slow shuffling dragging footsteps of one person walking steadily, feet scraping the ground, heavy and tired, a slow steady pace of about one step every second the whole time, no splashing, no running, no breathing. On a dry forest path with pine needles and small twigs. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 23,
     "promptInfluence": 0.6,
-    "generated": "2026-11-25"
+    "generated": "2026-11-27"
   },
   "prowl-steps-3": {
-    "text": "Slow shuffling dragging footsteps of one person limping, feet scraping the ground, heavy and tired, a slow steady pace of about one step every second, no splashing, no running. On dry asphalt, a shoe sole scuffing with every other step. Outdoors at night, natural, no music, no words, no voice.",
-    "durationSeconds": 20,
+    "text": "Slow shuffling dragging footsteps of one person walking steadily, feet scraping the ground, heavy and tired, a slow steady pace of about one step every second the whole time, no splashing, no running, no breathing. On dry asphalt, a shoe sole scuffing with every other step. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 24,
     "promptInfluence": 0.6,
-    "generated": "2026-11-25"
+    "generated": "2026-11-27"
   },
   "prowl-steps-4": {
-    "text": "Slow shuffling dragging footsteps of one person limping, feet scraping the ground, heavy and tired, a slow steady pace of about one step every second, no splashing, no running. Through dry fallen leaves and grass. Outdoors at night, natural, no music, no words, no voice.",
-    "durationSeconds": 20,
+    "text": "Slow shuffling dragging footsteps of one person walking steadily, feet scraping the ground, heavy and tired, a slow steady pace of about one step every second the whole time, no splashing, no running, no breathing. Through dry fallen leaves and grass. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 22,
     "promptInfluence": 0.6,
-    "generated": "2026-11-25"
+    "generated": "2026-11-27"
+  },
+  "prowl-steps-5": {
+    "text": "Slow shuffling dragging footsteps of one person walking steadily, feet scraping the ground, heavy and tired, a slow steady pace of about one step every second the whole time, no splashing, no running, no breathing. On a dusty concrete pavement, one foot dragging a little behind the other. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 24,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-27"
+  },
+  "prowl-steps-6": {
+    "text": "Slow shuffling dragging footsteps of one person walking steadily, feet scraping the ground, heavy and tired, a slow steady pace of about one step every second the whole time, no splashing, no running, no breathing. On a dirt track with small stones. Outdoors at night, natural, no music, no words, no voice.",
+    "durationSeconds": 23,
+    "promptInfluence": 0.6,
+    "generated": "2026-11-27"
   }
 }

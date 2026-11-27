@@ -58,11 +58,12 @@ const FILES = [
   // level by distance on top. After the field test the steps are ≈ 20 s passages: slowed 20 % (tempo only, not pitch), the bright
   // splash and crackle cut (low-pass 3.2 kHz), a gentle compressor instead of a hard one, levelled by their integrated loudness, and long
   // fades so the walker comes and goes.
-  ...[1, 2, 3, 4].map((n) => ({ name: `prowl-steps-${n}`, src: "mp3", measure: "I", target: -22, limiter: true, limitDb: -4, edges: [1.5, 3],
+  ...[1, 2, 3, 4, 5, 6].map((n) => ({ name: `prowl-steps-${n}`, src: "mp3", measure: "I", target: -22, limiter: true, limitDb: -4, edges: [1.5, 3],
     pre: "atempo=0.8,highpass=f=70,lowpass=f=3200:poles=2,acompressor=threshold=0.1:ratio=2:attack=10:release=200:makeup=1" })),
-  // Breathing after field test 3: 20–30 s takes, levelled by their integrated loudness (a long take with one loud growl must not end up
-  // quiet), a limiter for the growls, short fade-in and a 2 s fade-out.
-  ...[1, 2, 3, 4, 5, 6].map((n) => ({ name: `prowl-breath-${n}`, src: "mp3", measure: "I", target: -22, limiter: true, limitDb: -6, edges: [0.3, 2] })),
+  // Breathing after field test 4: slow, dry 24–30 s takes (the wet, gurgling ones sounded like retching), levelled by their integrated
+  // loudness a little below the steps, the rumble and the hiss of the quiet takes cut (80 Hz – 7 kHz), soft 1 s fade-in, 3 s fade-out.
+  ...[1, 2, 3, 4, 5].map((n) => ({ name: `prowl-breath-${n}`, src: "mp3", measure: "I", target: -24, limiter: true, limitDb: -8, edges: [1, 3],
+    pre: "highpass=f=80,lowpass=f=7000:poles=2" })),
 ];
 const MUSIC = "theme-frostborne.mp3";
 /** The theme's two shorter versions and the rest of the soundtrack (copied unchanged too; where each is used: MUSIC_PLAYLIST in audio.ts). */

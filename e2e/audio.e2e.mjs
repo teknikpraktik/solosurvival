@@ -93,13 +93,13 @@ async function startMatch(o, mode) {
   await wait(2400);
   mu = await music(page);
   check("match: at the end of the track the music stops (no new pass)", !mu.playing && mu.els.every((e) => e.paused), JSON.stringify(mu));
-  // No threat pulse (removed after the field test). Within 300 m the close-zombie layer instead: long breathing takes (steps only within 100 m).
+  // No threat pulse (removed after the field test). Within 300 m the close-zombie layer instead: long takes of slow breathing and dragging steps.
   check("zombie placed ≈ 400 m away", (await zombieAt(page, 400)) < 30);
   await zombieAt(page, 260);
   let a1 = await audio(page);
   for (let k = 0; k < 24 && !a1.prowl; k++) { await wait(500); a1 = await audio(page); }
   const pl = await page.evaluate(() => window.__outbreakAudio.match.prowlLog);
-  check("zombie at 260 m: breathing within a few seconds (no steps beyond 100 m), no threat pulse", a1.prowl >= 1 && pl.every((x) => /\/audio\/prowl-breath-/.test(x.url) && x.result === "played") && !("threat" in a1) && !reqs.some((p) => p.includes("threat-pulse")) && reqs.some((p) => p.includes("/audio/prowl-")), JSON.stringify(pl));
+  check("zombie at 260 m: breathing (or steps) within a few seconds, no threat pulse", a1.prowl >= 1 && pl.every((x) => /\/audio\/prowl-(breath|steps)-/.test(x.url) && x.result === "played") && !("threat" in a1) && !reqs.some((p) => p.includes("threat-pulse")) && reqs.some((p) => p.includes("/audio/prowl-")), JSON.stringify(pl));
   // 200 m: the operator's "Zombies approaching!" (a recorded line).
   await zombieAt(page, 180);
   await wait(1500);
