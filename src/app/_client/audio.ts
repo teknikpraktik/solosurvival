@@ -42,9 +42,9 @@ export const AUDIO = {
   /** A new infected: someone attacked, bitten and turning (10–12 s each; the jump scare's old screams are no longer used). */
   infected: [1, 2, 3, 4].map((n) => `/audio/infected-${n}.mp3`),
   /** The close-zombie layer (SOUND_RULES.prowl); never the same take twice in a row. */
-  /** ≈ 25 s slow dragging passages (four), and breathing (twelve: six short, six of 6–7 s). */
-  prowlSteps: [1, 2, 3, 4].map((n) => `/audio/prowl-steps-${n}.mp3`),
-  prowlBreath: [1, 2, 3, 4, 5, 6].map((n) => `/audio/prowl-breath-${n}.mp3`),
+  /** Slow dragging passages (six, ≈ 28–30 s) and slow, dry breathing (five, 24–30 s). */
+  prowlSteps: [1, 2, 3, 4, 5, 6].map((n) => `/audio/prowl-steps-${n}.mp3`),
+  prowlBreath: [1, 2, 3, 4, 5].map((n) => `/audio/prowl-breath-${n}.mp3`),
 } as const;
 const PROWL: Record<ProwlKind, readonly string[]> = { steps: AUDIO.prowlSteps, breath: AUDIO.prowlBreath };
 
@@ -320,7 +320,7 @@ export class MatchAudio {
     const warn = this.approaching.update(t, i.nearestM, i.activity, run);
     if (roar) { this.lastRoarS = t; void this.s.play(AUDIO.zombieNear, "fx", GAIN.zombieNear); }
     else if (warn) void this.radio.say("zombiesApproaching", { urgent: true });
-    // Within 300 m long takes of breathing, within 100 m long passages of dragging steps (SOUND_RULES.prowl): one of each at a time, never
+    // Within 300 m long takes of slow breathing and long passages of dragging steps (SOUND_RULES.prowl): one of each at a time, never
     // starting on top of the roar.
     const held = (k: ProwlKind) => !!this.prowlVoice[k]?.playing || this.prowlPending[k] || t - this.lastRoarS < SOUND_RULES.prowl.afterRoarS;
     for (const p of this.prowl.update(t, i.nearestM, run, this.random, held)) {

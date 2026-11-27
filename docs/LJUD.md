@@ -23,7 +23,7 @@ Källfiler, nivåer och storlekar: [`assets/audio/README.md`](../assets/audio/RE
 | --- | --- | --- |
 | theme-frostborne (hela, 209 s), -fade (155 s), -short (138 s) och soundtracket `music-*.mp3` (nio stycken) | Hela appen utom `/field` och `/dev` | Alla nivåanpassas mot temat (≈ −16,3 LUFS) med `gain` i `MUSIC_TRACKS`, högst +4 dB. Samma plan gäller Free Play och alla kampanjuppdrag (`MUSIC_PLAYLIST`, `src/app/_client/audio.ts`). **Meny:** hela temat öppnar appen; därefter korstonade pass ur de lugna styckena (temats tre versioner, Frostborne Silence 1, The Fragile Three-Note Motif och dess version 1), aldrig samma två gånger i rad. **Matchstart:** spelar hela temat fortfarande får det spela klart (`keep` i planen); annars korta temat eller Three-Note Motif. **Mitt i matchen** (ändrat efter fälttestet): ett pass efter varje tystnad på 1–2,5 minuter, så länge matchen pågår, slumpat ur temats två kortare versioner (-fade och -short) och de mörkare styckena Frostborne Silence 1, Three-Note Motif, Stairwell Silence, Untitled 1 och The Missing Footstep. Musiken har ersatt hotpulsen som matchens ljudbakgrund (förut: högst två pass med 4–9 minuters tystnad). Dirty Riff är borttagen, eftersom den upplevdes som för glad och uptempo; källfilen ligger kvar i `assets/audio/source/`. **Helikoptern har landat** (Survival, FINAL EXTRACTION): Relentless Groove direkt, korstonad. **Efter matchen**, när slutets egna ljud är klara: hela temat efter vinst (under debriefen), Final Silence efter förlust (fångad eller tiden slut; korstonas in om musik redan spelar). **Nedladdning:** menyns stycken hämtas när appen öppnas; resten hämtas på NEW GAME och i ett uppdrags briefing, så att de finns offline under matchen. |
 | (threat-pulse-1…14) | – | Borttagen efter fälttestet: musiken spelas oftare i stället. Källfilerna finns kvar i `assets/audio/source/`. |
-| prowl-breath-1…6 (22–30 s), prowl-steps-1…4 (≈ 25 s) | Under match: andning när närmaste zombie är inom 300 m, steg inom 100 m | Närlagret på bussen `threat`: långa andningstagningar, en i taget, och inom 100 m även långa passager med hasande steg. Se avsnittet Närlager. |
+| prowl-breath-1…5 (24–30 s), prowl-steps-1…6 (≈ 28–30 s) | Under match: närmaste zombie inom 300 m | Närlagret på bussen `threat`: långsam, torr andning i bakgrunden och långa passager med hasande steg, en av varje i taget. Se avsnittet Närlager. |
 | zombie-near ("ROAR", gläfsande zombies) | Närmaste zombie inom **100 m**, för både gång och cykel (ut igen bortom 130 m) | En gång per närmande, 45 s cooldown, högst 8 per match. Följer bara närmaste avståndet, så många zombier ger ett ljud. Flyttat efter fälttestet; förut 100 m till fots och 200 m på cykel. |
 | infected-1…4 ("ny smittad", 10–12 s) | `zombie_spawned` under matchen (inte zombierna matchen börjar med): någon har just blivit biten | En hel attack på avstånd: kamp, bett, ett långt skrik som övergår i ett omänskligt läte. Aldrig samma variant två gånger i rad, på nivå 0,6 (≈ −4,4 dB). Högst var 20:e sekund. Händelser från bakgrunden ger inget ljud. Genererade med ElevenLabs (`scripts/prowl-generate.ts`); de gamla skriken `jump-scare-1…3` används inte längre (källfilerna finns kvar). |
 | zombies-approaching ("Zombies approaching!", inspelad röst) | Närmaste zombie inom **200 m**, för både gång och cykel (ut igen bortom 260 m) | En gång per närmande, 45 s cooldown, högst 8 per match. Spelas på röstkanalen som brådskande, precis som nedräkningen. Om zombien dyker upp direkt inom 100 m hörs bara gläfsandet. |
@@ -97,12 +97,21 @@ Radiobruset upplevdes för högt. Två ändringar:
 - **Brusdämpning i filerna:** varsam nedåtexpansion vid bygget (`VOICE_GATE` i `scripts/build-audio.mjs`). Brus långt under talet sänks 2:1, högst 9 dB. Uppmätt: talet är oförändrat (±0,0 dB), och bruset mellan orden har sänkts 4–9 dB i sex filer. I keep-moving och get-to-helicopter ligger bruset nära talets nivå, så där blev sänkningen bara 0,6–1,2 dB.
 - **Lägre nivå i mixen:** alla repliker ligger 2,5 dB lägre (röstnivå 0,75).
 
-## Närlager: andning (inom 300 m) och steg (inom 100 m)
+## Närlager: andning och steg (inom 300 m)
 
 Ersätter hotpulsen med enstaka ljud i stället för en matta. Regeln är `SOUND_RULES.prowl` och `Prowl` i `src/play/sound-rules.ts`;
 `MatchAudio` spelar dem på bussen `threat` (sänks under radiorösterna som musiken, följer reglaget Effects).
 
-**Efter fälttest 3 (2026-11-25):** andningen var bra men för kort, stegen ska betyda att zombien är nära. Nu:
+**Efter fälttest 4 (2026-11-27):** andningen lät som att zombierna kräktes (blöta, gurglande, rosslande tagningar); mer steg i längre
+sekvenser önskades. Nu:
+
+- **Andning:** fem nya tagningar på 24–30 s, långsam och torr ("no gurgling, no retching, no wet sounds"), en i taget inom 300 m.
+  Från start till start ≈ 50 s vid 300 m och ≈ 34 s vid 50 m. Svag: 0,2 → 0,45, filerna −24 LUFS integrerat, 80 Hz–7 kHz.
+- **Steg:** sex nya passager (22–24 s, saktade 20 % till ≈ 28–30 s), nu inom 300 m i stället för 100 m. Från start till start ≈ 45 s
+  vid 300 m (≈ 15 s tystnad) och ≈ 32 s vid 50 m (nästan i följd). Nivå 0,2 → 0,45.
+- Dödsskriken (`infected-1…4`) och musiken är oförändrade. Ingen har lyssnat på de nya tagningarna här.
+
+**Efter fälttest 3 (2026-11-25, ersatt av ovan):** andningen var bra men för kort, stegen ska betyda att zombien är nära. Nu:
 
 - **Andning** inom 300 m (ut igen bortom 330 m): sex nya tagningar på 22–30 s, en i taget. Från start till start ≈ 45 s vid 300 m
   (15–25 s tystnad efter en tagning) och ≈ 28 s vid 50 m (nästan utan paus), ±20 %. Nivå 0,25 → 0,6 (förut 0,3 → 0,85, alltså

@@ -4,8 +4,8 @@ import type { Activity } from "@/config/activities";
  * When the adult app's soundscape plays what (src/app/_client/audio.ts plays it). Pure rules on the game's own, visible information: the
  * nearest zombie distance is the number the HUD always shows, so no sound tells the player more than the screen does.
  * All distances and times are gathered here. The threat pulse (bursts within 300 m on foot / 600 m by bike) was removed after the field
- * test: the music plays more often in its place. The close-zombie layer that came after it (`prowl`) is long takes of breathing (within
- * 300 m) and dragging steps (within 100 m), one of each at a time, with pauses between them.
+ * test: the music plays more often in its place. The close-zombie layer that came after it (`prowl`) is long takes of slow breathing and
+ * dragging steps within 300 m, one of each at a time, with pauses between them.
  */
 export const SOUND_RULES = {
   /**
@@ -23,18 +23,18 @@ export const SOUND_RULES = {
   infected: { cooldownS: 20 },
   heli: { loopFadeInS: 3, approachFadeOutS: 3, loopStopS: 0.8 },
   /**
-   * The close-zombie layer. After field test 3 (2026-11-25: the breathing was good but too short; steps should mean "close"):
-   * - breathing: one long take at a time (20–30 s), while the nearest zombie is within 300 m (out beyond 330 m); start to start ≈ 45 s
-   *   at the edge (a pause of 15–25 s after a take) and ≈ 28 s at 50 m (almost back to back); a little quieter than before;
-   * - steps: one long, slow, dragging passage at a time (≈ 25 s), only within 100 m (out beyond 130 m); start to start ≈ 40 s at
-   *   100 m, ≈ 30 s at 30 m and closer.
+   * The close-zombie layer, within 300 m (out beyond 330 m). After field test 4 (2026-11-27: the breathing sounded like retching; more
+   * steps, in longer passages):
+   * - steps: one slow, dragging passage at a time (≈ 28–30 s); start to start ≈ 45 s at 300 m (≈ 15 s of silence), ≈ 32 s at 50 m
+   *   (almost back to back);
+   * - breathing: one slow, dry, quiet take at a time (24–30 s), in the background; start to start ≈ 50 s at 300 m, ≈ 34 s at 50 m.
    * Pairs are [at the edge of the kind's range, at its `nearM` and closer], linear in between; gaps vary ±`jitter`. A sound that is due
-   * while its previous take still plays, or within 4 s after the roar, waits and starts as soon as it may. Leaving a kind's range fades
-   * its take out. Both activities use the same distances, like the other close-zombie sounds since the field test.
+   * while its previous take still plays, or within 4 s after the roar, waits and starts as soon as it may. Leaving the range fades its
+   * take out. Both activities use the same distances, like the other close-zombie sounds since the field test.
    */
   prowl: {
-    breath: { enterM: 300, exitM: 330, nearM: 50, gapS: [45, 28], gain: [0.25, 0.6], firstS: [3, 8] },
-    steps: { enterM: 100, exitM: 130, nearM: 30, gapS: [40, 30], gain: [0.25, 0.45], firstS: [5, 9] },
+    breath: { enterM: 300, exitM: 330, nearM: 50, gapS: [50, 34], gain: [0.2, 0.45], firstS: [3, 8] },
+    steps: { enterM: 300, exitM: 330, nearM: 50, gapS: [45, 32], gain: [0.2, 0.45], firstS: [8, 14] },
     jitter: 0.2, afterRoarS: 4, fadeOutS: 2,
   },
 } as const;

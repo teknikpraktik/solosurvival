@@ -14,7 +14,7 @@ const DUR: Record<string, number> = {
   [AUDIO.heliLoop]: 30, [AUDIO.heliApproach]: 25, [AUDIO.heliSuccess]: 7, [AUDIO.captured]: 4, [AUDIO.safeDoor]: 5,
   [AUDIO.zombieNear]: 3, [AUDIO.revealed]: 2, [AUDIO.checkpoint]: 2,
   ...Object.fromEntries(AUDIO.infected.map((u) => [u, 11])),
-  ...Object.fromEntries(AUDIO.prowlSteps.map((u) => [u, 25])), ...Object.fromEntries(AUDIO.prowlBreath.map((u) => [u, 25])),
+  ...Object.fromEntries(AUDIO.prowlSteps.map((u) => [u, 29])), ...Object.fromEntries(AUDIO.prowlBreath.map((u) => [u, 25])),
   [VOICE.keepMoving.url]: 8, [VOICE.safehouseOnMap.url]: 8, [VOICE.checkpointSecured.url]: 5, [VOICE.getToSafehouse.url]: 7,
   [VOICE.rescueInbound.url]: 6, [VOICE.getToHelicopter.url]: 7, [VOICE.liftingOff.url]: 5, [VOICE.insideSafehouse.url]: 7,
   [VOICE.checkpointStart.url]: 8, [VOICE.count50.url]: 0.8, [VOICE.count40.url]: 0.8, [VOICE.count30.url]: 1, [VOICE.count20.url]: 0.8, [VOICE.count10.url]: 0.8,
@@ -972,42 +972,37 @@ describe("music playlist (the theme and the soundtrack)", () => {
 describe("close-zombie layer in the match (steps and breathing)", () => {
   const prowls = (t: ReturnType<typeof setup>) => t.ctx.sources.filter((x) => /\/audio\/prowl-/.test(x.buffer?.url ?? ""));
   const urlsOf = (t: ReturnType<typeof setup>, from = 0) => prowls(t).slice(from).map((x) => x.buffer!.url);
-  it("within 300 m: long breathing takes one at a time and no steps; within 100 m also the dragging steps; never the same take twice in a row", async () => {
+  it("within 300 m: long breathing takes and long steps passages, one of each at a time; never the same take twice in a row", async () => {
     const t = setup();
     t.s.unlock();
     await run(t, 30, { nearestM: 400 });
     expect(prowls(t)).toHaveLength(0);
-    await run(t, 240, { nearestM: 280 });
-    const far = urlsOf(t);
-    const breath = far.filter((u) => u.includes("prowl-breath-"));
-    expect(far.filter((u) => u.includes("prowl-steps-"))).toEqual([]); // steps only within 100 m
-    expect(breath.length).toBeGreaterThanOrEqual(4); // ≈ every 45 s at the edge
-    expect(breath.length).toBeLessThanOrEqual(7);
-    for (let k = 1; k < breath.length; k++) expect(breath[k]).not.toBe(breath[k - 1]);
-    // Never two breathing takes at once.
-    const live = () => t.ctx.live().filter((x) => x.buffer?.url.includes("prowl-breath-")).length;
-    const before = prowls(t).length;
+    const live = (k: string) => t.ctx.live().filter((x) => x.buffer?.url.includes(`prowl-${k}-`)).length;
     let most = 0;
-    for (let k = 0; k < 120; k++) { await run(t, 1, { nearestM: 60 }); most = Math.max(most, live()); }
-    const near = urlsOf(t, before);
+    for (let k = 0; k < 240; k++) { await run(t, 1, { nearestM: 280 }); most = Math.max(most, live("steps"), live("breath")); }
+    const far = urlsOf(t);
+    const breath = far.filter((u) => u.includes("prowl-breath-")), steps = far.filter((u) => u.includes("prowl-steps-"));
     expect(most).toBe(1);
-    expect(near.filter((u) => u.includes("prowl-breath-")).length).toBeGreaterThanOrEqual(4); // almost back to back close
-    const steps = near.filter((u) => u.includes("prowl-steps-"));
-    expect(steps.length).toBeGreaterThanOrEqual(3);
-    for (let k = 1; k < steps.length; k++) expect(steps[k]).not.toBe(steps[k - 1]);
-    expect(AUDIO.prowlSteps).toHaveLength(4);
-    expect(AUDIO.prowlBreath).toHaveLength(6);
+    expect(breath.length).toBeGreaterThanOrEqual(4);
+    expect(steps.length).toBeGreaterThanOrEqual(4);
+    for (const list of [breath, steps]) for (let k = 1; k < list.length; k++) expect(list[k]).not.toBe(list[k - 1]);
+    const before = prowls(t).length;
+    await run(t, 120, { nearestM: 60 });
+    const near = urlsOf(t, before);
+    expect(near.filter((u) => u.includes("prowl-steps-")).length).toBeGreaterThanOrEqual(3); // almost back to back close
+    expect(AUDIO.prowlSteps).toHaveLength(6);
+    expect(AUDIO.prowlBreath).toHaveLength(5);
     expect(MATCH_SOUNDS).toEqual(expect.arrayContaining([...AUDIO.prowlSteps, ...AUDIO.prowlBreath, ...AUDIO.infected]));
   });
 
   it("a take still playing fades out when the zombie leaves its range or the game pauses; nothing new while paused", async () => {
     for (const [kind, near, leave] of [
-      ["steps", 80, { nearestM: 150 }], ["steps", 80, { nearestM: 80, paused: true }],
+      ["steps", 200, { nearestM: 400 }], ["steps", 200, { nearestM: 200, paused: true }],
       ["breath", 200, { nearestM: 400 }], ["breath", 200, { nearestM: 200, paused: true }],
     ] as const) {
       const t = setup();
       t.s.unlock();
-      await run(t, 12, { nearestM: near }); // the first take starts 3–9 s in
+      await run(t, 15, { nearestM: near }); // the first take starts 3–14 s in
       const take = prowls(t).find((x) => x.buffer!.url.includes(`prowl-${kind}-`));
       expect(take, JSON.stringify(leave)).toBeDefined();
       expect(t.ctx.live()).toContain(take);
